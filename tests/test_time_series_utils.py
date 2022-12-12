@@ -8,19 +8,63 @@ def test_harmonic_removal():
     results = remove_harmonics_from_sp([2, 51, 5])
     assert results == [2, 51, 5]
 
-    # 2.0 1 base frequency removed ----
+    # 2.0 One base frequency removed ----
     results = remove_harmonics_from_sp([2, 52, 3])
     assert results == [52, 3]
 
-    # 3.0 Remove more than 1 base period ----
+    # 3.0 Remove more than one base period ----
     results = remove_harmonics_from_sp([50, 3, 11, 100, 39])
     assert results == [11, 100, 39]
 
     # 4.0 Order of replacement ----
-    # TODO: Should this return [3, 52] or [52, 3]
-    # Add an option later to have the user select this.
-    results = remove_harmonics_from_sp([2, 3, 52])
-    assert results == [3, 52]
+
+    # 4.1 Only one removed
+    # 4.1A Ordered by raw strength
+    results = remove_harmonics_from_sp([2, 3, 4, 50])
+    assert results == [3, 4, 50]
+    # 4.1B Ordered by harmonic max
+    results = remove_harmonics_from_sp(
+        [2, 3, 4, 50], harmonic_order_method="harmonic_max"
+    )
+    assert results == [50, 3, 4]
+    # 4.1C Ordered by harmonic strength
+    results = remove_harmonics_from_sp(
+        [2, 3, 4, 50], harmonic_order_method="harmonic_strength"
+    )
+    assert results == [4, 3, 50]
+
+    # 4.2 More than one removed
+    # 4.2A Ordered by raw strength
+    results = remove_harmonics_from_sp([3, 2, 6, 50])
+    assert results == [6, 50]
+    # 4.2B Ordered by harmonic max
+    results = remove_harmonics_from_sp(
+        [3, 2, 6, 50], harmonic_order_method="harmonic_max"
+    )
+    assert results == [6, 50]
+    results = remove_harmonics_from_sp(
+        [2, 3, 6, 50], harmonic_order_method="harmonic_max"
+    )
+    assert results == [50, 6]
+    # 4.2C Ordered by harmonic strength
+    results = remove_harmonics_from_sp(
+        [3, 2, 6, 50], harmonic_order_method="harmonic_strength"
+    )
+    assert results == [6, 50]
+    results = remove_harmonics_from_sp(
+        [2, 3, 6, 50], harmonic_order_method="harmonic_strength"
+    )
+    assert results == [6, 50]
+
+    # 4.2D Other variants
+    results = remove_harmonics_from_sp(
+        [10, 20, 30, 40, 50, 60], harmonic_order_method="harmonic_strength"
+    )
+    assert results == [20, 40, 60, 50]
+    results = remove_harmonics_from_sp(
+        [10, 20, 30, 40, 50, 60], harmonic_order_method="harmonic_max"
+    )
+    assert results == [60, 40, 50]
 
     # 5.0 These were giving precision issues earlier. Now fixed by rounding internally. ----
 

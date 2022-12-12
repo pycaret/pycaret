@@ -251,7 +251,7 @@ def test_sp_to_use_using_auto():
     )
     assert exp.candidate_sps == [12, 24, 36, 11, 48]
     assert exp.significant_sps == [12, 24, 36, 11, 48]
-    assert exp.significant_sps_no_harmonics == [36, 11, 48]
+    assert exp.significant_sps_no_harmonics == [48, 36, 11]
     assert exp.all_sps_to_use == [12]
     assert exp.primary_sp_to_use == 12
 
@@ -266,7 +266,7 @@ def test_sp_to_use_using_auto():
     )
     assert exp.candidate_sps == [12, 24, 36, 11, 48]
     assert exp.significant_sps == [12, 24, 36, 11, 48]
-    assert exp.significant_sps_no_harmonics == [36, 11, 48]
+    assert exp.significant_sps_no_harmonics == [48, 36, 11]
     assert exp.all_sps_to_use == [12, 24]
     assert exp.primary_sp_to_use == 12
 
@@ -280,7 +280,7 @@ def test_sp_to_use_using_auto():
     )
     assert exp.candidate_sps == [12, 24, 36, 11, 48]
     assert exp.significant_sps == [12, 24, 36, 11, 48]
-    assert exp.significant_sps_no_harmonics == [36, 11, 48]
+    assert exp.significant_sps_no_harmonics == [48, 36, 11]
     assert exp.all_sps_to_use == [12, 24, 36, 11, 48]
     assert exp.primary_sp_to_use == 12
 
@@ -296,7 +296,7 @@ def test_sp_to_use_upto_max_sp():
     )
     assert exp.candidate_sps == [12, 24, 36, 11, 48]
     assert exp.significant_sps == [12, 24, 36, 11, 48]
-    assert exp.significant_sps_no_harmonics == [36, 11, 48]
+    assert exp.significant_sps_no_harmonics == [48, 36, 11]
     assert exp.all_sps_to_use == [12]
     assert exp.primary_sp_to_use == 12
 

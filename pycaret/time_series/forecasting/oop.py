@@ -195,6 +195,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 self.significant_sps_no_harmonics,
             ],
             ["Remove Harmonics", self.remove_harmonics],
+            ["Harmonics Order Method", self.harmonic_order_method],
             ["Num Seasonalities to Use", self.num_sps_to_use],
             ["All Seasonalities to Use", self.all_sps_to_use],
             ["Primary Seasonality", self.primary_sp_to_use],
@@ -732,7 +733,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ] or [1]
 
         # 3.0 Remove harmonics based on settings ----
-        significant_sps_no_harmonics = remove_harmonics_from_sp(significant_sps)
+        significant_sps_no_harmonics = remove_harmonics_from_sp(significant_sps, harmonic_order_method=self.harmonic_order_method)
 
         # 4.0 Limit seasonal periods to use based on settings ----
         if self.remove_harmonics:
@@ -1331,6 +1332,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         sp_detection: str = "auto",
         max_sp_to_consider: Optional[int] = None,
         remove_harmonics: bool = False,
+        harmonic_order_method: str = "harmonics",
         num_sps_to_use: int = 1,
         point_alpha: Optional[float] = None,
         coverage: Union[float, List[float]] = 0.9,
@@ -1609,6 +1611,24 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             use for modeling.
 
 
+        harmonic_order_method: str, default = "harmonic_strength"
+            Applicable when remove_harmonics = True. This determines how the harmonics
+            are replaced. Allowed values are "harmonic_strength", "harmonic_max" or "raw_strength.
+            - If set to  "harmonic_strength", then lower seasonal period is replaced by its
+            highest strength harmonic seasonal period in same position as the lower seasonal period.
+            - If set to  "harmonic_max", then lower seasonal period is replaced by its
+            highest harmonic seasonal period in same position as the lower seasonal period.
+            - If set to  "raw_strength", then lower seasonal periods is removed and the
+            higher harmonic seasonal periods is retained in its original position
+            based on its seasonal strength.
+
+            e.g. Assuming detected seasonal periods in strength order are [2, 3, 4, 50]
+            and remove_harmonics = True, then:
+            - If harmonic_order_method = "harmonic_strength", result = [4, 3, 50]
+            - If harmonic_order_method = "harmonic_max", result = [50, 3, 4]
+            - If harmonic_order_method = "raw_strength", result = [3, 4, 50]
+
+
         num_sps_to_use: int, default = 1
             It determines the maximum number of seasonal periods to use in the models.
             Set to -1 to use all detected seasonal periods (in models that allow
@@ -1847,6 +1867,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.sp_detection = sp_detection
         self.max_sp_to_consider = max_sp_to_consider
         self.remove_harmonics = remove_harmonics
+        if harmonic_order_method not in ["harmonic_strength", "harmonic_max", "raw_strength"]:
+            raise ValueError(
+                "harmonic_order_method must be either 'harmonic_strength', 'harmonic_max' "
+                f"or 'raw_strength'. You provided {harmonic_order_method}."
+            )
+        self.harmonic_order_method = harmonic_order_method
         self.num_sps_to_use = num_sps_to_use
 
         self.log_plots_param = log_plots

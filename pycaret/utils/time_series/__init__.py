@@ -277,7 +277,9 @@ def auto_detect_sp(
     return primary_sp, significant_sps, lags_to_use
 
 
-def remove_harmonics_from_sp(significant_sps: list) -> list:
+def remove_harmonics_from_sp(
+    significant_sps: list, harmonic_order_method: str = "raw_strength"
+) -> list:
     """Remove harmonics from the list provided. Similar to Kats - Ref:
     https://github.com/facebookresearch/Kats/blob/v0.2.0/kats/detectors/seasonality.py#L311-L321
 
@@ -285,12 +287,27 @@ def remove_harmonics_from_sp(significant_sps: list) -> list:
     ----------
     significant_sps : list
         The list of significant seasonal periods (ordered by significance)
+    harmonic_order_method: str, default = "harmonic_strength"
+        This determines how the harmonics are replaced.
+        Allowed values are "harmonic_strength", "harmonic_max" or "raw_strength.
+        - If set to  "harmonic_strength", then lower seasonal period is replaced by its
+        highest strength harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "harmonic_max", then lower seasonal period is replaced by its
+        highest harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "raw_strength", then lower seasonal periods is removed and the
+        higher harmonic seasonal periods is retained in its original position
+        based on its seasonal strength.
+
+        e.g. Assuming detected seasonal periods in strength order are [2, 3, 4, 50]
+        and remove_harmonics = True, then:
+        - If harmonic_order_method = "harmonic_strength", result = [4, 3, 50]
+        - If harmonic_order_method = "harmonic_max", result = [50, 3, 4]
+        - If harmonic_order_method = "raw_strength", result = [3, 4, 50]
 
     Returns
     -------
     list
         The list of significant seasonal periods with harmonics removed
-        (ordered by significance)
     """
     # Convert period to frequency for harmonic removal
     significant_freqs = [1 / sp for sp in significant_sps]
@@ -310,9 +327,39 @@ def remove_harmonics_from_sp(significant_sps: list) -> list:
     # Convert frequency back to period
     # Rounding, else there is precision issues
     filtered_sps = [round(1 / freq, 4) for freq in significant_freqs]
-    # Keep order of significance
-    significant_sps = [sp for sp in significant_sps if sp in filtered_sps]
-    return significant_sps
+
+    if harmonic_order_method == "raw_strength":
+        # Keep order of significance
+        final_filtered_sps = [sp for sp in significant_sps if sp in filtered_sps]
+    else:
+        # Replace higher strength sp with lower strength harmonic sp
+        retained = [True if sp in filtered_sps else False for sp in significant_sps]
+        final_filtered_sps = []
+        for i, sp_iter in enumerate(significant_sps):
+            if retained[i] is False:
+                div = [sp / sp_iter for sp in significant_sps]
+                div_int = [round(elem) for elem in div]
+                equal = [True if a == b else False for a, b in zip(div, div_int)]
+                replacement_candidates = [
+                    sp for sp, eq in zip(significant_sps, equal) if eq
+                ]
+                if harmonic_order_method == "harmonic_max":
+                    replacement_sp = max(replacement_candidates)
+                elif harmonic_order_method == "harmonic_strength":
+                    replacement_sp = replacement_candidates[
+                        [
+                            i
+                            for i, candidate in enumerate(replacement_candidates)
+                            if candidate != sp_iter
+                        ][0]
+                    ]
+                final_filtered_sps.append(replacement_sp)
+            else:
+                final_filtered_sps.append(sp_iter)
+        # Replacement for ordered set: https://stackoverflow.com/a/53657523/8925915
+        final_filtered_sps = list(dict.fromkeys(final_filtered_sps))
+
+    return final_filtered_sps
 
 
 class SeasonalPeriod(IntEnum):
