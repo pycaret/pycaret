@@ -1,6 +1,7 @@
 """Module to benchmark auto detection of time series seasonal period
 """
 import pytest
+
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 
