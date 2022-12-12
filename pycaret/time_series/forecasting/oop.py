@@ -733,7 +733,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ] or [1]
 
         # 3.0 Remove harmonics based on settings ----
-        significant_sps_no_harmonics = remove_harmonics_from_sp(significant_sps, harmonic_order_method=self.harmonic_order_method)
+        significant_sps_no_harmonics = remove_harmonics_from_sp(
+            significant_sps, harmonic_order_method=self.harmonic_order_method
+        )
 
         # 4.0 Limit seasonal periods to use based on settings ----
         if self.remove_harmonics:
@@ -1867,7 +1869,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.sp_detection = sp_detection
         self.max_sp_to_consider = max_sp_to_consider
         self.remove_harmonics = remove_harmonics
-        if harmonic_order_method not in ["harmonic_strength", "harmonic_max", "raw_strength"]:
+        if harmonic_order_method not in [
+            "harmonic_strength",
+            "harmonic_max",
+            "raw_strength",
+        ]:
             raise ValueError(
                 "harmonic_order_method must be either 'harmonic_strength', 'harmonic_max' "
                 f"or 'raw_strength'. You provided {harmonic_order_method}."
