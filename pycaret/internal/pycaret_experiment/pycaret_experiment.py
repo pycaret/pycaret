@@ -2,7 +2,6 @@ import inspect
 import os
 import warnings
 from collections import defaultdict
-from pathlib import Path
 from typing import Any, BinaryIO, Callable, Dict, Optional, Union
 
 import cloudpickle
@@ -14,8 +13,7 @@ import pycaret.internal.persistence
 from pycaret import show_versions
 from pycaret.internal.logging import get_logger
 from pycaret.utils.constants import DATAFRAME_LIKE
-from pycaret.utils.generic import LazyReadOnlyMapping, MLUsecase
-from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
+from pycaret.utils.generic import LazyReadOnlyMapping
 
 LOGGER = get_logger()
 
@@ -381,7 +379,7 @@ class _PyCaretExperiment:
     @classmethod
     def _load_experiment(
         cls,
-        path_or_file: Union[os.PathLike, Path, BinaryIO],
+        path_or_file: Union[str, os.PathLike, BinaryIO],
         cloudpickle_kwargs=None,
         preprocess_data: bool = True,
         **kwargs,
@@ -408,12 +406,17 @@ class _PyCaretExperiment:
             }
         )
 
-        if preprocess_data:
-            print(setup_params)
+        if preprocess_data and not setup_params.get("data_func", None):
             loaded_exp.setup(
                 **setup_params,
             )
         else:
+            data = new_params.get("data", None)
+            data_func = new_params.get("data_func", None)
+            if (data is None and data_func is None) or (
+                data is not None and data_func is not None
+            ):
+                raise ValueError("One and only one of data and data_func must be set")
             for key, value in new_params.items():
                 setattr(loaded_exp, key, value)
             original_state["_setup_params"] = setup_params
@@ -424,12 +427,58 @@ class _PyCaretExperiment:
     @classmethod
     def load_experiment(
         cls,
-        path_or_file: Union[os.PathLike, Path, BinaryIO],
+        path_or_file: Union[str, os.PathLike, BinaryIO],
         data: Optional[DATAFRAME_LIKE] = None,
         data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
         preprocess_data: bool = True,
         **cloudpickle_kwargs,
     ) -> "_PyCaretExperiment":
+        """
+        Load an experiment saved with ``save_experiment`` from path
+        or file.
+
+        The data (and test data) is NOT saved with the experiment
+        and will need to be specified again.
+
+
+        path_or_file: str or BinaryIO (file pointer)
+            The path/file pointer to load the experiment from.
+            The pickle file must be created through ``save_experiment``.
+
+
+        data: dataframe-like
+            Data set with shape (n_samples, n_features), where n_samples is the
+            number of samples and n_features is the number of features. If data
+            is not a pandas dataframe, it's converted to one using default column
+            names.
+
+
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
+
+
+        preprocess_data: bool, default = True
+            If True, the data will be preprocessed again (through running ``setup``
+            internally). If False, the data will not be preprocessed. This means
+            you can save the value of the ``data`` attribute of an experiment
+            separately, and then load it separately and pass it here with
+            ``preprocess_data`` set to False. This is an advanced feature.
+            We recommend leaving it set to True and passing the same data
+            as passed to the initial ``setup`` call.
+
+
+        **cloudpickle_kwargs:
+            Kwargs to pass to the ``cloudpickle.load`` call.
+
+
+        Returns:
+            loaded experiment
+
+        """
         return cls._load_experiment(
             path_or_file,
             cloudpickle_kwargs=cloudpickle_kwargs,
@@ -439,8 +488,29 @@ class _PyCaretExperiment:
         )
 
     def save_experiment(
-        self, path_or_file: Union[os.PathLike, Path, BinaryIO], **cloudpickle_kwargs
-    ):
+        self, path_or_file: Union[str, os.PathLike, BinaryIO], **cloudpickle_kwargs
+    ) -> None:
+        """
+        Saves the experiment to a pickle file.
+
+        The experiment is saved using cloudpickle to deal with lambda
+        functions. The data or test data is NOT saved with the experiment
+        and will need to be specified again when loading using
+        ``load_experiment``.
+
+
+        path_or_file: str or BinaryIO (file pointer)
+            The path/file pointer to save the experiment to.
+
+
+        **cloudpickle_kwargs:
+            Kwargs to pass to the ``cloudpickle.dump`` call.
+
+
+        Returns:
+            None
+
+        """
         try:
             cloudpickle.dump(self, path_or_file, **cloudpickle_kwargs)
         except TypeError:

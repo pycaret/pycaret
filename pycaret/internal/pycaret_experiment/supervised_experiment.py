@@ -6,7 +6,6 @@ import traceback
 import warnings
 from copy import copy, deepcopy
 from functools import partial
-from pathlib import Path
 from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Tuple, Union
 from unittest.mock import patch
 
@@ -5559,13 +5558,65 @@ class _SupervisedExperiment(_TabularExperiment):
     @classmethod
     def load_experiment(
         cls,
-        path_or_file: Union[os.PathLike, Path, BinaryIO],
+        path_or_file: Union[str, os.PathLike, BinaryIO],
         data: Optional[DATAFRAME_LIKE] = None,
         data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
         test_data: Optional[DATAFRAME_LIKE] = None,
         preprocess_data: bool = True,
         **cloudpickle_kwargs,
     ) -> "_SupervisedExperiment":
+        """
+        Load an experiment saved with ``save_experiment`` from path
+        or file.
+
+        The data (and test data) is NOT saved with the experiment
+        and will need to be specified again.
+
+
+        path_or_file: str or BinaryIO (file pointer)
+            The path/file pointer to load the experiment from.
+            The pickle file must be created through ``save_experiment``.
+
+
+        data: dataframe-like
+            Data set with shape (n_samples, n_features), where n_samples is the
+            number of samples and n_features is the number of features. If data
+            is not a pandas dataframe, it's converted to one using default column
+            names.
+
+
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
+
+
+        test_data: dataframe-like or None, default = None
+            If not None, test_data is used as a hold-out set and `train_size` parameter
+            is ignored. The columns of data and test_data must match.
+
+
+        preprocess_data: bool, default = True
+            If True, the data will be preprocessed again (through running ``setup``
+            internally). If False, the data will not be preprocessed. This means
+            you can save the value of the ``data`` attribute of an experiment
+            separately, and then load it separately and pass it here with
+            ``preprocess_data`` set to False. This is an advanced feature.
+            We recommend leaving it set to True and passing the same data
+            as passed to the initial ``setup`` call.
+
+
+        **cloudpickle_kwargs:
+            Kwargs to pass to the ``cloudpickle.load`` call.
+
+
+        Returns:
+            loaded experiment
+
+        """
+
         return cls._load_experiment(
             path_or_file,
             cloudpickle_kwargs=cloudpickle_kwargs,
