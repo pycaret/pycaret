@@ -5459,50 +5459,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
         return pipeline_to_use
 
-
-def _validate_split_requested(split: str):
-    """Checks that the spilt of data requested is one of the allowed types
-    Allowed values are: ["all", "train", "test"]
-
-    Parameters
-    ----------
-    split : str
-        The requested split
-
-    Raises
-    ------
-    ValueError
-        If the requested split is not in the allowed list
-    """
-    allowed_splits = ["all", "train", "test"]
-    if split not in allowed_splits:
-        raise ValueError(
-            f"split value: '{split}' is not supported."
-            f"\nAllowed Values are: {allowed_splits}"
-        )
-
-
-def _validate_data_type(data_type: str):
-    """Checks that the data type requested is one of the allowed types
-    Allowed values are: ["original", "imputed", "transformed"]
-
-    Parameters
-    ----------
-    data_type : str
-        The requested plot data
-
-    Raises
-    ------
-    ValueError
-        If the requested plot data is not in the allowed list
-    """
-    allowed_data_types = ["original", "imputed", "transformed"]
-    if data_type not in allowed_data_types:
-        raise ValueError(
-            f"Data type value: '{data_type}' is not supported."
-            f"\nAllowed Values are: {allowed_data_types}"
-        )
-
     @property
     def X(self):
         X = self.dataset.drop(self.target_param, axis=1)
@@ -5656,3 +5612,47 @@ def _validate_data_type(data_type: str):
             pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
         )
         return y.loc[self.idx[1]]
+
+
+def _validate_split_requested(split: str):
+    """Checks that the spilt of data requested is one of the allowed types
+    Allowed values are: ["all", "train", "test"]
+
+    Parameters
+    ----------
+    split : str
+        The requested split
+
+    Raises
+    ------
+    ValueError
+        If the requested split is not in the allowed list
+    """
+    allowed_splits = ["all", "train", "test"]
+    if split not in allowed_splits:
+        raise ValueError(
+            f"split value: '{split}' is not supported."
+            f"\nAllowed Values are: {allowed_splits}"
+        )
+
+
+def _validate_data_type(data_type: str):
+    """Checks that the data type requested is one of the allowed types
+    Allowed values are: ["original", "imputed", "transformed"]
+
+    Parameters
+    ----------
+    data_type : str
+        The requested plot data
+
+    Raises
+    ------
+    ValueError
+        If the requested plot data is not in the allowed list
+    """
+    allowed_data_types = ["original", "imputed", "transformed"]
+    if data_type not in allowed_data_types:
+        raise ValueError(
+            f"Data type value: '{data_type}' is not supported."
+            f"\nAllowed Values are: {allowed_data_types}"
+        )
