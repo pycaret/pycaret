@@ -1334,7 +1334,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         sp_detection: str = "auto",
         max_sp_to_consider: Optional[int] = None,
         remove_harmonics: bool = False,
-        harmonic_order_method: str = "harmonics",
+        harmonic_order_method: str = "harmonic_max",
         num_sps_to_use: int = 1,
         point_alpha: Optional[float] = None,
         coverage: Union[float, List[float]] = 0.9,
@@ -1613,21 +1613,21 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             use for modeling.
 
 
-        harmonic_order_method: str, default = "harmonic_strength"
+        harmonic_order_method: str, default = "harmonic_max"
             Applicable when remove_harmonics = True. This determines how the harmonics
             are replaced. Allowed values are "harmonic_strength", "harmonic_max" or "raw_strength.
-            - If set to  "harmonic_strength", then lower seasonal period is replaced by its
-            highest strength harmonic seasonal period in same position as the lower seasonal period.
             - If set to  "harmonic_max", then lower seasonal period is replaced by its
             highest harmonic seasonal period in same position as the lower seasonal period.
+            - If set to  "harmonic_strength", then lower seasonal period is replaced by its
+            highest strength harmonic seasonal period in same position as the lower seasonal period.
             - If set to  "raw_strength", then lower seasonal periods is removed and the
             higher harmonic seasonal periods is retained in its original position
             based on its seasonal strength.
 
             e.g. Assuming detected seasonal periods in strength order are [2, 3, 4, 50]
             and remove_harmonics = True, then:
-            - If harmonic_order_method = "harmonic_strength", result = [4, 3, 50]
             - If harmonic_order_method = "harmonic_max", result = [50, 3, 4]
+            - If harmonic_order_method = "harmonic_strength", result = [4, 3, 50]
             - If harmonic_order_method = "raw_strength", result = [3, 4, 50]
 
 
