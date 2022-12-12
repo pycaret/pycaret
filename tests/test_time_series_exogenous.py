@@ -37,9 +37,7 @@ def test_create_tune_predict_finalize_model(load_uni_exo_data_target):
     future_exog = future_data.drop(columns=target)
 
     exp = TSForecastingExperiment()
-    exp.setup(
-        data=data_for_modeling, target=target, fh=fh, seasonal_period=4, session_id=42
-    )
+    exp.setup(data=data_for_modeling, target=target, fh=fh, session_id=42)
 
     #######################
     # Test Create Model ##
@@ -108,7 +106,6 @@ def test_blend_models(load_uni_exo_data_target, load_models_uni_mix_exo_noexo):
         data=data_for_modeling,
         target=target,
         fh=fh,
-        seasonal_period=4,
         enforce_exogenous=False,
         session_id=42,
     )
@@ -149,21 +146,21 @@ def test_setup():
     exogenous_present = TSExogenousPresent.NO
 
     # Case 1: pd.Series ----
-    exp.setup(data=data[target], seasonal_period=1)
+    exp.setup(data=data[target])
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == []
 
     # Case 2: pd.DataFrame with 1 column ----
-    exp.setup(data=pd.DataFrame(data[target]), seasonal_period=1)
+    exp.setup(data=pd.DataFrame(data[target]))
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == []
 
     # Case 3: # Target specified & correct ----
-    exp.setup(data=data[target], target=target, seasonal_period=1)
+    exp.setup(data=data[target], target=target)
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
@@ -176,7 +173,7 @@ def test_setup():
     exogenous_present = TSExogenousPresent.YES
 
     # Case 1: `target` provided, `index` not provided, `ignore_features` not provided ----
-    exp.setup(data=data, target=target, seasonal_period=1)
+    exp.setup(data=data, target=target)
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
@@ -199,7 +196,7 @@ def test_setup():
     # TODO: Add check for index values
 
     # Case 4: `target` provided, `index` not provided, `ignore_features` provided ----
-    exp.setup(data=data, target=target, ignore_features=["C", "E"], seasonal_period=1)
+    exp.setup(data=data, target=target, ignore_features=["C", "E"])
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
@@ -218,7 +215,7 @@ def test_setup_raises():
     # Target Not Specified ####
     ##############################
     with pytest.raises(ValueError) as errmsg:
-        exp.setup(data=data, seasonal_period=1)
+        exp.setup(data=data)
 
     exceptionmsg = errmsg.value.args[0]
 
@@ -236,7 +233,7 @@ def test_setup_raises():
     # Case 1: Without exogenous ----
     column = "A"
     with pytest.raises(ValueError) as errmsg:
-        exp.setup(data=data[column], target=target, seasonal_period=1)
+        exp.setup(data=data[column], target=target)
 
     exceptionmsg = errmsg.value.args[0]
 
@@ -248,7 +245,7 @@ def test_setup_raises():
 
     # Case 2: With exogenous ----
     with pytest.raises(ValueError) as errmsg:
-        exp.setup(data=data, target=target, seasonal_period=1)
+        exp.setup(data=data, target=target)
 
     exceptionmsg = errmsg.value.args[0]
     assert exceptionmsg == f"Target Column '{target}' is not present in the data."

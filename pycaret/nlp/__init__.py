@@ -1,8 +1,8 @@
 import os
 import sys
-import warnings
 from typing import Any, Dict, Optional
 
+import deprecation
 import pandas as pd
 import sklearn
 from IPython.display import display
@@ -14,17 +14,20 @@ from pycaret.loggers import DashboardLogger
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
+from pycaret.utils import __version__
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import get_logger
 
-warnings.warn(
-    "PyCaret NLP module is deprecated and not representative "
-    "of the current state of the library. "
-    "It may be removed and/or reworked in a future update.",
-    DeprecationWarning,
+deprecated_in = "3.0.0rc5"
+deprecation_msg = " If you want to use the `nlp` module, please install `pycaret` version 3.0.0 (preferred) or lower."
+
+
+@deprecation.deprecated(
+    deprecated_in=deprecated_in,
+    removed_in="3.1.0",
+    current_version=__version__,
+    details=deprecation_msg,
 )
-
-
 def setup(
     data,
     target=None,

@@ -4720,29 +4720,12 @@ class _SupervisedExperiment(_TabularExperiment):
             model_only=False,
         )
 
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            self.predict_model(pipeline_final, data=self.test, verbose=False)
-        else:
-            self.predict_model(pipeline_final, X=self.X_test, verbose=False)
-
-        model_results = self.pull(pop=True).drop("Model", axis=1)
-        model_results.index = ["Mean"]
-
-        self._display_container.append(model_results)
-        self.logger.info(f"_display_container: {len(self._display_container)}")
-
         # dashboard logging
         if self.logging_param:
-            indices = self._get_return_train_score_indices_for_logging(False)
-            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
-            self.logging_param.log_model_comparison(
-                model_results, f"finalize_model_{self._get_model_name(pipeline_final)}"
-            )
-
             self._log_model(
                 model=pipeline_final,
-                model_results=model_results,
-                score_dict=avgs_dict_log,
+                model_results=None,
+                score_dict={},
                 source="finalize_model",
                 runtime=np.array(time.time() - runtime_start).round(2),
                 model_fit_time=model_fit_time,

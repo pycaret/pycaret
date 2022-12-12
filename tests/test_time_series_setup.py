@@ -172,11 +172,11 @@ def test_enforce_exogenous_exo_data(load_uni_exo_data_target):
     data, target = load_uni_exo_data_target
 
     exp1 = TSForecastingExperiment()
-    exp1.setup(data=data, target=target, seasonal_period=4, enforce_exogenous=True)
+    exp1.setup(data=data, target=target, enforce_exogenous=True)
     num_models1 = len(exp1.models())
 
     exp2 = TSForecastingExperiment()
-    exp2.setup(data=data, target=target, seasonal_period=4, enforce_exogenous=False)
+    exp2.setup(data=data, target=target, enforce_exogenous=False)
     num_models2 = len(exp2.models())
 
     # We know that some models do not offer exogenous variables support, so the
@@ -184,16 +184,16 @@ def test_enforce_exogenous_exo_data(load_uni_exo_data_target):
     assert num_models1 < num_models2
 
 
-def test_seasonal_period_to_use():
+def test_sp_to_use_using_index():
+    """Seasonal Period detection using Indices (used before 3.0.0rc5)."""
 
     exp = TSForecastingExperiment()
-    fh = 12
-
-    # Airline Data with seasonality of 12
     data = get_data("airline", verbose=False)
+
+    # 1.1 Airline Data with seasonality of 12
     exp.setup(
         data=data,
-        fh=fh,
+        sp_detection="index",
         verbose=False,
         session_id=42,
     )
@@ -201,18 +201,23 @@ def test_seasonal_period_to_use():
     assert exp.all_sp_values == [12]
     assert exp.primary_sp_to_use == 12
 
-    # Airline Data with seasonality of M (12), 6
-    data = get_data("airline", verbose=False)
-    exp.setup(data=data, fh=fh, verbose=False, session_id=42, seasonal_period=["M", 6])
+    # 1.2 Airline Data with seasonality of M (12), 6
+    exp.setup(
+        data=data,
+        sp_detection="index",
+        verbose=False,
+        session_id=42,
+        seasonal_period=["M", 6],
+    )
     assert exp.seasonal_period == [12, 6]
     assert exp.all_sp_values == [12, 6]
     assert exp.primary_sp_to_use == 12
 
-    # White noise Data with seasonality of 12
+    # 1.3 White noise Data with seasonality of 12
     data = get_data("1", folder="time_series/white_noise", verbose=False)
     exp.setup(
         data=data,
-        fh=fh,
+        sp_detection="index",
         seasonal_period=12,
         verbose=False,
         session_id=42,
@@ -222,6 +227,49 @@ def test_seasonal_period_to_use():
     assert exp.seasonal_period == 12
     assert exp.all_sp_values == [1]
     assert exp.primary_sp_to_use == 1
+
+
+def test_sp_to_use_using_auto():
+    """Seasonal Period detection using Statistical tests (used on and after 3.0.0rc5)."""
+
+    exp = TSForecastingExperiment()
+    data = get_data("airline", verbose=False)
+
+    # 1.1 Auto Detection of Seasonal Period ----
+    exp.setup(
+        data=data,
+        sp_detection="auto",
+        verbose=False,
+        session_id=42,
+    )
+    assert exp.seasonal_period == [12, 24, 36, 11, 48]
+    assert exp.all_sp_values == [12]
+    assert exp.primary_sp_to_use == 12
+
+    # 1.2 Auto Detection with multiple values allowed ----
+    # 1.2.1 Multiple Seasonalities < tested and detected ----
+    exp.setup(
+        data=data,
+        sp_detection="auto",
+        multiple_sp_to_use=2,
+        verbose=False,
+        session_id=42,
+    )
+    assert exp.seasonal_period == [12, 24, 36, 11, 48]
+    assert exp.all_sp_values == [12, 24]
+    assert exp.primary_sp_to_use == 12
+
+    # 1.2.2 Multiple Seasonalities > tested and detected ----
+    exp.setup(
+        data=data,
+        sp_detection="auto",
+        multiple_sp_to_use=100,
+        verbose=False,
+        session_id=42,
+    )
+    assert exp.seasonal_period == [12, 24, 36, 11, 48]
+    assert exp.all_sp_values == [12, 24, 36, 11, 48]
+    assert exp.primary_sp_to_use == 12
 
 
 @pytest.mark.parametrize("seasonal_key, seasonal_value", _get_seasonal_values())
@@ -512,7 +560,7 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     # Integer fh ----
     exp = TSForecastingExperiment()
     fh = 12
-    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    exp.setup(data=data, target=target, fh=fh, session_id=42)
     assert np.all(exp.dataset.index == data.index)
     assert np.all(exp.train.index == data.iloc[: (len(data) - fh)].index)
     assert np.all(exp.test.index == data.iloc[-fh:].index)
@@ -535,7 +583,7 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     # Numpy fh ----
     exp = TSForecastingExperiment()
     fh = np.arange(1, 10)  # 9 values
-    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    exp.setup(data=data, target=target, fh=fh, session_id=42)
     assert np.all(exp.dataset.index == data.index)
     assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
     assert np.all(exp.test.index == data.iloc[-len(fh) :].index)
@@ -564,7 +612,7 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     # List fh ----
     exp = TSForecastingExperiment()
     fh = [1, 2, 3, 4, 5, 6]
-    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    exp.setup(data=data, target=target, fh=fh, session_id=42)
     assert np.all(exp.dataset.index == data.index)
     assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
     assert np.all(exp.test.index == data.iloc[-len(fh) :].index)
@@ -597,7 +645,7 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     # Numpy fh ----
     exp = TSForecastingExperiment()
     fh = np.arange(7, 13)  # 6 values
-    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    exp.setup(data=data, target=target, fh=fh, session_id=42)
     assert np.all(exp.dataset.index == data.index)
     assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
     # `test`` call still refers to y_test indices and not X_test indices
@@ -620,7 +668,7 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     # List fh ----
     exp = TSForecastingExperiment()
     fh = [4, 5, 6]
-    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    exp.setup(data=data, target=target, fh=fh, session_id=42)
     assert np.all(exp.dataset.index == data.index)
     assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
     # `test`` call still refers to y_test indices and not X_test indices
@@ -647,7 +695,7 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     # Numpy fh ----
     exp = TSForecastingExperiment()
     fh = np.array([4, 5, 6, 10, 11, 12])  # 6 values
-    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    exp.setup(data=data, target=target, fh=fh, session_id=42)
     assert np.all(exp.dataset.index == data.index)
     assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
     # `test`` call still refers to y_test indices and not X_test indices
@@ -679,7 +727,7 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     # List fh ----
     exp = TSForecastingExperiment()
     fh = [4, 5, 6, 10, 11, 12]
-    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    exp.setup(data=data, target=target, fh=fh, session_id=42)
     assert np.all(exp.dataset.index == data.index)
     assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
     # `test`` call still refers to y_test indices and not X_test indices

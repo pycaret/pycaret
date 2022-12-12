@@ -108,7 +108,7 @@ class DashboardLogger:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Log the CV results as model_results.html artifact
-            if not experiment._is_unsupervised():
+            if not experiment._is_unsupervised() and model_results is not None:
                 results_path = os.path.join(tmpdir, "Results.html")
                 try:
                     model_results.data.to_html(

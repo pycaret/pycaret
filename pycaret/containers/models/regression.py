@@ -449,6 +449,7 @@ class ElasticNetContainer(RegressorContainer):
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
             shap=False,
+            eq_function=lambda x: type(x) is ElasticNet,
         )
 
 
@@ -457,7 +458,7 @@ class LarsContainer(RegressorContainer):
         get_logger()
         np.random.seed(experiment.seed)
 
-        from sklearn.linear_model import Lars
+        from sklearn.linear_model import Lars, LassoLars
 
         args = {"random_state": experiment.seed}
         tune_args = {}
@@ -493,6 +494,7 @@ class LarsContainer(RegressorContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap=False,
+            eq_function=lambda x: isinstance(x, Lars) and not isinstance(x, LassoLars),
         )
 
 
