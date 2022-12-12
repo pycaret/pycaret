@@ -1280,7 +1280,7 @@ class LazyExperimentMapping(Mapping):
             self._experiment._property_keys
         )
         if "variables" in self._keys:
-            self._keys.pop("variables")
+            self._keys.remove("variables")
         self._cache = {}
 
     def __getitem__(self, key):
