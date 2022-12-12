@@ -1267,7 +1267,7 @@ def get_allowed_engines(
     return allowed_engines
 
 
-class LazyReadOnlyMapping(Mapping):
+class LazyExperimentMapping(Mapping):
     """
     This class provides a dict-like interface while calling properties lazily.
 

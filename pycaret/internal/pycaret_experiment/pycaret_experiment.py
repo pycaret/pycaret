@@ -13,7 +13,7 @@ import pycaret.internal.persistence
 from pycaret import show_versions
 from pycaret.internal.logging import get_logger
 from pycaret.utils.constants import DATAFRAME_LIKE
-from pycaret.utils.generic import LazyReadOnlyMapping
+from pycaret.utils.generic import LazyExperimentMapping
 
 LOGGER = get_logger()
 
@@ -86,7 +86,7 @@ class _PyCaretExperiment:
 
     @property
     def variables(self) -> dict:
-        return LazyReadOnlyMapping(self)
+        return LazyExperimentMapping(self)
 
     @property
     def is_multiclass(self) -> bool:
