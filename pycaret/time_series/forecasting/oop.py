@@ -1202,7 +1202,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self._set_uppercase_d()
         return self
 
-    def _setup__display_container(self) -> "TSForecastingExperiment":
+    def _setup_display_container(self) -> "TSForecastingExperiment":
         """Prepare the display container for setup
 
         Returns
@@ -1857,7 +1857,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._check_and_set_seasonal_period(seasonal_period=seasonal_period)
             ._set_multiplicative_components()
             ._perform_setup_eda()
-            ._setup__display_container()
+            ._setup_display_container()
             ._profile(profile, profile_kwargs)
             ._set_exp_model_engines(
                 container_default_engines=get_container_default_engines(),

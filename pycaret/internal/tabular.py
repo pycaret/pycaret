@@ -6,7 +6,7 @@ import pandas as pd
 from pycaret.internal.display import CommonDisplay
 
 
-def _append__display_container(df: pd.DataFrame) -> None:
+def _append_display_container(df: pd.DataFrame) -> None:
     global _display_container
     _display_container.append(df)
 

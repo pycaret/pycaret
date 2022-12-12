@@ -1279,7 +1279,8 @@ class LazyReadOnlyMapping(Mapping):
         self._keys = self._experiment._variable_keys.union(
             self._experiment._property_keys
         )
-        self._keys.difference_update({"variables"})
+        if "variables" in self._keys:
+            self._keys.pop("variables")
         self._cache = {}
 
     def __getitem__(self, key):
