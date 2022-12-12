@@ -4,16 +4,18 @@ import pytest
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 
+ids = ["raw_strength", "harmonic_max", "harmonic_strength"]
 params = [
-    ("raw_strength", 0.9211, 0.9307, 0.1230, 0.8365),
-    ("harmonic_max", 0.9211, 0.9307, 0.1211, 0.9538),
-    ("harmonic_strength", 0.9211, 0.9307, 0.1230, 0.9480),
+    (ids[0], 0.9211, 0.9307, 0.1230, 0.8365),
+    (ids[1], 0.9211, 0.9307, 0.1211, 0.9538),
+    (ids[2], 0.9211, 0.9307, 0.1230, 0.9480),
 ]
 
 
 @pytest.mark.parametrize(
     "harmonic_order_method, expected_per_correct, expected_per_correct_multiple, expected_per_correct_harmonics, expected_per_correct_multiple_no_harmonics",
     params,
+    ids=ids,
 )
 def test_benchmark_sp_to_use_using_auto(
     harmonic_order_method,
