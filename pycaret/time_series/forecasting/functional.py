@@ -43,7 +43,7 @@ def setup(
     fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     sp_detection: str = "auto",
-    max_sps_to_use: int = 1,
+    num_sps_to_use: int = 1,
     point_alpha: Optional[float] = None,
     coverage: Union[float, List[float]] = 0.9,
     enforce_exogenous: bool = True,
@@ -312,11 +312,11 @@ def setup(
         use for modeling.
 
 
-    max_sps_to_use: int, default = 1
+    num_sps_to_use: int, default = 1
         It determines the maximum number of seasonal periods to use in the models.
         Set to -1 to use all detected seasonal periods (in models that allow
         multiple seasonalities). If a model only allows one seasonal period
-        and max_sps_to_use > 1, then the most dominant (primary) seasonal
+        and num_sps_to_use > 1, then the most dominant (primary) seasonal
         that is detected is used.
 
 
@@ -519,7 +519,7 @@ def setup(
         fh=fh,
         seasonal_period=seasonal_period,
         sp_detection=sp_detection,
-        max_sps_to_use=max_sps_to_use,
+        num_sps_to_use=num_sps_to_use,
         point_alpha=point_alpha,
         coverage=coverage,
         enforce_exogenous=enforce_exogenous,

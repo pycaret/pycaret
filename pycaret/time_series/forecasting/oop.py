@@ -187,6 +187,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
             ["Seasonality Detection Algo", self.sp_detection],
+            ["Max Period to Consider", self.max_sp_to_consider],
             ["Seasonal Period(s) Tested", self.candidate_sps],
             ["Significant Seasonal Period(s)", self.significant_sps],
             [
@@ -194,7 +195,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 self.significant_sps_no_harmonics,
             ],
             ["Remove Harmonics", self.remove_harmonics],
-            ["Max Seasonalities to Use", self.max_sps_to_use],
+            ["Num Seasonalities to Use", self.num_sps_to_use],
             ["All Seasonalities to Use", self.all_sps_to_use],
             ["Primary Seasonality", self.primary_sp_to_use],
             ["Seasonality Present", self.seasonality_present],
@@ -707,6 +708,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             candidate_sps = [candidate_sps]
         candidate_sps = [self._convert_sp_to_int(sp) for sp in candidate_sps]
 
+        # Limit to max seasonal periods to consider
+        if self.max_sp_to_consider:
+            candidate_sps = [
+                sp for sp in candidate_sps if sp <= self.max_sp_to_consider
+            ]
+
         # 2.0 Filter candidates based on seasonality check if needed (find significant sp values) ----
         if skip_autocorrelation_test:
             seasonality_test_results = [True for sp in candidate_sps]
@@ -732,11 +739,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             all_sps_to_use = significant_sps_no_harmonics.copy()
         else:
             all_sps_to_use = significant_sps.copy()
-        if self.max_sps_to_use > 0:
+        if self.num_sps_to_use > 0:
             # If the number of seasonalities detected is > the number of
             # seasonalities allowed by user, then limit it.
-            if len(all_sps_to_use) > self.max_sps_to_use:
-                all_sps_to_use = all_sps_to_use[0 : self.max_sps_to_use]
+            if len(all_sps_to_use) > self.num_sps_to_use:
+                all_sps_to_use = all_sps_to_use[0 : self.num_sps_to_use]
 
         self.candidate_sps = candidate_sps
         self.significant_sps = significant_sps
@@ -1322,8 +1329,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
         sp_detection: str = "auto",
+        max_sp_to_consider: Optional[int] = None,
         remove_harmonics: bool = False,
-        max_sps_to_use: int = 1,
+        num_sps_to_use: int = 1,
         point_alpha: Optional[float] = None,
         coverage: Union[float, List[float]] = 0.9,
         enforce_exogenous: bool = True,
@@ -1591,16 +1599,21 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             period as shown in seasonal_period.
 
 
+        max_sp_to_consider: Optional[int], default = None,
+            Max period to consider when detecting seasonal periods. If None, all
+            periods up to the length of the data are considered.
+
+
         remove_harmonics: bool, default = False
             Should harmonics be removed when considering what seasonal periods to
             use for modeling.
 
 
-        max_sps_to_use: int, default = 1
+        num_sps_to_use: int, default = 1
             It determines the maximum number of seasonal periods to use in the models.
             Set to -1 to use all detected seasonal periods (in models that allow
             multiple seasonalities). If a model only allows one seasonal period
-            and max_sps_to_use > 1, then the most dominant (primary) seasonal
+            and num_sps_to_use > 1, then the most dominant (primary) seasonal
             that is detected is used.
 
 
@@ -1832,8 +1845,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 f"You provided {sp_detection}."
             )
         self.sp_detection = sp_detection
+        self.max_sp_to_consider = max_sp_to_consider
         self.remove_harmonics = remove_harmonics
-        self.max_sps_to_use = max_sps_to_use
+        self.num_sps_to_use = num_sps_to_use
 
         self.log_plots_param = log_plots
         if self.log_plots_param is True:
