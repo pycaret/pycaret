@@ -43,7 +43,10 @@ def setup(
     fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     sp_detection: str = "auto",
-    multiple_sp_to_use: int = 1,
+    max_sp_to_consider: Optional[int] = None,
+    remove_harmonics: bool = False,
+    harmonic_order_method: str = "harmonic_max",
+    num_sps_to_use: int = 1,
     point_alpha: Optional[float] = None,
     coverage: Union[float, List[float]] = 0.9,
     enforce_exogenous: bool = True,
@@ -83,7 +86,7 @@ def setup(
     data_func: Callable[[], Union[pd.Series, pd.DataFrame]] = None
             The function that generate ``data`` (the dataframe-like input). This
             is useful when the dataset is large, and you need parallel operations
-            such as ``compare_models``. It can avoid boradcasting large dataset
+            such as ``compare_models``. It can avoid broadcasting large dataset
             from driver to workers. Notice one and only one of ``data`` and
             ``data_func`` must be set.
 
@@ -273,8 +276,8 @@ def setup(
 
 
     seasonal_period: list or int or str, default = None
-        Periods to check when performing seasonality checks. If not provided,
-        then seasonal periods are detected per the sp_detection setting.
+        Seasonal periods to check when performing seasonality checks (i.e. candidates).
+        If not provided, then candidates are detected per the sp_detection setting.
 
         Users can provide `seasonal_period` by passing it as an integer or a
         string corresponding to the keys below (e.g. 'W' for weekly data,
@@ -296,7 +299,7 @@ def setup(
         will be used as the seasonal period.
 
 
-    sp_detection: str = "auto"
+    sp_detection: str, default = "auto"
         If seasonal_period is None, then this parameter determines the algorithm
         to use to detect the seasonal periods to use in the models.
 
@@ -307,11 +310,40 @@ def setup(
         period as shown in seasonal_period.
 
 
-    multiple_sp_to_use: int = 1
-        Applicable only when sp_detection is set to "auto". It determines how
-        many seasonal periods to use in the models. If a model only allows one
-        seasonal period and multiple_sp_to_use > 1, then the most dominant
-        (primary) seasonal that is detected is used.
+    max_sp_to_consider: Optional[int], default = None,
+        Max period to consider when detecting seasonal periods. If None, all
+        periods up to the length of the data are considered.
+
+
+    remove_harmonics: bool, default = False
+        Should harmonics be removed when considering what seasonal periods to
+        use for modeling.
+
+
+    harmonic_order_method: str, default = "harmonic_max"
+        Applicable when remove_harmonics = True. This determines how the harmonics
+        are replaced. Allowed values are "harmonic_strength", "harmonic_max" or "raw_strength.
+        - If set to  "harmonic_max", then lower seasonal period is replaced by its
+        highest harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "harmonic_strength", then lower seasonal period is replaced by its
+        highest strength harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "raw_strength", then lower seasonal periods is removed and the
+        higher harmonic seasonal periods is retained in its original position
+        based on its seasonal strength.
+
+        e.g. Assuming detected seasonal periods in strength order are [2, 3, 4, 50]
+        and remove_harmonics = True, then:
+        - If harmonic_order_method = "harmonic_max", result = [50, 3, 4]
+        - If harmonic_order_method = "harmonic_strength", result = [4, 3, 50]
+        - If harmonic_order_method = "raw_strength", result = [3, 4, 50]
+
+
+    num_sps_to_use: int, default = 1
+        It determines the maximum number of seasonal periods to use in the models.
+        Set to -1 to use all detected seasonal periods (in models that allow
+        multiple seasonalities). If a model only allows one seasonal period
+        and num_sps_to_use > 1, then the most dominant (primary) seasonal
+        that is detected is used.
 
 
     point_alpha: Optional[float], default = None
@@ -513,7 +545,10 @@ def setup(
         fh=fh,
         seasonal_period=seasonal_period,
         sp_detection=sp_detection,
-        multiple_sp_to_use=multiple_sp_to_use,
+        max_sp_to_consider=max_sp_to_consider,
+        remove_harmonics=remove_harmonics,
+        harmonic_order_method=harmonic_order_method,
+        num_sps_to_use=num_sps_to_use,
         point_alpha=point_alpha,
         coverage=coverage,
         enforce_exogenous=enforce_exogenous,

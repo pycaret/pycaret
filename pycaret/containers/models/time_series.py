@@ -1113,7 +1113,7 @@ class TBATSContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        self.sp = experiment.all_sp_values
+        self.sp = experiment.all_sps_to_use
 
         self.seasonality_present = experiment.seasonality_present
 
@@ -1242,8 +1242,6 @@ class ProphetContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        # sp = experiment.seasonal_period
-        # self.sp = sp if sp is not None else 1
         # Disable Prophet if Index is not of allowed type (e.g. if it is RangeIndex)
         allowed_index_types = [pd.PeriodIndex, pd.DatetimeIndex]
         index_type = experiment.index_type
