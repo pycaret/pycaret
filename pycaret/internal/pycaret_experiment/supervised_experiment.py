@@ -5153,6 +5153,7 @@ class _SupervisedExperiment(_TabularExperiment):
         rearranged_columns = ["Model Name", "Model"] + rearranged_columns
         results = results[rearranged_columns]
         results.set_index("Index", inplace=True, drop=True)
+        display.close()
         # display.clear_output()
         return results
 
