@@ -7,8 +7,8 @@ from pycaret.internal.display import CommonDisplay
 
 
 def _append_display_container(df: pd.DataFrame) -> None:
-    global display_container
-    display_container.append(df)
+    global _display_container
+    _display_container.append(df)
 
 
 def _create_display(progress: int, verbose: bool, monitor_rows: Any) -> CommonDisplay:
@@ -47,8 +47,8 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
     Returns
     -------
     pandas.DataFrame
-        Equivalent to get_config('display_container')[-1]
+
     """
-    if not display_container:
+    if not _display_container:
         return None
-    return display_container.pop(-1) if pop else display_container[-1]
+    return _display_container.pop(-1) if pop else _display_container[-1]

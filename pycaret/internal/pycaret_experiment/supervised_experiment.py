@@ -6,7 +6,7 @@ import traceback
 import warnings
 from copy import copy, deepcopy
 from functools import partial
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Tuple, Union
 from unittest.mock import patch
 
 import matplotlib.pyplot as plt
@@ -53,7 +53,7 @@ from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExper
 from pycaret.internal.tunable import TunableMixin
 from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
 from pycaret.utils._dependencies import _check_soft_dependencies
-from pycaret.utils.constants import LABEL_COLUMN, SCORE_COLUMN
+from pycaret.utils.constants import DATAFRAME_LIKE, LABEL_COLUMN, SCORE_COLUMN
 from pycaret.utils.generic import (
     MLUsecase,
     can_early_stop,
@@ -79,7 +79,7 @@ class _SupervisedExperiment(_TabularExperiment):
     def __init__(self) -> None:
         super().__init__()
         self.transform_target_param = False  # Default False for both class/reg
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "X",
                 "y",
@@ -602,7 +602,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not sort.is_multiclass:
                 raise TypeError(
                     f"{sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -989,10 +989,12 @@ class _SupervisedExperiment(_TabularExperiment):
         pd.reset_option("display.max_columns")
 
         # store in display container
-        self.display_container.append(compare_models_.data)
+        self._display_container.append(compare_models_.data)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(sorted_models))
         self.logger.info(
@@ -1049,14 +1051,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 if train_results is not None:
                     model_results = pd.concat([model_results, train_results])
 
-                self.display_container.append(model_results)
+                self._display_container.append(model_results)
 
                 model_results = model_results.style.format(precision=round)
 
                 if system:
                     display.display(model_results)
 
-                self.logger.info(f"display_container: {len(self.display_container)}")
+                self.logger.info(f"_display_container: {len(self._display_container)}")
 
             if not model_only:
                 return pipeline_with_model, model_fit_time
@@ -1095,7 +1097,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Starting cross validation")
 
-        n_jobs = self._gpu_n_jobs_param
+        n_jobs = self.gpu_n_jobs_param
         from sklearn.gaussian_process import (
             GaussianProcessClassifier,
             GaussianProcessRegressor,
@@ -1467,7 +1469,7 @@ class _SupervisedExperiment(_TabularExperiment):
         if (
             probability_threshold
             and self._ml_usecase == MLUsecase.CLASSIFICATION
-            and not self._is_multiclass
+            and not self.is_multiclass
         ):
             if not isinstance(model, CustomProbabilityThresholdClassifier):
                 model = CustomProbabilityThresholdClassifier(
@@ -1565,12 +1567,12 @@ class _SupervisedExperiment(_TabularExperiment):
         if not self._ml_usecase == MLUsecase.TIME_SERIES:
             model_results.drop("cutoff", axis=1, inplace=True, errors="ignore")
 
-        self.display_container.append(model_results)
+        self._display_container.append(model_results)
 
-        # storing results in master_model_container
+        # storing results in _master_model_container
         if add_to_model_list:
             self.logger.info("Uploading model into container now")
-            self.master_model_container.append(
+            self._master_model_container.append(
                 {"model": model, "scores": model_results, "cv": cv}
             )
 
@@ -1581,8 +1583,10 @@ class _SupervisedExperiment(_TabularExperiment):
         if system:
             display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -1692,7 +1696,7 @@ class _SupervisedExperiment(_TabularExperiment):
             If False, method will return a tuple of model and the model fit time.
 
         add_to_model_list: bool, default = True
-            Whether to save model and results in master_model_container.
+            Whether to save model and results in _master_model_container.
 
         X_train_data: pandas.DataFrame, default = None
             If not None, will use this dataframe as training features.
@@ -2143,7 +2147,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
             # checking optimize parameter for multiclass
-            if self._is_multiclass:
+            if self.is_multiclass:
                 if not optimize.is_multiclass:
                     raise TypeError(
                         "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -2374,7 +2378,7 @@ class _SupervisedExperiment(_TabularExperiment):
             if estimator_definition is not None:
                 search_kwargs = {**estimator_definition.tune_args, **kwargs}
                 n_jobs = (
-                    self._gpu_n_jobs_param
+                    self.gpu_n_jobs_param
                     if estimator_definition.is_gpu_enabled
                     else self.n_jobs_param
                 )
@@ -2756,8 +2760,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(best_model))
         self.logger.info(
@@ -2953,7 +2959,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3129,8 +3135,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -3339,7 +3347,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3430,18 +3438,18 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             model = voting_model_definition.class_def(
-                estimators=estimator_list, voting=method, n_jobs=self._gpu_n_jobs_param
+                estimators=estimator_list, voting=method, n_jobs=self.gpu_n_jobs_param
             )
         elif self._ml_usecase == MLUsecase.TIME_SERIES:
             model = voting_model_definition.class_def(
                 forecasters=estimator_list,
                 method=method,
                 weights=weights,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
             )
         else:
             model = voting_model_definition.class_def(
-                estimators=estimator_list, n_jobs=self._gpu_n_jobs_param
+                estimators=estimator_list, n_jobs=self.gpu_n_jobs_param
             )
 
         display.update_monitor(2, voting_model_definition.name)
@@ -3516,8 +3524,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -3719,7 +3729,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3813,7 +3823,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 final_estimator=meta_model,
                 cv=meta_model_fold,
                 stack_method=method,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
                 passthrough=restack,
             )
         else:
@@ -3821,7 +3831,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 estimators=estimator_list,
                 final_estimator=meta_model,
                 cv=meta_model_fold,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
                 passthrough=restack,
             )
 
@@ -3896,8 +3906,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -4722,8 +4734,10 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(pipeline_final))
         self.logger.info(
@@ -5043,9 +5057,9 @@ class _SupervisedExperiment(_TabularExperiment):
             score = score.round(round)
             X_test_ = pd.concat((X_test_, score), axis=1)
 
-        # store predictions on hold-out in display_container
+        # store predictions on hold-out in _display_container
         if df_score is not None:
-            self.display_container.append(df_score)
+            self._display_container.append(df_score)
 
         gc.collect()
         return X_test_
@@ -5061,7 +5075,7 @@ class _SupervisedExperiment(_TabularExperiment):
         """
         generates leaderboard for all models run in current run.
         """
-        model_container = self.master_model_container
+        model_container = self._master_model_container
 
         progress_args = {"max": len(model_container) + 1}
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -5277,7 +5291,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -5306,7 +5320,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if use_holdout:
             self.logger.info("Model Selection Basis : Holdout set")
-            for i in self.master_model_container:
+            for i in self._master_model_container:
                 self.logger.info(f"Checking model {i}")
                 model = i["model"]
                 try:
@@ -5334,8 +5348,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         else:
             self.logger.info("Model Selection Basis : CV Results on Training set")
-            for i in range(len(self.master_model_container)):
-                model = self.master_model_container[i]
+            for i in range(len(self._master_model_container)):
+                model = self._master_model_container[i]
                 scores = None
                 if model["cv"] is not self.fold_generator:
                     if turbo or self._is_unsupervised():
@@ -5350,7 +5364,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         return_train_score=return_train_score,
                     )
                     scores = self.pull(pop=True)
-                    self.master_model_container.pop()
+                    self._master_model_container.pop()
                 self.logger.info(f"Checking model {i}")
                 if scores is None:
                     scores = model["scores"]
@@ -5541,3 +5555,173 @@ class _SupervisedExperiment(_TabularExperiment):
 
         suite = full_suite(**check_kwargs)
         return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)
+
+    @classmethod
+    def load_experiment(
+        cls,
+        path_or_file: Union[str, os.PathLike, BinaryIO],
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+        test_data: Optional[DATAFRAME_LIKE] = None,
+        preprocess_data: bool = True,
+        **cloudpickle_kwargs,
+    ) -> "_SupervisedExperiment":
+        """
+        Load an experiment saved with ``save_experiment`` from path
+        or file.
+
+        The data (and test data) is NOT saved with the experiment
+        and will need to be specified again.
+
+
+        path_or_file: str or BinaryIO (file pointer)
+            The path/file pointer to load the experiment from.
+            The pickle file must be created through ``save_experiment``.
+
+
+        data: dataframe-like
+            Data set with shape (n_samples, n_features), where n_samples is the
+            number of samples and n_features is the number of features. If data
+            is not a pandas dataframe, it's converted to one using default column
+            names.
+
+
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
+
+
+        test_data: dataframe-like or None, default = None
+            If not None, test_data is used as a hold-out set and `train_size` parameter
+            is ignored. The columns of data and test_data must match.
+
+
+        preprocess_data: bool, default = True
+            If True, the data will be preprocessed again (through running ``setup``
+            internally). If False, the data will not be preprocessed. This means
+            you can save the value of the ``data`` attribute of an experiment
+            separately, and then load it separately and pass it here with
+            ``preprocess_data`` set to False. This is an advanced feature.
+            We recommend leaving it set to True and passing the same data
+            as passed to the initial ``setup`` call.
+
+
+        **cloudpickle_kwargs:
+            Kwargs to pass to the ``cloudpickle.load`` call.
+
+
+        Returns:
+            loaded experiment
+
+        """
+
+        return cls._load_experiment(
+            path_or_file,
+            cloudpickle_kwargs=cloudpickle_kwargs,
+            preprocess_data=preprocess_data,
+            data=data,
+            data_func=data_func,
+            test_data=test_data,
+        )
+
+    @property
+    def X(self):
+        """Feature set."""
+        return self.dataset.drop(self.target_param, axis=1)
+
+    @property
+    def dataset_transformed(self):
+        """Transformed dataset."""
+        return pd.concat([self.train_transformed, self.test_transformed])
+
+    @property
+    def X_train_transformed(self):
+        """Transformed feature set of the training set."""
+        return self.pipeline.transform(
+            X=self.X_train,
+            y=self.y_train,
+            filter_train_only=False,
+        )[0]
+
+    @property
+    def train_transformed(self):
+        """Transformed training set."""
+        return pd.concat(
+            [self.X_train_transformed, self.y_train_transformed],
+            axis=1,
+        )
+
+    @property
+    def X_transformed(self):
+        """Transformed feature set."""
+        return pd.concat([self.X_train_transformed, self.X_test_transformed])
+
+    @property
+    def y(self):
+        """Target column."""
+        return self.dataset[self.target_param]
+
+    @property
+    def X_train(self):
+        """Feature set of the training set."""
+        return self.train.drop(self.target_param, axis=1)
+
+    @property
+    def X_test(self):
+        """Feature set of the test set."""
+        return self.test.drop(self.target_param, axis=1)
+
+    @property
+    def train(self):
+        """Training set."""
+        return self.dataset.loc[self.idx[0], :]
+
+    @property
+    def test(self):
+        """Test set."""
+        return self.dataset.loc[self.idx[1], :]
+
+    @property
+    def y_train(self):
+        """Target column of the training set."""
+        return self.train[self.target_param]
+
+    @property
+    def y_test(self):
+        """Target column of the test set."""
+        return self.test[self.target_param]
+
+    @property
+    def test_transformed(self):
+        """Transformed test set."""
+        return pd.concat(
+            [self.X_test_transformed, self.y_test_transformed],
+            axis=1,
+        )
+
+    @property
+    def y_transformed(self):
+        """Transformed target column."""
+        return pd.concat([self.y_train_transformed, self.y_test_transformed])
+
+    @property
+    def X_test_transformed(self):
+        """Transformed feature set of the test set."""
+        return self.pipeline.transform(self.X_test)
+
+    @property
+    def y_train_transformed(self):
+        """Transformed target column of the training set."""
+        return self.pipeline.transform(
+            X=self.X_train,
+            y=self.y_train,
+            filter_train_only=False,
+        )[1]
+
+    @property
+    def y_test_transformed(self):
+        """Transformed target column of the test set."""
+        return self.pipeline.transform(y=self.y_test)

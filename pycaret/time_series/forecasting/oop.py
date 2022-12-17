@@ -85,6 +85,7 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _add_model_to_pipeline,
     _get_imputed_data,
     _get_pipeline_estimator_label,
+    _pipeline_transform,
 )
 
 LOGGER = get_logger()
@@ -96,15 +97,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self._ml_usecase = MLUsecase.TIME_SERIES
         self.exp_name_log = "ts-default-name"
 
-        # Values in variable_keys are accessible in globals
-        self.variable_keys = self.variable_keys.difference(
+        # Values in _variable_keys are accessible in globals
+        self._variable_keys = self._variable_keys.difference(
             {
                 "target_param",
                 "fold_shuffle_param",
                 "fold_groups_param",
             }
         )
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "fh",
                 "seasonality_present",
@@ -173,7 +174,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """Returns the dataframe to be displayed at the end of setup"""
         n_nans = 100 * self.data.isna().any(axis=1).sum() / len(self.data)
 
-        display_container = [
+        _display_container = [
             ["session_id", self.seed],
             ["Target", self.target_param],
             ["Approach", self.approach_type.value],
@@ -208,7 +209,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ]
 
         if self.preprocess:
-            display_container.extend(
+            _display_container.extend(
                 [
                     ["Numerical Imputation (Target)", self.numeric_imputation_target],
                     ["Transformation (Target)", self.transform_target],
@@ -221,7 +222,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
 
             if self.exogenous_present == TSExogenousPresent.YES:
-                display_container.extend(
+                _display_container.extend(
                     [
                         [
                             "Numerical Imputation (Exogenous)",
@@ -235,7 +236,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 # This is added even if there are no explicit exogenous variables
                 # since exogenous variables can be created from the Index (e.g.
                 # DateTimeFeatures) using self.fe_exogenous
-                display_container.extend(
+                _display_container.extend(
                     [
                         [
                             "Feature Engineering (Exogenous)",
@@ -244,7 +245,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     ]
                 )
 
-        display_container.extend(
+        _display_container.extend(
             [
                 ["CPU Jobs", self.n_jobs_param],
                 ["Use GPU", self.gpu_param],
@@ -254,11 +255,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ]
         )
 
-        display_container = pd.DataFrame(
-            display_container, columns=["Description", "Value"]
+        _display_container = pd.DataFrame(
+            _display_container, columns=["Description", "Value"]
         )
 
-        return display_container
+        return _display_container
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
@@ -1236,15 +1237,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The experiment object to allow chaining of methods
         """
         self.logger.info("Creating final display dataframe.")
-        self.display_container = [self._get_setup_display()]
-        self.logger.info(f"Setup Display Container: {self.display_container[0]}")
+        self._display_container = [self._get_setup_display()]
+        self.logger.info(f"Setup Display Container: {self._display_container[0]}")
         display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         return self
@@ -2379,14 +2380,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             model_results = self.pull(pop=True).drop("Model", axis=1)
             model_results.index = ["Test"]
 
-            self.display_container.append(model_results)
+            self._display_container.append(model_results)
 
             if system:
                 display.display(
                     model_results.style.format(precision=round),
                 )
 
-            self.logger.info(f"display_container: {len(self.display_container)}")
+            self.logger.info(f"_display_container: {len(self._display_container)}")
 
         # Return the final model only. Rest of the pipeline will be added during finalize.
         final_model = self._get_final_model_from_pipeline(
@@ -2425,7 +2426,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.logger.info("Starting cross validation")
 
-        n_jobs = self._gpu_n_jobs_param
+        n_jobs = self.gpu_n_jobs_param
 
         self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
@@ -2913,7 +2914,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             if estimator_definition is not None:
                 search_kwargs = {**estimator_definition.tune_args, **kwargs}
                 n_jobs = (
-                    self._gpu_n_jobs_param
+                    self.gpu_n_jobs_param
                     if estimator_definition.is_gpu_enabled
                     else self.n_jobs_param
                 )
@@ -3077,8 +3078,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
         display.display(model_results, clear=True)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(best_model))
         self.logger.info(
@@ -4391,7 +4394,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 verbose=verbose, y_pred=y_pred
             )
             display.display(df_score.style.format(precision=round), clear=False)
-            self.display_container.append(df_score)
+            self._display_container.append(df_score)
 
         gc.collect()
 
@@ -5527,6 +5530,160 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             else self.pipeline
         )
         return pipeline_to_use
+
+    @property
+    def X(self):
+        X = self.dataset.drop(self.target_param, axis=1)
+        if X.empty and self.fe_exogenous is None:
+            return None
+        else:
+            # If X is not empty or empty but self.fe_exogenous is provided
+            # Return X instead of None, since the index can be used to
+            # generate features using self.fe_exogenous
+            return X
+
+    @property
+    def dataset_transformed(self):
+        # Use fully trained pipeline to get the requested data
+        return pd.concat(
+            [
+                *_pipeline_transform(
+                    pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+                )
+            ],
+            axis=1,
+        )
+
+    @property
+    def X_train_transformed(self):
+        # Use pipeline trained on training data only to get the requested data
+        # In time series, the order of arguments and returns may be reversed.
+        return _pipeline_transform(
+            pipeline=self.pipeline, y=self.y_train, X=self.X_train
+        )[1]
+
+    @property
+    def train_transformed(self):
+        # Use pipeline trained on training data only to get the requested data
+        # In time series, the order of arguments and returns may be reversed.
+        return pd.concat(
+            [
+                *_pipeline_transform(
+                    pipeline=self.pipeline, y=self.y_train, X=self.X_train
+                )
+            ],
+            axis=1,
+        )
+
+    @property
+    def X_transformed(self):
+        # Use fully trained pipeline to get the requested data
+        # In time series, the order of arguments and returns may be reversed.
+        return _pipeline_transform(
+            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+        )[1]
+
+    @property
+    def X_train(self):
+        X_train = self.train.drop(self.target_param, axis=1)
+
+        if X_train.empty and self.fe_exogenous is None:
+            return None
+        else:
+            # If X_train is not empty or empty but self.fe_exogenous is provided
+            # Return X_train instead of None, since the index can be used to
+            # generate features using self.fe_exogenous
+            return X_train
+
+    @property
+    def X_test(self):
+        # Use index for y_test (idx 2) to get the data
+        test = self.dataset.loc[self.idx[2], :]
+        X_test = test.drop(self.target_param, axis=1)
+
+        if X_test.empty and self.fe_exogenous is None:
+            return None
+        else:
+            # If X_test is not empty or empty but self.fe_exogenous is provided
+            # Return X_test instead of None, since the index can be used to
+            # generate features using self.fe_exogenous
+            return X_test
+
+    @property
+    def test(self):
+        # Return the y_test indices not X_test indices.
+        # X_test indices are expanded indices for handling FH with gaps.
+        # But if we return X_test indices, then we will get expanded test
+        # indices even for univariate time series without exogenous variables
+        # which would be confusing. Hence, we return y_test indices here and if
+        # we want to get X_test indices, then we use self.X_test directly.
+        # Refer:
+        # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+        # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+        return self.dataset.loc[self.idx[1], :]
+
+    @property
+    def test_transformed(self):
+        # When transforming the test set, we can and should use all data before that
+        # In time series, the order of arguments and returns may be reversed.
+        all_data = pd.concat(
+            [
+                *_pipeline_transform(
+                    pipeline=self.pipeline_fully_trained,
+                    y=self.y,
+                    X=self.X,
+                )
+            ],
+            axis=1,
+        )
+        # Return the y_test indices not X_test indices.
+        # X_test indices are expanded indices for handling FH with gaps.
+        # But if we return X_test indices, then we will get expanded test
+        # indices even for univariate time series without exogenous variables
+        # which would be confusing. Hence, we return y_test indices here and if
+        # we want to get X_test indices, then we use self.X_test directly.
+        # Refer:
+        # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+        # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+        return all_data.loc[self.idx[1]]
+
+    @property
+    def y_transformed(self):
+        # Use fully trained pipeline to get the requested data
+        # In time series, the order of arguments and returns may be reversed.
+        return _pipeline_transform(
+            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+        )[0]
+
+    @property
+    def X_test_transformed(self):
+        # In time series, the order of arguments and returns may be reversed.
+        # When transforming the test set, we can and should use all data before that
+        _, X = _pipeline_transform(
+            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+        )
+
+        if X is None:
+            return None
+        else:
+            return X.loc[self.idx[2]]
+
+    @property
+    def y_train_transformed(self):
+        # Use pipeline trained on training data only to get the requested data
+        # In time series, the order of arguments and returns may be reversed.
+        return _pipeline_transform(
+            pipeline=self.pipeline, y=self.y_train, X=self.X_train
+        )[0]
+
+    @property
+    def y_test_transformed(self):
+        # In time series, the order of arguments and returns may be reversed.
+        # When transforming the test set, we can and should use all data before that
+        y, _ = _pipeline_transform(
+            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+        )
+        return y.loc[self.idx[1]]
 
 
 def _validate_split_requested(split: str):
