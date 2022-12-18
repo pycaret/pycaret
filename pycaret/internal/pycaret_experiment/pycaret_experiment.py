@@ -95,6 +95,10 @@ class _PyCaretExperiment:
         """
         return False
 
+    @property
+    def variable_and_property_keys(self) -> set:
+        return self._variable_keys.union(self._property_keys)
+
     def _check_environment(self) -> None:
         # logging environment and libraries
         self.logger.info("Checking environment")
@@ -270,7 +274,7 @@ class _PyCaretExperiment:
 
         return runs
 
-    def get_config(self, variable: str) -> Any:
+    def get_config(self, variable: Optional[str] = None) -> Any:
         """
         This function is used to access global environment variables.
 
@@ -279,6 +283,12 @@ class _PyCaretExperiment:
         >>> X_train = get_config('X_train')
 
         This will return training features.
+
+
+        variable : str, default = None
+            Name of the variable to return the value of. If None,
+            will return a list of possible names.
+
 
         Returns
         -------
@@ -292,7 +302,10 @@ class _PyCaretExperiment:
         self.logger.info("Initializing get_config()")
         self.logger.info(f"get_config({function_params_str})")
 
-        variable_and_property_keys = self._variable_keys.union(self._property_keys)
+        variable_and_property_keys = self.variable_and_property_keys
+
+        if not variable:
+            return variable_and_property_keys
 
         if variable not in variable_and_property_keys:
             raise ValueError(
