@@ -1,5 +1,6 @@
 import functools
 import inspect
+import re
 import warnings
 from collections.abc import Mapping
 from copy import deepcopy
@@ -104,9 +105,8 @@ def to_df(data, index=None, columns=None, dtypes=None):
             if dtypes is not None:
                 data = data.astype(dtypes)
 
-        else:
-            # Convert all column names to str
-            data.columns = [str(col) for col in data.columns]
+        # Convert all column names to str and remove weird characters
+        data = data.rename(columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x)))
 
     return data
 

@@ -272,7 +272,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         encoding_method: category-encoders estimator, default = None
             A `category-encoders` estimator to encode the categorical columns
             with more than `max_encoding_ohe` unique values. If None,
-            `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+            `category_encoders.basen.BaseN` is used.
 
 
         rare_to_value: float or None, default=None

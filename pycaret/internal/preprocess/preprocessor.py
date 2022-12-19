@@ -5,6 +5,7 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+from category_encoders.basen import BaseNEncoder
 from category_encoders.leave_one_out import LeaveOneOutEncoder
 from category_encoders.one_hot import OneHotEncoder
 from category_encoders.ordinal import OrdinalEncoder
@@ -676,11 +677,18 @@ class Preprocessor:
             # Encode the rest of the categorical columns
             if len(rest_cols) > 0:
                 if not encoding_method:
-                    encoding_method = LeaveOneOutEncoder(
-                        handle_missing="return_nan",
-                        handle_unknown="value",
-                        random_state=self.seed,
-                    )
+                    if self._ml_usecase in (MLUsecase.ANOMALY, MLUsecase.CLUSTERING):
+                        encoding_method = BaseNEncoder(
+                            base=5,
+                            handle_missing="return_nan",
+                            handle_unknown="value",
+                        )
+                    else:
+                        encoding_method = LeaveOneOutEncoder(
+                            handle_missing="return_nan",
+                            handle_unknown="value",
+                            random_state=self.seed,
+                        )
 
                 rest_estimator = TransformerWrapper(
                     transformer=encoding_method,
