@@ -886,6 +886,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         self.pipeline.fit(self.X_train, self.y_train)
 
+        # Remove non-alphanumerical characters from column names
+        # to avoid errors for LightGBM
         self.data = self.data.rename(
             columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x))
         )

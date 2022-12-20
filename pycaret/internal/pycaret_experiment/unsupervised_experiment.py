@@ -650,6 +650,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.pipeline.fit(self.X)
 
+        # Remove non-alphanumerical characters from column names
+        # to avoid errors for LightGBM
         self.data = self.data.rename(
             columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x))
         )
