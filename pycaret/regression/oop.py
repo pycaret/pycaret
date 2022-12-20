@@ -852,6 +852,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self.pipeline.fit(self.X_train, self.y_train)
 
+        self.data = self.data.rename(
+            columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x))
+        )
+
         self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
