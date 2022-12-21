@@ -227,7 +227,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
     def _validate_log_experiment(self, obj: Any) -> None:
         return isinstance(obj, (bool, BaseLogger)) or (
-            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb"]
+            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb", "dagshub"]
         )
 
     def _convert_log_experiment(
@@ -241,7 +241,7 @@ class _TabularExperiment(_PyCaretExperiment):
             or self._validate_log_experiment(log_experiment)
         ):
             raise TypeError(
-                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb'; or a list of the former."
+                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb', 'dagshub'; or a list of the former."
             )
 
         def convert_logging_param(obj):
@@ -252,6 +252,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 return MlflowLogger()
             if obj == "wandb":
                 return WandbLogger()
+            if obj == "dagshub":
+                remote = os.getenv("MLFLOW_TRACKING_URI")
+                if remote is None: raise TypeError("Invalid URI ## TODO better error :)")
+                return MlflowLogger(remote)
 
         if log_experiment:
             if log_experiment is True:
