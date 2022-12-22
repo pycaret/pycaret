@@ -33,6 +33,12 @@ class DashboardLogger:
     def log_params(self, params):
         for logger in self.loggers:
             logger.log_params(params)
+    
+    def log_remote_artifact(self, filename, type="model"):
+        for logger in self.loggers:
+            remote = logger.remote if hasattr(logger, "remote") else False
+            if remote:
+                logger.log_remote_artifact(filename, type=type)
 
     def log_model(
         self,
