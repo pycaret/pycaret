@@ -2393,7 +2393,7 @@ class _TabularExperiment(_PyCaretExperiment):
         else:
             pipeline_to_use = self.pipeline
 
-        return pycaret.internal.persistence.save_model(
+        model_, model_name = pycaret.internal.persistence.save_model(
             model=model,
             model_name=model_name,
             prep_pipe_=None if model_only else pipeline_to_use,
@@ -2401,6 +2401,8 @@ class _TabularExperiment(_PyCaretExperiment):
             use_case=self._ml_usecase,
             **kwargs,
         )
+        self.logging_param.log_remote_artifact(model_name, type="model")
+        return model_, model_name
 
     def load_model(
         self,
