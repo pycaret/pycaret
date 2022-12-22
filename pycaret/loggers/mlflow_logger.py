@@ -1,3 +1,4 @@
+import os
 import secrets
 from copy import deepcopy
 
@@ -12,6 +13,10 @@ try:
 except ImportError:
     mlflow = None
 
+try:
+    from dagshub.upload import Repo
+except ImportError:
+    Repo = None
 
 class MlflowLogger(BaseLogger):
     def __init__(self, remote=None) -> None:
@@ -22,6 +27,21 @@ class MlflowLogger(BaseLogger):
         super().__init__()
         self.run = None
         self.remote = remote
+        
+        # Connect to repo
+        if self.remote:
+            if Repo is None:
+                raise ImportError(
+                    "mlflow remote server requires dagshub"
+                )
+            self.remote_model_root = "artifacts/models"
+            self.repo = Repo(owner=os.getenv("REPO_OWNER"), 
+                             name=os.getenv("REPO_NAME"),
+                             username=os.getenv("USER_NAME"),
+                             password=os.getenv("PASSWORD"),
+                             token=os.getenv("TOKEN"),
+                             branch=os.getenv("BRANCH")
+                            )
 
     def init_experiment(self, exp_name_log, full_name=None):
         # get USI from nlp or tabular
@@ -79,6 +99,12 @@ class MlflowLogger(BaseLogger):
 
     def log_artifact(self, file, type="artifact"):
         mlflow.log_artifact(file)
+
+    def log_remote_artifact(self, filename, type="model"):
+        if type == "model":
+            remote_filename = os.path.join(self.remote_model_root, filename)
+            if not filename.endswith("Transformation Pipeline.pkl"):
+                self.repo.upload(file=filename, path=remote_filename, versioning="dvc", commit_message="update new trained model")
 
     def log_plot(self, plot, title=None):
         self.log_artifact(plot)
