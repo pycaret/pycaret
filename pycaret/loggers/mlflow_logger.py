@@ -98,14 +98,18 @@ class MlflowLogger(BaseLogger):
         mlflow.set_tag("Run ID", RunID)
 
     def log_artifact(self, file, type="artifact"):
-        mlflow.log_artifact(file)
-
-    def log_remote_artifact(self, filename, type="model"):
-        if type == "model":
-            remote_filename = os.path.join(self.remote_model_root, filename)
-            if not filename.endswith("Transformation Pipeline.pkl"):
-                self.repo.upload(file=filename, path=remote_filename, versioning="dvc", commit_message="update new trained model")
-
+        if self.remote:
+            if type == "model":
+                remote_filename = os.path.join(self.remote_model_root, file)
+                if not file.endswith("Transformation Pipeline.pkl"):
+                    self.repo.upload(file=file, path=remote_filename, versioning="dvc", commit_message="update new trained model")
+            elif type == "data":
+                pass
+            else:
+                mlflow.log_artifact(file)
+        else:
+            mlflow.log_artifact(file)
+        
     def log_plot(self, plot, title=None):
         self.log_artifact(plot)
 
