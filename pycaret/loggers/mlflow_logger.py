@@ -14,10 +14,6 @@ try:
 except ImportError:
     mlflow = None
 
-try:
-    from dagshub.upload import Repo
-except ImportError:
-    Repo = None
 
 class MlflowLogger(BaseLogger):
     def __init__(self, remote=None) -> None:
@@ -31,6 +27,11 @@ class MlflowLogger(BaseLogger):
         
         # Connect to repo
         if self.remote:
+            try:
+                from dagshub.upload import Repo
+            except ImportError:
+                Repo = None
+                
             if Repo is None:
                 raise ImportError(
                     "mlflow remote server requires dagshub"
