@@ -31,7 +31,7 @@ class MlflowLogger(BaseLogger):
                 from dagshub.upload import Repo
             except ImportError:
                 Repo = None
-                
+
             if Repo is None:
                 raise ImportError(
                     "mlflow remote server requires dagshub"
@@ -105,8 +105,8 @@ class MlflowLogger(BaseLogger):
     def log_artifact(self, file, type="artifact"):
         if self.remote:
             if type == "model":
-                remote_filename = os.path.join(self.remote_model_root, file)
                 if not file.endswith("Transformation Pipeline.pkl"):
+                    remote_filename = os.path.join(self.remote_model_root, file).replace(".pkl", f"_{self.cur_timestamp}.pkl")
                     self.repo.upload(file=file, path=remote_filename, versioning="dvc", commit_message="update new trained model")
             elif type in ["train_data_remote", "train_transform_data_remote", "test_data_remote", "test_transform_data_remote"]:
                 data_type = type.split("_")[0].lower()
