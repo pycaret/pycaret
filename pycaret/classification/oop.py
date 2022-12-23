@@ -886,12 +886,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         self.pipeline.fit(self.X_train, self.y_train)
 
-        # Remove non-alphanumerical characters from column names
-        # to avoid errors for LightGBM
-        self.data = self.data.rename(
-            columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x))
-        )
-
         self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
@@ -909,7 +903,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             container.append(
                 ["Target mapping", ", ".join([f"{k}: {v}" for k, v in mapping.items()])]
             )
-        container.append(["Original data shape", self.dataset.shape])
+        container.append(["Original data shape", self.data.shape])
         container.append(["Transformed data shape", self.dataset_transformed.shape])
         container.append(["Transformed train set shape", self.train_transformed.shape])
         container.append(["Transformed test set shape", self.test_transformed.shape])

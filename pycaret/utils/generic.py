@@ -105,8 +105,8 @@ def to_df(data, index=None, columns=None, dtypes=None):
             if dtypes is not None:
                 data = data.astype(dtypes)
 
-        # Convert all column names to str and remove weird characters
-        data = data.rename(columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x)))
+        # Convert all column names to str
+        data = data.rename(columns=lambda col: str(col))
 
     return data
 

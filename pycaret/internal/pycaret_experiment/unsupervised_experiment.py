@@ -650,12 +650,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.pipeline.fit(self.X)
 
-        # Remove non-alphanumerical characters from column names
-        # to avoid errors for LightGBM
-        self.data = self.data.rename(
-            columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x))
-        )
-
         self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
@@ -665,7 +659,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         container = []
         container.append(["Session id", self.seed])
-        container.append(["Original data shape", self.dataset.shape])
+        container.append(["Original data shape", self.data.shape])
         container.append(["Transformed data shape", self.dataset_transformed.shape])
         for fx, cols in self._fxs.items():
             if len(cols) > 0:

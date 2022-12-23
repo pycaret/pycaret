@@ -852,12 +852,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self.pipeline.fit(self.X_train, self.y_train)
 
-        # Remove non-alphanumerical characters from column names
-        # to avoid errors for LightGBM
-        self.data = self.data.rename(
-            columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x))
-        )
-
         self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
@@ -869,9 +863,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         container.append(["Session id", self.seed])
         container.append(["Target", self.target_param])
         container.append(["Target type", "Regression"])
-        container.append(["Data shape", self.dataset_transformed.shape])
-        container.append(["Train data shape", self.train_transformed.shape])
-        container.append(["Test data shape", self.test_transformed.shape])
+        container.append(["Original data shape", self.data.shape])
+        container.append(["Transformed data shape", self.dataset_transformed.shape])
+        container.append(["Transformed train set shape", self.train_transformed.shape])
+        container.append(["Transformed test set shape", self.test_transformed.shape])
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
                 container.append([f"{fx} features", len(cols)])

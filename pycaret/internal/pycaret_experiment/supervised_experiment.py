@@ -1,6 +1,7 @@
 import datetime
 import gc
 import os
+import re
 import time
 import traceback
 import warnings
@@ -1415,6 +1416,9 @@ class _SupervisedExperiment(_TabularExperiment):
             data_y = self.y_train if y_train_data is None else y_train_data.copy()
 
         groups = self._get_groups(groups, data=data_X)
+
+        # Remove weird characters to avoid errors with LightGBM
+        data_X = data_X.rename(columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x)))
 
         if metrics is None:
             metrics = self._all_metrics
@@ -4943,6 +4947,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 X_test_ = data
                 y_test_ = target
 
+        # Remove weird characters to avoid errors with LightGBM
+        X_test_ = X_test_.rename(columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x)))
+
         # generate drift report
         if drift_report:
             _check_soft_dependencies("evidently", extra="mlops", severity="error")
@@ -5630,7 +5637,7 @@ class _SupervisedExperiment(_TabularExperiment):
     @property
     def X(self):
         """Feature set."""
-        return self.dataset.drop(self.target_param, axis=1)
+        return self.data.drop(self.target_param, axis=1)
 
     @property
     def dataset_transformed(self):
