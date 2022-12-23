@@ -254,7 +254,8 @@ class _TabularExperiment(_PyCaretExperiment):
                 return WandbLogger()
             if obj == "dagshub":
                 remote = os.getenv("MLFLOW_TRACKING_URI")
-                if remote is None: raise TypeError("Invalid URI ## TODO better error :)")
+                if remote is None:
+                    raise TypeError("Invalid URI ## TODO better error :)")
                 return MlflowLogger(remote)
 
         if log_experiment:
