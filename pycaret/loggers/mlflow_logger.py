@@ -37,7 +37,6 @@ class MlflowLogger(BaseLogger):
             self.remote_model_root = "artifacts/models"
             self.remote_rawdata_root = "artifacts/data/raw"
             self.remote_procdata_root = "artifacts/data/process"
-            self.cur_timestamp = datetime.datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
             self.repo = Repo(
                 owner=os.getenv("REPO_OWNER"),
                 name=os.getenv("REPO_NAME"),
@@ -108,12 +107,13 @@ class MlflowLogger(BaseLogger):
                 if not file.endswith("Transformation Pipeline.pkl"):
                     remote_filename = os.path.join(
                         self.remote_model_root, file
-                    ).replace(".pkl", f"_{self.cur_timestamp}.pkl")
+                    )
                     self.repo.upload(
                         file=file,
                         path=remote_filename,
                         versioning="dvc",
                         commit_message="update new trained model",
+                        force=True
                     )
             elif type in [
                 "train_data_remote",
@@ -131,12 +131,13 @@ class MlflowLogger(BaseLogger):
                 )
                 remote_filename = os.path.join(
                     remote_dir, file.split(os.sep)[-1]
-                ).replace(".csv", f"_{self.cur_timestamp}.csv")
+                )
                 self.repo.upload(
                     file=file,
                     path=remote_filename,
                     versioning="dvc",
                     commit_message=f"update {transformed}{data_type} data",
+                    force=True
                 )
             else:
                 mlflow.log_artifact(file)
