@@ -1,5 +1,6 @@
 import os
 import secrets
+import datetime
 from copy import deepcopy
 
 import pycaret
@@ -35,6 +36,9 @@ class MlflowLogger(BaseLogger):
                     "mlflow remote server requires dagshub"
                 )
             self.remote_model_root = "artifacts/models"
+            self.remote_rawdata_root = "artifacts/data/raw"
+            self.remote_procdata_root = "artifacts/data/process"
+            self.cur_timestamp = datetime.datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
             self.repo = Repo(owner=os.getenv("REPO_OWNER"), 
                              name=os.getenv("REPO_NAME"),
                              username=os.getenv("USER_NAME"),
@@ -103,8 +107,13 @@ class MlflowLogger(BaseLogger):
                 remote_filename = os.path.join(self.remote_model_root, file)
                 if not file.endswith("Transformation Pipeline.pkl"):
                     self.repo.upload(file=file, path=remote_filename, versioning="dvc", commit_message="update new trained model")
-            elif type == "data":
-                pass
+            elif type in ["train_data_remote", "train_transform_data_remote", "test_data_remote", "test_transform_data_remote"]:
+                data_type = type.split("_")[0].lower()
+                is_transformed = "transform" in type
+                transformed = "transformed " if is_transformed else ""
+                remote_dir = self.remote_procdata_root if is_transformed else self.remote_rawdata_root
+                remote_filename = os.path.join(remote_dir, file.split(os.sep)[-1]).replace(".csv", f"_{self.cur_timestamp}.csv")
+                self.repo.upload(file=file, path=remote_filename, versioning="dvc", commit_message=f"update {transformed}{data_type} data")
             else:
                 mlflow.log_artifact(file)
         else:
