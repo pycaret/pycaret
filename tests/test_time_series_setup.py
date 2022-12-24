@@ -90,7 +90,6 @@ def test_splitter_pass_cv_object(load_pos_and_neg_data):
         step_length=12,
         # window_length=12,
         fh=fh,
-        start_with_window=True,
     )
 
     exp_name = setup(
