@@ -153,7 +153,7 @@ def test_all_sklearnex_models():
     for algo in ALGORITHMS_LIST:
         model = exp.create_model(algo, engine="sklearnex")
         parent_library = model.__module__
-        if algo == "svm":
+        if algo in ("svm", "knn"):
             assert parent_library.startswith("sklearnex")
         else:
             assert parent_library.startswith("daal4py")
