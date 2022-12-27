@@ -7,7 +7,7 @@ import traceback
 import warnings
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
