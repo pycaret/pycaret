@@ -988,6 +988,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 self.numeric_imputation_target is not None
                 or self.transform_target is not None
                 or self.scale_target is not None
+                or self.limit_target is not None
             )
             or (
                 # Exogenous Transformations ----
@@ -996,6 +997,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     self.numeric_imputation_exogenous is not None
                     or self.transform_exogenous is not None
                     or self.scale_exogenous is not None
+                    # or self.limit_exogenous is not None
                 )
             )
             or (
