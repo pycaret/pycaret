@@ -8,22 +8,38 @@
 
 # This pipeline is only to be used internally.
 
-from copy import deepcopy
-from typing import Union
-import imblearn.pipeline
-from joblib.memory import Memory
+import platform
 import tempfile
-from sklearn.utils import _print_elapsed_time
-from sklearn.base import clone
-from sklearn.utils.metaestimators import if_delegate_has_method
-from sklearn.utils.validation import check_memory
-import sklearn.pipeline
+import warnings
+from copy import deepcopy
 from inspect import signature
+from typing import Union
 
-from pycaret.internal.utils import (
-    get_all_object_vars_and_properties,
-    variable_return,
-)
+import imblearn.pipeline
+import sklearn.pipeline
+from joblib.memory import Memory
+from sklearn.base import clone
+from sklearn.utils import _print_elapsed_time
+from sklearn.utils.metaestimators import available_if
+from sklearn.utils.validation import check_memory
+
+from pycaret.utils._show_versions import _get_deps_info
+from pycaret.utils.generic import get_all_object_vars_and_properties, variable_return
+
+
+def _final_estimator_has(attr):
+    """Check that final_estimator has attribute `attr`.
+
+    Used together with `available_if` in Pipeline.
+
+    """
+
+    def check(self):
+        # Raise original `AttributeError` if `attr` does not exist
+        getattr(self._final_estimator, attr)
+        return True
+
+    return check
 
 
 def _fit_one(transformer, X=None, y=None, message=None, **fit_params):
@@ -58,6 +74,14 @@ def _transform_one(transformer, X=None, y=None):
     return X, y
 
 
+def _inverse_transform_one(transformer, y=None):
+    """Inverse transform the data using one transformer."""
+    if not hasattr(transformer, "inverse_transform"):
+        return y
+
+    return transformer.inverse_transform(y)
+
+
 def _fit_transform_one(transformer, X=None, y=None, message=None, **fit_params):
     """Fit and transform the data using one transformer."""
     _fit_one(transformer, X, y, message, **fit_params)
@@ -70,10 +94,62 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def __init__(self, steps, *, memory=None, verbose=False):
         super().__init__(steps, memory=memory, verbose=verbose)
         self._fit_vars = set()
+        self._feature_names_in = None
 
-    def _iter(
-        self, with_final=True, filter_passthrough=True, filter_train_only=True
-    ):
+    def __getattr__(self, name: str):
+        # override getattr to allow grabbing of final estimator attrs
+        return getattr(self._final_estimator, name)
+
+    def __getstate__(self):
+        try:
+            state = super().__getstate__()
+            state.update(self.__dict__)
+        except AttributeError:
+            state = self.__dict__.copy()
+
+        return dict(state.items(), _pycaret_versions=self._pycaret_versions)
+
+    def __setstate__(self, state):
+        pickle_versions = state.get("_pycaret_versions", {})
+        if pickle_versions.get("deps_info") != self._pycaret_versions["deps_info"]:
+            warnings.warn(
+                "Version mismatch:\ncurrent: {}\npickle: {}".format(
+                    self._pycaret_versions, pickle_versions
+                )
+            )
+        try:
+            super().__setstate__(state)
+        except AttributeError:
+            pass
+
+        self.__dict__.update(state)
+
+    @property
+    def _pycaret_versions(self):
+        return {
+            "deps_info": _get_deps_info(optional=False),
+            "python": {
+                "version": platform.python_version(),
+                "machine": platform.machine(),
+            },
+        }
+
+    @property
+    def feature_names_in_(self):
+        return self._feature_names_in
+
+    @property
+    def memory(self):
+        return self._memory
+
+    @memory.setter
+    def memory(self, value):
+        """Set up cache memory objects."""
+        self._memory = check_memory(value)
+        self._memory_fit = self._memory.cache(_fit_transform_one)
+        self._memory_transform = self._memory.cache(_transform_one)
+
+    def _iter(self, with_final=True, filter_passthrough=True, filter_train_only=True):
         """Generate (idx, name, trans) tuples from self.steps.
 
         When `filter_passthrough=True`, 'passthrough' and None
@@ -93,8 +169,11 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self.steps = list(self.steps)
         self._validate_steps()
 
-        # Set up the memory
-        memory = check_memory(self.memory).cache(_fit_transform_one)
+        # Save the incoming feature names (if pandas objects)
+        if hasattr(X, "columns"):
+            self._feature_names_in = list(X.columns) + (
+                [y.name] if hasattr(y, "name") else []
+            )
 
         for (step_idx, name, transformer) in self._iter(False, False, False):
             if transformer is None or transformer == "passthrough":
@@ -102,7 +181,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
                     continue
 
             if hasattr(transformer, "transform"):
-                if getattr(memory, "location", "") is None:
+                if self._memory_fit.__class__.__name__ == "NotMemorizedFunc":
                     # Don't clone when caching is disabled to
                     # preserve backward compatibility
                     cloned = transformer
@@ -110,7 +189,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
                     cloned = clone(transformer)
 
                 # Fit or load the current transformer from cache
-                X, y, fitted_transformer = memory(
+                X, y, fitted_transformer = self._memory_fit(
                     transformer=cloned,
                     X=X,
                     y=y,
@@ -130,12 +209,22 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def fit(self, X=None, y=None, **fit_params):
         fit_params_steps = self._check_fit_params(**fit_params)
         X, y, _ = self._fit(X, y, **fit_params_steps)
+
         with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
             if self._final_estimator != "passthrough":
                 fit_params_last_step = fit_params_steps[self.steps[-1][0]]
                 _fit_one(self._final_estimator, X, y, **fit_params_last_step)
 
         return self
+
+    def transform(self, X=None, y=None, filter_train_only=True):
+        for _, _, transformer in self._iter(
+            with_final=hasattr(self._final_estimator, "transform"),
+            filter_train_only=filter_train_only,
+        ):
+            X, y = self._memory_transform(transformer, X, y)
+
+        return variable_return(X, y)
 
     def fit_transform(self, X=None, y=None, **fit_params):
         fit_params_steps = self._check_fit_params(**fit_params)
@@ -151,50 +240,45 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
         return variable_return(X, y)
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("predict"))
     def predict(self, X, **predict_params):
         for _, name, transformer in self._iter(with_final=False):
-            X, _ = _transform_one(transformer, X)
+            X, _ = self._memory_transform(transformer, X)
 
-        return self.steps[-1][-1].predict(X, **predict_params)
+        y = self.steps[-1][-1].predict(X, **predict_params)
 
-    @if_delegate_has_method(delegate="_final_estimator")
+        for _, name, transformer in self._iter(with_final=False):
+            y = _inverse_transform_one(transformer, y)
+
+        return y
+
+    @available_if(_final_estimator_has("predict_proba"))
     def predict_proba(self, X):
         for _, _, transformer in self._iter(with_final=False):
-            X, _ = _transform_one(transformer, X)
+            X, _ = self._memory_transform(transformer, X)
 
         return self.steps[-1][-1].predict_proba(X)
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("predict_log_proba"))
     def predict_log_proba(self, X):
         for _, _, transformer in self._iter(with_final=False):
-            X, _ = _transform_one(transformer, X)
+            X, _ = self._memory_transform(transformer, X)
 
         return self.steps[-1][-1].predict_log_proba(X)
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("decision_function"))
     def decision_function(self, X):
         for _, _, transformer in self._iter(with_final=False):
-            X, _ = _transform_one(transformer, X)
+            X, _ = self._memory_transform(transformer, X)
 
         return self.steps[-1][-1].decision_function(X)
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("score"))
     def score(self, X, y, sample_weight=None):
         for _, _, transformer in self._iter(with_final=False):
-            X, y = _transform_one(transformer, X, y)
+            X, y = self._memory_transform(transformer, X, y)
 
         return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
-
-    def transform(self, X=None, y=None):
-        for _, _, transformer in self._iter():
-            X, y = _transform_one(transformer, X, y)
-
-        return variable_return(X, y)
-
-    def __getattr__(self, name: str):
-        # override getattr to allow grabbing of final estimator attrs
-        return getattr(self._final_estimator, name)
 
     def _clear_final_estimator_fit_vars(self, all: bool = False):
         vars_to_remove = []
@@ -212,9 +296,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 try:
                     delattr(self, var)
                     self._fit_vars.remove(var)
-                except:
+                except Exception:
                     pass
-        except:
+        except Exception:
             pass
 
     def get_sklearn_pipeline(self) -> sklearn.pipeline.Pipeline:
@@ -235,12 +319,12 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def set_params(self, **kwargs):
         try:
             result = super().set_params(**kwargs)
-        except:
+        except Exception:
             result = self._final_estimator.set_params(**kwargs)
 
         return result
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("partial_fit"))
     def partial_fit(self, X, y=None, classes=None, **fit_params):
         """Fit the model.
 
@@ -270,7 +354,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         """
         try:
             self.Xt_
-        except:
+        except Exception:
             self.Xt_ = None
             self.yt_ = None
         if self.Xt_ is None or self.yt_ is None:
@@ -308,7 +392,7 @@ class TimeSeriesPipeline(Pipeline):
             fit_params_steps[step][param] = pval
         return X, y, fit_params_steps[self.steps[-1][0]]
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("score"))
     def score(self, X=None, y=None, **score_params):
         Xt = X
         for _, name, transform in self._iter(with_final=False):
@@ -333,7 +417,7 @@ class TimeSeriesPipeline(Pipeline):
                 self._final_estimator.fit(y=yt, X=Xt, **fit_params)
         return self
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("fit_predict"))
     def fit_predict(self, X=None, y=None, **fit_params):
         if X is not None:
             Xt, yt, fit_params = self._fit(X, y, **fit_params)
@@ -409,7 +493,7 @@ def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estima
     try:
         assert hasattr(pipeline._final_estimator, "predict")
         pipeline.replace_final_estimator(estimator, name=name)
-    except:
+    except Exception:
         pipeline.steps.append((name, estimator))
 
 
@@ -420,7 +504,7 @@ def merge_pipelines(pipeline_to_merge_to: Pipeline, pipeline_to_be_merged: Pipel
 def get_pipeline_estimator_label(pipeline: Pipeline) -> str:
     try:
         model_step = pipeline.steps[-1]
-    except:
+    except Exception:
         return ""
 
     return model_step[0]
@@ -429,7 +513,7 @@ def get_pipeline_estimator_label(pipeline: Pipeline) -> str:
 def get_pipeline_fit_kwargs(pipeline: Pipeline, fit_kwargs: dict) -> dict:
     try:
         model_step = pipeline.steps[-1]
-    except:
+    except Exception:
         return fit_kwargs
 
     if any(k.startswith(f"{model_step[0]}__") for k in fit_kwargs.keys()):

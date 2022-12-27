@@ -1,17 +1,17 @@
 import logging
-import warnings
+import os
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Union
+
 import pandas as pd
 from joblib.memory import Memory
 
-from pycaret.anomaly import AnomalyExperiment
-from pycaret.internal.utils import check_if_global_is_not_none
-
-from typing import List, Any, Union, Optional, Dict
-
-warnings.filterwarnings("ignore")
+from pycaret.anomaly.oop import AnomalyExperiment
+from pycaret.loggers.base_logger import BaseLogger
+from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
+from pycaret.utils.generic import check_if_global_is_not_none
 
 _EXPERIMENT_CLASS = AnomalyExperiment
-_CURRENT_EXPERIMENT = None
+_CURRENT_EXPERIMENT: Optional[AnomalyExperiment] = None
 _CURRENT_EXPERIMENT_EXCEPTION = (
     "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
 )
@@ -21,7 +21,9 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data,
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -30,15 +32,20 @@ def setup(
     ignore_features: Optional[List[str]] = None,
     keep_features: Optional[List[str]] = None,
     preprocess: bool = True,
+    create_date_columns: List[str] = ["day", "month", "year"],
     imputation_type: Optional[str] = "simple",
     numeric_imputation: str = "mean",
-    categorical_imputation: str = "constant",
+    categorical_imputation: str = "mode",
     text_features_method: str = "tf-idf",
-    max_encoding_ohe: int = 5,
+    max_encoding_ohe: int = -1,
     encoding_method: Optional[Any] = None,
+    rare_to_value: Optional[float] = None,
+    rare_value: str = "rare",
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
-    low_variance_threshold: float = 0,
+    low_variance_threshold: Optional[float] = None,
+    group_features: Optional[list] = None,
+    group_names: Optional[Union[str, list]] = None,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
@@ -51,24 +58,24 @@ def setup(
     normalize_method: str = "zscore",
     pca: bool = False,
     pca_method: str = "linear",
-    pca_components: Union[int, float] = 1.0,
-    custom_pipeline: Any = None,
+    pca_components: Optional[Union[int, float, str]] = None,
+    custom_pipeline: Optional[Any] = None,
+    custom_pipeline_position: int = -1,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
     html: bool = True,
     session_id: Optional[int] = None,
-    system_log: Union[bool, logging.Logger] = True,
-    log_experiment: bool = False,
+    system_log: Union[bool, str, logging.Logger] = True,
+    log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
     experiment_name: Optional[str] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
-    silent: bool = False,
     verbose: bool = True,
     memory: Union[bool, str, Memory] = True,
     profile: bool = False,
-    profile_kwargs: Dict[str, Any] = None,
+    profile_kwargs: Optional[Dict[str, Any]] = None,
 ):
 
     """
@@ -86,8 +93,27 @@ def setup(
 
 
     data: dataframe-like
-        Shape (n_samples, n_features), where n_samples is the number of samples and
-        n_features is the number of features.
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
+
+
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    index: bool, int, str or sequence, default = False
+        Handle indices in the `data` dataframe.
+            - If False: Reset to RangeIndex.
+            - If True: Keep the provided index.
+            - If int: Position of the column to use as index.
+            - If str: Name of the column to use as index.
+            - If sequence: Array with shape=(n_samples,) to use as index.
 
 
     ordinal_features: dict, default = None
@@ -139,9 +165,18 @@ def setup(
         when preprocess is set to False.
 
 
+    create_date_columns: list of str, default = ["day", "month", "year"]
+        Columns to create from the date features. Note that created features
+        with zero variance (e.g. the feature hour in a column that only contains
+        dates) are ignored. Allowed values are datetime attributes from
+        `pandas.Series.dt`. The datetime format of the feature is inferred
+        automatically from the first non NaN value.
+
+
     imputation_type: str or None, default = 'simple'
-        The type of imputation to use. Can be either 'simple' or 'iterative'.
-        If None, no imputation of missing values is performed.
+        The type of imputation to use. Unsupervised learning only supports
+        'imputation_type=simple'. If None, no imputation of missing values
+        is performed.
 
 
     numeric_imputation: str, default = 'mean'
@@ -162,17 +197,24 @@ def setup(
         text embeddings.
 
 
-    max_encoding_ohe: int, default = 5
+    max_encoding_ohe: int, default = -1
         Categorical columns with `max_encoding_ohe` or less unique values are
         encoded using OneHotEncoding. If more, the `encoding_method` estimator
         is used. Note that columns with exactly two classes are always encoded
-        ordinally.
+        ordinally. Set to below 0 to always use OneHotEncoding.
 
 
     encoding_method: category-encoders estimator, default = None
         A `category-encoders` estimator to encode the categorical columns
         with more than `max_encoding_ohe` unique values. If None,
         `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+
+
+    rare_to_value: float or None, default=None
+        Minimum fraction of category occurrences in a categorical column.
+        If a category is less frequent than `rare_to_value * len(X)`, it is
+        replaced with the string `other`. Use this parameter to group rare
+        categories before encoding the column. If None, ignores this step.
 
 
     polynomial_features: bool, default = False
@@ -185,23 +227,38 @@ def setup(
         [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
 
-    low_variance_threshold: float or None, default = 0
+    low_variance_threshold: float or None, default = None
         Remove features with a training-set variance lower than the provided
-        threshold. The default is to keep all features with non-zero variance,
-        i.e. remove the features that have the same value in all samples. If
-        None, skip this treansformation step.
+        threshold. If 0, keep all features with non-zero variance, i.e. remove
+        the features that have the same value in all samples. If None, skip
+        this transformation step.
+
+
+    group_features: list, list of lists or None, default = None
+        When the dataset contains features with related characteristics,
+        replace those fetaures with the following statistical properties
+        of that group: min, max, mean, std, median and mode. The parameter
+        takes a list of feature names or a list of lists of feature names
+        to specify multiple groups.
+
+
+    group_names: str, list, or None, default = None
+        Group names to be used when naming the new features. The length
+        should match with the number of groups specified in ``group_features``.
+        If None, new features are named using the default form, e.g. group_1,
+        group_2, etc... Ignored when ``group_features`` is None.
 
 
     remove_multicollinearity: bool, default = False
-        When set to True, features with the inter-correlations higher than the defined
-        threshold are removed. When two features are highly correlated with each other,
-        the feature that is less correlated with the target variable is removed. Only
-        considers numeric features.
+        When set to True, features with the inter-correlations higher than
+        the defined threshold are removed. For each group, it removes all
+        except the first feature.
 
 
     multicollinearity_threshold: float, default = 0.9
-        Threshold for correlated features. Ignored when ``remove_multicollinearity``
-        is not True.
+        Minimum absolute Pearson correlation to identify correlated
+        features. The default value removes equal columns. Ignored when
+        ``remove_multicollinearity`` is not True.
 
 
     bin_numeric_features: list of str, default = None
@@ -268,20 +325,28 @@ def setup(
     pca_method: str, default = 'linear'
         Method with which to apply PCA. Possible values are:
             - 'linear': Uses Singular Value  Decomposition.
-            - kernel: Dimensionality reduction through the use of RBF kernel.
-            - incremental: Similar to 'linear', but more efficient for large datasets.
+            - 'kernel': Dimensionality reduction through the use of RBF kernel.
+            - 'incremental': Similar to 'linear', but more efficient for large datasets.
 
 
-    pca_components: int or float, default = 1.0
-        Number of components to keep. If >1, it selects that number of
-        components. If <= 1, it selects that fraction of components from
-        the original features. The value must be smaller than the number
-        of original features. This parameter is ignored when `pca=False`.
+    pca_components: int, float, str or None, default = None
+        Number of components to keep. This parameter is ignored when `pca=False`.
+            - If None: All components are kept.
+            - If int: Absolute number of components.
+            - If float: Such an amount that the variance that needs to be explained
+                        is greater than the percentage specified by `n_components`.
+                        Value should lie between 0 and 1 (ony for pca_method='linear').
+            - If "mle": Minka’s MLE is used to guess the dimension (ony for pca_method='linear').
 
 
-    custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
+    custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Addidiotnal custom transformers. If passed, they are applied to the
         pipeline last, after all the build-in transformers.
+
+
+    custom_pipeline_position: int, default = -1
+        Position of the custom pipeline in the overal preprocessing pipeline.
+        The default value adds the custom pipeline last.
 
 
     n_jobs: int, default = -1
@@ -313,17 +378,20 @@ def setup(
         for later reproducibility of the entire experiment.
 
 
-    system_log: bool or logging.Logger, default = True
+    system_log: bool or str or logging.Logger, default = True
         Whether to save the system logging file (as logs.log). If the input
-        already is a logger object, that one is used instead.
+        is a string, use that as the path to the logging file. If the input
+        already is a logger object, use that one instead.
 
 
     log_experiment: bool, default = False
-        When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+        corresponding to a logger to determine which experiment loggers to use.
+        Setting to True will use just MLFlow.
 
 
     experiment_name: str, default = None
-        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is False.
 
 
     experiment_custom_tags: dict or None, default = None
@@ -334,22 +402,17 @@ def setup(
     log_plots: bool or list, default = False
         When set to True, certain plots are logged automatically in the ``MLFlow`` server.
         To change the type of plots to be logged, pass a list containing plot IDs. Refer
-        to documentation of ``plot_model``. Ignored when ``log_experiment`` is not True.
+        to documentation of ``plot_model``. Ignored when ``log_experiment`` is False.
 
 
     log_profile: bool, default = False
         When set to True, data profile is logged on the ``MLflow`` server as a html file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
 
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
-        Ignored when ``log_experiment`` is not True.
-
-
-    silent: bool, default = False
-        Controls the confirmation input of data types when ``setup`` is executed. When
-        executing in completely automated mode or on a remote kernel, this must be True.
+        Ignored when ``log_experiment`` is False.
 
 
     verbose: bool, default = True
@@ -381,6 +444,8 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        data_func=data_func,
+        index=index,
         ordinal_features=ordinal_features,
         numeric_features=numeric_features,
         categorical_features=categorical_features,
@@ -389,15 +454,20 @@ def setup(
         ignore_features=ignore_features,
         keep_features=keep_features,
         preprocess=preprocess,
+        create_date_columns=create_date_columns,
         imputation_type=imputation_type,
         numeric_imputation=numeric_imputation,
         categorical_imputation=categorical_imputation,
         text_features_method=text_features_method,
         max_encoding_ohe=max_encoding_ohe,
         encoding_method=encoding_method,
+        rare_to_value=rare_to_value,
+        rare_value=rare_value,
         polynomial_features=polynomial_features,
         polynomial_degree=polynomial_degree,
         low_variance_threshold=low_variance_threshold,
+        group_features=group_features,
+        group_names=group_names,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         bin_numeric_features=bin_numeric_features,
@@ -412,6 +482,7 @@ def setup(
         pca_method=pca_method,
         pca_components=pca_components,
         custom_pipeline=custom_pipeline,
+        custom_pipeline_position=custom_pipeline_position,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
         html=html,
@@ -423,7 +494,6 @@ def setup(
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
-        silent=silent,
         verbose=verbose,
         memory=memory,
         profile=profile,
@@ -464,6 +534,7 @@ def create_model(
         * 'cluster' - Clustering-Based Local Outlier
         * 'cof' - Connectivity-Based Outlier Factor
         * 'histogram' - Histogram-based Outlier Detection
+        * 'iforest' - Isolation Forest
         * 'knn' - k-Nearest Neighbors Detector
         * 'lof' - Local Outlier Factor
         * 'svm' - One-class SVM detector
@@ -565,7 +636,7 @@ def plot_model(
     scale: float = 1,
     save: bool = False,
     display_format: Optional[str] = None,
-):
+) -> Optional[str]:
 
     """
     This function analyzes the performance of a trained model.
@@ -616,7 +687,7 @@ def plot_model(
 
 
     Returns:
-        None
+        Path to saved file, if any.
 
     """
     return _CURRENT_EXPERIMENT.plot_model(
@@ -717,6 +788,7 @@ def tune_model(
         * 'cluster' - Clustering-Based Local Outlier
         * 'cof' - Connectivity-Based Outlier Factor
         * 'histogram' - Histogram-based Outlier Detection
+        * 'iforest' - Isolation Forest
         * 'knn' - k-Nearest Neighbors Detector
         * 'lof' - Local Outlier Factor
         * 'svm' - One-class SVM detector
@@ -1032,7 +1104,7 @@ def save_model(
 
 # not using check_if_global_is_not_none on purpose
 def load_model(
-    model_name,
+    model_name: str,
     platform: Optional[str] = None,
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,
@@ -1089,6 +1161,25 @@ def load_model(
         authentication=authentication,
         verbose=verbose,
     )
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def pull(pop: bool = False) -> pd.DataFrame:
+    """
+    Returns the latest displayed table.
+
+    Parameters
+    ----------
+    pop : bool, default = False
+        If true, will pop (remove) the returned dataframe from the
+        display container.
+
+    Returns
+    -------
+    pandas.DataFrame
+
+    """
+    return _CURRENT_EXPERIMENT.pull(pop=pop)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -1161,42 +1252,26 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_config(variable: str):
+def get_config(variable: Optional[str] = None):
 
     """
-    This function retrieves the global variables created when initializing the
-    ``setup`` function. Following variables are accessible:
-
-    - dataset: Transformed dataset
-    - train: Transformed training set
-    - test: Transformed test set
-    - X: Transformed feature set
-    - y: Transformed target column
-    - X_train, X_test, y_train, y_test: Subsets of the train and test sets.
-    - seed: random state set through session_id
-    - pipeline: Transformation pipeline configured through setup
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment set through setup
-    - logging_param: log_experiment param set through setup
-    - log_plots_param: log_plots param set through setup
-    - USI: Unique session ID parameter set through setup
-    - gpu_param: use_gpu param configured through setup
-
+    This function is used to access global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> anomaly = get_data('anomaly')
-    >>> from pycaret.anomaly import *
-    >>> exp_name = setup(data = anomaly)
-    >>> X = get_config('X')
+    >>> X_train = get_config('X_train')
+
+    This will return training features.
 
 
-    Returns:
-        Global variable
+    variable : str, default = None
+        Name of the variable to return the value of. If None,
+        will return a list of possible names.
+
+
+    Returns
+    -------
+    variable
 
     """
 
@@ -1207,56 +1282,37 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function resets the global variables. Following variables are
-    accessible:
-
-    - X: Transformed dataset (X)
-    - data_before_preprocess: data before preprocessing
-    - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline configured through setup
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment set through setup
-    - logging_param: log_experiment param set through setup
-    - log_plots_param: log_plots param set through setup
-    - USI: Unique session ID parameter set through setup
-    - gpu_param: use_gpu param configured through setup
-
+    This function is used to reset global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> anomaly = get_data('anomaly')
-    >>> from pycaret.anomaly import *
-    >>> exp_name = setup(data = anomaly)
     >>> set_config('seed', 123)
 
-
-    Returns:
-        None
+    This will set the global seed to '123'.
 
     """
-
     return _CURRENT_EXPERIMENT.set_config(variable=variable, value=value)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_config(file_name: str):
-
+def save_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO], **cloudpickle_kwargs
+) -> None:
     """
-    This function save all global variables to a pickle file, allowing to
-    later resume without rerunning the ``setup``.
+    Saves the experiment to a pickle file.
+
+    The experiment is saved using cloudpickle to deal with lambda
+    functions. The data or test data is NOT saved with the experiment
+    and will need to be specified again when loading using
+    ``load_experiment``.
 
 
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> anomaly = get_data('anomaly')
-    >>> from pycaret.anomaly import *
-    >>> exp_name = setup(data = anomaly)
-    >>> save_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to save the experiment to.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.dump`` call.
 
 
     Returns:
@@ -1264,143 +1320,86 @@ def save_config(file_name: str):
 
     """
 
-    return _CURRENT_EXPERIMENT.save_config(file_name=file_name)
+    return _CURRENT_EXPERIMENT.save_experiment(
+        path_or_file=path_or_file, **cloudpickle_kwargs
+    )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def load_config(file_name: str):
+def load_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO],
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+    preprocess_data: bool = True,
+    **cloudpickle_kwargs,
+) -> AnomalyExperiment:
 
     """
-    This function loads global variables from a pickle file into Python
-    environment.
+    Load an experiment saved with ``save_experiment`` from path
+    or file.
+
+    The data (and test data) is NOT saved with the experiment
+    and will need to be specified again.
 
 
-    Example
-    -------
-    >>> from pycaret.anomaly import load_config
-    >>> load_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to load the experiment from.
+        The pickle file must be created through ``save_experiment``.
+
+
+    data: dataframe-like
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
+
+
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    preprocess_data: bool, default = True
+        If True, the data will be preprocessed again (through running ``setup``
+        internally). If False, the data will not be preprocessed. This means
+        you can save the value of the ``data`` attribute of an experiment
+        separately, and then load it separately and pass it here with
+        ``preprocess_data`` set to False. This is an advanced feature.
+        We recommend leaving it set to True and passing the same data
+        as passed to the initial ``setup`` call.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.load`` call.
 
 
     Returns:
-        Global variables
+        loaded experiment
 
     """
-
-    return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
-
-
-def get_outliers(
-    data,
-    model: Union[str, Any] = "knn",
-    fraction: float = 0.05,
-    fit_kwargs: Optional[dict] = None,
-    preprocess: bool = True,
-    imputation_type: str = "simple",
-    iterative_imputation_iters: int = 5,
-    categorical_features: Optional[List[str]] = None,
-    categorical_imputation: str = "mode",
-    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
-    ordinal_features: Optional[Dict[str, list]] = None,
-    high_cardinality_features: Optional[List[str]] = None,
-    high_cardinality_method: str = "frequency",
-    numeric_features: Optional[List[str]] = None,
-    numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
-    date_features: Optional[List[str]] = None,
-    ignore_features: Optional[List[str]] = None,
-    normalize: bool = False,
-    normalize_method: str = "zscore",
-    transformation: bool = False,
-    transformation_method: str = "yeo-johnson",
-    handle_unknown_categorical: bool = True,
-    unknown_categorical_method: str = "least_frequent",
-    pca: bool = False,
-    pca_method: str = "linear",
-    pca_components: Union[int, float] = 1.0,
-    low_variance_threshold: float = 0,
-    combine_rare_levels: bool = False,
-    rare_level_threshold: float = 0.10,
-    bin_numeric_features: Optional[List[str]] = None,
-    remove_multicollinearity: bool = False,
-    multicollinearity_threshold: float = 0.9,
-    remove_perfect_collinearity: bool = False,
-    group_features: Optional[List[str]] = None,
-    group_names: Optional[List[str]] = None,
-    n_jobs: Optional[int] = -1,
-    session_id: Optional[int] = None,
-    system_log: Union[bool, logging.Logger] = True,
-    log_experiment: bool = False,
-    experiment_name: Optional[str] = None,
-    log_plots: Union[bool, list] = False,
-    log_profile: bool = False,
-    log_data: bool = False,
-    profile: bool = False,
-    **kwargs,
-) -> pd.DataFrame:
-
-    """
-    Callable from any external environment without requiring setup initialization.
-    """
-    exp = _EXPERIMENT_CLASS()
-    exp.setup(
+    exp = _EXPERIMENT_CLASS.load_experiment(
+        path_or_file=path_or_file,
         data=data,
-        preprocess=preprocess,
-        imputation_type=imputation_type,
-        iterative_imputation_iters=iterative_imputation_iters,
-        categorical_features=categorical_features,
-        categorical_imputation=categorical_imputation,
-        categorical_iterative_imputer=categorical_iterative_imputer,
-        ordinal_features=ordinal_features,
-        high_cardinality_features=high_cardinality_features,
-        high_cardinality_method=high_cardinality_method,
-        numeric_features=numeric_features,
-        numeric_imputation=numeric_imputation,
-        numeric_iterative_imputer=numeric_iterative_imputer,
-        date_features=date_features,
-        ignore_features=ignore_features,
-        normalize=normalize,
-        normalize_method=normalize_method,
-        transformation=transformation,
-        transformation_method=transformation_method,
-        handle_unknown_categorical=handle_unknown_categorical,
-        unknown_categorical_method=unknown_categorical_method,
-        pca=pca,
-        pca_method=pca_method,
-        pca_components=pca_components,
-        low_variance_threshold=low_variance_threshold,
-        combine_rare_levels=combine_rare_levels,
-        rare_level_threshold=rare_level_threshold,
-        bin_numeric_features=bin_numeric_features,
-        remove_multicollinearity=remove_multicollinearity,
-        multicollinearity_threshold=multicollinearity_threshold,
-        remove_perfect_collinearity=remove_perfect_collinearity,
-        group_features=group_features,
-        group_names=group_names,
-        n_jobs=n_jobs,
-        html=False,
-        session_id=session_id,
-        system_log=system_log,
-        log_experiment=log_experiment,
-        experiment_name=experiment_name,
-        log_plots=log_plots,
-        log_profile=log_profile,
-        log_data=log_data,
-        silent=True,
-        verbose=False,
-        profile=profile,
+        data_func=data_func,
+        preprocess_data=preprocess_data,
+        **cloudpickle_kwargs,
     )
-
-    c = exp.create_model(
-        model=model,
-        fraction=fraction,
-        fit_kwargs=fit_kwargs,
-        verbose=False,
-        **kwargs,
-    )
-    return exp.assign_model(c, verbose=False)
+    set_current_experiment(exp)
+    return exp
 
 
 def set_current_experiment(experiment: AnomalyExperiment):
+    """
+    Set the current experiment to be used with the functional API.
+
+    experiment: AnomalyExperiment
+        Experiment object to use.
+
+    Returns:
+        None
+    """
     global _CURRENT_EXPERIMENT
 
     if not isinstance(experiment, AnomalyExperiment):
@@ -1408,3 +1407,13 @@ def set_current_experiment(experiment: AnomalyExperiment):
             f"experiment must be a PyCaret AnomalyExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> AnomalyExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current AnomalyExperiment
+    """
+    return _CURRENT_EXPERIMENT

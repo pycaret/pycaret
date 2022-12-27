@@ -1,18 +1,55 @@
 # Author: Mavs (m.524687@gmail.com)
 # License: MIT
 
+from copy import deepcopy
+
 import numpy as np
 import pandas as pd
-from sklearn.impute import SimpleImputer, KNNImputer
+from category_encoders.leave_one_out import LeaveOneOutEncoder
+from category_encoders.one_hot import OneHotEncoder
+from category_encoders.ordinal import OrdinalEncoder
+from imblearn.combine import SMOTEENN, SMOTETomek
+from imblearn.over_sampling import (
+    ADASYN,
+    SMOTE,
+    SMOTEN,
+    SMOTENC,
+    SVMSMOTE,
+    BorderlineSMOTE,
+    KMeansSMOTE,
+    RandomOverSampler,
+)
+from imblearn.under_sampling import (
+    AllKNN,
+    CondensedNearestNeighbour,
+    EditedNearestNeighbours,
+    InstanceHardnessThreshold,
+    NearMiss,
+    NeighbourhoodCleaningRule,
+    OneSidedSelection,
+    RandomUnderSampler,
+    RepeatedEditedNearestNeighbours,
+    TomekLinks,
+)
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
+from sklearn.feature_selection import (
+    SelectFromModel,
+    SelectKBest,
+    SequentialFeatureSelector,
+    VarianceThreshold,
+    f_classif,
+    f_regression,
+)
+from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.model_selection import (
-    train_test_split,
     GroupKFold,
     KFold,
     StratifiedKFold,
     TimeSeriesSplit,
+    train_test_split,
 )
 from sklearn.preprocessing import (
+    KBinsDiscretizer,
     LabelEncoder,
     MaxAbsScaler,
     MinMaxScaler,
@@ -21,68 +58,197 @@ from sklearn.preprocessing import (
     QuantileTransformer,
     RobustScaler,
     StandardScaler,
-    KBinsDiscretizer,
 )
-from sklearn.feature_selection import (
-    VarianceThreshold,
-    f_classif,
-    f_regression,
-    SelectKBest,
-    SelectFromModel,
-    SequentialFeatureSelector,
-)
-from category_encoders.one_hot import OneHotEncoder
-from category_encoders.ordinal import OrdinalEncoder
-from category_encoders.leave_one_out import LeaveOneOutEncoder
-from imblearn.over_sampling import SMOTE
 
-# Own modules
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
-from pycaret.containers.models.classification import (
-    get_all_model_containers as get_classifiers,
-)
-from pycaret.containers.models.regression import (
-    get_all_model_containers as get_regressors,
+from pycaret.containers.models import (
+    get_all_class_model_containers,
+    get_all_reg_model_containers,
 )
 from pycaret.internal.preprocess.iterative_imputer import IterativeImputer
 from pycaret.internal.preprocess.transformers import (
-    TransfomerWrapper,
-    ExtractDateTimeFeatures,
     DropImputer,
     EmbedTextFeatures,
+    ExtractDateTimeFeatures,
+    FixImbalancer,
+    GroupFeatures,
+    RareCategoryGrouping,
     RemoveMulticollinearity,
     RemoveOutliers,
-    FixImbalancer,
+    TargetTransformer,
+    TransformerWrapper,
+    TransformerWrapperWithInverse,
 )
-from pycaret.internal.utils import (
-    to_df,
-    get_columns_to_stratify_by,
-    df_shrink_dtypes,
+from pycaret.utils.constants import SEQUENCE
+from pycaret.utils.generic import (
+    MLUsecase,
     check_features_exist,
+    df_shrink_dtypes,
+    get_columns_to_stratify_by,
     normalize_custom_transformers,
+    to_df,
+    to_series,
 )
 
 
 class Preprocessor:
     """Class for all standard transformation steps."""
 
-    def _prepare_dataset(self, data):
-        """Convert the dataset to a pd.DataFrame."""
-        self.logger.info("Set up data.")
-        self.data = df_shrink_dtypes(to_df(data))
+    def _prepare_dataset(self, X, y=None):
+        """Prepare the input data.
 
-    def _prepare_target(self, target):
-        """Assign the target column."""
-        self.logger.info("Set up target column.")
-        if isinstance(target, str):
-            if target not in self.data.columns:
+        Convert X and y to pandas (if not already) and perform standard
+        compatibility checks (dimensions, length, indices, etc...).
+        From https://github.com/tvdboom/ATOM/blob/master/atom/basetransformer.py#L211
+
+        Parameters
+        ----------
+        X: dataframe-like
+            Feature set with shape=(n_samples, n_features).
+
+        y: int, str, sequence or None, optional (default=None)
+            - If None: y is ignored.
+            - If int: Index of the target column in X.
+            - If str: Name of the target column in X.
+            - Else: Target column with shape=(n_samples,).
+
+        """
+        self.logger.info("Set up data.")
+
+        # Make copy to not overwrite mutable arguments
+        X = to_df(deepcopy(X))
+
+        # Prepare target column
+        if isinstance(y, (list, tuple, np.ndarray, pd.Series)):
+            if not isinstance(y, pd.Series):
+                # Check that y is one-dimensional
+                ndim = np.array(y).ndim
+                if ndim != 1:
+                    raise ValueError(f"y should be one-dimensional, got ndim={ndim}.")
+
+                # Check X and y have the same number of rows
+                if len(X) != len(y):
+                    raise ValueError(
+                        "X and y don't have the same number of rows,"
+                        f" got len(X)={len(X)} and len(y)={len(y)}."
+                    )
+
+                y = to_series(y, index=X.index)
+
+            elif not X.index.equals(y.index):
+                raise ValueError("X and y don't have the same indices!")
+
+        elif isinstance(y, str):
+            if y not in X.columns:
                 raise ValueError(
                     "Invalid value for the target parameter. "
-                    f"Column {target} not found in the data."
+                    f"Column {y} not found in the data."
                 )
-            self.target_param = target
-        else:
-            self.target_param = self.data.columns[target]
+
+            X, y = X.drop(y, axis=1), X[y]
+
+        elif isinstance(y, int):
+            X, y = X.drop(X.columns[y], axis=1), X[X.columns[y]]
+
+        else:  # y=None
+            return df_shrink_dtypes(X)
+
+        # Check that y has no missing values
+        if y.isna().any():
+            raise ValueError(
+                f"{y.isna().sum()} missing values found in the target column: "
+                f"{y.name}. To proceed, remove the respective rows from the data. "
+            )
+
+        return df_shrink_dtypes(
+            X.merge(y.to_frame(), left_index=True, right_index=True)
+        )
+
+    def _set_index(self, df):
+        """Assign an index to the dataframe."""
+        self.logger.info("Set up index.")
+
+        target = df.columns[-1]
+
+        if getattr(self, "index", True) is True:  # True gets caught by isinstance(int)
+            return df
+        elif self.index is False:
+            df = df.reset_index(drop=True)
+        elif isinstance(self.index, int):
+            if -df.shape[1] <= self.index <= df.shape[1]:
+                df = df.set_index(df.columns[self.index], drop=True)
+            else:
+                raise ValueError(
+                    f"Invalid value for the index parameter. Value {self.index} "
+                    f"is out of range for a dataset with {df.shape[1]} columns."
+                )
+        elif isinstance(self.index, str):
+            if self.index in df:
+                df = df.set_index(self.index, drop=True)
+            else:
+                raise ValueError(
+                    "Invalid value for the index parameter. "
+                    f"Column {self.index} not found in the dataset."
+                )
+
+        if df.index.name == target:
+            raise ValueError(
+                "Invalid value for the index parameter. The index column "
+                f"can not be the same as the target column, got {target}."
+            )
+
+        return df
+
+    def _prepare_train_test(
+        self,
+        train_size,
+        test_data,
+        data_split_stratify,
+        data_split_shuffle,
+    ):
+        """Make the train/test split."""
+        self.logger.info("Set up train/test split.")
+
+        if test_data is None:
+            if isinstance(self.index, SEQUENCE):
+                if len(self.index) != len(self.data):
+                    raise ValueError(
+                        "Invalid value for the index parameter. Length of "
+                        f"index ({len(self.index)}) doesn't match that of "
+                        f"the dataset ({len(self.data)})."
+                    )
+                self.data.index = self.index
+
+            # self.data is already prepared here
+            train, test = train_test_split(
+                self.data,
+                train_size=train_size,
+                stratify=get_columns_to_stratify_by(
+                    self.X, self.y, data_split_stratify
+                ),
+                random_state=self.seed,
+                shuffle=data_split_shuffle,
+            )
+            self.data = self._set_index(pd.concat([train, test]))
+            self.idx = [self.data.index[: len(train)], self.data.index[-len(test) :]]
+
+        else:  # test_data is provided
+            test_data = self._prepare_dataset(test_data, self.target_param)
+
+            if isinstance(self.index, SEQUENCE):
+                if len(self.index) != len(self.data) + len(test_data):
+                    raise ValueError(
+                        "Invalid value for the index parameter. Length of "
+                        f"index ({len(self.index)}) doesn't match that of "
+                        f"the data sets ({len(self.data) + len(test_data)})."
+                    )
+                self.data.index = self.index[: len(self.data)]
+                test_data.index = self.index[-len(test_data) :]
+
+            self.data = self._set_index(pd.concat([self.data, test_data]))
+            self.idx = [
+                self.data.index[: -len(test_data)],
+                self.data.index[-len(test_data) :],
+            ]
 
     def _prepare_column_types(
         self,
@@ -141,51 +307,36 @@ class Preprocessor:
         # Features to keep during all preprocessing
         self._fxs["Keep"] = keep_features or []
 
-    def _prepare_train_test(
-        self,
-        train_size,
-        test_data,
-        data_split_stratify,
-        data_split_shuffle,
-    ):
-        """Make the train/test split."""
-        self.logger.info("Set up train/test split.")
-        if test_data is None:
-            train, test = train_test_split(
-                self.data,
-                test_size=1 - train_size,
-                stratify=get_columns_to_stratify_by(self.X, self.y, data_split_stratify),
-                random_state=self.seed,
-                shuffle=data_split_shuffle,
-            )
-            self.data = pd.concat([train, test]).reset_index(drop=True)
-            self.idx = [self.data.index[:len(train)], self.data.index[-len(test):]]
-
-        else:  # test_data is provided
-            self.data = pd.concat([self.data, test_data]).reset_index(drop=True)
-            self.idx = [self.data.index[:len(self.data)], self.data.index[-len(test_data):]]
-
     def _prepare_folds(self, fold_strategy, fold, fold_shuffle, fold_groups):
         """Assign the fold strategy."""
         self.logger.info("Set up folding strategy.")
         allowed_fold_strategy = ["kfold", "stratifiedkfold", "groupkfold", "timeseries"]
 
-        if fold_strategy == "groupkfold":
-            if fold_groups is None or len(fold_groups) == 0:
+        if isinstance(fold_strategy, str):
+            if fold_strategy == "groupkfold":
+                if fold_groups is None or len(fold_groups) == 0:
+                    raise ValueError(
+                        "Invalid value for the fold_strategy parameter. 'groupkfold' "
+                        "requires 'fold_groups' to be a non-empty array-like object."
+                    )
+            elif fold_strategy not in allowed_fold_strategy:
                 raise ValueError(
-                    "Invalid value for the fold_strategy parameter. 'groupkfold' "
-                    "requires 'fold_groups' to be a non-empty array-like object."
+                    "Invalid value for the fold_strategy parameter. "
+                    f"Choose from: {', '.join(allowed_fold_strategy)}."
                 )
-        elif fold_strategy not in allowed_fold_strategy:
-            raise ValueError(
-                "Invalid value for the fold_strategy parameter. "
-                f"Choose from: {', '.join(allowed_fold_strategy)}."
-            )
+
+        if fold_strategy == "timeseries" or isinstance(fold_strategy, TimeSeriesSplit):
+            if fold_shuffle:
+                raise ValueError(
+                    "Invalid value for the fold_strategy parameter. 'timeseries' "
+                    "requires 'data_split_shuffle' to be False as it can lead to "
+                    "unexpected data split."
+                )
 
         if isinstance(fold_groups, str):
             if fold_groups in self.X.columns:
-                if pd.isna(fold_groups).any():
-                    raise ValueError(f"The 'fold_groups' column cannot contain NaNs.")
+                if pd.isna(self.X[fold_groups]).any():
+                    raise ValueError("The 'fold_groups' column cannot contain NaNs.")
                 else:
                     self.fold_groups_param = self.X[fold_groups]
             else:
@@ -216,14 +367,45 @@ class Preprocessor:
     def _encode_target_column(self):
         """Add LabelEncoder to the pipeline."""
         self.logger.info("Set up label encoding.")
-        self.pipeline.steps.append(("label_encoding", TransfomerWrapper(LabelEncoder())))
+        self.pipeline.steps.append(
+            ("label_encoding", TransformerWrapperWithInverse(LabelEncoder()))
+        )
 
-    def _date_feature_engineering(self):
+    def _target_transformation(self, transformation_method):
+        """Power transform the data to be more Gaussian-like."""
+        self.logger.info("Set up target transformation.")
+
+        if transformation_method == "yeo-johnson":
+            transformation_estimator = PowerTransformer(
+                method="yeo-johnson", standardize=False, copy=True
+            )
+        elif transformation_method == "quantile":
+            transformation_estimator = QuantileTransformer(
+                random_state=self.seed,
+                output_distribution="normal",
+            )
+        else:
+            raise ValueError(
+                "Invalid value for the transform_target_method parameter. "
+                "The value should be either yeo-johnson or quantile, "
+                f"got {transformation_method}."
+            )
+
+        self.pipeline.steps.append(
+            (
+                "target_transformation",
+                TransformerWrapperWithInverse(
+                    TargetTransformer(transformation_estimator)
+                ),
+            )
+        )
+
+    def _date_feature_engineering(self, create_date_columns):
         """Convert date features to numerical values."""
         self.logger.info("Set up date feature engineering.")
-        # TODO: Could be improved allowing the user to choose which features to add
-        date_estimator = TransfomerWrapper(
-            transformer=ExtractDateTimeFeatures(), include=self._fxs["Date"]
+        date_estimator = TransformerWrapper(
+            transformer=ExtractDateTimeFeatures(create_date_columns),
+            include=self._fxs["Date"],
         )
         self.pipeline.steps.append(
             ("date_feature_extractor", date_estimator),
@@ -237,16 +419,16 @@ class Preprocessor:
         num_dict = {"mode": "most_frequent", "mean": "mean", "median": "median"}
         if isinstance(numeric_imputation, str):
             if numeric_imputation.lower() == "drop":
-                num_estimator = TransfomerWrapper(
+                num_estimator = TransformerWrapper(
                     transformer=DropImputer(columns=self._fxs["Numeric"])
                 )
             elif numeric_imputation.lower() == "knn":
-                num_estimator = TransfomerWrapper(
+                num_estimator = TransformerWrapper(
                     transformer=KNNImputer(),
                     include=self._fxs["Numeric"],
                 )
             elif numeric_imputation.lower() in num_dict:
-                num_estimator = TransfomerWrapper(
+                num_estimator = TransformerWrapper(
                     SimpleImputer(strategy=num_dict[numeric_imputation.lower()]),
                     include=self._fxs["Numeric"],
                 )
@@ -256,30 +438,30 @@ class Preprocessor:
                     f"{numeric_imputation}. Choose from: drop, mean, median, mode, knn."
                 )
         else:
-            num_estimator = TransfomerWrapper(
+            num_estimator = TransformerWrapper(
                 SimpleImputer(strategy="constant", fill_value=numeric_imputation),
                 include=self._fxs["Numeric"],
             )
 
         if categorical_imputation.lower() == "drop":
-            cat_estimator = TransfomerWrapper(
+            cat_estimator = TransformerWrapper(
                 transformer=DropImputer(columns=self._fxs["Categorical"])
             )
         elif categorical_imputation.lower() == "mode":
-            cat_estimator = TransfomerWrapper(
+            cat_estimator = TransformerWrapper(
                 transformer=SimpleImputer(strategy="most_frequent"),
                 include=self._fxs["Categorical"],
             )
         else:
-            cat_estimator = TransfomerWrapper(
-                SimpleImputer(strategy="constant", fill_value=categorical_imputation)
-                , include=self._fxs["Categorical"],
+            cat_estimator = TransformerWrapper(
+                SimpleImputer(strategy="constant", fill_value=categorical_imputation),
+                include=self._fxs["Categorical"],
             )
 
         self.pipeline.steps.extend(
             [
                 ("numerical_imputer", num_estimator),
-                ("categorical_imputer", cat_estimator)
+                ("categorical_imputer", cat_estimator),
             ],
         )
 
@@ -295,13 +477,13 @@ class Preprocessor:
         # Dict of all regressor models available
         regressors = {
             k: v
-            for k, v in get_regressors(self).items()
+            for k, v in get_all_reg_model_containers(self).items()
             if not v.is_special
         }
         # Dict of all classifier models available
         classifiers = {
             k: v
-            for k, v in get_classifiers(self).items()
+            for k, v in get_all_class_model_containers(self).items()
             if not v.is_special
         }
 
@@ -312,9 +494,9 @@ class Preprocessor:
                     f"parameter, got {numeric_iterative_imputer}. "
                     f"Allowed estimators are: {', '.join(regressors)}."
                 )
-            numeric_iterative_imputer = regressors[
-                numeric_iterative_imputer
-            ].class_def(**regressors[numeric_iterative_imputer].args)
+            numeric_iterative_imputer = regressors[numeric_iterative_imputer].class_def(
+                **regressors[numeric_iterative_imputer].args
+            )
         elif not hasattr(numeric_iterative_imputer, "predict"):
             raise ValueError(
                 "Invalid value for the numeric_iterative_imputer "
@@ -352,31 +534,27 @@ class Preprocessor:
                 return estimator, fit_params
             if isinstance(estimator, estimators_dict["lightgbm"].class_def):
                 return "fit_params_categorical_feature"
-            elif isinstance(
-                    estimator, estimators_dict["catboost"].class_def
-            ):
+            elif isinstance(estimator, estimators_dict["catboost"].class_def):
                 return "params_cat_features"
             elif isinstance(
-                    estimator,
-                    (
-                            estimators_dict["xgboost"].class_def,
-                            estimators_dict["rf"].class_def,
-                            estimators_dict["et"].class_def,
-                            estimators_dict["dt"].class_def,
-                            estimators_dict["ada"].class_def,
-                            estimators_dict.get(
-                                "gbr",
-                                estimators_dict.get(
-                                    "gbc", estimators_dict["xgboost"]
-                                ),
-                            ).class_def,
-                    ),
+                estimator,
+                (
+                    estimators_dict["xgboost"].class_def,
+                    estimators_dict["rf"].class_def,
+                    estimators_dict["et"].class_def,
+                    estimators_dict["dt"].class_def,
+                    estimators_dict["ada"].class_def,
+                    estimators_dict.get(
+                        "gbr",
+                        estimators_dict.get("gbc", estimators_dict["xgboost"]),
+                    ).class_def,
+                ),
             ):
                 return "ordinal"
             else:
                 return "one_hot"
 
-        imputer = TransfomerWrapper(
+        imputer = TransformerWrapper(
             transformer=IterativeImputer(
                 num_estimator=numeric_iterative_imputer,
                 cat_estimator=categorical_iterative_imputer,
@@ -401,7 +579,7 @@ class Preprocessor:
         self.logger.info("Set up text embedding.")
 
         if text_features_method.lower() in ("bow", "tfidf", "tf-idf"):
-            embed_estimator = TransfomerWrapper(
+            embed_estimator = TransformerWrapper(
                 transformer=EmbedTextFeatures(method=text_features_method),
                 include=self._fxs["Text"],
             )
@@ -412,22 +590,42 @@ class Preprocessor:
                 f"or tf-idf, got {text_features_method}."
             )
 
-        self.pipeline.steps.append(
-            ("text_embedding", embed_estimator)
-        )
+        self.pipeline.steps.append(("text_embedding", embed_estimator))
 
-    def _encoding(self, max_encoding_ohe, encoding_method):
+    def _encoding(self, max_encoding_ohe, encoding_method, rare_to_value, rare_value):
         """Encode categorical columns."""
+        if rare_to_value:
+            self.logger.info("Set up grouping of rare categories.")
+
+            if rare_to_value < 0 or rare_to_value >= 1:
+                raise ValueError(
+                    "Invalid value for the rare_to_value parameter. "
+                    f"The value must lie between 0 and 1, got {rare_to_value}."
+                )
+
+            rare_estimator = TransformerWrapper(
+                transformer=RareCategoryGrouping(rare_to_value, rare_value),
+                include=self._fxs["Categorical"],
+            )
+
+            self.pipeline.steps.append(("rare_category_grouping", rare_estimator))
+
+            # To select the encoding type for every column,
+            # we first need to run the grouping
+            X_transformed = rare_estimator.fit_transform(self.X_train)
+        else:
+            X_transformed = self.X_train
+
         # Select columns for different encoding types
         one_hot_cols, rest_cols = [], []
-        for col in self._fxs["Categorical"]:
-            n_unique = self.X[col].nunique(dropna=False)
+        for name, column in X_transformed[self._fxs["Categorical"]].items():
+            n_unique = column.nunique()
             if n_unique == 2:
-                self._fxs["Ordinal"][col] = list(sorted(self.X[col].unique()))
-            elif n_unique <= max_encoding_ohe:
-                one_hot_cols.append(col)
+                self._fxs["Ordinal"][name] = list(sorted(column.dropna().unique()))
+            elif max_encoding_ohe < 0 or n_unique <= max_encoding_ohe:
+                one_hot_cols.append(name)
             else:
-                rest_cols.append(col)
+                rest_cols.append(name)
 
         if self._fxs["Ordinal"]:
             self.logger.info("Set up encoding of ordinal features.")
@@ -436,40 +634,35 @@ class Preprocessor:
             mapping = {}
             for key, value in self._fxs["Ordinal"].items():
                 if self.X[key].nunique() != len(value):
-                    raise ValueError(
-                        "The levels passed to the ordinal_features parameter "
-                        "doesn't match with the levels in the dataset."
+                    self.logger.warning(
+                        f"The number of classes passed to feature {key} in the "
+                        f"ordinal_features parameter ({len(value)}) don't match "
+                        f"with the number of classes in the data ({self.X[key].nunique()})."
                     )
-                for elem in value:
-                    if elem not in self.X[key].unique():
-                        raise ValueError(
-                            f"Feature {key} doesn't contain the {elem} element."
-                        )
-                mapping[key] = {v: i for i, v in enumerate(value)}
 
                 # Encoder always needs mapping of NaN value
+                mapping[key] = {v: i for i, v in enumerate(value)}
                 mapping[key].setdefault(np.NaN, -1)
 
-            ord_estimator = TransfomerWrapper(
+            ord_estimator = TransformerWrapper(
                 transformer=OrdinalEncoder(
-                    mapping=[
-                        {"col": k, "mapping": val} for k, val in mapping.items()
-                    ],
+                    mapping=[{"col": k, "mapping": val} for k, val in mapping.items()],
+                    cols=list(
+                        self._fxs["Ordinal"].keys()
+                    ),  # Specify to not skip bool columns
                     handle_missing="return_nan",
                     handle_unknown="value",
                 ),
                 include=list(self._fxs["Ordinal"].keys()),
             )
 
-            self.pipeline.steps.append(
-                ("ordinal_encoding", ord_estimator)
-            )
+            self.pipeline.steps.append(("ordinal_encoding", ord_estimator))
 
         if self._fxs["Categorical"]:
             self.logger.info("Set up encoding of categorical features.")
-    
+
             if len(one_hot_cols) > 0:
-                onehot_estimator = TransfomerWrapper(
+                onehot_estimator = TransformerWrapper(
                     transformer=OneHotEncoder(
                         use_cat_names=True,
                         handle_missing="return_nan",
@@ -477,11 +670,9 @@ class Preprocessor:
                     ),
                     include=one_hot_cols,
                 )
-    
-                self.pipeline.steps.append(
-                    ("onehot_encoding", onehot_estimator)
-                )
-    
+
+                self.pipeline.steps.append(("onehot_encoding", onehot_estimator))
+
             # Encode the rest of the categorical columns
             if len(rest_cols) > 0:
                 if not encoding_method:
@@ -490,20 +681,19 @@ class Preprocessor:
                         handle_unknown="value",
                         random_state=self.seed,
                     )
-    
-                rest_estimator = TransfomerWrapper(
-                    transformer=encoding_method, include=rest_cols,
+
+                rest_estimator = TransformerWrapper(
+                    transformer=encoding_method,
+                    include=rest_cols,
                 )
-    
-                self.pipeline.steps.append(
-                    ("rest_encoding", rest_estimator)
-                )
+
+                self.pipeline.steps.append(("rest_encoding", rest_estimator))
 
     def _polynomial_features(self, polynomial_degree):
         """Create polynomial features from the existing ones."""
         self.logger.info("Set up polynomial features.")
 
-        polynomial = TransfomerWrapper(
+        polynomial = TransformerWrapper(
             transformer=PolynomialFeatures(
                 degree=polynomial_degree,
                 interaction_only=False,
@@ -512,9 +702,7 @@ class Preprocessor:
             ),
         )
 
-        self.pipeline.steps.append(
-            ("polynomial_features", polynomial)
-        )
+        self.pipeline.steps.append(("polynomial_features", polynomial))
 
     def _low_variance(self, low_variance_threshold):
         """Drop features with too low variance."""
@@ -526,14 +714,38 @@ class Preprocessor:
                 f"The value should be >0, got {low_variance_threshold}."
             )
         else:
-            variance_estimator = TransfomerWrapper(
+            variance_estimator = TransformerWrapper(
                 transformer=VarianceThreshold(low_variance_threshold),
                 exclude=self._fxs["Keep"],
             )
 
-        self.pipeline.steps.append(
-            ("low_variance", variance_estimator)
+        self.pipeline.steps.append(("low_variance", variance_estimator))
+
+    def _group_features(self, group_features, group_names):
+        """Get statistical properties of a group of features."""
+        self.logger.info("Set up feature grouping.")
+
+        # Convert a single group to sequence
+        if np.array(group_features).ndim == 1:
+            group_features = [group_features]
+
+        if group_names:
+            if isinstance(group_names, str):
+                group_names = [group_names]
+
+            if len(group_names) != len(group_features):
+                raise ValueError(
+                    "Invalid value for the group_names parameter. Length "
+                    f"({len(group_names)}) does not match with length of "
+                    f"group_features ({len(group_features)})."
+                )
+
+        grouping_estimator = TransformerWrapper(
+            transformer=GroupFeatures(group_features, group_names),
+            exclude=self._fxs["Keep"],
         )
+
+        self.pipeline.steps.append(("group_features", grouping_estimator))
 
     def _remove_multicollinearity(self, multicollinearity_threshold):
         """Drop features that are collinear with other features."""
@@ -546,28 +758,24 @@ class Preprocessor:
                 f"{multicollinearity_threshold}."
             )
 
-        multicollinearity = TransfomerWrapper(
+        multicollinearity = TransformerWrapper(
             transformer=RemoveMulticollinearity(multicollinearity_threshold),
             exclude=self._fxs["Keep"],
         )
 
-        self.pipeline.steps.append(
-            ("remove_multicollinearity", multicollinearity)
-        )
+        self.pipeline.steps.append(("remove_multicollinearity", multicollinearity))
 
     def _bin_numerical_features(self, bin_numeric_features):
         """Bin numerical features to 5 clusters."""
         self.logger.info("Set up binning of numerical features.")
 
         check_features_exist(bin_numeric_features, self.X)
-        binning_estimator = TransfomerWrapper(
+        binning_estimator = TransformerWrapper(
             transformer=KBinsDiscretizer(encode="ordinal", strategy="kmeans"),
             include=bin_numeric_features,
         )
 
-        self.pipeline.steps.append(
-            ("bin_numeric_features", binning_estimator)
-        )
+        self.pipeline.steps.append(("bin_numeric_features", binning_estimator))
 
     def _remove_outliers(self, outliers_method, outliers_threshold):
         """Remove outliers from the dataset."""
@@ -580,9 +788,10 @@ class Preprocessor:
                 "'iforest', 'ee' or 'lof'."
             )
 
-        outliers = TransfomerWrapper(
+        outliers = TransformerWrapper(
             RemoveOutliers(
-                method=outliers_method, threshold=outliers_threshold,
+                method=outliers_method,
+                threshold=outliers_threshold,
             ),
         )
 
@@ -592,10 +801,40 @@ class Preprocessor:
         """Balance the classes in the target column."""
         self.logger.info("Set up imbalanced handling.")
 
-        if fix_imbalance_method is None:
-            balance_estimator = FixImbalancer(SMOTE())
+        strategies = dict(
+            # clustercentroids=ClusterCentroids,  # Has no sample_indices_
+            condensednearestneighbour=CondensedNearestNeighbour,
+            editednearestneighborus=EditedNearestNeighbours,
+            repeatededitednearestneighbours=RepeatedEditedNearestNeighbours,
+            allknn=AllKNN,
+            instancehardnessthreshold=InstanceHardnessThreshold,
+            nearmiss=NearMiss,
+            neighbourhoodcleaningrule=NeighbourhoodCleaningRule,
+            onesidedselection=OneSidedSelection,
+            randomundersampler=RandomUnderSampler,
+            tomeklinks=TomekLinks,
+            randomoversampler=RandomOverSampler,
+            smote=SMOTE,
+            smotenc=SMOTENC,
+            smoten=SMOTEN,
+            adasyn=ADASYN,
+            borderlinesmote=BorderlineSMOTE,
+            kmeanssmote=KMeansSMOTE,
+            svmsmote=SVMSMOTE,
+            smoteenn=SMOTEENN,
+            smotetomek=SMOTETomek,
+        )
+
+        if isinstance(fix_imbalance_method, str):
+            fix_imbalance_method = fix_imbalance_method.lower()
+            if fix_imbalance_method not in strategies:
+                raise ValueError(
+                    "Invalid value for the strategy parameter, got "
+                    f"{fix_imbalance_method}. Choose from: {', '.join(strategies)}."
+                )
+            balance_estimator = FixImbalancer(strategies[fix_imbalance_method]())
         elif not hasattr(fix_imbalance_method, "fit_resample"):
-            raise ValueError(
+            raise TypeError(
                 "Invalid value for the fix_imbalance_method parameter. "
                 "The provided value must be a imblearn estimator, got "
                 f"{fix_imbalance_method.__class__.__name_}."
@@ -603,8 +842,7 @@ class Preprocessor:
         else:
             balance_estimator = FixImbalancer(fix_imbalance_method)
 
-        balance_estimator = TransfomerWrapper(balance_estimator)
-        self.pipeline.steps.append(("balance", balance_estimator))
+        self.pipeline.steps.append(("balance", TransformerWrapper(balance_estimator)))
 
     def _transformation(self, transformation_method):
         """Power transform the data to be more Gaussian-like."""
@@ -616,7 +854,8 @@ class Preprocessor:
             )
         elif transformation_method == "quantile":
             transformation_estimator = QuantileTransformer(
-                random_state=self.seed, output_distribution="normal",
+                random_state=self.seed,
+                output_distribution="normal",
             )
         else:
             raise ValueError(
@@ -626,7 +865,7 @@ class Preprocessor:
             )
 
         self.pipeline.steps.append(
-            ("transformation", TransfomerWrapper(transformation_estimator))
+            ("transformation", TransformerWrapper(transformation_estimator))
         )
 
     def _normalization(self, normalize_method):
@@ -640,7 +879,7 @@ class Preprocessor:
             "robust": RobustScaler(),
         }
         if normalize_method in norm_dict:
-            normalize_estimator = TransfomerWrapper(norm_dict[normalize_method])
+            normalize_estimator = TransformerWrapper(norm_dict[normalize_method])
         else:
             raise ValueError(
                 "Invalid value for the normalize_method parameter, got "
@@ -653,30 +892,15 @@ class Preprocessor:
         """Apply Principal Component Analysis."""
         self.logger.info("Set up PCA.")
 
-        if pca_components <= 0:
-            raise ValueError(
-                "Invalid value for the pca_components parameter. "
-                f"The value should be >0, got {pca_components}."
-            )
-        elif pca_components <= 1:
-            pca_components = int(pca_components * self.X.shape[1])
-        elif pca_components <= self.X.shape[1]:
-            pca_components = int(pca_components)
-        else:
-            raise ValueError(
-                "Invalid value for the pca_components parameter. "
-                "The value should be smaller than the number of "
-                f"features, got {pca_components}."
-            )
-
         pca_dict = {
             "linear": PCA(n_components=pca_components),
             "kernel": KernelPCA(n_components=pca_components, kernel="rbf"),
             "incremental": IncrementalPCA(n_components=pca_components),
         }
         if pca_method in pca_dict:
-            pca_estimator = TransfomerWrapper(
-                transformer=pca_dict[pca_method], exclude=self._fxs["Keep"],
+            pca_estimator = TransformerWrapper(
+                transformer=pca_dict[pca_method],
+                exclude=self._fxs["Keep"],
             )
         else:
             raise ValueError(
@@ -696,9 +920,9 @@ class Preprocessor:
         self.logger.info("Set up feature selection.")
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
-            func = get_classifiers
+            func = get_all_class_model_containers
         else:
-            func = get_regressors
+            func = get_all_reg_model_containers
 
         models = {k: v for k, v in func(self).items() if not v.is_special}
         if isinstance(feature_selection_estimator, str):
@@ -715,17 +939,25 @@ class Preprocessor:
                 "The provided estimator does not adhere to sklearn's API."
             )
 
+        if 0 < n_features_to_select < 1:
+            n_features_to_select = int(n_features_to_select * self.X.shape[1])
+        elif n_features_to_select > self.X.shape[1]:
+            raise ValueError(
+                "Invalid value for the n_features_to_select parameter. The number of "
+                "feature to select should be less than the starting number of features."
+            )
+
         if feature_selection_method.lower() == "univariate":
             if self._ml_usecase == MLUsecase.CLASSIFICATION:
                 func = f_classif
             else:
                 func = f_regression
-            feature_selector = TransfomerWrapper(
+            feature_selector = TransformerWrapper(
                 transformer=SelectKBest(score_func=func, k=n_features_to_select),
                 exclude=self._fxs["Keep"],
             )
         elif feature_selection_method.lower() == "classic":
-            feature_selector = TransfomerWrapper(
+            feature_selector = TransformerWrapper(
                 transformer=SelectFromModel(
                     estimator=fs_estimator,
                     threshold=-np.inf,
@@ -734,7 +966,7 @@ class Preprocessor:
                 exclude=self._fxs["Keep"],
             )
         elif feature_selection_method.lower() == "sequential":
-            feature_selector = TransfomerWrapper(
+            feature_selector = TransformerWrapper(
                 transformer=SequentialFeatureSelector(
                     estimator=fs_estimator,
                     n_features_to_select=n_features_to_select,
@@ -746,17 +978,23 @@ class Preprocessor:
             raise ValueError(
                 "Invalid value for the feature_selection_method parameter, "
                 f"got {feature_selection_method}. Possible values are: "
-                "'classic' or 'boruta'."
+                "'classic', 'univariate' or 'sequential'."
             )
 
-        self.pipeline.steps.append(
-            ("feature_selection", feature_selector)
-        )
+        self.pipeline.steps.append(("feature_selection", feature_selector))
 
-    def _add_custom_pipeline(self, custom_pipeline):
+    def _add_custom_pipeline(self, custom_pipeline, custom_pipeline_position):
         """Add custom transformers to the pipeline."""
         self.logger.info("Set up custom pipeline.")
+
+        # Determine position to insert
+        if custom_pipeline_position < 0:
+            # -1 becomes last, etc...
+            pos = len(self.pipeline.steps) + custom_pipeline_position + 1
+        else:
+            # +1 because of the placeholder
+            pos = custom_pipeline_position + 1
+
         for name, estimator in normalize_custom_transformers(custom_pipeline):
-            self.pipeline.steps.append(
-                (name, TransfomerWrapper(estimator))
-            )
+            self.pipeline.steps.insert(pos, (name, TransformerWrapper(estimator)))
+            pos += 1

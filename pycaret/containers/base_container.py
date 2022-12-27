@@ -3,8 +3,9 @@
 # License: MIT
 
 import inspect
-from typing import Dict, Any
-import pycaret.internal.utils
+from typing import Any, Dict, Optional
+
+import pycaret.utils.generic
 
 
 class BaseContainer:
@@ -22,7 +23,7 @@ class BaseContainer:
         The class used for the model, eg. LogisticRegression.
     is_turbo : bool, default = True
         Should the model be used with 'turbo = True' in compare_models().
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing object of class_def class.
 
     Attributes
@@ -35,7 +36,7 @@ class BaseContainer:
         The class used for the model, eg. LogisticRegression.
     is_turbo : bool, default = True
         Should the model be used with 'turbo = True' in compare_models().
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing object of class_def class.
 
     """
@@ -45,7 +46,7 @@ class BaseContainer:
         id: str,
         name: str,
         class_def: type,
-        args: Dict[str, Any] = None,
+        args: Optional[Dict[str, Any]] = None,
     ) -> None:
         if not args:
             args = {}
@@ -60,10 +61,10 @@ class BaseContainer:
         self.active = True
 
     def get_class_name(self):
-        return pycaret.internal.utils.get_class_name(self.class_def)
+        return pycaret.utils.generic.get_class_name(self.class_def)
 
     def get_package_name(self):
-        return pycaret.internal.utils.get_package_name(self.class_def)
+        return pycaret.utils.generic.get_package_name(self.class_def)
 
     def get_dict(self, internal: bool = True) -> Dict[str, Any]:
         """
@@ -125,7 +126,7 @@ def get_all_containers(
                 instance = obj(experiment)
                 if instance.active:
                     model_containers.append(instance)
-            except:
+            except Exception:
                 pass
 
     return {container.id: container for container in model_containers}

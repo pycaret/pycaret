@@ -1,6 +1,6 @@
 """Module containing utility functions for datatime manipulation"""
 
-from typing import Optional, Union, Any
+from typing import Any, Optional, Union
 
 import pandas as pd
 
@@ -43,7 +43,7 @@ def coerce_period_to_datetime_index(
 
             data_.index = data_.index.to_timestamp(freq=freq)
 
-            #### Corner Case Handling ----
+            # Corner Case Handling ----
             # When data.index is of type Q-DEC with only 2 points, frequency
             # is not set after conversion (details below). However, this
             # works OK if there are more than 2 data points.

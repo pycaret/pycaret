@@ -1,16 +1,16 @@
-from typing import Any, Dict, Optional, Union, Sequence
+from typing import List, Optional
 
-from scipy import stats
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.basewidget import BaseFigureWidget
-import pandas as pd
 import numpy as np
-from ipywidgets import widgets, Layout
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from ipywidgets import Layout, widgets
+from plotly.basewidget import BaseFigureWidget
+from scipy import stats
 
 import pycaret.internal.plots.helper as helper
-from pycaret.internal.validation import is_fitted
-from pycaret.internal.Display import Display
+from pycaret.internal.display import CommonDisplay
+from pycaret.internal.display.display_backend import ColabBackend, DatabricksBackend
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import fit_if_not_fitted
 
@@ -209,13 +209,13 @@ class ScaleLocationWidget(BaseFigureWidget):
                 {
                     "Predictions": fitted,
                     "Split": split_origin,
-                    "$\sqrt{|Standardized Residuals|}$": sqrt_abs_standardized_residuals,
+                    "Standardized Residuals^1/2": sqrt_abs_standardized_residuals,
                 }
             )
             fig = px.scatter(
                 dataframe,
                 x="Predictions",
-                y="$\sqrt{|Standardized Residuals|}$",
+                y="Standardized Residuals^1/2",
                 trendline="lowess",
                 color="Split",
                 color_discrete_sequence=["blue", "green"],
@@ -228,13 +228,13 @@ class ScaleLocationWidget(BaseFigureWidget):
             dataframe = pd.DataFrame(
                 {
                     "Predictions": fitted,
-                    "$\sqrt{|Standardized Residuals|}$": sqrt_abs_standardized_residuals,
+                    "Standardized Residuals^1/2": sqrt_abs_standardized_residuals,
                 }
             )
             fig = px.scatter(
                 dataframe,
                 x="Predictions",
-                y="$\sqrt{|Standardized Residuals|}$",
+                y="Standardized Residuals^1/2",
                 trendline="lowess",
                 title="Scale-Location Plot",
                 opacity=0.3,
@@ -246,7 +246,7 @@ class ScaleLocationWidget(BaseFigureWidget):
             fig.add_annotation(
                 x=fitted[i],
                 y=sqrt_abs_standardized_residuals[i],
-                text=f"$\sqrt{{|\\tilde r_{{{i}}}|}}$",
+                text=f"~r_{i}^1/2",
             )
         fig.update_annotations(
             dict(xref="x", yref="y", showarrow=True, arrowhead=7, ax=0, ay=-40)
@@ -384,7 +384,7 @@ class CooksDistanceWidget(BaseFigureWidget):
             fig.add_annotation(
                 x=model_leverage[i],
                 y=standardized_residuals[i],
-                text=f"$\\tilde r_{{{i}}}$",
+                text=f"~r_{i}",
             )
 
         fig.update_annotations(
@@ -556,7 +556,7 @@ class TukeyAnscombeWidget(BaseFigureWidget):
         abs_resid = model_abs_resid.sort_values(ascending=False)
         abs_resid_top_3 = abs_resid[:3]
         for i in abs_resid_top_3.index:
-            fig.add_annotation(x=predictions[i], y=residuals[i], text=f"$r_{{{i}}}$")
+            fig.add_annotation(x=predictions[i], y=residuals[i], text=f"r_{i}")
         fig.update_annotations(
             dict(xref="x", yref="y", showarrow=True, arrowhead=7, ax=0, ay=-40)
         )
@@ -605,20 +605,18 @@ class InteractiveResidualsPlot:
 
     def __init__(
         self,
-        display: Display,
         model,
         x: np.ndarray,
         y: np.ndarray,
         x_test: np.ndarray = None,
         y_test: np.ndarray = None,
+        display: Optional[CommonDisplay] = None,
     ):
         """
         Instantiates the interactive residual plots for the given data
 
         Parameters
         ----------
-        display:  Display
-            this object is required to show the plots and move the progressbar
         model
             describes the regression model which is to be evaluated
         x: np.ndarray
@@ -629,21 +627,23 @@ class InteractiveResidualsPlot:
             optional, some test data (requires y_test)
         y_test: np.ndarray
             optional, the labels to the provided test data (requires x_test)
+        display: CommonDisplay
+            this object is required to show the plots
         """
 
-        self.figures: [BaseFigureWidget] = []
-        self.display: Display = display
+        self.figures: List[BaseFigureWidget] = []
+        self.display: CommonDisplay = display or CommonDisplay()
+        if isinstance(self.display._general_display, (ColabBackend, DatabricksBackend)):
+            raise ValueError(
+                "residuals_interactive plot is not supported on Google Colab or Databricks."
+            )
         self.plot = self.__create_resplots(model, x, y, x_test, y_test)
 
     def show(self):
         """
         Show the plots within the provided Display instance
         """
-        if self.display.enviroment == "google.colab":
-            for figure in self.figures:
-                figure.show()
-        else:
-            self.display.display(self.plot)
+        self.display.display(self.plot)
 
     def get_html(self):
         """
@@ -708,21 +708,18 @@ class InteractiveResidualsPlot:
                 split_origin = None
 
         logger.info("Calculated model residuals")
-        self.display.move_progress()
 
         tukey_anscombe_widget = TukeyAnscombeWidget(
             predictions, residuals, split_origin=split_origin
         )
         logger.info("Calculated Tunkey-Anscombe Plot")
         self.figures.append(tukey_anscombe_widget)
-        self.display.move_progress()
 
         qq_plot_widget = QQPlotWidget(
             predictions, y, split_origin=split_origin, featuresize=x.shape[1]
         )
         logger.info("Calculated Normal QQ Plot")
         self.figures.append(qq_plot_widget)
-        self.display.move_progress()
 
         standardized_residuals = helper.calculate_standardized_residual(
             predictions, y, None
@@ -733,7 +730,6 @@ class InteractiveResidualsPlot:
         )
         logger.info("Calculated Scale-Location Plot")
         self.figures.append(scale_location_widget)
-        self.display.move_progress()
 
         leverage = helper.leverage_statistic(np.array(x))
 
@@ -750,7 +746,6 @@ class InteractiveResidualsPlot:
         )
         logger.info("Calculated Residual vs Leverage Plot inc. Cook's distance")
         self.figures.append(cooks_distance_widget)
-        self.display.move_progress()
 
         items_layout = Layout(width="1000px")
         h0 = widgets.HBox(self.figures[:2], layout=items_layout)

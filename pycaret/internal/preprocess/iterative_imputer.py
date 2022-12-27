@@ -1,31 +1,31 @@
-from typing import List, Optional
-import numpy as np
-from time import time
 import warnings
-import pandas as pd
+from time import time
+from typing import List, Optional
 
+import numpy as np
+import pandas as pd
+from sklearn.base import BaseEstimator, clone
 from sklearn.compose import ColumnTransformer
+from sklearn.dummy import DummyClassifier
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import IterativeImputer as SklearnIterativeImputer, SimpleImputer
+from sklearn.impute import IterativeImputer as SklearnIterativeImputer
+from sklearn.impute import SimpleImputer
 from sklearn.impute._iterative import (
-    _ImputerTriplet,
-    is_scalar_nan,
     FLOAT_DTYPES,
     _check_inputs_dtype,
     _get_mask,
+    _ImputerTriplet,
     _safe_indexing,
+    is_scalar_nan,
     stats,
 )
 from sklearn.pipeline import Pipeline as SklearnPipeline
-from sklearn.preprocessing import (
-    OrdinalEncoder as SklearnOrdinalEncoder,
-    OneHotEncoder as SklearnOneHotEncoder,
-)
-from sklearn.base import BaseEstimator, clone
+from sklearn.preprocessing import OneHotEncoder as SklearnOneHotEncoder
+from sklearn.preprocessing import OrdinalEncoder as SklearnOrdinalEncoder
 from sklearn.utils import check_random_state
-from sklearn.exceptions import ConvergenceWarning
 from sklearn.utils.validation import check_is_fitted
-from sklearn.dummy import DummyClassifier
+
 
 # Handle categorical columns. Special cases for some models.
 # TODO make "has own cat encoding a container feature"
@@ -402,7 +402,14 @@ class IterativeImputer(SklearnIterativeImputer):
     def transform(self, X):
         check_is_fitted(self)
         if self.mappings_:
-            X = X.astype({col: "category" for col in self.mappings_})
+            X = X.astype(
+                {
+                    col: pd.CategoricalDtype(
+                        categories=list(self.mappings_[col].keys())
+                    )
+                    for col in self.mappings_
+                }
+            )
             for col in X.select_dtypes("category").columns:
                 X[col] = X[col].cat.rename_categories(self.mappings_[col])
         Xt = super().transform(X)

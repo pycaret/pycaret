@@ -1,11 +1,11 @@
 
 ![](https://cdn-images-1.medium.com/max/2000/1*Xtb7t4Rlxq8jFLXZn_sdyQ.png)
 
-## Announcing PyCaret 1.0.0
+# Announcing PyCaret 1.0.0
 
-### An open source **low-code** machine learning library in Python.
+# An open source **low-code** machine learning library in Python.
 
-### by Moez Ali
+# by Moez Ali
 
 We are excited to announce [PyCaret](https://www.pycaret.org), an open source machine learning library in Python to train and deploy supervised and unsupervised machine learning models in a **low-code** environment. PyCaret allows you to go from preparing data to deploying models within seconds from your choice of notebook environment.
 
@@ -15,7 +15,7 @@ PyCaret is **simple and** **easy to use**. All the operations performed in PyCar
 
  <iframe src="https://medium.com/media/a76d85d6c77246f0791956c273224c56" frameborder=0></iframe>
 
-## Getting Started with PyCaret
+# Getting Started with PyCaret
 
 The first stable release of PyCaret version 1.0.0 can be installed using pip. Using the command line interface or notebook environment, run the below cell of code to install PyCaret.
 
@@ -27,13 +27,13 @@ If you are using [Azure notebooks](https://notebooks.azure.com/) or [Google Cola
 
 When you install PyCaret, all dependencies are installed automatically. [Click here](https://github.com/pycaret/pycaret/blob/master/requirements.txt) to see the list of complete dependencies.
 
-## It cannot get easier than this 👇
+# It cannot get easier than this 👇
 
 ![](https://cdn-images-1.medium.com/max/2560/1*QG6SjFXOV6wqY_00D1fsLw.gif)
 
-## 📘 Step-by-Step Tutorial
+# 📘 Step-by-Step Tutorial
 
-## 1. Getting Data
+# 1. Getting Data
 
 In this step-by-step tutorial, we will use **‘diabetes’ **dataset and the goal is to predict patient outcome (binary 1 or 0) based on several factors such as Blood Pressure, Insulin Level, Age etc. The dataset is available on PyCaret’s [github repository](https://github.com/pycaret/pycaret). Easiest way to import dataset directly from repository is by using **get_data **function from **pycaret.datasets** modules.
 
@@ -44,7 +44,7 @@ In this step-by-step tutorial, we will use **‘diabetes’ **dataset and the go
 
 💡 PyCaret can work directly with **pandas** dataframe.
 
-## 2. Setting up Environment
+# 2. Setting up Environment
 
 The first step of any machine learning experiment in PyCaret is setting up the environment by importing the required module and initializing **setup**( ). The module used in this example is [**pycaret.classification](https://www.pycaret.org/classification).**
 
@@ -61,7 +61,7 @@ All the preprocessing steps are applied within **setup(). **With over 20 feature
 
 💡 Data Preprocessing steps that are compulsory for machine learning such as missing values imputation, categorical variable encoding, label encoding (converting yes or no into 1 or 0), and train-test-split are automatically performed when setup() is initialized. [Click here](https://www.pycaret.org/preprocessing) to learn more about PyCaret’s preprocessing abilities.
 
-## 3. Compare Models
+# 3. Compare Models
 
 This is the first step recommended in supervised machine learning experiments ([classification](https://www.pycaret.org/classification) or [regression](https://www.pycaret.org/regression)). This function trains all the models in the model library and compares the common evaluation metrics using k-fold cross validation (by default 10 folds). The evaluation metrics used are:
 
@@ -77,7 +77,7 @@ This is the first step recommended in supervised machine learning experiments ([
 
 💡 Table is sorted by ‘Accuracy’ (Highest to Lowest) value by default. It can be changed by changing the value of ***sort ***parameter.
 
-## 4. Create Model
+# 4. Create Model
 
 Creating a model in any module of PyCaret is as simple as writing **create_model.* ***It takes only one parameter i.e. the model name passed as string input. This function returns a table with k-fold cross validated scores and a trained model object.
 
@@ -91,7 +91,7 @@ Variable ‘adaboost’ stores a trained model object returned by **create_model
 
 💡 PyCaret has over 60 open source ready-to-use algorithms. [Click here](https://www.pycaret.org/create-model) to see a complete list of estimators / models available in PyCaret.
 
-## 5. Tune Model
+# 5. Tune Model
 
 The **tune_model **function is used for automatically tuning hyperparameters of a machine learning model**. **PyCaret uses **random grid search** over a predefined search space. This function returns a table with k-fold cross validated scores and a trained model object.
 
@@ -101,7 +101,7 @@ The **tune_model **function is used for automatically tuning hyperparameters of 
 
 💡 The **tune_model **function in unsupervised modules such as [pycaret.nlp](https://www.pycaret.org/nlp), [pycaret.clustering](https://www.pycaret.org/clustering) and [pycaret.anomaly](https://www.pycaret.org/anomaly) can be used in conjunction with supervised modules. For example, PyCaret’s NLP module can be used to tune *number of topics* parameter by evaluating an objective / cost function from a supervised ML model such as ‘Accuracy’ or ‘R2’.
 
-## 6. Ensemble Model
+# 6. Ensemble Model
 
 The **ensemble_model **function is used for ensembling trained models**. **It takes only one parameter i.e. a trained model object. This functions returns a table with k-fold cross validated scores and a trained model object.
 
@@ -117,7 +117,7 @@ The **ensemble_model **function is used for ensembling trained models**. **It ta
 
 💡 PyCaret also provide [blend_models](https://www.pycaret.org/blend-models) and [stack_models](https://www.pycaret.org/stack-models) functionality to ensemble multiple trained models.
 
-## 7. Plot Model
+# 7. Plot Model
 
 Performance evaluation and diagnostics of a trained machine learning model can be done using the **plot_model **function. It takes a trained model object and the type of plot as a string input within the **plot_model** function.
 
@@ -148,7 +148,7 @@ Alternatively, you can use **evaluate_model **function to see plots *via *user i
 
 💡 **plot_model** function in **pycaret.nlp **module can be used to visualize *text corpus* and *semantic topic models*. [Click here](https://pycaret.org/plot-model/#nlp) to learn more about it.
 
-## 8. Interpret Model
+# 8. Interpret Model
 
 When the relationship in data is non-linear which is often the case in real life we invariably see tree-based models doing much better than simple gaussian models. However, this comes at the cost of losing interpretability as tree-based models do not provide simple coefficients like linear models. PyCaret implements [SHAP (SHapley Additive exPlanations](https://shap.readthedocs.io/en/latest/) using **interpret_model **function.
 
@@ -169,7 +169,7 @@ Interpretation of a particular datapoint (also known as reason argument) in the 
 
 ![](https://cdn-images-1.medium.com/max/2184/1*hsM128hQ2sDk9TnTHBH9Bw.png)
 
-## 9. Predict Model
+# 9. Predict Model
 
 So far the results we have seen are based on k-fold cross validation on training dataset only (70% by default). In order to see the predictions and performance of the model on the test / hold-out dataset, the **predict_model** function is used.
 
@@ -191,14 +191,14 @@ So far the results we have seen are based on k-fold cross validation on training
 
 💡 predict_model function can also predict directly from the model hosted on AWS S3 using [deploy_model](https://www.pycaret.org/deploy-model) function.
 
-## 10. Deploy Model
+# 10. Deploy Model
 
 One way to utilize the trained models to generate predictions on an unseen dataset is by using the predict_model function in the same notebooks / IDE in which model was trained. However, making the prediction on an unseen dataset is an iterative process; depending on the use-case, the frequency of making predictions could be from real time predictions to batch predictions. PyCaret’s **deploy_model** function allows deploying the entire pipeline including trained model on cloud from notebook environment.
 
     **deploy_model**(model = rf, model_name = 'rf_aws', platform = 'aws', 
                  authentication =  {'bucket'  : 'pycaret-test'})
 
-## 11. Save Model / Save Experiment
+# 11. Save Model / Save Experiment
 
 Once training is completed the entire pipeline containing all preprocessing transformations and trained model object can be saved as a binary pickle file.
 
@@ -218,7 +218,7 @@ You can also save the entire experiment consisting of all intermediary outputs a
 
 💡 You can load saved model and saved experiment using **load_model **and **load_experiment **function available in all modules of PyCaret.
 
-## 12. Next Tutorial
+# 12. Next Tutorial
 
 In the next tutorial, we will show how to consume a trained machine learning model in Power BI to generate batch predictions in a real production environment.
 
@@ -230,11 +230,11 @@ Please also see our beginner level notebooks for these modules:
 [Natural Language Processing](https://www.pycaret.org/nlp101)
 [Association Rule Mining](https://www.pycaret.org/arul101)
 
-## What’s in the development pipeline?
+# What’s in the development pipeline?
 
 We are actively working on improving PyCaret. Our future development pipeline includes a new **Time Series Forecasting **module, Integration with **TensorFlow **and major improvements on scalability of PyCaret. If you would like to share your feedback and help us improve further, you may [fill this form](https://www.pycaret.org/feedback) on website or leave a comment on our [GitHub](http://www.github.com/pycaret/) or [LinkedIn](https://www.linkedin.com/company/pycaret/) page.
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 As of the first release 1.0.0, PyCaret has the following modules available for use. Click on the links below to see the documentation and working examples.
 
@@ -245,7 +245,7 @@ As of the first release 1.0.0, PyCaret has the following modules available for u
 ](https://www.pycaret.org/anomaly-detection)[Natural Language Processing ](https://www.pycaret.org/nlp)
 [Association Rule Mining](https://www.pycaret.org/association-rules)
 
-## Important Links
+# Important Links
 
 [User Guide / Documentation](https://www.pycaret.org/guide)
 [Github Repository](http://www.github.com/pycaret/pycaret)

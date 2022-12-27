@@ -1,8 +1,9 @@
 # Copyright (C) 2019-2020 Moez Ali <moez.ali@queensu.ca>
 # License: MIT, moez.ali@queensu.ca
 
-from setuptools import setup, find_packages
 import time
+
+from setuptools import find_packages, setup
 
 nightly_version = "3.0.0"
 
@@ -36,7 +37,6 @@ setup(
     license="MIT",
     classifiers=[
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

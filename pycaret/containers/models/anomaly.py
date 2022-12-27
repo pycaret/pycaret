@@ -8,19 +8,15 @@
 # `ClassifierContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-import logging
-import pycaret.internal.cuml_wrappers
-from typing import Any
-from pycaret.containers.models.base_model import (
-    ModelContainer,
-)
-from pycaret.internal.utils import (
-    param_grid_to_lists,
-    get_logger,
-)
-from pycaret.internal.distributions import *
-import pycaret.containers.base_container
+from typing import Any, Dict, Optional
+
 import numpy as np
+
+import pycaret.containers.base_container
+import pycaret.internal.cuml_wrappers
+from pycaret.containers.models.base_model import ModelContainer
+from pycaret.internal.distributions import Distribution
+from pycaret.utils.generic import get_logger, param_grid_to_lists
 
 _DEFAULT_N_ANOMALYS = 4
 
@@ -41,15 +37,15 @@ class AnomalyContainer(ModelContainer):
     eq_function : type, default = None
         Function to use to check whether an object (model) can be considered equal to the model
         in the container. If None, will be ``is_instance(x, class_def)`` where x is the object.
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing object of class_def class.
     is_special : bool, default = False
         Is the model special (not intended to be used on its own, eg. VotingClassifier).
-    tune_grid : dict of str : list, default = {}
+    tune_grid : dict of str : list, default = {} (empty dict)
         The hyperparameters tuning grid for random and grid search.
-    tune_distribution : dict of str : Distribution, default = {}
+    tune_distribution : dict of str : Distribution, default = {} (empty dict)
         The hyperparameters tuning grid for other types of searches.
-    tune_args : dict, default = {}
+    tune_args : dict, default = {} (empty dict)
         The arguments to always pass to the tuner.
     is_gpu_enabled : bool, default = None
         If None, will try to automatically determine.
@@ -162,7 +158,7 @@ class AnomalyContainer(ModelContainer):
 
 class ABODAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.abod import ABOD
 
@@ -184,7 +180,7 @@ class ABODAnomalyContainer(AnomalyContainer):
 
 class CBLOFAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.cblof import CBLOF
 
@@ -209,7 +205,7 @@ class CBLOFAnomalyContainer(AnomalyContainer):
 
 class COFAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.cof import COF
 
@@ -231,7 +227,7 @@ class COFAnomalyContainer(AnomalyContainer):
 
 class IForestAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.iforest import IForest
 
@@ -257,7 +253,7 @@ class IForestAnomalyContainer(AnomalyContainer):
 
 class HBOSAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.hbos import HBOS
 
@@ -279,7 +275,7 @@ class HBOSAnomalyContainer(AnomalyContainer):
 
 class KNNAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.knn import KNN
 
@@ -303,7 +299,7 @@ class KNNAnomalyContainer(AnomalyContainer):
 
 class LOFAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.lof import LOF
 
@@ -327,7 +323,7 @@ class LOFAnomalyContainer(AnomalyContainer):
 
 class OCSVMAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.ocsvm import OCSVM
 
@@ -349,7 +345,7 @@ class OCSVMAnomalyContainer(AnomalyContainer):
 
 class PCAAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.pca import PCA
 
@@ -373,7 +369,7 @@ class PCAAnomalyContainer(AnomalyContainer):
 
 class MCDAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.mcd import MCD
 
@@ -397,7 +393,7 @@ class MCDAnomalyContainer(AnomalyContainer):
 
 class SODAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.sod import SOD
 
@@ -419,7 +415,7 @@ class SODAnomalyContainer(AnomalyContainer):
 
 class SOSAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.sos import SOS
 

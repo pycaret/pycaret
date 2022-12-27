@@ -1,27 +1,126 @@
-from typing import Optional, List, Tuple, Union, Dict, Any
 from math import ceil
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-import numpy as np
-import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-
-
-from scipy.signal import periodogram
-from scipy.fft import fft, fftfreq
-
+import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
-
+from scipy.fft import fft, fftfreq
+from scipy.signal import periodogram
 from statsmodels.graphics.gofplots import qqplot
-from statsmodels.tsa.stattools import pacf, acf, ccf
+from statsmodels.tsa.seasonal import STL, seasonal_decompose
+from statsmodels.tsa.stattools import acf, ccf, pacf
 
-from pycaret.utils import _resolve_dict_keys
+from pycaret.internal.logging import get_logger
+from pycaret.utils.generic import _resolve_dict_keys
+from pycaret.utils.time_series import TSAllowedPlotDataTypes
+
+logger = get_logger()
 
 PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
+
+
+# Data Types allowed for each plot type ----
+# First one in the list is the default (if requested is None)
+ALLOWED_PLOT_DATA_TYPES = {
+    "pipeline": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+    ],
+    "ts": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+    ],
+    "train_test_split": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+    ],
+    "cv": [TSAllowedPlotDataTypes.ORIGINAL.value],
+    "acf": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "pacf": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "decomp": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "decomp_stl": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "diagnostics": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "diff": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "forecast": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+    ],
+    "insample": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+    ],
+    "residuals": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+    ],
+    "periodogram": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "fft": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "ccf": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+}
+
+# Are multiple plot types allowed at once ----
+MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE = {
+    "ts": True,
+    "train_test_split": True,
+    "cv": False,
+    "acf": True,
+    "pacf": True,
+    "decomp": True,
+    "decomp_stl": True,
+    "diagnostics": True,
+    "diff": False,
+    "forecast": False,
+    "insample": False,
+    "residuals": False,
+    "periodogram": True,
+    "fft": True,
+    "ccf": False,
+}
 
 
 def time_series_subplot(
@@ -66,7 +165,7 @@ def time_series_subplot(
         if hoverinfo == "text":
             # Not specifying the hoverinfo will show it by default
             fig.add_trace(
-                go.Scatter(
+                go.Scattergl(
                     x=x,
                     y=data[col_name].values,
                     name=col_name,
@@ -80,7 +179,7 @@ def time_series_subplot(
         else:
             # Disable hoverinfo
             fig.add_trace(
-                go.Scatter(
+                go.Scattergl(
                     x=x,
                     y=data[col_name].values,
                     name=col_name,
@@ -147,35 +246,41 @@ def corr_subplot(
     """
 
     lower, upper = None, None
+
+    # Compute n_lags
+    if nlags is None:
+        if plot in ["acf", "ccf"]:
+            nlags = 40
+        elif plot in ["pacf"]:
+            nobs = len(data)
+            nlags = min(int(10 * np.log10(nobs)), nobs // 2 - 1)
+
     if plot in ["acf", "pacf"]:
         if plot == "acf":
             default_name = "ACF"
-            corr_array = acf(data, alpha=0.05)
+            corr_array = acf(data, nlags=nlags, alpha=0.05)
         elif plot == "pacf":
             default_name = "PACF"
-            nobs = len(data)
-            nlags = min(int(10 * np.log10(nobs)), nobs // 2 - 1)
             corr_array = pacf(data, nlags=nlags, alpha=0.05)
         corr_values = corr_array[0]
         lower = corr_array[1][:, 0] - corr_array[0]
         upper = corr_array[1][:, 1] - corr_array[0]
     elif plot == "ccf":
         default_name = "CCF"
-        [target, exog] = data
+        target, exog = data
         corr_values = ccf(target, exog, unbiased=False)
+        # Default, returns lags = len of data, hence limit it.
+        corr_values = corr_values[: nlags + 1]
         # No upper and lower bounds available for CCF
     else:
         raise ValueError(
             f"plot must be one of 'acf', 'pacf' or 'ccf'. You passed '{plot}'"
         )
 
-    if not nlags:
-        nlags = 40
-    corr_values = corr_values[: nlags + 1]
     lags = np.arange(len(corr_values))
     name = name or default_name
 
-    #### Add the correlation plot ----
+    # Add the correlation plot ----
     fig = _add_corr_stems_subplot(
         fig=fig, corr_values=corr_values, lags=lags, name=name, row=row, col=col
     )
@@ -225,7 +330,7 @@ def _add_corr_stems_subplot(
     go.Figure
         Returns back the plotly figure with stems inserted
     """
-    #### Add corr plot stem lines ----
+    # Add corr plot stem lines ----
     [
         fig.add_scattergl(
             x=(lag, lag),
@@ -239,7 +344,7 @@ def _add_corr_stems_subplot(
         for lag in lags
     ]
 
-    #### Add corr plot stem endpoints ----
+    # Add corr plot stem endpoints ----
     fig.add_scattergl(
         x=lags,
         y=corr_values,
@@ -280,7 +385,7 @@ def _add_corr_bounds_subplot(
     # For some reason scattergl does not work here. Hence switching to scatter.
     # (refer: https://github.com/pycaret/pycaret/issues/2211).
 
-    #### Add the Upper Confidence Interval ----
+    # Add the Upper Confidence Interval ----
     fig.add_scatter(
         x=np.arange(len(upper)),
         y=upper,
@@ -291,7 +396,7 @@ def _add_corr_bounds_subplot(
         name="UC",
     )
 
-    #### Add the Lower Confidence Interval ----
+    # Add the Lower Confidence Interval ----
     fig.add_scatter(
         x=np.arange(len(lower)),
         y=lower,
@@ -399,6 +504,125 @@ def dist_subplot(fig: go.Figure, data: pd.Series, row: int, col: int) -> go.Figu
     return fig
 
 
+def decomp_subplot(
+    fig: go.Figure,
+    data: pd.Series,
+    col: int,
+    plot: str,
+    classical_decomp_type: str,
+    period: int,
+) -> go.Figure:
+    """Function to add decomposition to a Plotly subplot
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Plotly figure to which the decomposition plots need to be added
+    data : pd.Series
+        Data whose decomposition must be added
+    col : int
+        Column of the figure where the plot needs to be inserted. Starts from 1.
+        Note that rows do not need to be specified since there will be 4 rows
+        per column. Must be enforced from outside when creating the figure.
+    plot : str
+        Options are
+          - "decomp": for Classical Decomposition
+          - "decomp_stl": for STL Decomposition
+    classical_decomp_type : str
+        The classical decomposition type. Options are: ["additive", "multiplicative"]
+    period : int
+        The seasonal period to use for decomposition
+
+    Returns
+    -------
+    go.Figure
+        Returns back the plotly figure with the decomposition results inserted.
+    """
+
+    data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
+
+    x = (
+        data.index.to_timestamp()
+        if isinstance(data.index, pd.PeriodIndex)
+        else data.index
+    )
+
+    # Plot Original data ----
+    row = 1
+    fig.add_trace(
+        go.Scattergl(
+            x=x,
+            y=data_,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="lines+markers",
+            name="Actual",
+            marker=dict(size=2),
+        ),
+        row=row,
+        col=col,
+    )
+
+    if plot == "decomp":
+        try:
+            decomp_result = seasonal_decompose(
+                data_, period=period, model=classical_decomp_type
+            )
+        except ValueError as exception:
+            logger.warning(exception)
+            logger.warning(
+                "Seasonal Decompose plot failed most likely sue to missing data"
+            )
+            return fig, None
+    elif plot == "decomp_stl":
+        decomp_result = STL(data_, period=period).fit()
+
+    row = 2
+    fig.add_trace(
+        go.Scattergl(
+            x=x,
+            y=decomp_result.seasonal,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="lines+markers",
+            name="Seasonal",
+            marker=dict(size=2),
+        ),
+        row=row,
+        col=col,
+    )
+
+    row = 3
+    fig.add_trace(
+        go.Scattergl(
+            x=x,
+            y=decomp_result.trend,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="lines+markers",
+            name="Trend",
+            marker=dict(size=2),
+        ),
+        row=row,
+        col=col,
+    )
+
+    row = 4
+    fig.add_trace(
+        go.Scattergl(
+            x=x,
+            y=decomp_result.resid,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="markers",
+            name="Residuals",
+            marker=dict(
+                size=4,
+            ),
+        ),
+        row=row,
+        col=col,
+    )
+
+    return fig, decomp_result
+
+
 def return_frequency_components(
     data: pd.Series, type: str = "periodogram"
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -483,7 +707,7 @@ def frequency_components_subplot(
     row: int,
     col: int,
     hoverinfo: Optional[str],
-    type: str = "periodogram",
+    plot: str = "periodogram",
     name: Optional[str] = None,
 ) -> PlotReturnType:
     """Function to add a time series to a Plotly subplot
@@ -501,7 +725,7 @@ def frequency_components_subplot(
     hoverinfo : Optional[str]
         Whether hoverinfo should be disabled or not. Options are same as plotly.
         e.g. "text" to display, "skip" or "none" to disable.
-    type : str, optional
+    plot : str, optional
         Type of method to use to get the frequency components, by default "periodogram"
         Allowed methods are: "periodogram", "fft"
     name : Optional[str], optional
@@ -512,7 +736,7 @@ def frequency_components_subplot(
     PlotReturnType
         Returns back the plotly figure along with the data used to create the plot.
     """
-    x, y = return_frequency_components(data=data, type=type)
+    x, y = return_frequency_components(data=data, type=plot)
     time_period = [round(1 / freq, 4) for freq in x]
     freq_data = pd.DataFrame({"Freq": x, "Amplitude": y, "Time Period": time_period})
 
@@ -521,14 +745,24 @@ def frequency_components_subplot(
     # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
     # gets displayed. OR alternately, leave it out and it gets plotted by default.
     if hoverinfo == "text":
-        hovertemplate = "Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}"
+        # We convert this to hovertext so plotly-resampler can effectively deal with
+        # this data modality
+        freq_data_str = freq_data.round(4).astype("str")
+        hf_hovertext = (
+            "Freq: "
+            + freq_data_str["Freq"]
+            + "<br>Ampl: "
+            + freq_data_str["Amplitude"]
+            + "<br>Time period: "
+            + freq_data_str["Time Period"]
+        )
+
         fig.add_trace(
             go.Scattergl(
                 name=name,
                 x=freq_data["Freq"],
                 y=freq_data["Amplitude"],
-                customdata=freq_data.to_numpy(),
-                hovertemplate=hovertemplate,
+                hovertext=hf_hovertext,
                 mode="lines+markers",
                 line=dict(color="#1f77b4", width=2),
                 marker=dict(size=5),
@@ -717,8 +951,6 @@ def _resolve_hoverinfo(
     hoverinfo: Optional[str],
     threshold: int,
     data: Optional[pd.Series],
-    train: Optional[pd.Series],
-    test: Optional[pd.Series],
     X: Optional[pd.DataFrame],
 ) -> str:
     """Decide whether data tip obtained by hovering over a Plotly plot should be
@@ -733,12 +965,10 @@ def _resolve_hoverinfo(
         The number of data points above which the hovering should be disabled.
     data : Optional[pd.Series]
         A series of data
-    train : Optional[pd.Series]
-        A series of train indices
-    test : Optional[pd.Series]
-        A series of test indices
-    X : Optional[pd.DataFrame]
-        A dataframe of exogenous variables
+    X : Optional[List[pd.DataFrame]]
+        A list of dataframe of exogenous variables (1 dataframe per exogenous
+        variable; each dataframe containing multiple columns corresponding to the
+        plot data types requested)
 
     Returns
     -------
@@ -749,11 +979,7 @@ def _resolve_hoverinfo(
         hoverinfo = "text"
         if data is not None and len(data) > threshold:
             hoverinfo = "skip"
-        if train is not None and len(train) > threshold:
-            hoverinfo = "skip"
-        if test is not None and len(test) > threshold:
-            hoverinfo = "skip"
-        if X is not None and len(X) * X.shape[1] > threshold:
+        if X is not None and len(X) * len(X[0]) * X[0].shape[1] > threshold:
             hoverinfo = "skip"
     # if hoverinfo is not None, then use as is.
     return hoverinfo
@@ -763,8 +989,6 @@ def _resolve_renderer(
     renderer: Optional[str],
     threshold: int,
     data: Optional[pd.Series],
-    train: Optional[pd.Series],
-    test: Optional[pd.Series],
     X: Optional[pd.DataFrame],
 ) -> str:
     """Decide the renderer to use for the Plotly plot based user settings and
@@ -779,12 +1003,10 @@ def _resolve_renderer(
         The number of data points above which the hovering should be disabled.
     data : Optional[pd.Series]
         A series of data
-    train : Optional[pd.Series]
-        A series of train indices
-    test : Optional[pd.Series]
-        A series of test indices
-    X : Optional[pd.DataFrame]
-        A dataframe of exogenous variables
+    X : Optional[List[pd.DataFrame]]
+        A list of dataframe of exogenous variables (1 dataframe per exogenous
+        variable; each dataframe containing multiple columns corresponding to the
+        plot data types requested)
 
     Returns
     -------
@@ -795,18 +1017,232 @@ def _resolve_renderer(
         renderer = pio.renderers.default
         if data is not None and len(data) > threshold:
             renderer = "png"
-        if train is not None and len(train) > threshold:
-            renderer = "png"
-        if test is not None and len(test) > threshold:
-            renderer = "png"
-        if X is not None and len(X) * X.shape[1] > threshold:
+        if X is not None and len(X) * len(X[0]) * X[0].shape[1] > threshold:
             renderer = "png"
     # if renderer is not None, then use as is.
 
-    if renderer not in pio.renderers:
+    return renderer
+
+
+def _get_data_types_to_plot(
+    plot: str, data_types_requested: Optional[Union[str, List[str]]] = None
+) -> List[str]:
+    """Returns the data types to plot based on the requested ones. If all are allowed
+    for the requested plot, they are returned as is, else this function will trim them
+    down to the allowed types only.
+
+    NOTE: Some plots only support one data type. If multiple data types are requested
+    for such plots, only the first one is used (appropriate warning issued).
+
+    Parameters
+    ----------
+    plot : str
+        The plot for which the data types are being requested
+    data_types_requested : Optional[Union[str, List[str]]], optional
+        The data types being requested for the plot, by default None
+        If None, it picks the default from the internal list.
+
+    Returns
+    -------
+    List[str]
+        The allowed data types for the requested plot based on user inputs
+
+    Raises
+    ------
+    ValueError
+        If none of the requested data types are supported by the plot
+    """
+
+    # Get default if not provided ----
+    if data_types_requested is None:
+        # First one is the default
+        data_types_requested = [ALLOWED_PLOT_DATA_TYPES.get(plot)[0]]
+
+    # Convert string to list ----
+    if isinstance(data_types_requested, str):
+        data_types_requested = [data_types_requested]
+
+    # Is the data type allowed for the requested plot?
+    all_plot_data_types = [member.value for member in TSAllowedPlotDataTypes]
+    data_types_allowed = [
+        True
+        if data_type_requested in ALLOWED_PLOT_DATA_TYPES.get(plot)
+        and data_type_requested in all_plot_data_types
+        else False
+        for data_type_requested in data_types_requested
+    ]
+
+    # Clean up list based on allowed data types
+    cleaned_data_types = []
+    for requested, allowed in zip(data_types_requested, data_types_allowed):
+        if allowed:
+            cleaned_data_types.append(requested)
+        else:
+            msg = (
+                f"Data Type: '{requested}' is not supported for plot: '{plot}'. "
+                "This will be ignored."
+            )
+            logger.warning(msg)
+            print(msg)
+
+    if len(cleaned_data_types) == 0:
         raise ValueError(
-            f"Renderer '{renderer}' is not a valid Plotly renderer. "
-            f"Valid renderers are:\n {pio.renderers}"
+            "No data to plot. Please check to make sure that you have requested "
+            "an allowed data type for plot."
+            f"\n Allowed values are: {ALLOWED_PLOT_DATA_TYPES.get(plot)}"
         )
 
-    return renderer
+    if (
+        not MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE.get(plot)
+        and len(cleaned_data_types) > 1
+    ):
+        msg = (
+            f"Data Type requested for plot '{plot}' = {cleaned_data_types}, "
+            "but this plot only supports a single data type at a time. "
+            f"\nThe first one (i.e. '{cleaned_data_types[0]}') will be used."
+        )
+        logger.warning(msg)
+        print(msg)
+        cleaned_data_types = [cleaned_data_types[0]]
+
+    return cleaned_data_types
+
+
+def _reformat_dataframes_for_plots(
+    data: List[Union[pd.Series, pd.DataFrame]], labels_suffix: List[str]
+) -> List[pd.DataFrame]:
+    """Take the input list of dataframes (assuming all dataframes have the same columns)
+    and converts them into a list of new dataframes with each new dataframe containing
+    the same column from all of the input dataframe.
+
+    e.g. 1
+    If input list has 2 dataframes D1 and D2 with columns A, B, and C then the
+    output will be a list of 3 dataframes with 2 columns each
+        Output dataframe 1 containing D1.A, D2.A
+        Output dataframe 2 containing D1.B, D2.B
+        Output dataframe 3 containing D1.C, D2.C
+
+    e.g. 2
+    If the input list has series, they are just concatenated together to produce one
+    output dataframe.
+
+    Parameters
+    ----------
+    data : List[Union[pd.Series, pd.DataFrame]]
+        Input list of dataframes or series
+    labels_suffix : List[str]
+        The suffix to use for the output dataframes column names.
+        Must be the same length as the number of input dataframes
+
+        In the example above, if suffix is ["original", "transformed"], then the
+            Output dataframe 1 will have columns ["A (original)", "A (transformed)"]
+            Output dataframe 2 will have columns ["B (original)", "B (transformed)"]
+            Output dataframe 2 will have columns ["C (original)", "C (transformed)"]
+
+    Returns
+    -------
+    List[pd.DataFrame]
+        Output list of dataframes
+
+    Raises
+    ------
+    ValueError
+        When the number of labels provided does not match the number of input dataframes
+    """
+    num_labels = len(labels_suffix)
+    num_input_dfs = len(data)
+    if num_labels != num_input_dfs:
+        raise ValueError(
+            f"Number of labels provided ({num_labels}) does not match the number of input "
+            "dataframes ({num_input_dfs})"
+        )
+
+    cols = pd.DataFrame(data[0]).columns
+
+    data = pd.concat(data, axis=1)
+    output = []
+    for col in cols:
+        temp = pd.DataFrame(data[col])
+        column_names = [f"{col} ({suffix})" for suffix in labels_suffix]
+        temp.columns = column_names
+        output.append(temp)
+
+    return output
+
+
+def _clean_model_results_labels(
+    model_results: List[pd.DataFrame], model_labels: List[str]
+) -> Tuple[List[pd.DataFrame], List[str]]:
+    """Cleans the model results and names to remove models that did not produce
+    any results, e.g. no residuals, insample predictions, etc.
+
+    Parameters
+    ----------
+    model_results : List[pd.DataFrame]
+        List of dataframes containing the model results (one dataframe per model)
+        Some values might be None if the model did not produce a result. These
+        will get dropped by this function.
+    model_labels : List[str]
+        The labels of the models producing the results.
+
+    Returns
+    -------
+    Tuple[List[pd.DataFrame], List[str]]
+        The cleaned model results and names (after removing those that did not
+        produce a result).
+    """
+    includes = [
+        True if model_result is not None else False for model_result in model_results
+    ]
+
+    # Remove None results (produced when insample or residuals can not be obtained)
+    model_results = [
+        model_result
+        for include, model_result in zip(includes, model_results)
+        if include
+    ]
+    model_labels = [
+        model_name for include, model_name in zip(includes, model_labels) if include
+    ]
+
+    return model_results, model_labels
+
+
+def _plot_fig_update(
+    fig: go.Figure,
+    title: str,
+    fig_defaults: Dict[str, Any],
+    fig_kwargs: Optional[Dict] = None,
+    show_legend: bool = False,
+) -> go.Figure:
+    """Customises the template layout and dimension of plots
+
+    Parameters
+    ----------
+    fig: go.Figure
+        Plotly figure which needs to be customised
+    title: str
+        Title of the plot
+    fig_defaults : Dict[str, Any]
+        The default settings for the plotly plot. Must contain keys for "width",
+        "height", and "template".
+    fig_kwargs : Optional[Dict], optional
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
+    show_legend: bool, default=False
+        If True, displays the legend in the plot when layout is updated.
+
+    Returns
+    -------
+    go.Figure
+        The Plotly figure with updated dimnensions and template layout.
+    """
+    with fig.batch_update():
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(title=title, showlegend=show_legend, template=template)
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
+    return fig

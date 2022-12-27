@@ -8,15 +8,17 @@
 # `RegressionMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-from typing import Optional, Union, Dict, Any
-from pycaret.containers.metrics.base_metric import MetricContainer
-from sklearn.metrics._scorer import _BaseScorer
-import pycaret.containers.base_container
-import pycaret.internal.metrics
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
 from sklearn import metrics
-from sklearn.utils.validation import check_consistent_length
 from sklearn.metrics._regression import _check_reg_targets
+from sklearn.metrics._scorer import _BaseScorer
+from sklearn.utils.validation import check_consistent_length
+
+import pycaret.containers.base_container
+import pycaret.internal.metrics
+from pycaret.containers.metrics.base_metric import MetricContainer
 
 
 class RegressionMetricContainer(MetricContainer):
@@ -38,7 +40,7 @@ class RegressionMetricContainer(MetricContainer):
         score_func and args.
     target : str, default = 'pred'
         The target of the score function. Only 'pred' is supported for regression.
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str, default = None
         Display name (shorter than name). Used in display dataframe header. If None or empty, will use name.
@@ -91,7 +93,7 @@ class RegressionMetricContainer(MetricContainer):
     ) -> None:
 
         allowed_targets = ["pred"]
-        if not target in allowed_targets:
+        if target not in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")
 
         if not args:

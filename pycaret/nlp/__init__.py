@@ -1,6 +1,33 @@
-from typing import Optional, Dict, Any, Dict
+import os
+import sys
+from typing import Any, Dict, Optional
+
+import deprecation
+import pandas as pd
+import sklearn
+from IPython.display import display
+from ipywidgets import widgets
+from ipywidgets.widgets import fixed, interact_manual
+
+from pycaret import show_versions
+from pycaret.loggers import DashboardLogger
+from pycaret.loggers.base_logger import BaseLogger
+from pycaret.loggers.mlflow_logger import MlflowLogger
+from pycaret.loggers.wandb_logger import WandbLogger
+from pycaret.utils import __version__
+from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import get_logger
+
+deprecated_in = "3.0.0rc5"
+deprecation_msg = " If you want to use the `nlp` module, please install `pycaret` version 3.0.0 (preferred) or lower."
 
 
+@deprecation.deprecated(
+    deprecated_in=deprecated_in,
+    removed_in="3.1.0",
+    current_version=__version__,
+    details=deprecation_msg,
+)
 def setup(
     data,
     target=None,
@@ -54,11 +81,13 @@ def setup(
 
 
     log_experiment: bool, default = False
-        When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+        corresponding to a logger to determine which experiment loggers to use.
+        Setting to True will use just MLFlow.
 
 
     experiment_name: str, default = None
-        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is False.
 
     experiment_custom_tags: dict, default = None
         Dictionary of tag_name: String -> value: (String, but will be string-ified
@@ -71,7 +100,7 @@ def setup(
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
 
 
     verbose: bool, default = True
@@ -101,7 +130,7 @@ def setup(
     import logging
 
     # create logger
-    global logger
+    global logger, dashboard_logger
 
     logger = logging.getLogger("logs")
     logger.setLevel(logging.DEBUG)
@@ -135,7 +164,7 @@ def setup(
 
     try:
         data_shape = data.shape
-    except:
+    except Exception:
         data_shape = len(data)
 
     logger.info(
@@ -157,113 +186,42 @@ def setup(
     # logging environment and libraries
     logger.info("Checking environment")
 
-    from platform import python_version, platform, python_build, machine
+    from platform import machine, platform, python_build, python_version
 
     try:
         logger.info("python_version: " + str(python_version()))
-    except:
+    except Exception:
         logger.warning("cannot find platform.python_version")
 
     try:
         logger.info("python_build: " + str(python_build()))
-    except:
+    except Exception:
         logger.warning("cannot find platform.python_build")
 
     try:
         logger.info("machine: " + str(machine()))
-    except:
+    except Exception:
         logger.warning("cannot find platform.machine")
 
     try:
         logger.info("platform: " + str(platform()))
-    except:
+    except Exception:
         logger.warning("cannot find platform.platform")
 
-    try:
-        import psutil
+    import psutil
 
-        logger.info("Memory: " + str(psutil.virtual_memory()))
-        logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
-        logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
-    except:
-        logger.warning(
-            "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. "
-        )
+    logger.info("Memory: " + str(psutil.virtual_memory()))
+    logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
+    logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
 
     logger.info("Checking libraries")
-
-    try:
-        from pandas import __version__
-
-        logger.info("pd==" + str(__version__))
-    except:
-        logger.warning("pandas not found")
-
-    try:
-        from numpy import __version__
-
-        logger.info("numpy==" + str(__version__))
-    except:
-        logger.warning("numpy not found")
-
-    try:
-        import warnings
-
-        warnings.filterwarnings("ignore")
-        from gensim import __version__
-
-        logger.info("gensim==" + str(__version__))
-    except:
-        logger.warning("gensim not found")
-
-    try:
-        from spacy import __version__
-
-        logger.info("spacy==" + str(__version__))
-    except:
-        logger.warning("spacy not found")
-
-    try:
-        from nltk import __version__
-
-        logger.info("nltk==" + str(__version__))
-    except:
-        logger.warning("nltk not found")
-
-    try:
-        from textblob import __version__
-
-        logger.info("textblob==" + str(__version__))
-    except:
-        logger.warning("textblob not found")
-
-    try:
-        from pyLDAvis import __version__
-
-        logger.info("pyLDAvis==" + str(__version__))
-    except:
-        logger.warning("pyLDAvis not found")
-
-    try:
-        from wordcloud import __version__
-
-        logger.info("wordcloud==" + str(__version__))
-    except:
-        logger.warning("wordcloud not found")
-
-    try:
-        from mlflow.version import VERSION
-        import warnings
-
-        warnings.filterwarnings("ignore")
-        logger.info("mlflow==" + str(VERSION))
-    except:
-        logger.warning("mlflow not found")
+    logger.info(show_versions(logger=logger))
 
     logger.info("Checking Exceptions")
 
     # run_time
-    import datetime, time
+    import datetime
+    import time
 
     runtime_start = time.time()
 
@@ -308,11 +266,11 @@ def setup(
             sys.exit("(Type Error): session_id parameter must be an integer.")
 
     # check if spacy is loaded
-    try:
+    if _check_soft_dependencies("spacy", extra="nlp", severity="warning"):
         import spacy
 
-        sp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
-    except:
+        spacy.load("en_core_web_sm", disable=["parser", "ner"])
+    else:
         sys.exit(
             "(Type Error): spacy english model is not yet downloaded. See the documentation of setup to see installation guide."
         )
@@ -322,8 +280,21 @@ def setup(
         sys.exit("(Type Error): html parameter only accepts True or False.")
 
     # log_experiment
-    if type(log_experiment) is not bool:
-        sys.exit("(Type Error): log_experiment parameter only accepts True or False.")
+    def validate_log_experiment(obj):
+        return isinstance(obj, (bool, BaseLogger)) or (
+            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb"]
+        )
+
+    if not (
+        (
+            isinstance(log_experiment, list)
+            and all(validate_log_experiment(x) for x in log_experiment)
+        )
+        or validate_log_experiment(log_experiment)
+    ):
+        raise TypeError(
+            "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb'; or a list of the former."
+        )
 
     # experiment custom tags
     if experiment_custom_tags is not None:
@@ -349,10 +320,12 @@ def setup(
     logger.info("Preloading libraries")
 
     # pre-load libraries
-    import pandas as pd
+    import datetime
+    import time
+
     import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
+    import pandas as pd
+    from IPython.display import clear_output, display, update_display
 
     # global html_param
     global html_param
@@ -361,7 +334,7 @@ def setup(
     html_param = html
 
     """
-    generate monitor starts 
+    generate monitor starts
     """
 
     logger.info("Preparing display monitor")
@@ -376,11 +349,6 @@ def setup(
     if verbose:
         if html_param:
             display(progress)
-
-    try:
-        max_sub = len(data[target].values.tolist())
-    except:
-        max_sub = len(data)
 
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     monitor = pd.DataFrame(
@@ -407,20 +375,21 @@ def setup(
     logger.info("Importing libraries")
 
     # general dependencies
-    import numpy as np
     import random
+
+    import numpy as np
+
+    _check_soft_dependencies("spacy", extra="nlp", severity="error")
     import spacy
-    import gensim
-    import gensim.corpora as corpora
-    from gensim.utils import simple_preprocess
-    from gensim.models import CoherenceModel
-    import spacy
+
+    _check_soft_dependencies("gensim", extra="nlp", severity="error")
     import re
     import secrets
 
-    # setting sklearn config to print all parameters including default
-    import sklearn
+    import gensim
+    import gensim.corpora as corpora
 
+    # setting sklearn config to print all parameters including default
     sklearn.set_config(print_changed_only=False)
 
     logger.info("Declaring global variables")
@@ -433,7 +402,7 @@ def setup(
         experiment__.append("dummy")
         experiment__.pop()
 
-    except:
+    except Exception:
         experiment__ = []
 
     # converting to dataframe if list provided
@@ -447,7 +416,7 @@ def setup(
         text = data[target].values.tolist()
         target_ = str(target)
         logger.info("Input provided : dataframe")
-    except:
+    except Exception:
         text = data
         target_ = "en"
         logger.info("Input provided : list")
@@ -468,8 +437,28 @@ def setup(
     else:
         data_ = data.copy()
 
-    # create logging parameter
     logging_param = log_experiment
+
+    def convert_logging_param(obj):
+        if isinstance(obj, BaseLogger):
+            return obj
+        obj = obj.lower()
+        if obj == "mlflow":
+            return MlflowLogger()
+        if obj == "wandb":
+            return WandbLogger()
+
+    if logging_param:
+        loggers_list = []
+        if logging_param is True:
+            loggers_list = [MlflowLogger()]
+        else:
+            if not isinstance(logging_param, list):
+                logging_param = [logging_param]
+            loggers_list = [convert_logging_param(x) for x in logging_param]
+
+        if loggers_list:
+            dashboard_logger = DashboardLogger(loggers_list)
 
     # create exp_name_log param incase logging is False
     exp_name_log = "no_logging"
@@ -485,7 +474,8 @@ def setup(
     """
     DEFINE STOPWORDS
     """
-    try:
+    if _check_soft_dependencies("nltk", extra="nlp", severity="warning"):
+
         logger.info("Importing stopwords from nltk")
         import nltk
 
@@ -494,7 +484,7 @@ def setup(
 
         stop_words = stopwords.words("english")
 
-    except:
+    else:
         logger.info(
             "Importing stopwords from nltk failed .. loading pre-defined stopwords"
         )
@@ -926,7 +916,7 @@ def setup(
 
     if logging_param:
 
-        logger.info("Creating MLFlow logs")
+        logger.info("Creating Dashboard logs")
 
         monitor.iloc[1, 1:] = "Creating Logs"
         monitor.iloc[2, 1:] = "Final"
@@ -934,65 +924,44 @@ def setup(
             if html_param:
                 update_display(monitor, display_id="monitor")
 
-        import mlflow
-        from pathlib import Path
-        import os
-
         if experiment_name is None:
             exp_name_ = "nlp-default-name"
         else:
             exp_name_ = experiment_name
 
-        URI = secrets.token_hex(nbytes=4)
         exp_name_log = exp_name_
 
-        try:
-            mlflow.create_experiment(exp_name_log)
-        except:
-            pass
-
-        # mlflow logging
-        mlflow.set_experiment(exp_name_log)
-
         run_name_ = "Session Initialized " + str(USI)
-        mlflow.end_run()
-        mlflow.start_run(run_name=run_name_)
 
-        # Get active run to log as tag
-        RunID = mlflow.active_run().info.run_id
+        dashboard_logger.init_loggers(exp_name_log, run_name_)
 
         k = functions.copy()
         k.set_index("Description", drop=True, inplace=True)
         kdict = k.to_dict()
         params = kdict.get("Value")
-        mlflow.log_params(params)
+        [logger.log_params(params) for logger in dashboard_logger.loggers]
 
         # set tag of compare_models
-        mlflow.set_tag("Source", "setup")
-
-        # set custom tags if applicable
-        if isinstance(experiment_custom_tags, dict):
-            mlflow.set_tags(experiment_custom_tags)
-
-        import secrets
-
-        URI = secrets.token_hex(nbytes=4)
-        mlflow.set_tag("URI", URI)
-        mlflow.set_tag("USI", USI)
-        mlflow.set_tag("Run Time", runtime)
-        mlflow.set_tag("Run ID", RunID)
+        [
+            logger.set_tags("setup", experiment_custom_tags, runtime)
+            for logger in dashboard_logger.loggers
+        ]
 
         # Log gensim id2word
         id2word.save("id2word")
-        mlflow.log_artifact("id2word")
-        import os
-
+        [
+            logger.log_artifact("id2word", "id2word")
+            for logger in dashboard_logger.loggers
+        ]
         os.remove("id2word")
 
         # Log data
         if log_data:
             data_.to_csv("data.csv")
-            mlflow.log_artifact("data.csv")
+            [
+                logger.log_artifact("data.csv", "data")
+                for logger in dashboard_logger.loggers
+            ]
             os.remove("data.csv")
 
         # Log plots
@@ -1003,19 +972,31 @@ def setup(
             )
 
             plot_model(plot="frequency", save=True, system=False)
-            mlflow.log_artifact("Word Frequency.html")
+            [
+                logger.log_artifact("Word Frequency.html", "word_frequency")
+                for logger in dashboard_logger.loggers
+            ]
             os.remove("Word Frequency.html")
 
             plot_model(plot="bigram", save=True, system=False)
-            mlflow.log_artifact("Bigram.html")
+            [
+                logger.log_artifact("Bigram.html", "bigram")
+                for logger in dashboard_logger.loggers
+            ]
             os.remove("Bigram.html")
 
             plot_model(plot="trigram", save=True, system=False)
-            mlflow.log_artifact("Trigram.html")
+            [
+                logger.log_artifact("Trigram.html", "trigram")
+                for logger in dashboard_logger.loggers
+            ]
             os.remove("Trigram.html")
 
             plot_model(plot="pos", save=True, system=False)
-            mlflow.log_artifact("POS.html")
+            [
+                logger.log_artifact("POS.html", "POS")
+                for logger in dashboard_logger.loggers
+            ]
             os.remove("POS.html")
 
             logger.info(
@@ -1029,7 +1010,7 @@ def setup(
         else:
             print(functions_.data)
 
-    logger.info("setup() succesfully completed......................................")
+    logger.info("setup() successfully completed......................................")
 
     return (
         text,
@@ -1111,33 +1092,7 @@ def create_model(
         Trained Model
 
     """
-
-    # exception checking
-    import sys
-
-    import logging
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing create_model()")
     logger.info(
@@ -1149,7 +1104,8 @@ def create_model(
     logger.info("Checking exceptions")
 
     # run_time
-    import datetime, time
+    import datetime
+    import time
 
     runtime_start = time.time()
 
@@ -1205,11 +1161,13 @@ def create_model(
     logger.info("Preloading libraries")
 
     # pre-load libraries
-    import pandas as pd
-    import numpy as np
+    import datetime
+    import time
+
     import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
+    import numpy as np
+    import pandas as pd
+    from IPython.display import clear_output, display, update_display
 
     """
     monitor starts
@@ -1274,13 +1232,12 @@ def create_model(
         if html_param:
             update_display(monitor, display_id="monitor")
 
-    model_fit_start = time.time()
-
     if model == "lda":
 
         if multi_core:
             logger.info("LDA multi_core enabled")
 
+            _check_soft_dependencies("gensim", extra="nlp", severity="error")
             from gensim.models.ldamulticore import LdaMulticore
 
             logger.info("LdaMulticore imported successfully")
@@ -1303,7 +1260,7 @@ def create_model(
             progress.value += 1
 
         else:
-
+            _check_soft_dependencies("gensim", extra="nlp", severity="error")
             from gensim.models.ldamodel import LdaModel
 
             logger.info("LdaModel imported successfully")
@@ -1326,7 +1283,7 @@ def create_model(
             progress.value += 1
 
     elif model == "lsi":
-
+        _check_soft_dependencies("gensim", extra="nlp", severity="error")
         from gensim.models.lsimodel import LsiModel
 
         logger.info("LsiModel imported successfully")
@@ -1338,7 +1295,7 @@ def create_model(
         progress.value += 1
 
     elif model == "hdp":
-
+        _check_soft_dependencies("gensim", extra="nlp", severity="error")
         from gensim.models import HdpModel
 
         logger.info("HdpModel imported successfully")
@@ -1357,7 +1314,7 @@ def create_model(
         progress.value += 1
 
     elif model == "rp":
-
+        _check_soft_dependencies("gensim", extra="nlp", severity="error")
         from gensim.models import RpModel
 
         logger.info("RpModel imported successfully")
@@ -1370,8 +1327,8 @@ def create_model(
 
     elif model == "nmf":
 
-        from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
         from sklearn.decomposition import NMF
+        from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
         from sklearn.preprocessing import normalize
 
         logger.info(
@@ -1397,9 +1354,6 @@ def create_model(
         model.fit(xtfidf_norm)
         logger.info("NMF() Trained Successfully")
 
-    model_fit_end = time.time()
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-
     progress.value += 1
 
     # end runtime
@@ -1409,7 +1363,7 @@ def create_model(
     # mlflow logging
     if logging_param and system:
 
-        logger.info("Creating MLFLow Logs")
+        logger.info("Creating Dashboard Logs")
 
         # Creating Logs message monitor
         monitor.iloc[1, 1:] = "Creating Logs"
@@ -1417,113 +1371,97 @@ def create_model(
             if html_param:
                 update_display(monitor, display_id="monitor")
 
-        # import mlflow
-        import mlflow
-        from pathlib import Path
-        import os
+        dashboard_logger.init_loggers(exp_name_log)
 
-        mlflow.set_experiment(exp_name_log)
+        # Log model parameters
+        from copy import deepcopy
 
-        with mlflow.start_run(run_name=topic_model_name, nested=True) as run:
+        model_copied = deepcopy(model)
 
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
+        try:
+            params = model_copied.get_params()
+        except Exception:
+            import inspect
 
-            # Log model parameters
-            from copy import deepcopy
+            params = inspect.getmembers(model_copied)[2][1]
 
-            model_copied = deepcopy(model)
+        for i in list(params):
+            v = params.get(i)
+            if len(str(v)) > 250:
+                params.pop(i)
 
-            try:
-                params = model_copied.get_params()
-            except:
-                import inspect
+        [logger.log_params(params) for logger in dashboard_logger.loggers]
+        [
+            logger.set_tags("create_model", experiment_custom_tags, runtime)
+            for logger in dashboard_logger.loggers
+        ]
 
-                params = inspect.getmembers(model_copied)[2][1]
+        # Log model and related artifacts
+        if model_name_short == "nmf":
+            logger.info(
+                "SubProcess save_model() called =================================="
+            )
+            save_model(model, "model", verbose=False)
+            logger.info(
+                "SubProcess save_model() end =================================="
+            )
+            [
+                logger.log_artifact("model.pkl", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            os.remove("model.pkl")
 
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
+        elif model_name_short == "lda":
+            model.save("model")
+            [
+                logger.log_artifact("model", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            [
+                logger.log_artifact("model.expElogbeta.npy", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            [
+                logger.log_artifact("model.id2word", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            [
+                logger.log_artifact("model.state", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            os.remove("model")
+            os.remove("model.expElogbeta.npy")
+            os.remove("model.id2word")
+            os.remove("model.state")
 
-            mlflow.log_params(params)
+        elif model_name_short == "lsi":
+            model.save("model")
+            [
+                logger.log_artifact("model", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            [
+                logger.log_artifact("model.projection", "projection")
+                for logger in dashboard_logger.loggers
+            ]
+            os.remove("model")
+            os.remove("model.projection")
 
-            # set tag of compare_models
-            mlflow.set_tag("Source", "create_model")
+        elif model_name_short == "rp":
+            model.save("model")
+            [
+                logger.log_artifact("model", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            os.remove("model")
 
-            # set custom tags if applicable
-            if isinstance(experiment_custom_tags, dict):
-                mlflow.set_tags(experiment_custom_tags)
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log model and related artifacts
-            if model_name_short == "nmf":
-                logger.info(
-                    "SubProcess save_model() called =================================="
-                )
-                save_model(model, "model", verbose=False)
-                logger.info(
-                    "SubProcess save_model() end =================================="
-                )
-                mlflow.log_artifact("model.pkl")
-                size_bytes = Path("model.pkl").stat().st_size
-                os.remove("model.pkl")
-
-            elif model_name_short == "lda":
-                model.save("model")
-                mlflow.log_artifact("model")
-                mlflow.log_artifact("model.expElogbeta.npy")
-                mlflow.log_artifact("model.id2word")
-                mlflow.log_artifact("model.state")
-                size_bytes = (
-                    Path("model").stat().st_size
-                    + Path("model.id2word").stat().st_size
-                    + Path("model.state").stat().st_size
-                )
-                os.remove("model")
-                os.remove("model.expElogbeta.npy")
-                os.remove("model.id2word")
-                os.remove("model.state")
-
-            elif model_name_short == "lsi":
-                model.save("model")
-                mlflow.log_artifact("model")
-                mlflow.log_artifact("model.projection")
-                size_bytes = (
-                    Path("model").stat().st_size
-                    + Path("model.projection").stat().st_size
-                )
-                os.remove("model")
-                os.remove("model.projection")
-
-            elif model_name_short == "rp":
-                model.save("model")
-                mlflow.log_artifact("model")
-                size_bytes = Path("model").stat().st_size
-                os.remove("model")
-
-            elif model_name_short == "hdp":
-                model.save("model")
-                mlflow.log_artifact("model")
-                size_bytes = Path("model").stat().st_size
-                os.remove("model")
-
-            size_kb = np.round(size_bytes / 1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", model_fit_time)
-            try:
-                mlflow.log_metrics(model_results.to_dict().get("Metric"))
-            except:
-                pass
+        elif model_name_short == "hdp":
+            model.save("model")
+            [
+                logger.log_artifact("model", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            os.remove("model")
 
     # storing into experiment
     if verbose:
@@ -1531,7 +1469,7 @@ def create_model(
 
     logger.info(str(model))
     logger.info(
-        "create_model() succesfully completed......................................"
+        "create_model() successfully completed......................................"
     )
 
     return model
@@ -1565,33 +1503,7 @@ def assign_model(model, verbose=True):
         pandas.DataFrame
 
     """
-
-    # exception checking
-    import sys
-
-    import logging
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing assign_model()")
     logger.info(
@@ -1654,12 +1566,12 @@ def assign_model(model, verbose=True):
     """
 
     logger.info("Preloading libraries")
-    # pre-load libraries
+    import datetime
+
+    import ipywidgets as ipw
     import numpy as np
     import pandas as pd
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
+    from IPython.display import clear_output, display, update_display
 
     logger.info("Preparing display monitor")
     # progress bar and monitor control
@@ -1715,8 +1627,7 @@ def assign_model(model, verbose=True):
 
         pdt = []
         for i in range(0, len(bb)):
-            l = max(bb[i]) / sum(bb[i])
-            pdt.append(round(l, 2))
+            pdt.append(round(max(bb[i]) / sum(bb[i]), 2))
 
         col_names = []
         for i in range(len(model.show_topics(num_topics=999999))):
@@ -1826,7 +1737,6 @@ def assign_model(model, verbose=True):
         """
 
         from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-        from sklearn.decomposition import NMF
         from sklearn.preprocessing import normalize
 
         text_join = []
@@ -1864,8 +1774,7 @@ def assign_model(model, verbose=True):
 
         pdt = []
         for i in range(0, len(bb)):
-            l = max(bb[i]) / sum(bb[i])
-            pdt.append(round(l, 2))
+            pdt.append(round(max(bb[i]) / sum(bb[i]), 2))
 
         progress.value += 1
 
@@ -1885,7 +1794,7 @@ def assign_model(model, verbose=True):
 
     logger.info(str(bb_.shape))
     logger.info(
-        "assign_model() succesfully completed......................................"
+        "assign_model() successfully completed......................................"
     )
 
     return bb_
@@ -1973,33 +1882,7 @@ def plot_model(
 
 
     """
-
-    # exception checking
-    import sys
-
-    import logging
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing plot_model()")
     logger.info(
@@ -2023,7 +1906,6 @@ def plot_model(
     """
 
     # determine model type
-
     if model is not None:
 
         mod = str(type(model))
@@ -2090,27 +1972,14 @@ def plot_model(
         raise ValueError("display_format can only be None or 'streamlit'.")
 
     if display_format == "streamlit":
-        try:
-            import streamlit as st
-        except ImportError:
-            raise ImportError(
-                "It appears that streamlit is not installed. Do: pip install streamlit"
-            )
+        _check_soft_dependencies("streamlit", extra=None, severity="error")
+        import streamlit as st
 
     """
     error handling ends here
     """
 
     logger.info("Importing libraries")
-    # import dependencies
-    import pandas as pd
-    import numpy
-
-    # import cufflinks
-    import cufflinks as cf
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
 
     # save parameter
 
@@ -2234,7 +2103,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}'")
                 df3.write_html(plot_filename)
 
-        except:
+        except Exception:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -2327,7 +2196,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}'")
                 b.write_html(plot_filename)
 
-        except:
+        except Exception:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -2446,7 +2315,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}'")
                 df3.write_html(plot_filename)
 
-        except:
+        except Exception:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -2565,7 +2434,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}'")
                 df3.write_html(plot_filename)
 
-        except:
+        except Exception:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -2576,9 +2445,7 @@ def plot_model(
     elif plot == "sentiment":
 
         try:
-
-            # loadies dependencies
-            import plotly.graph_objects as go
+            _check_soft_dependencies("textblob", extra="nlp", severity="error")
             from textblob import TextBlob
 
             if topic_num is None:
@@ -2665,7 +2532,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}'")
                 sentiments.write_html(plot_filename)
 
-        except:
+        except Exception:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -2674,7 +2541,7 @@ def plot_model(
             )
 
     elif plot == "pos":
-
+        _check_soft_dependencies("textblob", extra="nlp", severity="error")
         from textblob import TextBlob
 
         b = list(id2word.token2id.keys())
@@ -2776,11 +2643,11 @@ def plot_model(
             fig.write_html(plot_filename)
 
     elif plot == "topic_model":
+        _check_soft_dependencies("pyLDAvis", extra="nlp", severity="error")
+        import warnings
 
         import pyLDAvis
         import pyLDAvis.gensim  # don't skip this
-
-        import warnings
 
         warnings.filterwarnings("ignore")
         pyLDAvis.enable_notebook()
@@ -2795,12 +2662,12 @@ def plot_model(
 
             iter1 = len(model.show_topics(999999))
 
-        except:
+        except Exception:
 
             try:
                 iter1 = model.num_topics
 
-            except:
+            except Exception:
 
                 iter1 = model.n_components_
 
@@ -2821,7 +2688,7 @@ def plot_model(
 
                 keywords.append(kw)
 
-            except:
+            except Exception:
 
                 keywords.append("NA")
                 topic_name.append("Topic " + str(i))
@@ -2848,7 +2715,6 @@ def plot_model(
 
         """
         sorting column starts
-        
         """
 
         logger.info("Sorting Dataframe")
@@ -2907,10 +2773,9 @@ def plot_model(
 
     elif plot == "wordcloud":
 
-        try:
-
-            from wordcloud import WordCloud, STOPWORDS
+        if _check_soft_dependencies("wordcloud", extra="nlp", severity="warning"):
             import matplotlib.pyplot as plt
+            from wordcloud import STOPWORDS, WordCloud
 
             stopwords = set(STOPWORDS)
 
@@ -2966,7 +2831,7 @@ def plot_model(
 
             logger.info("Visual Rendered Successfully")
 
-        except:
+        else:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -2982,10 +2847,10 @@ def plot_model(
         matplotlib_axes_logger.setLevel("ERROR")
 
         # loading dependencies
+        import matplotlib.pyplot as plt
         from sklearn.cluster import KMeans
         from sklearn.feature_extraction.text import TfidfVectorizer
         from yellowbrick.text import UMAPVisualizer
-        import matplotlib.pyplot as plt
 
         tfidf = TfidfVectorizer()
         logger.info("Fitting TfidfVectorizer()")
@@ -3021,7 +2886,7 @@ def plot_model(
         logger.info("Visual Rendered Successfully")
 
     logger.info(
-        "plot_model() succesfully completed......................................"
+        "plot_model() successfully completed......................................"
     )
 
 
@@ -3164,30 +3029,7 @@ def tune_model(
 
 
     """
-
-    import logging
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing tune_model()")
     logger.info(
@@ -3342,11 +3184,12 @@ def tune_model(
     logger.info("Preloading libraries")
 
     # pre-load libraries
-    import pandas as pd
+    import datetime
+
     import ipywidgets as ipw
+    import pandas as pd
+    from IPython.display import display, update_display
     from ipywidgets import Output
-    from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
 
     logger.info("Preparing display monitor")
 
@@ -3388,17 +3231,11 @@ def tune_model(
     logger.info("Importing libraries")
 
     # General Dependencies
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.model_selection import cross_val_predict
-    from sklearn import metrics
     import numpy as np
     import plotly.express as px
-
-    # setting up cufflinks
-    import cufflinks as cf
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
+    from sklearn import metrics
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import cross_val_predict
 
     progress.value += 1
 
@@ -3468,6 +3305,7 @@ def tune_model(
                 if html_param:
                     update_display(monitor, display_id="monitor")
 
+            _check_soft_dependencies("textblob", extra="nlp", severity="error")
             from textblob import TextBlob
 
             monitor.iloc[2, 1:] = "Extracting Polarity"
@@ -3604,7 +3442,6 @@ def tune_model(
         ival = sorted_df.index[0]
 
         best_model = master[ival]
-        best_model_df = master_df[ival]
 
         logger.info("Rendering Visual")
         fig = px.line(
@@ -3884,7 +3721,6 @@ def tune_model(
         ival = sorted_df.index[0]
 
         best_model = master[ival]
-        best_model_df = master_df[ival]
         progress.value += 1
 
         logger.info("Rendering Visual")
@@ -4218,7 +4054,7 @@ def tune_model(
         ival = sorted_df.index[0]
 
         best_model = master[ival]
-        best_model_df = master_df[ival]
+        master_df[ival]
 
         logger.info("Rendering Visual")
 
@@ -4264,7 +4100,7 @@ def tune_model(
 
     logger.info(str(best_model))
     logger.info(
-        "tune_model() succesfully completed......................................"
+        "tune_model() successfully completed......................................"
     )
 
     return best_model
@@ -4294,22 +4130,12 @@ def evaluate_model(model):
         None
 
     """
-
-    from ipywidgets import widgets
-    from ipywidgets.widgets import interact, fixed, interact_manual
-    import numpy as np
-
-    """
-    generate sorted list
-    
-    """
-
     try:
         n_topic_assigned = len(model.show_topics())
-    except:
+    except Exception:
         try:
             n_topic_assigned = model.num_topics
-        except:
+        except Exception:
             n_topic_assigned = model.n_components
 
     final_list = []
@@ -4332,7 +4158,7 @@ def evaluate_model(model):
 
     b = widgets.Dropdown(options=final_list, description="Topic #:", disabled=False)
 
-    d = interact_manual(
+    interact_manual(
         plot_model,
         model=fixed(model),
         plot=a,
@@ -4343,7 +4169,7 @@ def evaluate_model(model):
     )
 
 
-def save_model(model, model_name, verbose=True, **kwargs):
+def save_model(model, model_name: str, verbose: bool = True, **kwargs):
 
     """
     This function saves the trained model object into the current active
@@ -4379,29 +4205,7 @@ def save_model(model, model_name, verbose=True, **kwargs):
         Tuple of the model object and the filename.
 
     """
-    import logging
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing save_model()")
     logger.info(
@@ -4419,13 +4223,13 @@ def save_model(model, model_name, verbose=True, **kwargs):
 
     logger.info(str(model))
     logger.info(
-        "save_model() succesfully completed......................................"
+        "save_model() successfully completed......................................"
     )
 
     return (model, model_name)
 
 
-def load_model(model_name, verbose=True):
+def load_model(model_name: str, verbose: bool = True):
 
     """
     This function loads a previously saved model.
@@ -4590,31 +4394,7 @@ def get_config(variable):
         Global variable
 
     """
-
-    import logging
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
+    logger = get_logger()
     logger.info("Initializing get_config()")
     logger.info("""get_config(variable={})""".format(str(variable)))
 
@@ -4653,7 +4433,7 @@ def get_config(variable):
 
     logger.info("Global variable: " + str(variable) + " returned")
     logger.info(
-        "get_config() succesfully completed......................................"
+        "get_config() successfully completed......................................"
     )
 
     return global_var
@@ -4691,30 +4471,7 @@ def set_config(variable, value):
         None
 
     """
-
-    import logging
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing set_config()")
     logger.info(
@@ -4763,7 +4520,7 @@ def set_config(variable, value):
 
     logger.info("Global variable:  " + str(variable) + " updated")
     logger.info(
-        "set_config() succesfully completed......................................"
+        "set_config() successfully completed......................................"
     )
 
 
@@ -4776,7 +4533,7 @@ def get_topics(data, text, model=None, num_topics=4):
     if model is None:
         model = "lda"
 
-    s = setup(data=data, target=text)
+    setup(data=data, target=text)
     c = create_model(model=model, num_topics=num_topics, verbose=False)
     dataset = assign_model(c, verbose=False)
     return dataset

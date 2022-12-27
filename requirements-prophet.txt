@@ -1,1 +1,1 @@
-prophet
+prophet>=1.0.1

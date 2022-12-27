@@ -2,9 +2,11 @@
 # License: MIT, moez.ali@queensu.ca
 
 import time
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 nightly_version = "3.0.0"
+
 
 def readme():
     with open("README.md") as f:
@@ -33,7 +35,6 @@ setup(
     license="MIT",
     classifiers=[
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

@@ -1,21 +1,20 @@
-import pandas as pd
-from typing import Optional, Any
 from threading import RLock
+from typing import Any, Optional
 
-# Onw modules
-from pycaret.internal.Display import Display
+import pandas as pd
+
+from pycaret.internal.display import CommonDisplay
 
 
 def _append_display_container(df: pd.DataFrame) -> None:
-    global display_container
-    display_container.append(df)
+    global _display_container
+    _display_container.append(df)
 
 
-def _create_display(progress: int, verbose: bool, monitor_rows: Any) -> Display:
+def _create_display(progress: int, verbose: bool, monitor_rows: Any) -> CommonDisplay:
     progress_args = {"max": progress}
-    return Display(
+    return CommonDisplay(
         verbose=verbose,
-        html_param=html_param,
         progress_args=progress_args,
         monitor_rows=monitor_rows,
     )
@@ -23,6 +22,14 @@ def _create_display(progress: int, verbose: bool, monitor_rows: Any) -> Display:
 
 def _get_setup_signature() -> Optional[str]:
     return globals().get("_setup_signature", None)
+
+
+def _get_global(key: str, value: Any) -> Any:
+    return globals().get(key, value)
+
+
+def _set_global(key: str, value: Any) -> None:
+    globals()[key] = value
 
 
 def _get_context_lock() -> RLock:
@@ -40,8 +47,8 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
     Returns
     -------
     pandas.DataFrame
-        Equivalent to get_config('display_container')[-1]
+
     """
-    if not display_container:
+    if not _display_container:
         return None
-    return display_container.pop(-1) if pop else display_container[-1]
+    return _display_container.pop(-1) if pop else _display_container[-1]

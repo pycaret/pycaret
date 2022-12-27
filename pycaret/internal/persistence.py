@@ -2,12 +2,15 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 import gc
+import os
 from typing import Dict, Optional
-from sklearn.pipeline import Pipeline
-from pycaret.internal.utils import get_logger
 
+import joblib
+from sklearn.pipeline import Pipeline
+
+from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import MLUsecase, get_logger
 from pycaret.utils.time_series.forecasting.pipeline import _add_model_to_pipeline
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
 
 
 def deploy_model(
@@ -105,11 +108,6 @@ def deploy_model(
     logger.info("Initializing deploy_model()")
     logger.info(f"deploy_model({function_params_str})")
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
     allowed_platforms = ["aws", "gcp", "azure"]
 
     if platform not in allowed_platforms:
@@ -125,7 +123,6 @@ def deploy_model(
             raise ValueError("Authentication is missing.")
 
     # general dependencies
-    from IPython.display import clear_output
     import os
 
     logger.info("Saving model in active working directory")
@@ -138,15 +135,8 @@ def deploy_model(
         logger.info("Platform : AWS S3")
 
         # checking if boto3 is available
-        try:
-            import boto3
-        except ModuleNotFoundError:
-            logger.error(
-                "boto3 library not found. pip install boto3 to use deploy_model function."
-            )
-            raise ImportError(
-                "boto3 library not found. pip install boto3 to use deploy_model function."
-            )
+        _check_soft_dependencies("boto3", extra=None, severity="error")
+        import boto3
 
         # initialize s3
         logger.info("Initializing S3 client")
@@ -180,7 +170,6 @@ def deploy_model(
                 "Boto3 credentials not configured. Refer boto3 documentation "
                 "(https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)"
             )
-        clear_output()
         os.remove(filename)
         print("Model Successfully Deployed on AWS S3")
         logger.info("Model Successfully Deployed on AWS S3")
@@ -190,16 +179,9 @@ def deploy_model(
 
         logger.info("Platform : GCP")
 
-        try:
-            import google.cloud
-
-        except ModuleNotFoundError:
-            logger.error(
-                "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
-            )
-            raise ImportError(
-                "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
-            )
+        _check_soft_dependencies(
+            "google", extra=None, severity="error", install_name="google-cloud-storage"
+        )
 
         # initialize deployment
         filename = f"{model_name}.pkl"
@@ -220,7 +202,7 @@ def deploy_model(
         try:
             _create_bucket_gcp(project_name, bucket_name)
             _upload_blob_gcp(project_name, bucket_name, filename, key)
-        except:
+        except Exception:
             _upload_blob_gcp(project_name, bucket_name, filename, key)
         os.remove(filename)
         print("Model Successfully Deployed on GCP")
@@ -229,17 +211,11 @@ def deploy_model(
 
     elif platform == "azure":
 
-        try:
-            import azure.storage.blob
-        except ModuleNotFoundError:
-            logger.error(
-                "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
-            )
-            raise ImportError(
-                "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
-            )
-
         logger.info("Platform : Azure Blob Storage")
+
+        _check_soft_dependencies(
+            "azure", extra=None, severity="error", install_name="azure-storage-blob"
+        )
 
         # initialize deployment
         filename = f"{model_name}.pkl"
@@ -255,10 +231,10 @@ def deploy_model(
             )
 
         try:
-            container_client = _create_container_azure(container_name)
+            _create_container_azure(container_name)
             _upload_blob_azure(container_name, filename, key)
             del container_client
-        except:
+        except Exception:
             _upload_blob_azure(container_name, filename, key)
 
         os.remove(filename)
@@ -318,11 +294,6 @@ def save_model(
 
     from copy import deepcopy
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
     logger.info("Adding model into prep_pipe")
 
     if use_case == MLUsecase.TIME_SERIES:
@@ -345,9 +316,7 @@ def save_model(
             )
         else:
             model_ = deepcopy(prep_pipe_)
-            model_.steps.append(["trained_model", model])
-
-    import joblib
+            model_.steps.append(("trained_model", model))
 
     model_name = f"{model_name}.pkl"
     joblib.dump(model_, model_name, **kwargs)
@@ -364,7 +333,7 @@ def save_model(
 
 
 def load_model(
-    model_name,
+    model_name: str,
     platform: Optional[str] = None,
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,
@@ -411,11 +380,6 @@ def load_model(
     logger.info("Initializing load_model()")
     logger.info(f"load_model({function_params_str})")
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
     # exception checking
 
     if platform:
@@ -423,13 +387,11 @@ def load_model(
             raise ValueError("Authentication is missing.")
 
     if not platform:
-
-        import joblib
-
         model_name = f"{model_name}.pkl"
+        model = joblib.load(model_name)
         if verbose:
             print("Transformation Pipeline and Model Successfully Loaded")
-        return joblib.load(model_name)
+        return model
 
     # cloud providers
     elif platform == "aws":
@@ -437,15 +399,8 @@ def load_model(
         import os
 
         # checking if boto3 is available
-        try:
-            import boto3
-        except ModuleNotFoundError:
-            logger.error(
-                "boto3 library not found. pip install boto3 to use deploy_model function."
-            )
-            raise ImportError(
-                "boto3 library not found. pip install boto3 to use deploy_model function."
-            )
+        _check_soft_dependencies("boto3", extra=None, severity="error")
+        import boto3
 
         bucketname = authentication.get("bucket")
 
@@ -499,9 +454,7 @@ def load_model(
 
         filename = f"{model_name}.pkl"
 
-        model_downloaded = _download_blob_gcp(
-            project_name, bucket_name, filename, filename
-        )
+        _download_blob_gcp(project_name, bucket_name, filename, filename)
 
         model = load_model(model_name, verbose=False)
 
@@ -523,7 +476,7 @@ def load_model(
 
         filename = f"{model_name}.pkl"
 
-        model_downloaded = _download_blob_azure(container_name, filename, filename)
+        _download_blob_azure(container_name, filename, filename)
 
         model = load_model(model_name, verbose=False)
 
@@ -559,9 +512,8 @@ def _create_bucket_gcp(project_name: str, bucket_name: str):
     logger = get_logger()
 
     # bucket_name = "your-new-bucket-name"
-    from google.cloud import storage
-
     import google.auth.exceptions
+    from google.cloud import storage
 
     try:
         storage_client = storage.Client(project_name)
@@ -622,9 +574,8 @@ def _upload_blob_gcp(
     # bucket_name = "your-bucket-name"
     # source_file_name = "local/path/to/file"
     # destination_blob_name = "storage-object-name"
-    from google.cloud import storage
-
     import google.auth.exceptions
+    from google.cloud import storage
 
     try:
         storage_client = storage.Client(project_name)
@@ -686,8 +637,8 @@ def _download_blob_gcp(
     # bucket_name = "your-bucket-name"
     # source_blob_name = "storage-object-name"
     # destination_file_name = "local/path/to/file"
-    from google.cloud import storage
     import google.auth.exceptions
+    from google.cloud import storage
 
     try:
         storage_client = storage.Client(project_name)
@@ -737,6 +688,7 @@ def _create_container_azure(container_name: str):
 
     # Create the container
     import os
+
     from azure.storage.blob import BlobServiceClient
 
     connect_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
@@ -776,7 +728,6 @@ def _upload_blob_azure(
 
     logger = get_logger()
 
-    import os
     from azure.storage.blob import BlobServiceClient
 
     connect_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
@@ -823,6 +774,7 @@ def _download_blob_azure(
     logger = get_logger()
 
     import os
+
     from azure.storage.blob import BlobServiceClient
 
     connect_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")

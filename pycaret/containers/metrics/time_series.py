@@ -8,18 +8,20 @@
 # `TimeSeriesMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-from typing import Optional, Union, Dict, Any
-from pycaret.containers.metrics.base_metric import MetricContainer
-from sklearn.metrics._scorer import _BaseScorer  # type: ignore
-import pycaret.internal.metrics
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
 import pandas as pd
 from sklearn import metrics  # type: ignore
+from sklearn.metrics._scorer import _BaseScorer  # type: ignore
 from sktime.performance_metrics.forecasting._functions import (  # type: ignore
+    mean_absolute_percentage_error,
     mean_absolute_scaled_error,
     mean_squared_scaled_error,
-    mean_absolute_percentage_error,
 )
+
+import pycaret.internal.metrics
+from pycaret.containers.metrics.base_metric import MetricContainer
 
 
 class TimeSeriesMetricContainer(MetricContainer):
@@ -40,7 +42,7 @@ class TimeSeriesMetricContainer(MetricContainer):
         score_func and args.
     target : str, default = 'pred'
         The target of the score function. Only 'pred' is supported for regression.
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str, default = None
         Display name (shorter than name). Used in display dataframe header. If None or empty, will use name.
@@ -91,7 +93,7 @@ class TimeSeriesMetricContainer(MetricContainer):
     ) -> None:
 
         allowed_targets = ["pred"]
-        if not target in allowed_targets:
+        if target not in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")
 
         if not args:
@@ -214,7 +216,7 @@ def coverage(y_true, y_pred, lower: pd.Series, upper: pd.Series):
     combined.columns = ["y_true", "lower", "upper"]
     combined.dropna(subset=["y_true"], inplace=True)
 
-    ## Override lower and upper to only those indices that match y_true indices
+    # Override lower and upper to only those indices that match y_true indices
     lower = combined["lower"]
     upper = combined["upper"]
 
@@ -227,7 +229,7 @@ def coverage(y_true, y_pred, lower: pd.Series, upper: pd.Series):
 
 def _check_series(y):
     """
-    Check whether or not y is pandas.Series. Pycaret Experiment
+    Check whether y is pandas.Series. Pycaret Experiment
     internally converts data to pandas.DataFrame.
     """
     if isinstance(y, pd.Series):
@@ -239,6 +241,20 @@ def _check_series(y):
 def _set_y_as_series(y):
     """Set first column of a DataFrame as pandas.Series"""
     return pd.Series(y.iloc[:, 0])
+
+
+class MASEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mase", name="MASE", score_func=mase, greater_is_better=False
+        )
+
+
+class RMSSEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="rmsse", name="RMSSE", score_func=rmsse, greater_is_better=False
+        )
 
 
 class MAEMetricContainer(TimeSeriesMetricContainer):
@@ -276,20 +292,6 @@ class SMAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
             id="smape", name="SMAPE", score_func=_smape_loss, greater_is_better=False
-        )
-
-
-class MASEMetricContainer(TimeSeriesMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(
-            id="mase", name="MASE", score_func=mase, greater_is_better=False
-        )
-
-
-class RMSSEMetricContainer(TimeSeriesMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(
-            id="rmsse", name="RMSSE", score_func=rmsse, greater_is_better=False
         )
 
 

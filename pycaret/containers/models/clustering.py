@@ -8,16 +8,17 @@
 # `ClassifierContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-import logging
+from typing import Any, Dict, Optional
+
 import numpy as np
+
+import pycaret.containers.base_container
 import pycaret.internal.cuml_wrappers
-from typing import Any
 from pycaret.containers.models.base_model import ModelContainer
 from pycaret.internal.cuml_wrappers import get_dbscan, get_kmeans
-from pycaret.internal.utils import param_grid_to_lists, get_logger
-from pycaret.internal.distributions import *
-import pycaret.containers.base_container
-
+from pycaret.internal.distributions import Distribution
+from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import get_logger, param_grid_to_lists
 
 _DEFAULT_N_CLUSTERS = 4
 
@@ -38,15 +39,15 @@ class ClusterContainer(ModelContainer):
     eq_function : type, default = None
         Function to use to check whether an object (model) can be considered equal to the model
         in the container. If None, will be ``is_instance(x, class_def)`` where x is the object.
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing object of class_def class.
     is_special : bool, default = False
         Is the model special (not intended to be used on its own, eg. VotingClassifier).
-    tune_grid : dict of str : list, default = {}
+    tune_grid : dict of str : list, default = {} (empty dict)
         The hyperparameters tuning grid for random and grid search.
-    tune_distribution : dict of str : Distribution, default = {}
+    tune_distribution : dict of str : Distribution, default = {} (empty dict)
         The hyperparameters tuning grid for other types of searches.
-    tune_args : dict, default = {}
+    tune_args : dict, default = {} (empty dict)
         The arguments to always pass to the tuner.
     is_gpu_enabled : bool, default = None
         If None, will try to automatically determine.
@@ -170,13 +171,11 @@ class KMeansClusterContainer(ClusterContainer):
             logger.info("Imported cuml.cluster.KMeans")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.cluster import KMeans
 
                 logger.info("Imported cuml.cluster.KMeans")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.cluster.KMeans")
 
         args = {
             "n_clusters": _DEFAULT_N_CLUSTERS,
@@ -203,7 +202,7 @@ class KMeansClusterContainer(ClusterContainer):
 
 class AffinityPropagationClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import AffinityPropagation
 
@@ -225,7 +224,7 @@ class AffinityPropagationClusterContainer(ClusterContainer):
 
 class MeanShiftClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import MeanShift
 
@@ -249,7 +248,7 @@ class MeanShiftClusterContainer(ClusterContainer):
 
 class SpectralClusteringClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import SpectralClustering
 
@@ -275,7 +274,7 @@ class SpectralClusteringClusterContainer(ClusterContainer):
 
 class AgglomerativeClusteringClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import AgglomerativeClustering
 
@@ -310,13 +309,11 @@ class DBSCANClusterContainer(ClusterContainer):
             logger.info("Imported cuml.cluster.DBSCAN")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.cluster import DBSCAN
 
                 logger.info("Imported cuml.cluster.DBSCAN")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.cluster.DBSCAN")
 
         args = {}
         tune_args = {}
@@ -342,7 +339,7 @@ class DBSCANClusterContainer(ClusterContainer):
 
 class OPTICSClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import OPTICS
 
@@ -364,7 +361,7 @@ class OPTICSClusterContainer(ClusterContainer):
 
 class BirchClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import Birch
 
@@ -386,8 +383,13 @@ class BirchClusterContainer(ClusterContainer):
 
 class KModesClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
+
+        if not _check_soft_dependencies("kmodes", extra="models", severity="warning"):
+            self.active = False
+            return
+
         from kmodes.kmodes import KModes
 
         args = {

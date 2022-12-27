@@ -5,79 +5,89 @@ import os
 import time
 import traceback
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from collections import defaultdict
 from copy import deepcopy
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from IPython.utils import io
+from IPython.display import display as ipython_display
+from plotly_resampler import FigureResampler, FigureWidgetResampler
 from sklearn.base import clone
-from sktime.forecasting.base import ForecastingHorizon
+from sktime.forecasting.base import BaseForecaster, ForecastingHorizon
+from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
 from sktime.forecasting.model_selection import (
-    temporal_train_test_split,
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
+    temporal_train_test_split,
 )
-
-from sktime.forecasting.base import BaseForecaster
+from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
+from sktime.utils.seasonality import autocorrelation_seasonality_test
 
-# from sktime.forecasting.compose import ForecastingPipeline
-from pycaret.utils.time_series.forecasting import PyCaretForecastingHorizonTypes
-from pycaret.utils.time_series.forecasting.pipeline import (
-    PyCaretForecastingPipeline,
-    _add_model_to_pipeline,
-    _are_pipeline_tansformations_empty,
-    _get_imputed_data,
-    _get_pipeline_estimator_label,
+from pycaret.containers.metrics import get_all_ts_metric_containers
+from pycaret.containers.models import get_all_ts_model_containers
+from pycaret.containers.models.time_series import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
 )
-from pycaret.utils.time_series.forecasting.models import DummyForecaster
-from sktime.forecasting.compose import TransformedTargetForecaster
-
-from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
-    TSForecastingPreprocessor,
-)
-
-import pycaret.containers.metrics.time_series
-import pycaret.containers.models.time_series
-import pycaret.internal.patches.sklearn
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
-from pycaret.internal.Display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
-from pycaret.internal.logging import get_logger
-
-from pycaret.internal.tests.time_series import (
-    recommend_uppercase_d,
-    recommend_lowercase_d,
-)
+from pycaret.internal.logging import get_logger, redirect_output
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 
 # from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _get_plot
+from pycaret.internal.plots.utils.time_series import (
+    _clean_model_results_labels,
+    _get_data_types_to_plot,
+    _reformat_dataframes_for_plots,
+    _resolve_renderer,
+)
+from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
+    TSForecastingPreprocessor,
+)
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.internal.tests.time_series import run_test
+from pycaret.internal.tests.time_series import (
+    recommend_lowercase_d,
+    recommend_uppercase_d,
+    run_test,
+)
 from pycaret.internal.tunable import TunableMixin
-from pycaret.internal.utils import color_df
 from pycaret.internal.validation import is_sklearn_cv_generator
-from pycaret.utils import _coerce_empty_dataframe_to_none, _resolve_dict_keys
+from pycaret.loggers.base_logger import BaseLogger
+from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.datetime import coerce_datetime_to_period_index
-from pycaret.utils.time_series import TSModelTypes, get_sp_from_str
+from pycaret.utils.generic import MLUsecase, _resolve_dict_keys, highlight_setup
+from pycaret.utils.time_series import (
+    TSApproachTypes,
+    TSExogenousPresent,
+    TSModelTypes,
+    auto_detect_sp,
+    get_sp_from_str,
+    remove_harmonics_from_sp,
+)
 from pycaret.utils.time_series.forecasting import (
+    PyCaretForecastingHorizonTypes,
+    _check_and_clean_coverage,
     get_predictions_with_intervals,
     update_additional_scorer_kwargs,
 )
-from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
 from pycaret.utils.time_series.forecasting.model_selection import (
     ForecastingGridSearchCV,
     ForecastingRandomizedSearchCV,
     cross_validate,
 )
-from pycaret.internal.plots.utils.time_series import _resolve_renderer
+from pycaret.utils.time_series.forecasting.models import DummyForecaster
+from pycaret.utils.time_series.forecasting.pipeline import (
+    _add_model_to_pipeline,
+    _get_imputed_data,
+    _get_pipeline_estimator_label,
+    _pipeline_transform,
+)
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
@@ -87,25 +97,23 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self._ml_usecase = MLUsecase.TIME_SERIES
         self.exp_name_log = "ts-default-name"
 
-        # Values in variable_keys are accessible in globals
-        self.variable_keys = self.variable_keys.difference(
+        # Values in _variable_keys are accessible in globals
+        self._variable_keys = self._variable_keys.difference(
             {
                 "target_param",
-                "iterative_imputation_iters_param",
-                "imputation_regressor",
-                "imputation_classifier",
                 "fold_shuffle_param",
-                "stratify_param",
                 "fold_groups_param",
             }
         )
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "fh",
-                "seasonal_period",
                 "seasonality_present",
+                "candidate_sps",
+                "significant_sps",
+                "significant_sps_no_harmonics",
+                "all_sps_to_use",
                 "primary_sp_to_use",
-                "all_sp_values",
                 "strictly_positive",
                 "enforce_pi",
                 "enforce_exogenous",
@@ -118,9 +126,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "X_train_transformed",
                 "y_test_transformed",
                 "X_test_transformed",
+                "model_engines",
+                "fold_param",
             }
         )
         self._available_plots = {
+            "pipeline": "Pipeline Plot",
             "ts": "Time Series Plot",
             "train_test_split": "Train Test Split",
             "cv": "Cross Validation",
@@ -161,60 +172,105 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def _get_setup_display(self, **kwargs) -> pd.DataFrame:
         """Returns the dataframe to be displayed at the end of setup"""
+        n_nans = 100 * self.data.isna().any(axis=1).sum() / len(self.data)
 
-        display_container = [
+        _display_container = [
             ["session_id", self.seed],
             ["Target", self.target_param],
             ["Approach", self.approach_type.value],
             ["Exogenous Variables", self.exogenous_present.value],
-            ["Data shape", self.data.shape],
-            ["Train data shape", self.train.shape],
-            ["Test data shape", self.test.shape],
+            ["Original data shape", self.dataset.shape],
+            ["Transformed data shape", self.dataset_transformed.shape],
+            ["Transformed train set shape", self.train_transformed.shape],
+            ["Transformed test set shape", self.test_transformed.shape],
+            ["Rows with missing values", f"{round(n_nans, 1)}%"],
             ["Fold Generator", type(self.fold_generator).__name__],
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
-            ["Seasonal Period(s) Tested", self.seasonal_period],
-            ["Seasonality Present", self.seasonality_present],
-            ["Seasonalities Detected", self.all_sp_values],
+            ["Seasonality Detection Algo", self.sp_detection],
+            ["Max Period to Consider", self.max_sp_to_consider],
+            ["Seasonal Period(s) Tested", self.candidate_sps],
+            ["Significant Seasonal Period(s)", self.significant_sps],
+            [
+                "Significant Seasonal Period(s) without Harmonics",
+                self.significant_sps_no_harmonics,
+            ],
+            ["Remove Harmonics", self.remove_harmonics],
+            ["Harmonics Order Method", self.harmonic_order_method],
+            ["Num Seasonalities to Use", self.num_sps_to_use],
+            ["All Seasonalities to Use", self.all_sps_to_use],
             ["Primary Seasonality", self.primary_sp_to_use],
+            ["Seasonality Present", self.seasonality_present],
             ["Target Strictly Positive", self.strictly_positive],
             ["Target White Noise", self.white_noise],
             ["Recommended d", self.lowercase_d],
             ["Recommended Seasonal D", self.uppercase_d],
-            ["Missing Values", self.data.isna().sum().sum()],
             ["Preprocess", self.preprocess],
-            ["CPU Jobs", self.n_jobs_param],
-            ["Use GPU", self.gpu_param],
-            ["Log Experiment", self.logging_param],
-            ["Experiment Name", self.exp_name_log],
-            ["USI", self.USI],
-            # ["Transformed Train Target", self.y_train.shape],
-            # ["Transformed Test Target", self.y_test.shape],
-            # ["Transformed Train Exogenous", self.X_train.shape],
-            # ["Transformed Test Exogenous", self.X_test.shape],
         ]
 
-        # if self.preprocess:
-        #     display_container.extend([["Imputation Type", self.imputation_type]])
+        if self.preprocess:
+            _display_container.extend(
+                [
+                    ["Numerical Imputation (Target)", self.numeric_imputation_target],
+                    ["Transformation (Target)", self.transform_target],
+                    ["Scaling (Target)", self.scale_target],
+                    [
+                        "Feature Engineering (Target) - Reduced Regression",
+                        True if self.fe_target_rr else False,
+                    ],
+                ]
+            )
 
-        display_container = pd.DataFrame(
-            display_container, columns=["Description", "Value"]
+            if self.exogenous_present == TSExogenousPresent.YES:
+                _display_container.extend(
+                    [
+                        [
+                            "Numerical Imputation (Exogenous)",
+                            self.numeric_imputation_exogenous,
+                        ],
+                        ["Transformation (Exogenous)", self.transform_exogenous],
+                        ["Scaling (Exogenous)", self.scale_exogenous],
+                    ]
+                )
+            if self.fe_exogenous:
+                # This is added even if there are no explicit exogenous variables
+                # since exogenous variables can be created from the Index (e.g.
+                # DateTimeFeatures) using self.fe_exogenous
+                _display_container.extend(
+                    [
+                        [
+                            "Feature Engineering (Exogenous)",
+                            True if self.fe_exogenous else False,
+                        ]
+                    ]
+                )
+
+        _display_container.extend(
+            [
+                ["CPU Jobs", self.n_jobs_param],
+                ["Use GPU", self.gpu_param],
+                ["Log Experiment", self.logging_param],
+                ["Experiment Name", self.exp_name_log],
+                ["USI", self.USI],
+            ]
         )
 
-        return display_container
+        _display_container = pd.DataFrame(
+            _display_container, columns=["Description", "Value"]
+        )
+
+        return _display_container
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in pycaret.containers.models.time_series.get_all_model_containers(
+            for k, v in get_all_ts_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = (
-            pycaret.containers.models.time_series.get_all_model_containers(
-                self, raise_errors=raise_errors
-            )
+        all_models_internal = get_all_ts_model_containers(
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
@@ -231,9 +287,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         dict
             [description]
         """
-        return pycaret.containers.metrics.time_series.get_all_metric_containers(
-            self.variables, raise_errors=raise_errors
-        )
+        return get_all_ts_metric_containers(self.variables, raise_errors=raise_errors)
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["forecast", "residuals", "diagnostics"]
@@ -306,7 +360,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 f"Data must be a pandas Series or DataFrame, got object of {type(data)} type!"
             )
 
-        ## Make a local copy (to perfrom inplace operation on the original dataset)
+        # Make a local copy (to perfrom inplace operation on the original dataset)
         data_ = data.copy()
 
         if isinstance(data_, pd.Series):
@@ -314,7 +368,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             data_.name = data_.name if data.name is not None else "Time Series"
             data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
 
-        #### Clean column names ----
+        # Clean column names ----
         data_.columns = [str(x) for x in data_.columns]
 
         self.data = data_
@@ -345,13 +399,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         cols = self.data.shape[1]
 
-        #### target can not be None if there are multiple columns ----
+        # target can not be None if there are multiple columns ----
         if cols > 1 and target is None:
             raise ValueError(
                 f"Data has {cols} columns, but the target has not been specified."
             )
 
-        #### Set target if there is only 1 column ----
+        # Set target if there is only 1 column ----
         if cols == 1:
             if target is not None and target != self.data.columns[0]:
                 raise ValueError(
@@ -391,7 +445,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             If the target(s) are not of numeric type
         """
 
-        #### Get Target Name ----
+        # Get Target Name ----
         target = self._return_target_names(target=target)
 
         if isinstance(target, list) and len(target) == 1:
@@ -400,7 +454,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if target not in self.data.columns.to_list():
             raise ValueError(f"Target Column '{target}' is not present in the data.")
 
-        #### Check type of target values - must be numeric ----
+        # Check type of target values - must be numeric ----
         if not np.issubdtype(self.data[target].dtype, np.number):
             raise TypeError(
                 f"Data must be of 'numpy.number' subtype, got {self.data[target].dtype}!"
@@ -416,12 +470,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     ) -> "TSForecastingExperiment":
         """
-        Checks if the index is one of the allowed types (pd.PeriodIndex,
-        pd.DatetimeIndex). If it is not one of the allowed types, then seasonal
-        period must be provided. This check is also performed. Finally, index is
-        coerced into period index which is used in subsequent steps and the
-        appropriate class for data index is set so that it can be used to disable
-        certain models which do not support that type of index.
+        Checks the following
+        (1) Index has duplicate values.
+        (2) Data has missing index values.
+        (3) If sp_detection == "index" and the index is not one of the allowed type
+        (pd.PeriodIndex, pd.DatetimeIndex), then seasonal period must be provided.
+
+        Finally, index is coerced into period index which is used in subsequent
+        steps and the appropriate class for data index is set so that it can be
+        used to disable certain models which do not support that type of index.
 
         Parameters
         ----------
@@ -441,13 +498,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         Raises
         ------
         ValueError
-            Raised when
-            (1) Index has duplicate values.
-            (2) Data has missing index values.
-            (3) Index is not one of the allowed types and seasonal period is not provided
+            Raised when any of the checks fail
         """
 
-        #### Set Index if necessary ----
+        # Set Index if necessary ----
         if index is not None:
             if index in self.data.columns.to_list():
                 unique_index_before = len(self.data[index]) == len(
@@ -457,7 +511,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 unique_index_after = len(self.data[index]) == len(set(self.data[index]))
                 if unique_index_before and not unique_index_after:
                     raise ValueError(
-                        f"Coresion of Index column '{index}' to datetime led to duplicates!"
+                        f"Coercion of Index column '{index}' to datetime led to duplicates!"
                         " Consider setting the data index outside pycaret before passing to setup()."
                     )
                 self.data.set_index(index, inplace=True)
@@ -466,16 +520,17 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     f"Index '{index}' is not a column in the data provided."
                 )
 
-        #### Data must not have duplicate indices ----
+        # Data must not have duplicate indices ----
         if len(self.data.index) != len(set(self.data.index)):
             raise ValueError(
                 "Index may not have duplicate values! Please check and correct before passing to pycaret"
             )
 
-        #### Check Index Type ----
+        # Check Index Type ----
         allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
         if (
-            not isinstance(self.data.index, allowed_freq_index_types)
+            self.sp_detection == "index"
+            and not isinstance(self.data.index, allowed_freq_index_types)
             and seasonal_period is None
         ):
             # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
@@ -486,15 +541,17 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
 
-        #### Convert DateTimeIndex index to PeriodIndex ----
+        # Convert DateTimeIndex index to PeriodIndex ----
         # We use PeriodIndex in PyCaret since it seems to be more robust per `sktime``
-        # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+        # Ref: https://github.com/sktime/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
         if isinstance(self.data.index, pd.DatetimeIndex):
             self.data.index = self.data.index.to_period()
 
-        #### Data must not have missing indices ----
+        # Data must not have missing indices ----
         if isinstance(self.data.index, pd.PeriodIndex):
-            expected_idx = pd.period_range(min(self.data.index), max(self.data.index))
+            expected_idx = pd.period_range(
+                min(self.data.index), max(self.data.index), freq=self.data.index.freq
+            )
             if len(self.data.index) != len(expected_idx):
                 missing_index = [
                     index for index in expected_idx if index not in self.data.index
@@ -504,14 +561,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     "\n\nData has missing indices!"
                     "\nMany models, plotting, and testing functionality does not work with missing indices."
                     "\nPlease add missing indices to data before passing to pycaret."
-                    "\nYou can do that by using the following code snippet & then enabling imputation of missing values in `setup`"
+                    "\nYou can do that by using the following code snippet & then enabling imputation of missing "
+                    "values in `setup`"
                     "\n\n# Assuming `data` is a pandas dataframe"
                     "\n>>> import numpy as np"
                     "\n>>> idx = pd.period_range(min(data.index), max(data.index))"
                     "\n>>> data = data.reindex(idx, fill_value=np.nan)"
                 )
 
-        #### Save index type so that we can disable certain models ----
+        # Save index type so that we can disable certain models ----
         # E.g. Prophet when index if of type RangeIndex
         self.index_type = type(self.data.index)
 
@@ -545,7 +603,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.logger.info("Set Forecast Horizon.")
 
-        #### Forecast Horizon Checks ----
+        # Forecast Horizon Checks ----
         if fh is None:
             if isinstance(self.fold_strategy, str):
                 raise ValueError(
@@ -558,7 +616,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 f"Provided values is {type(fh)}"
             )
 
-        #### Check Fold Strategy ----
+        # Check Fold Strategy ----
         if not isinstance(self.fold_strategy, str):
             self.logger.info(
                 f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
@@ -575,25 +633,48 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _check_and_set_seasonal_period(
-        self,
-        seasonal_period: Optional[Union[List[Union[int, str]], int, str]],
+    def _set_point_alpha_intervals_enforce_pi(
+        self, point_alpha: Optional[float], coverage: Union[float, List[float]]
     ) -> "TSForecastingExperiment":
-        """Derived the seasonal periods by either
-        (1) Extracting it from data's index (if seasonal period is not provided), or
-        for each value of seasonal_period:
-            (2) Extracting it from the value if it is of type string, or
-            (3) Using the value as is if it is of type int.
-
-        After deriving the seasonal periods, a seasonality test is performed for each
-        value of seasonal_period. Final seasonal period class attribute value is set equal to
-        (1) 1 if seasonality is not detected at any of the derived seasonal periods, or
-        (2) the derived seasonal periods for which seasonality is detected.
+        """Sets the alpha value to be used for point predictions and the quantile
+        values to be used for prediction intervals. Also sets the enforcement of
+        prediction interval (if point_alpha is not None) so that models that do
+        not support predict_quantiles() can be disabled.
 
         Parameters
         ----------
-        seasonal_period : Optional[Union[List[Union[int, str]], int, str]]
-            Seasonal Period specified by user
+        point_alpha : Optional[float]
+            The alpha value passed by user for point prediction.
+        coverage : Union[float, List[float]]
+            The coverage value passed by user for prediction intervals
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.point_alpha = point_alpha
+        self.coverage = _check_and_clean_coverage(coverage=coverage)
+        self.enforce_pi = True if point_alpha is not None else False
+
+        return self
+
+    def _check_and_set_seasonal_period(self) -> "TSForecastingExperiment":
+        """
+        Derive the seasonal periods to use per teh following algorithm
+        (1) Get the candidate seasonal periods
+        (2) Perform seasonal checks to remove periods that do not indicate seasonality
+        (3) Remove harmonics based on user settings
+        (4) Limit max number of seasonal periods to use based on user settings
+        (5) Set the primary seasonal period & other seasonality related class attributes
+
+        Getting candidate seasonal periods is performed in the following order
+            (1) Use seasonal_period provided by user (str or int)
+            (2) Based on sp_detection
+                (A) If sp_detection = "auto", extracting it using ACF
+                (B) If sp_detection = "index", extracting it from data's index
+
+        NOTE: If no seasonality is detected, seasonal period is set to 1
 
         Returns
         -------
@@ -607,39 +688,72 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         self.logger.info("Set up Seasonal Period.")
 
-        # sktime is an optional dependency
-        from sktime.utils.seasonality import autocorrelation_seasonality_test
+        skip_autocorrelation_test = False
 
-        if seasonal_period is None:
-            seasonal_period = self.data.index.freqstr
-
-        if not isinstance(seasonal_period, list):
-            seasonal_period = [seasonal_period]
-        seasonal_period = [self._convert_sp_to_int(sp) for sp in seasonal_period]
-
-        # check valid seasonal parameter
         # We use y_transformed here instead of y for 2 reasons:
         # (1) Missing values in y will cause issues with this test (seasonality
         #     will not be detected properly).
         # (2) The actual forecaster will see transformed values of y for training.
         #     Hence, these transformed values should be used to determine seasonality.
-        seasonality_test_results = [
-            autocorrelation_seasonality_test(self.y_transformed, sp)
-            for sp in seasonal_period
-        ]
-        self.seasonality_present = any(seasonality_test_results)
-        sp_values_and_test_result = zip(seasonal_period, seasonality_test_results)
 
-        # What seasonal period should be used for modeling?
-        self.all_sp_values = [
+        # 1.0 Set the candidate seasonal periods based on inputs and settings ----
+        candidate_sps = self.seasonal_period
+        if candidate_sps is None:
+            if self.sp_detection == "auto":
+                _, candidate_sps, _ = auto_detect_sp(y=self.y_transformed)
+                # Test is already done in detection process so we should skip further tests
+                skip_autocorrelation_test = True
+            elif self.sp_detection == "index":
+                candidate_sps = self.data.index.freqstr
+
+        if not isinstance(candidate_sps, list):
+            candidate_sps = [candidate_sps]
+        candidate_sps = [self._convert_sp_to_int(sp) for sp in candidate_sps]
+
+        # Limit to max seasonal periods to consider
+        if self.max_sp_to_consider:
+            candidate_sps = [
+                sp for sp in candidate_sps if sp <= self.max_sp_to_consider
+            ]
+
+        # 2.0 Filter candidates based on seasonality check if needed (find significant sp values) ----
+        if skip_autocorrelation_test:
+            seasonality_test_results = [True for sp in candidate_sps]
+        else:
+            seasonality_test_results = [
+                autocorrelation_seasonality_test(self.y_transformed, sp)
+                for sp in candidate_sps
+            ]
+        self.seasonality_present = any(seasonality_test_results)
+        sp_values_and_test_result = zip(candidate_sps, seasonality_test_results)
+
+        significant_sps = [
             sp
             for sp, seasonality_present in sp_values_and_test_result
             if seasonality_present
         ] or [1]
-        self.primary_sp_to_use = self.all_sp_values[0]
-        self.seasonal_period = (
-            seasonal_period[0] if len(seasonal_period) == 1 else seasonal_period
+
+        # 3.0 Remove harmonics based on settings ----
+        significant_sps_no_harmonics = remove_harmonics_from_sp(
+            significant_sps, harmonic_order_method=self.harmonic_order_method
         )
+
+        # 4.0 Limit seasonal periods to use based on settings ----
+        if self.remove_harmonics:
+            all_sps_to_use = significant_sps_no_harmonics.copy()
+        else:
+            all_sps_to_use = significant_sps.copy()
+        if self.num_sps_to_use > 0:
+            # If the number of seasonalities detected is > the number of
+            # seasonalities allowed by user, then limit it.
+            if len(all_sps_to_use) > self.num_sps_to_use:
+                all_sps_to_use = all_sps_to_use[0 : self.num_sps_to_use]
+
+        self.candidate_sps = candidate_sps
+        self.significant_sps = significant_sps
+        self.significant_sps_no_harmonics = significant_sps_no_harmonics
+        self.all_sps_to_use = all_sps_to_use
+        self.primary_sp_to_use = self.all_sps_to_use[0]
 
         return self
 
@@ -706,14 +820,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ValueError
             If Forecasting type is unsupported (e.g. Multivariate Forecasting)
         """
-        #### Univariate or Multivariate ----
+        # Univariate or Multivariate ----
         if isinstance(self.target_param, str):
             self.approach_type = TSApproachTypes.UNI
         elif isinstance(self.target_param, list):
             self.approach_type = TSApproachTypes.MULTI
             raise ValueError("Multivariate forecasting is currently not supported")
 
-        #### Data has exogenous variables or not ----
+        # Data has exogenous variables or not ----
         if len(self.exogenous_variables) > 0:
             self.exogenous_present = TSExogenousPresent.YES
         else:
@@ -812,9 +926,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
 
         # idx contains train, test indices.
-        # Setting of self.y_train, self.y_test, self.X_train and self.X_test
-        # will be handled internally based on these indices and self.data
-        self.idx = [y_train.index, y_test.index]
+        # Setting of self.y_train, self.y_test, self.X_train will be handled
+        # internally based on these indices and self.data
+        # Different from non-time series, we save X_test index here as well to
+        # handle FH with gaps. In such cases, y_test will have gaps, but full
+        # X_test is needed for some forecasters.
+        # Refer:
+        # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+        # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+        self.idx = [y_train.index, y_test.index, X_test.index]
 
         return self
 
@@ -832,7 +952,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             When the fold_strategy passed by the user is not one of the allowed types
         """
         possible_time_series_fold_strategies = ["expanding", "sliding", "rolling"]
-        #### TODO: Change is_sklearn_cv_generator to check for sktime instead
+        # TODO: Change is_sklearn_cv_generator to check for sktime instead
         if not (
             self.fold_strategy in possible_time_series_fold_strategies
             or is_sklearn_cv_generator(self.fold_strategy)
@@ -850,6 +970,45 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             self.fold_generator = self.fold_strategy
             # Number of folds
             self.fold_param = self.fold_strategy.get_n_splits(y=self.y_train)
+
+        return self
+
+    def _set_should_preprocess_data(self) -> "TSForecastingExperiment":
+        """Sets whether preprocessing should be enabled or not (depending on
+        user arguments).
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        if (
+            (
+                # Target transformations ----
+                self.numeric_imputation_target is not None
+                or self.transform_target is not None
+                or self.scale_target is not None
+            )
+            or (
+                # Exogenous Transformations ----
+                (self.exogenous_present == TSExogenousPresent.YES)
+                and (
+                    self.numeric_imputation_exogenous is not None
+                    or self.transform_exogenous is not None
+                    or self.scale_exogenous is not None
+                )
+            )
+            or (
+                # Even if there are no explicit exogenous variables, we can create
+                # them using index. Hence, we do not include the exogenous_present
+                # check here.
+                self.fe_exogenous
+                is not None
+            )
+        ):
+            self.preprocess = True
+        else:
+            self.preprocess = False
 
         return self
 
@@ -906,13 +1065,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
 
         # Initialize empty steps ----
-        self.pipe_steps_target = []
-        self.pipe_steps_exogenous = []
+        self.transformer_steps_target = []
+        self.transformer_steps_exogenous = []
 
         if self.preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
 
-            #### Impute missing values ----
+            # Impute missing values ----
             self._imputation(
                 numeric_imputation_target=self.numeric_imputation_target,
                 numeric_imputation_exogenous=self.numeric_imputation_exogenous,
@@ -924,14 +1083,20 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                              limit_exogenous=self.limit_exogenous,
                              exogenous_present=self.exogenous_present)
 
-            #### Transformations (preferably based on residual analysis) ----
+            # Feature Engineering ----
+            self._feature_engineering(
+                fe_exogenous=self.fe_exogenous,
+                exogenous_present=self.exogenous_present,
+            )
+
+            # Transformations (preferably based on residual analysis) ----
             self._transformation(
                 transform_target=self.transform_target,
                 transform_exogenous=self.transform_exogenous,
                 exogenous_present=self.exogenous_present,
             )
 
-            #### Scaling ----
+            # Scaling ----
             self._scaling(
                 scale_target=self.scale_target,
                 scale_exogenous=self.scale_exogenous,
@@ -947,8 +1112,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.pipeline = self._create_pipeline(
             model=DummyForecaster(),
-            target_steps=self.pipe_steps_target,
-            exogenous_steps=self.pipe_steps_exogenous,
+            transformer_steps_target=self.transformer_steps_target,
+            transformer_steps_exogenous=self.transformer_steps_exogenous,
         )
         self._check_pipeline()
 
@@ -988,7 +1153,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The experiment object to allow chaining of methods
         """
         self.white_noise = None
-        wn_results = self.check_stats(test="white_noise")
+        wn_results = self.check_stats(test="white_noise", data_type="transformed")
         wn_values = wn_results.query("Property == 'White Noise'")["Value"]
 
         # There can be multiple lags values tested.
@@ -1077,39 +1242,17 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The experiment object to allow chaining of methods
         """
         self.logger.info("Creating final display dataframe.")
-        self.display_container = [self._get_setup_display()]
-        self.logger.info(f"Setup Display Container: {self.display_container[0]}")
-        display = Display(
+        self._display_container = [self._get_setup_display()]
+        self.logger.info(f"Setup Display Container: {self._display_container[0]}")
+        display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
-        return self
-
-    def _set_all_models(self) -> "TSForecastingExperiment":
-        """Set all available models
-
-        Returns
-        -------
-        TSForecastingExperiment
-            The experiment object to allow chaining of methods
-        """
-        self._all_models, self._all_models_internal = self._get_models()
-        return self
-
-    def _set_all_metrics(self) -> "TSForecastingExperiment":
-        """Set all available metrics
-
-        Returns
-        -------
-        TSForecastingExperiment
-            The experiment object to allow chaining of methods
-        """
-        self._all_metrics = self._get_metrics()
         return self
 
     def _disable_metrics(self) -> "TSForecastingExperiment":
@@ -1123,16 +1266,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
-        ## NOTE: This must be run after _setup_ran has been set, else metrics can
+        # NOTE: This must be run after _setup_ran has been set, else metrics can
         # not be retrieved.
 
-        #### Disable R2 when fh = 1 ----
+        # Disable R2 when fh = 1 ----
         if len(self.fh) == 1 and "r2" in self._get_metrics():
             # disable R2 metric if it exists in the metrics since R2 needs
             # at least 2 values
             self.remove_metric("R2")
 
-        #### Remove COVERAGE when enforce_pi is False ----
+        # Remove COVERAGE when enforce_pi is False ----
         # User can add it manually if they want when enforce_pi is set to False.
         # Refer: https://github.com/pycaret/pycaret/issues/1900
         if not self.enforce_pi and "coverage" in self._get_metrics():
@@ -1140,20 +1283,48 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _check_setup_ran(self):
-        if not self._setup_ran:
-            raise RuntimeError(
-                "This function requires the users to run setup() first."
-                "\nMore info: https://pycaret.gitbook.io/docs/get-started/quickstart"
+    def _mlflow_log_setup(self, experiment_name) -> "TSForecastingExperiment":
+        """Logs 'diagnostics', 'decomp' and 'diff' plots during setup"""
+        self.logger.info("Creating MLFlow EDA plots")
+
+        import os
+
+        import mlflow
+
+        mlflow.set_experiment(experiment_name)
+
+        plots = ["diagnostics", "decomp", "diff"]
+
+        with mlflow.start_run(nested=True):
+            self.logger.info(
+                "Begin logging diagnostics, decomp, and diff plots ================"
             )
+
+            def _log_plot(plot):
+                try:
+                    plot_filename = self._plot_model(
+                        verbose=False, save=True, system=False
+                    )
+                    mlflow.log_artifact(plot_filename)
+                    os.remove(plot_filename)
+                except Exception as e:
+                    self.logger.warning(e)
+
+            for plot in plots:
+                _log_plot(plot)
+            self.logger.info(
+                "Logging diagnostics, decomp, and diff plots ended ================"
+            )
+
+        return self
 
     def setup(
         self,
-        data: Union[pd.Series, pd.DataFrame],
+        data: Union[pd.Series, pd.DataFrame] = None,
+        data_func: Optional[Callable[[], Union[pd.Series, pd.DataFrame]]] = None,
         target: Optional[str] = None,
         index: Optional[str] = None,
         ignore_features: Optional[List] = None,
-        preprocess: bool = True,
         numeric_imputation_target: Optional[Union[int, float, str]] = None,
         numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
         limit_target: Optional[List[Union[int,float,None]]] = None,
@@ -1161,26 +1332,35 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         transform_exogenous: Optional[str] = None,
         scale_target: Optional[str] = None,
         scale_exogenous: Optional[str] = None,
+        fe_target_rr: Optional[list] = None,
+        fe_exogenous: Optional[list] = None,
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
-        enforce_pi: bool = False,
+        sp_detection: str = "auto",
+        max_sp_to_consider: Optional[int] = None,
+        remove_harmonics: bool = False,
+        harmonic_order_method: str = "harmonic_max",
+        num_sps_to_use: int = 1,
+        point_alpha: Optional[float] = None,
+        coverage: Union[float, List[float]] = 0.9,
         enforce_exogenous: bool = True,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
-        custom_pipeline: Union[
-            Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-        ] = None,
+        custom_pipeline: Optional[Any] = None,
         html: bool = True,
         session_id: Optional[int] = None,
-        system_log: Union[bool, logging.Logger] = True,
-        log_experiment: bool = False,
+        system_log: Union[bool, str, logging.Logger] = True,
+        log_experiment: Union[
+            bool, str, BaseLogger, List[Union[str, BaseLogger]]
+        ] = False,
         experiment_name: Optional[str] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
@@ -1199,8 +1379,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         >>> exp_name = setup(data = airline,  fh = 12)
 
 
-        data : pandas.Series or pandas.DataFrame
+        data : pandas.Series or pandas.DataFrame = None
             Shape (n_samples, 1), when pandas.DataFrame, otherwise (n_samples, ).
+
+
+        data_func: Callable[[], Union[pd.Series, pd.DataFrame]] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
 
 
         target : Optional[str], default = None
@@ -1219,12 +1407,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             List of features to ignore for modeling when the data is a pandas
             Dataframe with more than 1 column. Ignored when data is a pandas Series
             or Dataframe with 1 column.
-
-
-        preprocess: bool, default = True
-            Should preprocessing be done on the data (includes imputation,
-            transformation, scaling)? By default True, but all steps are disabled.
-            Enable the steps that need to be preprocessed using appropriate arguments.
 
 
         numeric_imputation_target: Optional[Union[int, float, str]], default = None
@@ -1269,15 +1451,102 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             If None, no transformation is performed. Allowed values are
                 "box-cox", "log", "sqrt", "exp", "cos"
 
+
         scale_target: Optional[str], default = None
             Indicates how the target variable should be scaled.
             If None, no scaling is performed. Allowed values are
                 "zscore", "minmax", "maxabs", "robust"
 
+
         scale_exogenous: Optional[str], default = None
             Indicates how the exogenous variables should be scaled.
             If None, no scaling is performed. Allowed values are
                 "zscore", "minmax", "maxabs", "robust"
+
+
+        fe_target_rr: Optional[list], default = None
+            The transformers to be applied to the target variable in order to
+            extract useful features. By default, None which means that the
+            provided target variable are used "as is".
+
+            NOTE: Most statistical and baseline models already use features (lags)
+            for target variables implicitly. The only place where target features
+            have to be created explicitly is in reduced regression models. Hence,
+            this feature extraction is only applied to reduced regression models.
+
+            Example
+            -------
+
+            >>> import numpy as np
+            >>> from pycaret.datasets import get_data
+            >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+            >>> data = get_data("airline")
+
+            >>> kwargs = {"lag_feature": {"lag": [36, 24, 13, 12, 11, 9, 6, 3, 2, 1]}}
+            >>> fe_target_rr = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
+
+            >>> # Baseline
+            >>> exp = TSForecastingExperiment()
+            >>> exp.setup(data=data, fh=12, fold=3, session_id=42)
+            >>> model1 = exp.create_model("lr_cds_dt")
+
+            >>> # With Feature Engineering
+            >>> exp = TSForecastingExperiment()
+            >>> exp.setup(
+            >>>     data=data, fh=12, fold=3, fe_target_rr=fe_target_rr, session_id=42
+            >>> )
+            >>> model2 = exp.create_model("lr_cds_dt")
+
+            >>> exp.plot_model([model1, model2], data_kwargs={"labels": ["Baseline", "With FE"]})
+
+        fe_exogenous : Optional[list] = None
+            The transformations to be applied to the exogenous variables. These
+            transformations are used for all models that accept exogenous variables.
+            By default, None which means that the provided exogenous variables are
+            used "as is".
+
+            Example
+            -------
+
+            >>> import numpy as np
+            >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+            >>> # Example: function num_above_thresh to count how many observations lie above
+            >>> # the threshold within a window of length 2, lagged by 0 periods.
+            >>> def num_above_thresh(x):
+            >>>     '''Count how many observations lie above threshold.'''
+            >>>     return np.sum((x > 0.7)[::-1])
+
+            >>> kwargs1 = {"lag_feature": {"lag": [0, 1], "mean": [[0, 4]]}}
+            >>> kwargs2 = {
+            >>>     "lag_feature": {
+            >>>         "lag": [0, 1], num_above_thresh: [[0, 2]],
+            >>>         "mean": [[0, 4]], "std": [[0, 4]]
+            >>>     }
+            >>> }
+
+            >>> fe_exogenous = [
+            >>>     (
+                        "a", WindowSummarizer(
+            >>>             n_jobs=1, target_cols=["Income"], truncate="bfill", **kwargs1
+            >>>         )
+            >>>     ),
+            >>>     (
+            >>>         "b", WindowSummarizer(
+            >>>             n_jobs=1, target_cols=["Unemployment", "Production"], truncate="bfill", **kwargs2
+            >>>         )
+            >>>     ),
+            >>> ]
+
+            >>> data = get_data("uschange")
+            >>> exp = TSForecastingExperiment()
+            >>> exp.setup(
+            >>>     data=data, target="Consumption", fh=12,
+            >>>     fe_exogenous=fe_exogenous, session_id=42
+            >>> )
+            >>> print(f"Feature Columns: {exp.get_config('X_transformed').columns}")
+            >>> model = exp.create_model("lr_cds_dt")
 
 
         fold_strategy: str or sklearn CV generator object, default = 'expanding'
@@ -1316,31 +1585,107 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         seasonal_period: list or int or str, default = None
-            Seasonal period in timeseries data. If not provided the frequency of the data
-            index is mapped to a seasonal period as follows:
+            Seasonal periods to check when performing seasonality checks (i.e. candidates).
+            If not provided, then candidates are detected per the sp_detection setting.
 
-            * B, C = 5
-            * D = 7
-            * W = 52
-            * M, BM, CBM, MS, BMS, CBMS = 12
-            * SM, SMS = 24
-            * Q, BQ, QS, BQS = 4
-            * A, Y, BA, BY, AS, YS, BAS, BYS = 1
-            * H = 24
-            * T, min = 60
-            * S = 60
+            Users can provide `seasonal_period` by passing it as an integer or a
+            string corresponding to the keys below (e.g. 'W' for weekly data,
+            'M' for monthly data, etc.).
+                * B, C = 5
+                * D = 7
+                * W = 52
+                * M, BM, CBM, MS, BMS, CBMS = 12
+                * SM, SMS = 24
+                * Q, BQ, QS, BQS = 4
+                * A, Y, BA, BY, AS, YS, BAS, BYS = 1
+                * H = 24
+                * T, min = 60
+                * S = 60
 
-            Alternatively you can provide a custom `seasonal_period` by passing
-            it as an integer or a string corresponding to the keys above (e.g.
-            'W' for weekly data, 'M' for monthly data, etc.). You can also provide
-            a list of such values to use in models that accept multiple seasonal values
-            (currently TBATS). For models that don't accept multiple seasonal values, the
-            first value of the list will be used as the seasonal period.
+            Users can also provide a list of such values to use in models that
+            accept multiple seasonal values (currently TBATS). For models that
+            don't accept multiple seasonal values, the first value of the list
+            will be used as the seasonal period.
 
 
-        enforce_pi: bool, default = False
-            When set to True, only models that support prediction intervals are
-            loaded in the environment.
+        sp_detection: str, default = "auto"
+            If seasonal_period is None, then this parameter determines the algorithm
+            to use to detect the seasonal periods to use in the models.
+
+            Allowed values are ["auto" or "index"].
+
+            If "auto", then seasonal periods are detected using statistical tests.
+            If "index", then the frequency of the data index is mapped to a seasonal
+            period as shown in seasonal_period.
+
+
+        max_sp_to_consider: Optional[int], default = None,
+            Max period to consider when detecting seasonal periods. If None, all
+            periods up to the length of the data are considered.
+
+
+        remove_harmonics: bool, default = False
+            Should harmonics be removed when considering what seasonal periods to
+            use for modeling.
+
+
+        harmonic_order_method: str, default = "harmonic_max"
+            Applicable when remove_harmonics = True. This determines how the harmonics
+            are replaced. Allowed values are "harmonic_strength", "harmonic_max" or "raw_strength.
+            - If set to  "harmonic_max", then lower seasonal period is replaced by its
+            highest harmonic seasonal period in same position as the lower seasonal period.
+            - If set to  "harmonic_strength", then lower seasonal period is replaced by its
+            highest strength harmonic seasonal period in same position as the lower seasonal period.
+            - If set to  "raw_strength", then lower seasonal periods is removed and the
+            higher harmonic seasonal periods is retained in its original position
+            based on its seasonal strength.
+
+            e.g. Assuming detected seasonal periods in strength order are [2, 3, 4, 50]
+            and remove_harmonics = True, then:
+            - If harmonic_order_method = "harmonic_max", result = [50, 3, 4]
+            - If harmonic_order_method = "harmonic_strength", result = [4, 3, 50]
+            - If harmonic_order_method = "raw_strength", result = [3, 4, 50]
+
+
+        num_sps_to_use: int, default = 1
+            It determines the maximum number of seasonal periods to use in the models.
+            Set to -1 to use all detected seasonal periods (in models that allow
+            multiple seasonalities). If a model only allows one seasonal period
+            and num_sps_to_use > 1, then the most dominant (primary) seasonal
+            that is detected is used.
+
+
+        point_alpha: Optional[float], default = None
+            The alpha (quantile) value to use for the point predictions. By default
+            this is set to None which uses sktime's predict() method to get the
+            point prediction (the mean or the median of the forecast distribution).
+            If this is set to a floating point value, then it switches to using the
+            predict_quantiles() method to get the point prediction at the user
+            specified quantile.
+            Reference: https://robjhyndman.com/hyndsight/quantile-forecasts-in-r/
+
+            NOTE:
+            (1) Not all models support predict_quantiles(), hence, if a float
+            value is provided, these models will be disabled.
+            (2) Under some conditions, the user may want to only work with models
+            that support prediction intervals. Utilizing note 1 to our advantage,
+            the point_alpha argument can be set to 0.5 (or any float value depending
+            on the quantile that the user wants to use for point predictions).
+            This will disable models that do not support prediction intervals.
+
+
+        coverage: Union[float, List[float]], default = 0.9
+            The coverage to be used for prediction intervals (only applicable for
+            models that support prediction intervals).
+
+            If a float value is provides, it corresponds to the coverage needed
+            (e.g. 0.9 means 90% coverage). This corresponds to lower and upper
+            quantiles = 0.05 and 0.95 respectively.
+
+            Alternately, if user wants to get the intervals at specific quantiles,
+            a list of 2 values can be provided directly. e.g. coverage = [0.2. 0.9]
+            will return the lower interval corresponding to a quantile of 0.2 and
+            an upper interval corresponding to a quantile of 0.9.
 
 
         enforce_exogenous: bool, default = True
@@ -1361,7 +1706,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Parameter not in use for now. Behavior may change in future.
 
 
-        custom_pipeline: (str, transformer) or list of (str, transformer), default = None
+        custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
             Parameter not in use for now. Behavior may change in future.
 
 
@@ -1377,9 +1722,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             for later reproducibility of the entire experiment.
 
 
-        system_log: bool or logging.Logger, default = True
-            Whether to save the system logging file (as logs.log). If the input already is a
-            logger object, that one is used instead.
+        system_log: bool or str or logging.Logger, default = True
+            Whether to save the system logging file (as logs.log). If the input
+            is a string, use that as the path to the logging file. If the input
+            already is a logger object, use that one instead.
 
 
         log_experiment: bool, default = False
@@ -1404,6 +1750,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         log_data: bool, default = False
             When set to True, dataset is logged on the ``MLflow`` server as a csv file.
             Ignored when ``log_experiment`` is not True.
+
+
+        engine: Optional[Dict[str, str]] = None
+            The engine to use for the models, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engine={"auto_arima": "statsforecast"}
 
 
         verbose: bool, default = True
@@ -1458,7 +1810,28 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             big_data_threshold: The number of data points above which hovering over
                 certain plots can be disabled and/or renderer switched to a static
                 renderer. This is useful when the time series being modeled has a lot
-                of data which can make notebooks slow to render.
+                of data which can make notebooks slow to render. Also note that setting
+                the `display_format` to a plotly-resampler figure ("plotly-dash" or
+                "plotly-widget") can circumvent these problems by performing dynamic
+                data aggregation.
+
+            resampler_kwargs: The keyword arguments that are fed to configure the
+                `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash"
+                or "plotly-widget") which downsampler will be used; how many datapoints
+                are shown in the front-end. When the plotly-resampler figure is renderd
+                via Dash (by setting the `display_format` to "plotly-dash"), one can
+                also use the "show_dash" key within this dictionary to configure the
+                show_dash method its args.
+
+            example::
+
+                fig_kwargs = {
+                    ...,
+                    "resampler_kwargs":  {
+                        "default_n_shown_samples": 1000,
+                        "show_dash": {"mode": "inline", "port": 9012}
+                    }
+                }
 
         Returns:
             Global variables that can be changed using the ``set_config`` function.
@@ -1466,19 +1839,30 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
+        self._register_setup_params(dict(locals()))
+
+        if (data is None and data_func is None) or (
+            data is not None and data_func is not None
+        ):
+            raise ValueError("One and only one of data and data_func must be set")
+
+        # No extra code above this line
         ##############################
-        #### Setup initialization ####
+        # Setup initialization ####
         ##############################
 
         runtime_start = time.time()
 
-        #### Define parameter attrs ----
+        if data_func is not None:
+            data = data_func()
+
+        # Define parameter attrs ----
+        self.all_allowed_engines = ALL_ALLOWED_ENGINES
+
         self.fig_kwargs = fig_kwargs or {}
         self._set_default_fig_kwargs()
 
-        self.enforce_pi = enforce_pi
         self.enforce_exogenous = enforce_exogenous
-        self.preprocess = preprocess
         self.numeric_imputation_target = numeric_imputation_target
         self.numeric_imputation_exogenous = numeric_imputation_exogenous
         self.limit_target = limit_target
@@ -1487,16 +1871,41 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.transform_exogenous = transform_exogenous
         self.scale_target = scale_target
         self.scale_exogenous = scale_exogenous
+        self.fe_target_rr = fe_target_rr
+        self.fe_exogenous = fe_exogenous
 
         self.fold_strategy = fold_strategy
         self.fold = fold
 
+        # Variables related to seasonal period and detection ----
+        self.seasonal_period = seasonal_period
+        if sp_detection not in ["auto", "index"]:
+            raise ValueError(
+                "sp_detection must be either 'auto' or 'index'. "
+                f"You provided {sp_detection}."
+            )
+        self.sp_detection = sp_detection
+        self.max_sp_to_consider = max_sp_to_consider
+        self.remove_harmonics = remove_harmonics
+        if harmonic_order_method not in [
+            "harmonic_strength",
+            "harmonic_max",
+            "raw_strength",
+        ]:
+            raise ValueError(
+                "harmonic_order_method must be either 'harmonic_strength', 'harmonic_max' "
+                f"or 'raw_strength'. You provided {harmonic_order_method}."
+            )
+        self.harmonic_order_method = harmonic_order_method
+        self.num_sps_to_use = num_sps_to_use
+
         self.log_plots_param = log_plots
+        if self.log_plots_param is True:
+            self.log_plots_param = self._get_default_plots_to_log()
 
         # Needed for compatibility with Regression and Classification.
         # Not used in Time Series
         self.fold_groups_param = None
-        self.fold_groups_param_full = None
         self.transform_target_param = None
 
         self.ignore_features = ignore_features
@@ -1521,27 +1930,35 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._set_exogenous_names()
             ._check_and_set_forecsting_types()
             ._check_and_set_fh(fh=fh)
+            ._set_point_alpha_intervals_enforce_pi(
+                point_alpha=point_alpha, coverage=coverage
+            )
             ._setup_train_test_split()
             ._set_fold_generator()
+            ._set_should_preprocess_data()
             ._set_missingness()
             ._initialize_pipeline()
             ##################################################################
-            #### Do these after the preprocessing pipeline has been setup.
-            #### Since the model will see transformed data, these parameters
-            #### should also be derived from the transformed data.
+            # Do these after the preprocessing pipeline has been setup.
+            # Since the model will see transformed data, these parameters
+            # should also be derived from the transformed data.
             ##################################################################
-            ._check_and_set_seasonal_period(seasonal_period=seasonal_period)
+            ._check_and_set_seasonal_period()
             ._set_multiplicative_components()
             ._perform_setup_eda()
             ._setup_display_container()
             ._profile(profile, profile_kwargs)
+            ._set_exp_model_engines(
+                container_default_engines=get_container_default_engines(),
+                engine=engine,
+            )
             ._set_all_models()
             ._set_all_metrics()
         )
 
         runtime = np.array(time.time() - runtime_start).round(2)
 
-        self._set_up_mlflow(
+        self._set_up_logging(
             runtime,
             log_data,
             log_profile,
@@ -1552,6 +1969,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self._disable_metrics()
 
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
+        # mlflow logging
+        if log_plots:
+            try:
+                self._mlflow_log_setup(experiment_name=experiment_name)
+            except Exception:
+                self.logger.error(
+                    f"_mlflow_log_setup() for logging EDA plots raised an exception:\n"
+                    f"{traceback.format_exc()}"
+                )
 
         return self
 
@@ -1561,12 +1987,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # `big_data_threshold`: Number of data points above which the hovering for
         # some plots is disabled. This is needed else the notebooks become very slow.
         defaults = {
-            "big_data_threshold": 200,
+            "big_data_threshold": 100_000,
             "hoverinfo": None,
             "renderer": None,
             "template": "ggplot2",
             "rows": None,
-            "cols": 4,
+            "cols": None,
             "width": None,
             "height": None,
         }
@@ -1582,14 +2008,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         cross_validation: bool = True,
-        sort: str = "smape",
+        sort: str = "MASE",
         n_select: int = 1,
         budget_time: Optional[float] = None,
         turbo: bool = True,
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
+        parallel: Optional[ParallelBackend] = None,
     ):
 
         """
@@ -1637,7 +2065,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             is ignored when cross_validation is set to False.
 
 
-        sort: str, default = 'SMAPE'
+        sort: str, default = 'MASE'
             The sort order of the score grid. It also accepts custom metrics that are
             added through the ``add_metric`` function.
 
@@ -1666,8 +2094,21 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Dictionary of arguments passed to the fit method of the model.
 
 
+        engine: Optional[Dict[str, str]] = None
+            The engine to use for the models, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engine={"auto_arima": "statsforecast"}
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
+
+
+        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+            A ParallelBackend instance. For example if you have a SparkSession ``session``,
+            you can use ``FugueBackend(session)`` to make this function running using
+            Spark. For more details, see
+            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
 
 
         Returns:
@@ -1682,23 +2123,43 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        self._check_setup_ran()
+        caller_params = dict(locals())
 
-        return super().compare_models(
-            include=include,
-            exclude=exclude,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            sort=sort,
-            n_select=n_select,
-            budget_time=budget_time,
-            turbo=turbo,
-            errors=errors,
-            fit_kwargs=fit_kwargs,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-        )
+        # No extra code above this line
+
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_model_engines = self.exp_model_engines.copy()
+            for estimator, eng in engine.items():
+                self._set_engine(estimator=estimator, engine=eng, severity="error")
+
+        try:
+            return_values = super().compare_models(
+                include=include,
+                exclude=exclude,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                sort=sort,
+                n_select=n_select,
+                budget_time=budget_time,
+                turbo=turbo,
+                errors=errors,
+                fit_kwargs=fit_kwargs,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                parallel=parallel,
+                caller_params=caller_params,
+            )
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engine=initial_model_engines,
+                )
+
+        return return_values
 
     def create_model(
         self,
@@ -1708,6 +2169,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         cross_validation: bool = True,
         fit_kwargs: Optional[dict] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engine: Optional[str] = None,
         verbose: bool = True,
         **kwargs,
     ):
@@ -1734,14 +2196,19 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             model object consistent with scikit-learn API. Estimators available
             in the model library (ID - Name):
 
+            NOTE: The available estimators depend on multiple factors such as what
+            libraries have been installed and the setup of the experiment. As such,
+            some of these may not be available for your experiment. To see the list
+            of available models, please run `setup()` first, then `models()`.
+
             * 'naive' - Naive Forecaster
             * 'grand_means' - Grand Means Forecaster
             * 'snaive' - Seasonal Naive Forecaster (disabled when seasonal_period = 1)
             * 'polytrend' - Polynomial Trend Forecaster
             * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
             * 'auto_arima' - Auto ARIMA
-            * 'arima' - ARIMA
             * 'exp_smooth' - Exponential Smoothing
+            * 'croston' - Croston Forecaster
             * 'ets' - ETS
             * 'theta' - Theta Forecaster
             * 'tbats' - TBATS
@@ -1764,6 +2231,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             * 'gbr_cds_dt' - Gradient Boosting w/ Cond. Deseasonalize & Detrending
             * 'ada_cds_dt' - AdaBoost w/ Cond. Deseasonalize & Detrending
             * 'lightgbm_cds_dt' - Light Gradient Boosting w/ Cond. Deseasonalize & Detrending
+            * 'catboost_cds_dt' - CatBoost w/ Cond. Deseasonalize & Detrending
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -1786,6 +2254,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Dictionary of arguments passed to the fit method of the model.
 
 
+        engine: Optional[str] = None
+            The engine to use for the model, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engine="statsforecast".
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1805,18 +2279,31 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        self._check_setup_ran()
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_default_model_engines = self.exp_model_engines.copy()
+            self._set_engine(estimator=estimator, engine=engine, severity="error")
 
-        return super().create_model(
-            estimator=estimator,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            fit_kwargs=fit_kwargs,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-            **kwargs,
-        )
+        try:
+            return_values = super().create_model(
+                estimator=estimator,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                fit_kwargs=fit_kwargs,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                **kwargs,
+            )
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engine=initial_default_model_engines,
+                )
+
+        return return_values
 
     @staticmethod
     def update_fit_kwargs_with_fh_from_cv(fit_kwargs: Optional[Dict], cv) -> Dict:
@@ -1842,13 +2329,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return fit_kwargs
 
     def _get_final_model_from_pipeline(
-        self, pipeline: PyCaretForecastingPipeline, check_is_fitted: bool = False
+        self, pipeline: ForecastingPipeline, check_is_fitted: bool = False
     ) -> BaseForecaster:
         """Extracts and returns the final model from the pipeline.
 
         Parameters
         ----------
-        pipeline : PyCaretForecastingPipeline
+        pipeline : ForecastingPipeline
             The pipeline with a final model
         check_is_fitted : bool
             If True, will check if final model is fitted and raise an exception
@@ -1859,7 +2346,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         BaseForecaster
             The final model in the pipeline
         """
-        # Pipeline will always be of type PyCaretForecastingPipeline with final
+        # Pipeline will always be of type ForecastingPipeline with final
         # forecaster being of type TransformedTargetForecaster
         final_forecaster_only = pipeline.steps_[-1][1].steps_[-1][1]
         if check_is_fitted:
@@ -1868,7 +2355,17 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return final_forecaster_only
 
     def _create_model_without_cv(
-        self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
+        self,
+        model,
+        data_X,
+        data_y,
+        fit_kwargs,
+        round,
+        predict,
+        system,
+        display: CommonDisplay,
+        model_only: bool = False,
+        return_train_score: bool = False,  # unused, added for compat
     ):
         # fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
         self.logger.info("Cross validation set to False")
@@ -1877,7 +2374,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         model_fit_start = time.time()
 
         ###############################################
-        #### Add the correct model to the pipeline ####
+        # Add the correct model to the pipeline ####
         ###############################################
         # Since we are always fitting the model here, we can just append the pipeline
         # irrespective of whether the data is the training data (y_train, X_train), or
@@ -1886,7 +2383,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             pipeline=self.pipeline, model=model
         )
 
-        with io.capture_output():
+        with redirect_output(self.logger):
             pipeline_with_model.fit(data_y, data_X, **fit_kwargs)
         model_fit_end = time.time()
 
@@ -1898,19 +2395,24 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             # X is not passed here so predict_model picks X_test by default.
             self.predict_model(pipeline_with_model, verbose=False)
             model_results = self.pull(pop=True).drop("Model", axis=1)
+            model_results.index = ["Test"]
 
-            self.display_container.append(model_results)
+            self._display_container.append(model_results)
 
-            display.display(
-                model_results, clear=system, override=False if not system else None
-            )
+            if system:
+                display.display(
+                    model_results.style.format(precision=round),
+                )
 
-            self.logger.info(f"display_container: {len(self.display_container)}")
+            self.logger.info(f"_display_container: {len(self._display_container)}")
 
-        #### Return the final model only. Rest of the pipeline will be added during finalize.
+        # Return the final model only. Rest of the pipeline will be added during finalize.
         final_model = self._get_final_model_from_pipeline(
             pipeline=pipeline_with_model, check_is_fitted=True
         )
+
+        if not model_only:
+            return pipeline_with_model, model_fit_time
 
         return final_model, model_fit_time
 
@@ -1927,13 +2429,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         refit,
         system,
         display,
+        return_train_score: bool = False,  # unused, added for compat
     ):
         """
         MONITOR UPDATE STARTS
         """
 
         display.update_monitor(1, f"Fitting {cv.get_n_splits(data_y)} Folds")
-        display.display_monitor()
         """
         MONITOR UPDATE ENDS
         """
@@ -1941,7 +2443,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.logger.info("Starting cross validation")
 
-        n_jobs = self._gpu_n_jobs_param
+        n_jobs = self.gpu_n_jobs_param
 
         self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
@@ -1955,7 +2457,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         additional_scorer_kwargs = self.get_additional_scorer_kwargs()
 
         ###############################################
-        #### Add the correct model to the pipeline ####
+        # Add the correct model to the pipeline ####
         ###############################################
         # Since we are always fitting the model here, we can just append the pipeline
         # irrespective of whether the data is the training data (y_train, X_train), or
@@ -1964,19 +2466,22 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             pipeline=self.pipeline, model=model
         )
 
-        scores, cutoffs = cross_validate(
-            pipeline=pipeline_with_model,
-            y=data_y,
-            X=data_X,
-            scoring=metrics_dict,
-            cv=cv,
-            n_jobs=n_jobs,
-            verbose=0,
-            fit_params=fit_kwargs,
-            return_train_score=False,
-            error_score=0,
-            **additional_scorer_kwargs,
-        )
+        with redirect_output(self.logger):
+            scores, cutoffs = cross_validate(
+                pipeline=pipeline_with_model,
+                y=data_y,
+                X=data_X,
+                scoring=metrics_dict,
+                cv=cv,
+                n_jobs=n_jobs,
+                verbose=0,
+                fit_params=fit_kwargs,
+                return_train_score=False,
+                alpha=self.point_alpha,
+                coverage=self.coverage,
+                error_score=0,
+                **additional_scorer_kwargs,
+            )
 
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -2012,28 +2517,23 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"])
         model_avgs.insert(0, "cutoff", np.nan)
 
-        model_results = model_results.append(model_avgs)
+        model_results = pd.concat((model_results, model_avgs), axis=0)
         # Round the results
         model_results = model_results.round(round)
-
-        # yellow the mean (converts model_results from dataframe to dataframe styler)
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
 
         if refit:
             # refitting the model on complete X_train, y_train
             display.update_monitor(1, "Finalizing Model")
-            display.display_monitor()
             model_fit_start = time.time()
             self.logger.info("Finalizing model")
-            with io.capture_output():
+            with redirect_output(self.logger):
                 pipeline_with_model.fit(y=data_y, X=data_X, **fit_kwargs)
             model_fit_end = time.time()
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
             model_fit_time /= cv.get_n_splits(data_y)
 
-        #### Return the final model only. Rest of the pipeline will be added during finalize.
+        # Return the final model only. Rest of the pipeline will be added during finalize.
         final_model = self._get_final_model_from_pipeline(
             pipeline=pipeline_with_model, check_is_fitted=refit
         )
@@ -2046,7 +2546,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         round: int = 4,
         n_iter: int = 10,
         custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-        optimize: str = "SMAPE",
+        optimize: str = "MASE",
         custom_scorer=None,
         search_algorithm: Optional[str] = None,
         choose_better: bool = True,
@@ -2054,7 +2554,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return_tuner: bool = False,
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
-        display: Optional[Display] = None,
         **kwargs,
     ):
 
@@ -2102,7 +2601,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             supported by the defined ``search_library``.
 
 
-        optimize: str, default = 'SMAPE'
+        optimize: str, default = 'MASE'
             Metric name to be evaluated for hyperparameter tuning. It also accepts custom
             metrics that are added through the ``add_metric`` function.
 
@@ -2255,42 +2754,27 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # cross validation setup starts here
         cv = self.get_fold_generator(fold=fold)
 
-        if not display:
-            progress_args = {"max": 3 + 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = Display(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                master_display_columns=master_display_columns,
-                monitor_rows=monitor_rows,
-            )
-
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
-
-        # ignore warnings
-
-        warnings.filterwarnings("ignore")
+        progress_args = {"max": 3 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         # import logging
 
@@ -2301,8 +2785,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if self.X_train is None:
             data_X = None
         else:
-            data_X = self.X_train.copy()
-        data_y = self.y_train.copy()
+            data_X = self.X_train
+        data_y = self.y_train
 
         # # Replace Empty DataFrame with None as empty DataFrame causes issues
         # if (data_X.shape[0] == 0) or (data_X.shape[1] == 0):
@@ -2368,7 +2852,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # base_estimator = model
 
         display.update_monitor(2, estimator_name)
-        display.display_monitor()
 
         display.move_progress()
 
@@ -2379,7 +2862,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
 
         display.update_monitor(1, "Searching Hyperparameters")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -2391,7 +2873,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             search_algorithm = "random"  # Defaults to Random
 
         ###########################
-        #### Define Param Grid ----
+        # Define Param Grid ----
         ###########################
         param_grid = None
         if custom_grid is not None:
@@ -2424,7 +2906,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if True:
 
             ###############################################
-            #### Add the correct model to the pipeline ####
+            # Add the correct model to the pipeline ####
             ###############################################
             # Since we are always fitting the model here, we can just append the pipeline
             # irrespective of whether the data is the training data (y_train, X_train), or
@@ -2437,19 +2919,19 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 fit_kwargs=fit_kwargs, cv=cv
             )
 
-            #### START: Update the param_grid to take the pipeline into account correctly ----
+            # START: Update the param_grid to take the pipeline into account correctly ----
             actual_estimator_label = _get_pipeline_estimator_label(
                 pipeline=pipeline_with_model
             )
             suffixes.append(actual_estimator_label)
             suffixes = "__".join(reversed(suffixes))
             param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
-            #### END: param_grid updated to take the pipeline into account.
+            # END: param_grid updated to take the pipeline into account.
 
             if estimator_definition is not None:
                 search_kwargs = {**estimator_definition.tune_args, **kwargs}
                 n_jobs = (
-                    self._gpu_n_jobs_param
+                    self.gpu_n_jobs_param
                     if estimator_definition.is_gpu_enabled
                     else self.n_jobs_param
                 )
@@ -2463,7 +2945,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 if search_algorithm == "random":
                     try:
                         param_grid = get_base_distributions(param_grid)
-                    except:
+                    except Exception:
                         self.logger.warning(
                             "Couldn't convert param_grid to specific library distributions. Exception:"
                         )
@@ -2476,6 +2958,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     model_grid = ForecastingGridSearchCV(
                         forecaster=pipeline_with_model,
                         cv=cv,
+                        alpha=self.point_alpha,
+                        coverage=self.coverage,
                         param_grid=param_grid,
                         scoring=optimize_metric_dict,
                         refit_metric=refit_metric,
@@ -2490,6 +2974,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     model_grid = ForecastingRandomizedSearchCV(
                         forecaster=pipeline_with_model,
                         cv=cv,
+                        alpha=self.point_alpha,
+                        coverage=self.coverage,
                         param_distributions=param_grid,
                         n_iter=n_iter,
                         scoring=optimize_metric_dict,
@@ -2517,7 +3003,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             self.logger.info(f"best_params: {best_params}")
             best_params = {**best_params}
 
-            #### START: Strip out the pipeline step names from best parameters and
+            # START: Strip out the pipeline step names from best parameters and
             # only keep final model params. e.g. if one of the best params is
             # `forecaster__model__sp: 12`, this will make it `sp: 12`
             if actual_estimator_label:
@@ -2525,11 +3011,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     k.replace(f"{actual_estimator_label}__", ""): v
                     for k, v in best_params.items()
                 }
-            #### END Stripping of the pipeline step names.
+            # END Stripping of the pipeline step names.
             cv_results = None
             try:
                 cv_results = model_grid.cv_results_
-            except:
+            except Exception:
                 self.logger.warning(
                     "Couldn't get cv_results from model_grid. Exception:"
                 )
@@ -2552,7 +3038,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             "SubProcess create_model() called =================================="
         )
 
-        best_model, model_fit_time = self.create_model(
+        best_model, model_fit_time = self._create_model(
             estimator=model,
             system=False,
             display=display,
@@ -2582,37 +3068,41 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # mlflow logging
         if self.logging_param:
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+            avgs_dict_log = {
+                k: v
+                for k, v in model_results.loc[
+                    self._get_return_train_score_indices_for_logging(
+                        return_train_score=False
+                    )
+                ].items()
+            }
 
-            try:
-                self._mlflow_log_model(
-                    model=best_model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="tune_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    tune_cv_results=cv_results,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {best_model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=best_model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="tune_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                tune_cv_results=cv_results,
+                display=display,
+            )
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
+        model_results = self._highlight_and_round_model_results(
+            model_results, False, round
+        )
         display.display(model_results, clear=True)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(best_model))
         self.logger.info(
-            "tune_model() succesfully completed......................................"
+            "tune_model() successfully completed......................................"
         )
 
         gc.collect()
@@ -2627,7 +3117,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         choose_better: bool = False,
-        optimize: str = "SMAPE",
+        optimize: str = "MASE",
         weights: Optional[List[float]] = None,
         fit_kwargs: Optional[dict] = None,
         verbose: bool = True,
@@ -2680,7 +3170,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             metric used for comparison is defined by the ``optimize`` parameter.
 
 
-        optimize: str, default = 'SMAPE'
+        optimize: str, default = 'MASE'
             Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -2704,8 +3194,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        self._check_setup_ran()
-
         return super().blend_models(
             estimator_list=estimator_list,
             fold=fold,
@@ -2718,7 +3206,202 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             verbose=verbose,
         )
 
-    def plot_model(
+    def _plot_model_get_model_labels(
+        self, estimators: List[BaseForecaster], data_kwargs: Dict
+    ) -> List[str]:
+        """Returns the labels (names) to be used for the results corresponsing to
+        each model in the plot
+
+        Parameters
+        ----------
+        estimators : List[BaseForecaster]
+            List of models passed by user
+        data_kwargs : Dict
+            Dictionary of arguments passed to the data for plotting. Specifically,
+            if user passes key = "labels", then the corresponsding values are used
+            as the plot labels corresponding to each model. e.g.
+            >>> data_kwargs={"labels": ["Baseline", "Tuned", "Finalized"]}
+
+        Returns
+        -------
+        List[str]
+            List of labels to use corresponding to each model's results.
+
+        Raises
+        ------
+        ValueError
+            When the number of labels is not equal to the number of estimators
+        """
+
+        # Get Default Model Names ----
+        if hasattr(self, "_get_model_name") and hasattr(self, "_all_models_internal"):
+            model_names = [self._get_model_name(estimator) for estimator in estimators]
+        else:
+            # If the model is saved and loaded afterwards,
+            # it will not have self._get_model_name
+            model_names = [estimator.__class__.__name__ for estimator in estimators]
+
+        # If user has provided labels, use as is, else use the default models names ----
+        model_names = data_kwargs.setdefault("labels", model_names)
+
+        n_models = len(estimators)
+        n_labels = len(model_names)
+        if n_models != n_labels:
+            raise ValueError(
+                f"You have passed {n_models} models and {n_labels} labels. These must be equal. "
+                "\nPlease provide a label corresponding to each model to proceed."
+            )
+
+        # Make sure column names are unique. If not, make them unique by appending numbers ----
+        # Model names may not be unique for example when user passes basline and tuned model.
+        if len(set(model_names)) != len(model_names):
+            name_counts = defaultdict(int)
+            new_model_names = []
+            for model_name in model_names:
+                new_count = name_counts[model_name] + 1
+                if new_count == 1:
+                    new_model_names.append(f"{model_name}")
+                else:
+                    new_model_names.append(f"{model_name} ({new_count})")
+                name_counts[model_name] = new_count
+            model_names = new_model_names
+
+        return model_names
+
+    def _plot_model_get_data_y(
+        self, data_types_to_plot: List[str]
+    ) -> Tuple[pd.DataFrame, str]:
+        """Return the target series (y) data (full - train + test) to be used
+        for plotting the time series along with the y labels.
+
+        Parameters
+        ----------
+        data_types_to_plot : List[str]
+            Data types to plot. Allowed values in the list are:
+            "original", "imputed" and/or "transformed"
+
+        Returns
+        -------
+        Tuple[pd.DataFrame, str]
+            A single data frame with columns for the target series for the
+            data types requested. Also returns the name of the target series.
+        """
+        # Get y data (all requested types) ----
+        ys = [
+            self._get_y_data(split="all", data_type=data_type_to_plot)
+            for data_type_to_plot in data_types_to_plot
+        ]
+        y_label = ys[0].name
+        y = _reformat_dataframes_for_plots(data=ys, labels_suffix=data_types_to_plot)[0]
+
+        return y, y_label
+
+    def _plot_model_get_data_X(
+        self,
+        data_types_to_plot: List[str],
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+    ) -> Tuple[Optional[List[pd.DataFrame]], Optional[List[str]]]:
+        """Return the exogenous variable (X) data (full - train + test) to be
+        used for plotting the time series along with the X labels.
+
+        Parameters
+        ----------
+        data_types_to_plot : List[str]
+            Data types to plot. Allowed values in the list are:
+            "original", "imputed" and/or "transformed"
+        include : Optional[List[str]], optional
+            The columns to include in the returned data, by default None which
+            returns all the columns
+        exclude : Optional[List[str]], optional
+            The columns to exclude from the returned data, by default None which
+            does not exclude any columns
+
+        Returns
+        -------
+        Tuple[Optional[List[pd.DataFrame]], Optional[List[str]]]
+            A single data frame with columns for the target series for the
+            data types requested. Also returns the name of the target series.
+        """
+        # Get X data (all requested types) ----
+        X, X_labels = None, None
+        if self.exogenous_present == TSExogenousPresent.YES:
+            Xs = [
+                self._get_X_data(
+                    split="all",
+                    include=include,
+                    exclude=exclude,
+                    data_type=data_type_to_plot,
+                )
+                for data_type_to_plot in data_types_to_plot
+            ]
+            X_labels = Xs[0].columns
+            X = _reformat_dataframes_for_plots(
+                data=Xs, labels_suffix=data_types_to_plot
+            )
+
+        return X, X_labels
+
+    def _plot_model_get_train_test_split_data(
+        self, data_types_to_plot: List[str]
+    ) -> Tuple[pd.DataFrame, str]:
+        """Returns the data to be used for plotting train test splits along with
+        the data labels.
+
+        Parameters
+        ----------
+        data_types_to_plot : List[str]
+            Data types to plot. Allowed values in the list are:
+            "original", "imputed" and/or "transformed"
+
+        Returns
+        -------
+        Tuple[pd.DataFrame, str]
+            A single data frame with columns for the train test splits for the
+            data types requested. Also returns the name of the target series.
+        """
+        # Step 1: Get train data (all requested types) ----
+        trains = [
+            self._get_y_data(split="train", data_type=data_type_to_plot)
+            for data_type_to_plot in data_types_to_plot
+        ]
+        data_label = trains[0].name
+        train = _reformat_dataframes_for_plots(
+            data=trains, labels_suffix=data_types_to_plot
+        )[0]
+        train.columns = [col.replace(data_label, "Train") for col in train.columns]
+
+        # Step 2: Get test data (all requested types) ----
+        tests = [
+            self._get_y_data(split="test", data_type=data_type_to_plot)
+            for data_type_to_plot in data_types_to_plot
+        ]
+        test = _reformat_dataframes_for_plots(
+            data=tests, labels_suffix=data_types_to_plot
+        )[0]
+        test.columns = [col.replace(data_label, "Test") for col in test.columns]
+
+        # Step 3: Combine train and test data into a single frame ----
+        data = pd.concat([train, test], axis=1)
+
+        return data, data_label
+
+    @staticmethod
+    def plot_model_check_display_format_(display_format: Optional[str]):
+        """Checks if the display format is in the allowed list.
+
+        display_format: Optional[str], default = None
+            The to-be-used displaying method
+
+        """
+        # Note that we need to override this method from the `_TabularExperiment` class
+        # As we have way more display formats available for time-series data
+        plot_formats = [None, "streamlit", "plotly-dash", "plotly-widget"]
+
+        if display_format not in plot_formats:
+            raise ValueError(f"display_format can only be one of {plot_formats}.")
+
+    def _plot_model(
         self,
         estimator: Optional[Any] = None,
         plot: Optional[str] = None,
@@ -2731,6 +3414,359 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         system: bool = True,
         save: Union[str, bool] = False,
     ) -> Optional[Tuple[str, Any]]:
+        """Internal version of ``plot_model`` with ``system`` arg."""
+
+        self._check_setup_ran()
+
+        # checking display_format parameter
+        self.plot_model_check_display_format_(display_format=display_format)
+
+        if plot == "decomp_classical":
+            msg = (
+                "DeprecationWarning: `decomp_classical` plot type will be disabled in "
+                "a future release. Please use `decomp` instead."
+            )
+            warnings.warn(msg, DeprecationWarning)
+            if verbose:
+                print(msg)
+            # Reset to "decomp"
+            plot = "decomp"
+
+        # Import required libraries ----
+        if display_format == "streamlit":
+            _check_soft_dependencies("streamlit", extra=None, severity="error")
+            import streamlit as st
+
+        # Add sp value (used in decomp plots)
+        data_kwargs = data_kwargs or {}
+        data_kwargs.setdefault("seasonal_period", self.primary_sp_to_use)
+
+        fig_kwargs = fig_kwargs or {}
+        resampler_kwargs = fig_kwargs.get("resampler_kwargs", {})
+        show_dash_kwargs = resampler_kwargs.pop("show_dash", {})
+
+        return_pred_int = False
+        return_obj = []
+
+        # Type checks
+        if estimator is not None and isinstance(estimator, str):
+            raise ValueError(
+                "Estimator must be a trained object. "
+                f"You have passed a string: '{estimator}'"
+            )
+
+        # Default plot when no model is specified is the time series plot
+        # Default plot when model is specified is the forecast plot
+        if plot is None and estimator is None:
+            plot = "ts"
+        elif plot is None and estimator is not None:
+            plot = "forecast"
+
+        data_types_requested = data_kwargs.setdefault("plot_data_type", None)
+        data_types_to_plot = _get_data_types_to_plot(
+            plot=plot, data_types_requested=data_types_requested
+        )
+
+        data, data_label, X, X_labels, cv, model_results, model_labels = (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
+        include = data_kwargs.get("include", None)
+        exclude = data_kwargs.get("exclude", None)
+
+        if plot == "ts":
+            data, data_label = self._plot_model_get_data_y(
+                data_types_to_plot=data_types_to_plot
+            )
+            X, X_labels = self._plot_model_get_data_X(
+                data_types_to_plot=data_types_to_plot, include=include, exclude=exclude
+            )
+        elif plot == "train_test_split":
+            data, data_label = self._plot_model_get_train_test_split_data(
+                data_types_to_plot=data_types_to_plot
+            )
+        elif plot == "cv":
+            data = self._get_y_data(split="train")
+            cv = self.get_fold_generator()
+        elif plot == "ccf":
+            data, data_label = self._plot_model_get_data_y(
+                data_types_to_plot=data_types_to_plot
+            )
+            X, X_labels = self._plot_model_get_data_X(
+                data_types_to_plot=data_types_to_plot, include=include, exclude=exclude
+            )
+        elif estimator is None:
+            # Estimator is not provided
+            require_full_data = [
+                "acf",
+                "pacf",
+                "diagnostics",
+                "decomp",
+                "decomp_stl",
+                "diff",
+                "periodogram",
+                "fft",
+            ]
+            if plot in require_full_data:
+                # data = self._get_y_data(split="all")
+                data, data_label = self._plot_model_get_data_y(
+                    data_types_to_plot=data_types_to_plot
+                )
+            else:
+                plots_formatted_data = [
+                    f"'{plot}'" for plot in self._available_plots_data_keys
+                ]
+                raise ValueError(
+                    f"Plot type '{plot}' is not supported when estimator is not "
+                    f"provided. Available plots are: {', '.join(plots_formatted_data)}"
+                )
+        else:
+            _support_multiple_estimators = [
+                "acf",
+                "pacf",
+                "decomp",
+                "decomp_stl",
+                "periodogram",
+                "fft",
+                "forecast",
+                "insample",
+                "residuals",
+            ]
+
+            # Estimator is Provided
+            # If a single estimator, make a list
+            if isinstance(estimator, List):
+                estimators = estimator
+            else:
+                estimators = [estimator]
+
+            model_labels = self._plot_model_get_model_labels(
+                estimators=estimators, data_kwargs=data_kwargs
+            )
+
+            if plot not in _support_multiple_estimators:
+                if len(estimators) > 1:
+                    msg = f"Plot '{plot}' does not support multiple estimators. The first estimator will be used."
+                    self.logger.warning(msg)
+                    if verbose:
+                        print(msg)
+                estimators = [estimators[0]]
+                model_labels = [model_labels[0]]
+
+            require_residuals = [
+                "diagnostics",
+                "acf",
+                "pacf",
+                "decomp",
+                "decomp_stl",
+                "diff",
+                "periodogram",
+                "fft",
+            ]
+            if plot == "forecast":
+                data = self._get_y_data(split="all")
+
+                fh = data_kwargs.get("fh", None)
+                alpha = data_kwargs.get("alpha", self.point_alpha)
+                coverage = data_kwargs.get("coverage", self.coverage)
+                X = data_kwargs.get("X", None)
+                return_pred_ints = [
+                    estimator.get_tag("capability:pred_int") for estimator in estimators
+                ]
+
+                model_results = [
+                    self.predict_model(
+                        estimator,
+                        fh=fh,
+                        X=X,
+                        return_pred_int=return_pred_int,
+                        alpha=alpha,
+                        coverage=coverage,
+                        verbose=False,
+                    )
+                    for estimator, return_pred_int in zip(estimators, return_pred_ints)
+                ]
+
+                if len(estimators) == 1:
+                    return_pred_int = return_pred_ints[0]
+                else:
+                    # Disable Prediction Intervals if more than 1 estimator is provided.
+                    return_pred_int = False
+
+            elif plot == "insample":
+                # Try to get insample forecasts if possible
+                model_results = [
+                    self.get_insample_predictions(estimator=estimator)
+                    for estimator in estimators
+                ]
+                if all(model_result is None for model_result in model_results):
+                    return
+                data = self._get_y_data(split="all")
+                # Do not plot prediction interval for insample predictions
+                return_pred_int = False
+
+            elif plot == "residuals":
+                # Try to get residuals if possible
+                model_results = [
+                    self.get_residuals(estimator=estimator) for estimator in estimators
+                ]
+                if all(model_result is None for model_result in model_results):
+                    return
+                data = self._get_y_data(split="all")
+
+            elif plot in require_residuals:
+                model_results = [
+                    self.get_residuals(estimator=estimator) for estimator in estimators
+                ]
+                if all(model_result is None for model_result in model_results):
+                    return
+
+                model_results, model_labels = _clean_model_results_labels(
+                    model_results=model_results, model_labels=model_labels
+                )
+                data = pd.concat(model_results, axis=1)
+                data.columns = model_labels
+            else:
+                plots_formatted_model = [
+                    f"'{plot}'" for plot in self._available_plots_estimator_keys
+                ]
+                raise ValueError(
+                    f"Plot type '{plot}' is not supported when estimator is provided. "
+                    f"Available plots are: {', '.join(plots_formatted_model)}"
+                )
+
+        fig, plot_data = _get_plot(
+            plot=plot,
+            fig_defaults=self.fig_kwargs,
+            data=data,
+            data_label=data_label,
+            X=X,
+            X_labels=X_labels,
+            cv=cv,
+            model_results=model_results,
+            model_labels=model_labels,
+            return_pred_int=return_pred_int,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+        )
+
+        # Sometimes the plot is not successful, such as decomp with RangeIndex.
+        # In such cases, plotting should be bypassed.
+        if fig is not None:
+            plot_name = self._available_plots[plot]
+            plot_filename = f"{plot_name}.html"
+
+            # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
+            if save:
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+
+                self.logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
+
+                # Add file name to return object ----
+                return_obj.append(plot_filename)
+
+            elif system:
+                if display_format == "streamlit":
+                    st.write(fig)
+                elif display_format == "plotly-widget":
+                    fig.update_layout(autosize=True)
+                    ipython_display(
+                        FigureWidgetResampler(
+                            fig,
+                            **resampler_kwargs,
+                            convert_traces_kwargs=dict(limit_to_views=True),
+                        )
+                    )
+                elif display_format == "plotly-dash":
+                    fig.update_layout(autosize=True)
+                    FigureResampler(
+                        fig,
+                        **resampler_kwargs,
+                        convert_traces_kwargs=dict(limit_to_views=True),
+                    ).show_dash(**show_dash_kwargs)
+                else:  # just a plain plotly-figure
+                    try:
+                        big_data_threshold = _resolve_dict_keys(
+                            dict_=fig_kwargs,
+                            key="big_data_threshold",
+                            defaults=self.fig_kwargs,
+                        )
+                        renderer = _resolve_dict_keys(
+                            dict_=fig_kwargs, key="renderer", defaults=self.fig_kwargs
+                        )
+                        renderer = _resolve_renderer(
+                            renderer=renderer,
+                            threshold=big_data_threshold,
+                            data=data,
+                            X=X,
+                        )
+                        fig.show(renderer=renderer)
+                        self.logger.info("Visual Rendered Successfully")
+                    except ValueError as exception:
+                        self.logger.info(exception)
+                        self.logger.info("Visual Rendered Unsuccessfully")
+                        if verbose:
+                            print(exception)
+                            print(
+                                "When data exceeds a certain threshold (determined by "
+                                "`big_data_threshold`), the renderer is switched to a "
+                                "static one to prevent notebooks from being slowed down.\n"
+                                "This renderer may need to be installed manually by users.\n"
+                                "Alternately:\n"
+                                "Option 1: "
+                                "Users can increase the scalability of the visualization "
+                                "tool by either using the plotly-resampler functionality "
+                                "to render the data, this can be achieved by setting the "
+                                "`display_format` argument of the `plot_model` method to "
+                                "either 'plotly-widget' or 'plotly-dash'. For more info, "
+                                "see the display format docs of this method."
+                                "Option 2: "
+                                "Users can increase `big_data_threshold` in either `setup` "
+                                "(globally) or `plot_model` (plot specific). Examples.\n"
+                                "\t>>> setup(..., fig_kwargs={'big_data_threshold': 1000})\n"
+                                "\t>>> plot_model(..., fig_kwargs={'big_data_threshold': 1000})\n"
+                                "Option 3: "
+                                "Users can specify any plotly renderer directly in either `setup` "
+                                "(globally) or `plot_model` (plot specific). Examples.\n"
+                                "\t>>> setup(..., fig_kwargs={'renderer': 'notebook'})\n"
+                                "\t>>> plot_model(..., fig_kwargs={'renderer': 'colab'})\n"
+                                "Refer to the docstring in `setup` for more details."
+                            )
+
+        # Add figure and data to return object if required ----
+        if return_fig:
+            return_obj.append(fig)
+        if return_data:
+            return_obj.append(plot_data)
+
+        # Return None if empty, return as list if more than one object,
+        # else return object directly ----
+        if not return_obj:
+            return_obj = None
+        elif len(return_obj) == 1:
+            return_obj = return_obj[0]
+        return return_obj
+
+    def plot_model(
+        self,
+        estimator: Optional[Any] = None,
+        plot: Optional[str] = None,
+        return_fig: bool = False,
+        return_data: bool = False,
+        verbose: bool = False,
+        display_format: Optional[str] = None,
+        data_kwargs: Optional[Dict] = None,
+        fig_kwargs: Optional[Dict] = None,
+        save: Union[str, bool] = False,
+    ) -> Optional[Tuple[str, list]]:
 
         """
         This function analyzes the performance of a trained model on holdout set.
@@ -2752,6 +3788,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         >>> plot_model(plot = 'decomp', data_kwargs = {'type' : 'multiplicative'})
         >>> plot_model(plot = 'decomp', data_kwargs = {'seasonal_period': 24})
         >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
+        >>> tuned_arima = tune_model(arima)
+        >>> plot_model([arima, tuned_arima], data_kwargs={"labels": ["Baseline", "Tuned"]})
 
 
         estimator: sktime compatible object, default = None
@@ -2794,18 +3832,171 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         display_format: str, default = None
-            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
-            Currently, not all plots are supported.
+            Display format of the plot. Must be one of  [None, 'streamlit',
+            'plotly-dash', 'plotly-widget'], if None, it will render the plot as a plain
+            plotly figure.
 
+            The 'plotly-dash' and 'plotly-widget' formats will render the figure via
+            plotly-resampler (https://github.com/predict-idlab/plotly-resampler)
+            figures. These plots perform dynamic aggregation of the data based on the
+            front-end graph view. This approach is especially useful when dealing with
+            large data, as it will retain snappy, interactive performance.
+            * 'plotly-dash' uses a dash-app to realize this dynamic aggregation. The
+               dash app requires a network port, and can be configured with various
+               modes more information can be found at the show_dash documentation.
+               (https://predict-idlab.github.io/plotly-resampler/figure_resampler.html#plotly_resampler.figure_resampler.FigureResampler.show_dash)
+            * 'plotly-widget' uses a plotly FigureWidget to realize this dynamic
+              aggregation, and should work in IPython based environments (given that the
+              external widgets are supported and the jupyterlab-plotly extension is
+              installed).
+
+            To display plots in Streamlit (https://www.streamlit.io/), set this to
+            'streamlit'.
 
         data_kwargs: dict, default = None
             Dictionary of arguments passed to the data for plotting.
+
+            Available keys are:
+
+            nlags: The number of lags to use when plotting correlation plots, e.g.
+                ACF, PACF, CCF. If not provided, default internally calculated
+                values are used.
+
+            seasonal_period: The seasonal period to use for decomposition plots.
+                If not provided, the default internally detected seasonal period
+                is used.
+
+            type: The type of seasonal decomposition to perform. Options are:
+                ["additive", "multiplicative"]
+
+            order_list: The differencing orders to use for difference plots. e.g.
+                [1, 2] will plot first and second order differences (corresponding
+                to d = 1 and 2 in ARIMA models).
+
+            lags_list: An alternate and more explicit alternate to "order_list"
+                allowing users to specify the exact lags to plot. e.g.
+                [1, [1, 12]] will plot first difference and a second plot with
+                first difference (d = 1 in ARIMA) and seasonal 12th difference
+                (D=1, s=12 in ARIMA models). Also note that "order_list" = [2]
+                can be alternately specified as lags_list = [[1, 1]] i.e. successive
+                differencing twice.
+
+            acf: True/False
+                When specified in difference plots and set to True, this will plot
+                the ACF of the differenced data as well.
+
+            pacf: True/False
+                When specified in difference plots and set to True, this will plot
+                the PACF of the differenced data as well.
+
+            periodogram: True/False
+                When specified in difference plots and set to True, this will plot
+                the Periodogram of the differenced data as well.
+
+            fft: True/False
+                When specified in difference plots and set to True, this will plot
+                the FFT of the differenced data as well.
+
+            labels: When estimator(s) are provided, the corresponding labels to
+                use for the plots. If not provided, the model class is used to
+                derive the labels.
+
+            include: When data contains exogenous variables, then only specific
+                exogenous variables can be plotted using this key.
+                e.g. include = ["col1", "col2"]
+
+            exclude: When data contains exogenous variables, specific exogenous
+                variables can be excluded from the plots using this key.
+                e.g. exclude = ["col1", "col2"]
+
+            alpha: The quantile value to use for point prediction. If not provided,
+                then the value specified during setup is used.
+
+            coverage: The coverage value to use for prediction intervals.  If not
+                provided, then the value specified during setup is used.
+
+            fh: The forecast horizon to use for forecasting. If not provided, then
+                the one used during model training is used.
+
+            X: When a model trained with exogenous variables has been finalized,
+                user can provide the future values of the exogenous variables to
+                make future target time series predictions using this key.
+
+            plot_data_type: When plotting the data used for modeling, user may
+                wish to see plots with the original data set provided, the imputed
+                dataset (if imputation is set) or the transformed dataset (which
+                includes any imputation and transformation set by the user). This
+                keyword can be used to specify which data type to use.
+
+                NOTE:
+                (1) If no imputation is specified, then plotting the "imputed"
+                    data type will produce the same results as the "original" data type.
+                (2) If no transformations are specified, then plotting the "transformed"
+                    data type will produce the same results as the "imputed" data type.
+
+                Allowed values are (if not specified, defaults to the first one in the list):
+
+                "ts": ["original", "imputed", "transformed"]
+                "train_test_split": ["original", "imputed", "transformed"]
+                "cv": ["original"]
+                "acf": ["transformed", "imputed", "original"]
+                "pacf": ["transformed", "imputed", "original"]
+                "decomp": ["transformed", "imputed", "original"]
+                "decomp_stl": ["transformed", "imputed", "original"]
+                "diagnostics": ["transformed", "imputed", "original"]
+                "diff": ["transformed", "imputed", "original"]
+                "forecast": ["original", "imputed"]
+                "insample": ["original", "imputed"]
+                "residuals": ["original", "imputed"]
+                "periodogram": ["transformed", "imputed", "original"]
+                "fft": ["transformed", "imputed", "original"]
+                "ccf": ["transformed", "imputed", "original"]
+
+                Some plots (marked as True below) will also allow specifying
+                multiple of data types at once.
+
+                "ts": True
+                "train_test_split": True
+                "cv": False
+                "acf": True
+                "pacf": True
+                "decomp": True
+                "decomp_stl": True
+                "diagnostics": True
+                "diff": False
+                "forecast": False
+                "insample": False
+                "residuals": False
+                "periodogram": True
+                "fft": True
+                "ccf": False
 
 
         fig_kwargs: dict, default = {} (empty dict)
             The setting to be used for the plot. Overrides any global setting
             passed during setup. Pass these as key-value pairs. For available
             keys, refer to the `setup` documentation.
+
+            Time-series plots support more display_formats, as a result the fig-kwargs
+            can also contain the `resampler_kwargs` key and its corresponding dict.
+            These are additional keyword arguments that are fed to the display function.
+            This is mainly used for configuring `plotly-resampler` visualizations
+            (i.e., `display_format` "plotly-dash" or "plotly-widget") which down sampler
+            will be used; how many data points are shown in the front-end.
+
+            When the plotly-resampler figure is rendered via Dash (by setting the
+            `display_format` to "plotly-dash"), one can also use the
+            "show_dash" key within this dictionary to configure the show_dash args.
+
+            example::
+
+                fig_kwargs = {
+                    "width": None,
+                    "resampler_kwargs":  {
+                        "default_n_shown_samples": 1000,
+                        "show_dash": {"mode": "inline", "port": 9012}
+                    }
+                }
 
 
         save: string or bool, default = False
@@ -2814,301 +4005,29 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         Returns:
-            Optional[Tuple[str, Any]]
+            Path to saved file and list containing figure and data, if any.
 
         """
 
-        self._check_setup_ran()
+        system = os.environ.get("PYCARET_TESTING", "0")
+        system = system == "0"
 
-        # checking display_format parameter
-        self.plot_model_check_display_format_(display_format=display_format)
-
-        if plot == "decomp_classical":
-            msg = (
-                "DeprecationWarning: `decomp_classical` plot type will be disabled in "
-                "a future release. Please use `decomp` instead."
-            )
-            warnings.warn(msg, DeprecationWarning)
-            print(msg)
-            #### Reset to "decomp"
-            plot = "decomp"
-
-        # Import required libraries ----
-        if display_format == "streamlit":
-            try:
-                import streamlit as st
-            except ImportError:
-                raise ImportError(
-                    "It appears that streamlit is not installed. Do: pip install streamlit"
-                )
-
-        # Add sp value (used in decomp plots)
-        data_kwargs = data_kwargs or {}
-        data_kwargs.setdefault("seasonal_period", self.primary_sp_to_use)
-
-        fig_kwargs = fig_kwargs or {}
-
-        return_pred_int = False
-        return_obj = []
-
-        # Type checks
-        if estimator is not None and isinstance(estimator, str):
-            raise ValueError(
-                "Estimator must be a trained object. "
-                f"You have passed a string: '{estimator}'"
-            )
-
-        # Default plot when no model is specified is the time series plot
-        # Default plot when model is specified is the forecast plot
-        if plot is None and estimator is None:
-            plot = "ts"
-        elif plot is None and estimator is not None:
-            plot = "forecast"
-
-        data, train, test, X, model_results, cv, model_names = (
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )
-
-        include = data_kwargs.get("include", None)
-        exclude = data_kwargs.get("exclude", None)
-
-        if plot == "ts":
-            data = self._get_y_data(split="all")
-            X = self._get_X_data(split="all", include=include, exclude=exclude)
-        elif plot == "train_test_split":
-            train = self._get_y_data(split="train")
-            test = self._get_y_data(split="test")
-        elif plot == "cv":
-            data = self._get_y_data(split="train")
-            cv = self.get_fold_generator()
-        elif plot == "ccf":
-            data = self._get_y_data(split="all")
-            X = self._get_X_data(split="all", include=include, exclude=exclude)
-        elif estimator is None:
-            # Estimator is not provided
-            require_full_data = [
-                "acf",
-                "pacf",
-                "diagnostics",
-                "decomp",
-                "decomp_stl",
-                "diff",
-                "periodogram",
-                "fft",
-            ]
-            if plot in require_full_data:
-                data = self._get_y_data(split="all")
-            else:
-                plots_formatted_data = [
-                    f"'{plot}'" for plot in self._available_plots_data_keys
-                ]
-                raise ValueError(
-                    f"Plot type '{plot}' is not supported when estimator is not "
-                    f"provided. Available plots are: {', '.join(plots_formatted_data)}"
-                )
-        else:
-            _support_multiple_estimators = ["forecast", "insample", "residuals"]
-
-            # Estimator is Provided
-            # If a single estimator, make a list
-            if isinstance(estimator, List):
-                estimators = estimator
-            else:
-                estimators = [estimator]
-
-            if hasattr(self, "_get_model_name") and hasattr(
-                self, "_all_models_internal"
-            ):
-                model_names = [
-                    self._get_model_name(estimator) for estimator in estimators
-                ]
-            else:
-                # If the model is saved and loaded afterwards,
-                # it will not have self._get_model_name
-                model_names = [estimator.__class__.__name__ for estimator in estimators]
-
-            if plot not in _support_multiple_estimators:
-                if len(estimators) > 1:
-                    msg = f"Plot '{plot}' does not support multiple estimators. The first estimator will be used."
-                    self.logger.warning(msg)
-                    print(msg)
-                estimators = estimators[0]
-                model_names = model_names[0]
-
-            require_residuals = [
-                "diagnostics",
-                "acf",
-                "pacf",
-                "decomp",
-                "decomp_stl",
-                "diff",
-                "periodogram",
-                "fft",
-            ]
-            if plot == "forecast":
-                data = self._get_y_data(split="all")
-
-                fh = data_kwargs.get("fh", None)
-                alpha = data_kwargs.get("alpha", 0.05)
-                X = data_kwargs.get("X", None)
-                return_pred_ints = [
-                    estimator.get_tag("capability:pred_int") for estimator in estimators
-                ]
-
-                model_results = [
-                    self.predict_model(
-                        estimator,
-                        fh=fh,
-                        X=X,
-                        alpha=alpha,
-                        return_pred_int=return_pred_int,
-                        verbose=False,
-                    )
-                    for estimator, return_pred_int in zip(estimators, return_pred_ints)
-                ]
-
-                if len(estimators) == 1:
-                    return_pred_int = return_pred_ints[0]
-                else:
-                    # Disable Prediction Intervals if more than 1 estimator is provided.
-                    return_pred_int = False
-
-            elif plot == "insample":
-                # Try to get insample forecasts if possible
-                model_results = [
-                    self.get_insample_predictions(estimator=estimator)
-                    for estimator in estimators
-                ]
-                if all(model_result is None for model_result in model_results):
-                    return
-                data = self._get_y_data(split="all")
-                # Do not plot prediction interval for insample predictions
-                return_pred_int = False
-
-            elif plot == "residuals":
-                # Try to get residuals if possible
-                model_results = [
-                    self.get_residuals(estimator=estimator) for estimator in estimators
-                ]
-                if all(model_result is None for model_result in model_results):
-                    return
-                data = self._get_y_data(split="all")
-
-            elif plot in require_residuals:
-                resid = self.get_residuals(estimator=estimators)
-                if resid is None:
-                    return
-                data = resid
-            else:
-                plots_formatted_model = [
-                    f"'{plot}'" for plot in self._available_plots_estimator_keys
-                ]
-                raise ValueError(
-                    f"Plot type '{plot}' is not supported when estimator is provided. "
-                    f"Available plots are: {', '.join(plots_formatted_model)}"
-                )
-
-        fig, plot_data = _get_plot(
+        return self._plot_model(
+            estimator=estimator,
             plot=plot,
-            fig_defaults=self.fig_kwargs,
-            data=data,
-            train=train,
-            test=test,
-            X=X,
-            model_results=model_results,
-            cv=cv,
-            model_names=model_names,
-            return_pred_int=return_pred_int,
+            return_fig=return_fig,
+            return_data=return_data,
+            verbose=verbose,
+            display_format=display_format,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
+            save=save,
+            system=system,
         )
 
-        # Sometimes the plot is not successful, such as decomp with RangeIndex.
-        # In such cases, plotting should be bypassed.
-        if fig is not None:
-            plot_name = self._available_plots[plot]
-            plot_filename = f"{plot_name}.html"
-
-            # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
-            if save:
-                if not isinstance(save, bool):
-                    plot_filename = os.path.join(save, plot_filename)
-
-                self.logger.info(f"Saving '{plot_filename}'")
-                fig.write_html(plot_filename)
-
-                ### Add file name to return object ----
-                return_obj.append(plot_filename)
-
-            elif system:
-                if display_format == "streamlit":
-                    st.write(fig)
-                else:
-                    try:
-                        big_data_threshold = _resolve_dict_keys(
-                            dict_=fig_kwargs,
-                            key="big_data_threshold",
-                            defaults=self.fig_kwargs,
-                        )
-                        renderer = _resolve_dict_keys(
-                            dict_=fig_kwargs, key="renderer", defaults=self.fig_kwargs
-                        )
-                        renderer = _resolve_renderer(
-                            renderer=renderer,
-                            threshold=big_data_threshold,
-                            data=data,
-                            train=train,
-                            test=test,
-                            X=X,
-                        )
-                        fig.show(renderer=renderer)
-                        self.logger.info("Visual Rendered Successfully")
-                    except ValueError as exception:
-                        self.logger.info(exception)
-                        self.logger.info("Visual Rendered Unsuccessfully")
-                        print(exception)
-                        print(
-                            "When data exceeds a certain threshold (determined by "
-                            "`big_data_threshold`), the renderer is switched to a "
-                            "static one to prevent notebooks from being slowed down.\n"
-                            "This renderer may need to be installed manually by users.\n"
-                            "Alternately:\n"
-                            "Option 1: "
-                            "Users can increase `big_data_threshold` in either `setup` "
-                            "(globally) or `plot_model` (plot specific). Examples.\n"
-                            "\t>>> setup(..., fig_kwargs={'big_data_threshold': 1000})\n"
-                            "\t>>> plot_model(..., fig_kwargs={'big_data_threshold': 1000})\n"
-                            "Option 2: "
-                            "Users can specify any plotly renderer directly in either `setup` "
-                            "(globally) or `plot_model` (plot specific). Examples.\n"
-                            "\t>>> setup(..., fig_kwargs={'renderer': 'notebook'})\n"
-                            "\t>>> plot_model(..., fig_kwargs={'renderer': 'colab'})\n"
-                            "Refer to the docstring in `setup` for more details."
-                        )
-
-        ### Add figure and data to return object if required ----
-        if return_fig:
-            return_obj.append(fig)
-        if return_data:
-            return_obj.append(plot_data)
-
-        #### Return None if empty, return as list if more than one object,
-        # else return object directly ----
-        if len(return_obj) == 0:
-            return_obj = None
-        elif len(return_obj) == 1:
-            return_obj = return_obj[0]
-        return return_obj
-
     def _predict_model_reconcile_pipe_estimator(
-        self, estimator: Union[BaseForecaster, PyCaretForecastingPipeline]
-    ) -> Tuple[PyCaretForecastingPipeline, BaseForecaster]:
+        self, estimator: Union[BaseForecaster, ForecastingPipeline]
+    ) -> Tuple[ForecastingPipeline, BaseForecaster]:
         """Returns the pipeline along with the final model in the pipeline.
 
         # Use Cases:
@@ -3127,12 +4046,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Parameters
         ----------
-        estimator : Union[BaseForecaster, PyCaretForecastingPipeline]
+        estimator : Union[BaseForecaster, ForecastingPipeline]
             Estimator passed by user
 
         Returns
         -------
-        Tuple[PyCaretForecastingPipeline, BaseForecaster]
+        Tuple[ForecastingPipeline, BaseForecaster]
             The pipeline and the final model in the pipeline
 
         Raises
@@ -3141,7 +4060,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             When a model (without pipeline) is loaded into an experiment where
             setup has not been run, but user wants to make a prediction.
         """
-        if isinstance(estimator, PyCaretForecastingPipeline):
+        if isinstance(estimator, ForecastingPipeline):
             # Use Case 3
             pipeline_with_model = deepcopy(estimator)
             estimator_ = self._get_final_model_from_pipeline(
@@ -3230,7 +4149,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ------
         ValueError
             If model is finalized and was trained using exogenous variables and
-            user does not provide exogenous variabled for predictions.
+            user does not provide exogenous variables for predictions.
         """
         if self._setup_ran:
             estimator_y, _ = self._get_cleaned_estimator_y_X(estimator=estimator)
@@ -3245,10 +4164,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                         "variables to make predictions."
                     )
 
-        #### Convert to None if empty dataframe ----
+        # Convert to None if empty dataframe ----
         # Some predict methods in sktime expect None (not an empty dataframe as
         # returned by pycaret). Hence converting to None.
-        X = _coerce_empty_dataframe_to_none(data=X)
+        # NOTE 2022/11/27: Removed this since we need to return empty dataframe
+        # with indices for cases when we have no exogenous variables, but these
+        # features can be generated using fe_exogenous.
+        # X = _coerce_empty_dataframe_to_none(data=X)
         return X
 
     def _predict_model_resolve_verbose(
@@ -3290,7 +4212,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def _predict_model_resolve_display(
         self, verbose: bool, y_pred: pd.DataFrame
-    ) -> Display:
+    ) -> CommonDisplay:
         """Returns the display object after appropriately deciding whether metrics
         should be displayed or not.
 
@@ -3311,16 +4233,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         verbose = self._predict_model_resolve_verbose(verbose=verbose, y_pred=y_pred)
         if hasattr(self, "html_param"):
             np.random.seed(self.seed)
-            display = Display(verbose=verbose, html_param=self.html_param)
+            display = CommonDisplay(verbose=verbose, html_param=self.html_param)
         else:
             # Setup has not been run, hence self.html_param is not available
-            display = Display(verbose=verbose, html_param=False)
+            display = CommonDisplay(verbose=verbose, html_param=False)
 
         return display
 
     def _predict_model_get_test_metrics(
         self,
-        pipeline: PyCaretForecastingPipeline,
+        pipeline: ForecastingPipeline,
         estimator: BaseForecaster,
         result: pd.DataFrame,
     ) -> dict:
@@ -3330,7 +4252,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Parameters
         ----------
-        pipeline : PyCaretForecastingPipeline
+        pipeline : ForecastingPipeline
             The pipeline used to get the imputed values for metrics
         estimator : BaseForecaster
             Estimator used to decide if the model has been finalized or not.
@@ -3349,9 +4271,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             # The imputed test portion will be used as `y_true` for metrics
             # The imputed train portion will be used for metrics such as MASE, RMSSE.
             # Refer to: https://github.com/pycaret/pycaret/issues/2369
-            y_imputed, _ = _get_imputed_data(pipeline=pipeline, y=self.y, X=self.X)
-            y_test_imputed = y_imputed.loc[self.y_test.index]
-            y_train_imputed = y_imputed.loc[self.y_train.index]
+            y_test_imputed = self._get_y_data(split="test", data_type="imputed")
+            y_train_imputed = self._get_y_data(split="train", data_type="imputed")
 
             # Pass additional keyword arguments (like y_train, lower, upper) to
             # method since they need to be passed to certain metrics like MASE,
@@ -3379,9 +4300,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self,
         estimator,
         fh=None,
-        X=None,
-        return_pred_int=False,
-        alpha=0.05,
+        X: Optional[pd.DataFrame] = None,
+        return_pred_int: bool = False,
+        alpha: Optional[float] = None,
+        coverage: Union[float, List[float]] = 0.9,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -3427,8 +4349,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             prediction interval, in addition to the point prediction.
 
 
-        alpha: float, default = 0.05
-            alpha for prediction interval. CI = 1 - alpha.
+        alpha: Optional[float], default = None
+            The alpha (quantile) value to use for the point predictions. Refer to
+            the "point_alpha" description in the setup docstring for details.
+
+
+        coverage: Union[float, List[float]], default = 0.9
+            The coverage to be used for prediction intervals. Refer to the "coverage"
+            description in the setup docstring for details.
 
 
         round: int, default = 4
@@ -3454,43 +4382,27 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fh = self._predict_model_reconcile_fh(estimator=estimator_, fh=fh)
         X = self._predict_model_reconcile_X(estimator=estimator_, X=X)
 
-        if not _are_pipeline_tansformations_empty(pipeline=pipeline_with_model):
-            # TODO: If the model has been finalized, then we have a problem here
-            # `pipeline` will still have memory till the train dataset, but
-            # estimator will have full memory (full dataset). Hence predictions
-            # will not be correct. Check how to resolve this.
-            result = get_predictions_with_intervals(
-                forecaster=pipeline_with_model,
-                X=X,
-                fh=fh,
-                alpha=alpha,
-                merge=True,
-                round=round,
-            )
-        else:
-            # Currently sktime 0.11.0 and less do not support prediction intervals for
-            # pipelines. Hence if the pipeline is empty, just use the estimator so
-            # that we can get the prediction intervals if the estimator supports it.
-            result = get_predictions_with_intervals(
-                forecaster=estimator_,
-                X=X,
-                fh=fh,
-                alpha=alpha,
-                merge=True,
-                round=round,
-            )
+        result = get_predictions_with_intervals(
+            forecaster=pipeline_with_model,
+            alpha=alpha,
+            coverage=coverage,
+            X=X,
+            fh=fh,
+            merge=True,
+            round=round,
+        )
         y_pred = pd.DataFrame(result["y_pred"])
 
         #################
-        #### Metrics ####
+        # Metrics ####
         #################
         if self._setup_ran:
-            #### Get Metrics ----
+            # Get Metrics ----
             metrics = self._predict_model_get_test_metrics(
                 pipeline=pipeline_with_model, estimator=estimator_, result=result
             )
 
-            #### Display metrics ----
+            # Display metrics ----
             full_name = self._get_model_name(estimator_)
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
@@ -3498,8 +4410,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             display = self._predict_model_resolve_display(
                 verbose=verbose, y_pred=y_pred
             )
-            display.display(df_score.style.set_precision(round), clear=False)
-            self.display_container.append(df_score)
+            display.display(df_score.style.format(precision=round), clear=False)
+            self._display_container.append(df_score)
 
         gc.collect()
 
@@ -3511,7 +4423,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self,
         estimator,
         fit_kwargs: Optional[dict] = None,
-        model_only: bool = True,
+        model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
 
@@ -3543,12 +4455,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         Returns:
-            Trained Model
+            Trained pipeline or model object fitted on complete dataset.
 
 
         """
-
-        self._check_setup_ran()
 
         return super().finalize_model(
             estimator=estimator,
@@ -3642,8 +4552,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        self._check_setup_ran()
-
         return super().deploy_model(
             model=model,
             model_name=model_name,
@@ -3697,7 +4605,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def load_model(
         self,
-        model_name,
+        model_name: str,
         platform: Optional[str] = None,
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
@@ -3753,41 +4661,52 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def _create_pipeline(
         self,
         model: BaseForecaster,
-        target_steps: List,
-        exogenous_steps: List,
-    ) -> PyCaretForecastingPipeline:
+        transformer_steps_target: List,
+        transformer_steps_exogenous: List,
+    ) -> ForecastingPipeline:
         """Creates a PyCaret pipeline based on the steps and model passed.
         The pipeline structure is as follows
 
-        PyCaretForecastingPipeline
-          - exogenous_steps
-          - TransformedTargetForecaster
-            - target_steps
-            - model
+        ForecastingPipeline
+            - TransformerPipeline(exogenous_steps) [Optional]
+            - TransformedTargetForecaster
+                - TransformerPipeline(target_steps) [Optional]
+                - model
 
         Parameters
         ----------
         model : BaseForecaster
             Final model to use for prediction
-        target_steps : List
+        transformer_steps_target : List
             List of transformation steps to apply to the target - y
-        exogenous_steps : List
+        transformer_steps_exogenous : List
             List of transformations to apply to the exogenous variables - X
 
         Returns
         -------
-        PyCaretForecastingPipeline
-            A PyCaret Time Series Forecasting Pipeline.
+        ForecastingPipeline
+            A Time Series Forecasting Pipeline.
         """
 
         # Set the pipeline from model
+
         # Add forecaster (model) to end of target steps ----
-        target_steps.extend([("model", model)])
-        forecaster = TransformedTargetForecaster(target_steps)
+        steps_target = []
+        if len(transformer_steps_target) > 0:
+            transformer_target = TransformerPipeline(steps=transformer_steps_target)
+            steps_target.extend([("transformer_target", transformer_target)])
+        steps_target.extend([("model", model)])
+        forecaster = TransformedTargetForecaster(steps_target)
 
         # Create Forecasting Pipeline ----
-        exogenous_steps.extend([("forecaster", forecaster)])
-        pipeline = PyCaretForecastingPipeline(exogenous_steps)
+        steps_exogenous = []
+        if len(transformer_steps_exogenous) > 0:
+            transformer_exogenous = TransformerPipeline(
+                steps=transformer_steps_exogenous
+            )
+            steps_exogenous.extend([("transformer_exogenous", transformer_exogenous)])
+        steps_exogenous.extend([("forecaster", forecaster)])
+        pipeline = ForecastingPipeline(steps_exogenous)
 
         return pipeline
 
@@ -4089,7 +5008,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     initial_window=initial_window,
                     step_length=step_length,
                     fh=self.fh,
-                    start_with_window=True,
                 )
 
             if fold_strategy == "sliding":
@@ -4107,6 +5025,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         test: str = "all",
         alpha: float = 0.05,
         split: str = "all",
+        data_type: str = "transformed",
         data_kwargs: Optional[Dict] = None,
     ) -> pd.DataFrame:
         """This function is used to get summary statistics and run statistical
@@ -4158,6 +5077,24 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             * 'train' - The Training Split of the dataset
             * 'test' - The Test Split of the dataset
 
+        data_type : str, optional
+            The data type to use for the statistical test, by default "transformed".
+
+            User may wish to perform the tests on the original data set provided,
+            the imputed dataset (if imputation is set) or the transformed dataset
+            (which includes any imputation and transformation set by the user).
+            This keyword can be used to specify which data type to use.
+
+            Allowed values are: ["original", "imputed", "transformed"]
+
+            NOTE:
+            (1) If no imputation is specified, then testing on the "imputed"
+                data type will produce the same results as the "original" data type.
+            (2) If no transformations are specified, then testing the "transformed"
+                data type will produce the same results as the "imputed" data type.
+            (3) By default, tests are done on the "transformed" data since that
+                is the data that is fed to the model during training.
+
 
         data_kwargs : Optional[Dict], optional
             Users can specify `lags list` or `order_list` to run the test for the
@@ -4172,18 +5109,17 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         pd.DataFrame
             Dataframe with the test results
         """
-
-        #### Step 1: Get the data to be tested ----
+        # Step 1: Get the data to be tested ----
         if estimator is None:
-            data = self._get_y_data(split=split)
-            data_name = "Actual"
+            data = self._get_y_data(split=split, data_type=data_type)
+            data_name = data_type.capitalize()
         else:
             data = self.get_residuals(estimator=estimator)
             if data is None:
                 return
             data_name = "Residual"
 
-        #### Step 2: Test ----
+        # Step 2: Test ----
         results = run_test(
             data=data,
             test=test,
@@ -4194,7 +5130,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         results.reset_index(inplace=True, drop=True)
         return results
 
-    def _get_y_data(self, split="all") -> pd.Series:
+    def _get_y_data(self, split: str = "all", data_type: str = "original") -> pd.Series:
         """Returns the y data for the requested split
 
         Parameters
@@ -4202,6 +5138,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         split : str, optional
             The plot for which the data must be returned. Options are: "all",
             "train" or "test", by default "all".
+        data_type : str, optional
+            The data type to fetch. Options are: "original", "imputed", "transformed".
+            , by default "original".
+
+            NOTE:
+            If data_type = "imputed" or "transformed" and
+            (1) split = "train", then the returned value is based on the pipeline
+                that is trained on the "train" data only.
+            (2) split = "test", then the returned value is based on the pipeline
+                that is trained on the entire data (train + test).
 
         Returns
         -------
@@ -4211,21 +5157,42 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         Raises
         ------
         ValueError
-            When `split` is not one of the allowed types
+            When `split` or `data_type` are not one of the allowed types
         """
-        if split == "all":
-            data = self.y
-        elif split == "train":
-            data = self.y_train
-        elif split == "test":
-            data = self.y_test
-        else:
-            raise ValueError(f"split value: '{split}' is not supported.")
-        return data
+        _validate_split_requested(split=split)
+        _validate_data_type(data_type=data_type)
+
+        if data_type == "original":
+            if split == "train":
+                y = self.y_train
+            elif split == "test":
+                y = self.y_test
+            elif split == "all":
+                y = self.y
+        elif data_type == "imputed":
+            y, _ = _get_imputed_data(pipeline=self.pipeline, y=self.y, X=self.X)
+            if split == "train":
+                y, _ = _get_imputed_data(
+                    pipeline=self.pipeline, y=self.y_train, X=self.X_train
+                )
+            elif split == "test":
+                y = y.loc[self.y_test.index]
+        elif data_type == "transformed":
+            if split == "train":
+                y = self.y_train_transformed
+            elif split == "test":
+                y = self.y_test_transformed
+            elif split == "all":
+                y = self.y_transformed
+            # "transformed" data does not remember the name for some reason
+            y.name = self.y.name
+
+        return y
 
     def _get_X_data(
         self,
-        split="all",
+        split: str = "all",
+        data_type: str = "original",
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
     ) -> pd.DataFrame:
@@ -4236,6 +5203,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         split : str, optional
             The plot for which the data must be returned. Options are: "all",
             "train" or "test", by default "all".
+        data_type : str, optional
+            The data type to fetch. Options are: "original", "imputed", "transformed".
+            , by default "original".
+
+            NOTE:
+            If data_type = "imputed" or "transformed" and
+            (1) split = "train", then the returned value is based on the pipeline
+                that is trained on the "train" data only.
+            (2) split = "test", then the returned value is based on the pipeline
+                that is trained on the entire data (train + test).
         include : Optional[List[str]], optional
             The columns to include in the returned data, by default None which
             returns all the columns
@@ -4251,24 +5228,43 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         Raises
         ------
         ValueError
-            When `split` is not one of the allowed types
+            When `split` or `data_type` are not one of the allowed types
         """
-        if split == "all":
-            data = self.X
-        elif split == "train":
-            data = self.X_train
-        elif split == "test":
-            data = self.X_test
-        else:
-            raise ValueError(f"split value: '{split}' is not supported.")
+        _validate_split_requested(split=split)
+        _validate_data_type(data_type=data_type)
+
+        if data_type == "original":
+            if split == "train":
+                X = self.X_train
+            elif split == "test":
+                X = self.X_test
+            elif split == "all":
+                X = self.X
+        elif data_type == "imputed":
+            _, X = _get_imputed_data(pipeline=self.pipeline, y=self.y, X=self.X)
+            if split == "train":
+                if X is not None:
+                    _, X = _get_imputed_data(
+                        pipeline=self.pipeline, y=self.y_train, X=self.X_train
+                    )
+            elif split == "test":
+                if X is not None:
+                    X = X.loc[self.X_test.index]
+        elif data_type == "transformed":
+            if split == "test":
+                X = self.X_test_transformed
+            elif split == "all":
+                X = self.X_transformed
+            elif split == "train":
+                X = self.X_train_transformed
 
         # TODO: Move this functionality (of including/excluding cols) to some utility module.
         if include:
-            data = data[include]
+            X = X[include]
         if exclude:
-            data = data.loc[:, ~data.columns.isin(exclude)]
+            X = X.loc[:, ~X.columns.isin(exclude)]
 
-        return data
+        return X
 
     def _get_cleaned_estimator_y_X(
         self, estimator: BaseForecaster
@@ -4405,7 +5401,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         References
         ----------
-        https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+        https://github.com/sktime/sktime/issues/1105#issuecomment-932216820
         """
 
         resid = None
@@ -4418,11 +5414,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             resid.name = y.name
             resid = self._check_and_clean_resid(resid=resid)
         else:
-            print(
-                "In sample predictions has not been implemented for this estimator "
-                f"of type '{estimator.__class__.__name__}' in `sktime`. When "
-                "this is implemented, it will be enabled by default in pycaret."
-            )
+            if self.verbose:
+                print(
+                    "In sample predictions has not been implemented for this estimator "
+                    f"of type '{estimator.__class__.__name__}' in `sktime`. When "
+                    "this is implemented, it will be enabled by default in pycaret."
+                )
 
         return resid
 
@@ -4445,8 +5442,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         References
         ----------
-        # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
-        # https://github.com/alan-turing-institute/sktime/blob/87bdf36dbc0990f29942eb6f7fa56a8e6c5fa7b7/sktime/forecasting/base/_base.py#L699
+        # https://github.com/sktime/sktime/issues/1105#issuecomment-932216820
+        # https://github.com/sktime/sktime/blob/87bdf36dbc0990f29942eb6f7fa56a8e6c5fa7b7/sktime/forecasting/base/_base.py#L699
         """
         insample_predictions = None
 
@@ -4458,11 +5455,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
         except NotImplementedError as exception:
             self.logger.warning(exception)
-            print(
-                "In sample predictions has not been implemented for this estimator "
-                f"of type '{estimator.__class__.__name__}' in `sktime`. When "
-                "this is implemented, it will be enabled by default in pycaret."
-            )
+            if self.verbose:
+                print(
+                    "In sample predictions has not been implemented for this estimator "
+                    f"of type '{estimator.__class__.__name__}' in `sktime`. When "
+                    "this is implemented, it will be enabled by default in pycaret."
+                )
 
         return insample_predictions
 
@@ -4524,9 +5522,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         additional_scorer_kwargs = {"sp": self.primary_sp_to_use}
         return additional_scorer_kwargs
 
-    def _get_pipeline_to_use(
-        self, estimator: BaseForecaster
-    ) -> PyCaretForecastingPipeline:
+    def _get_pipeline_to_use(self, estimator: BaseForecaster) -> ForecastingPipeline:
         """Depending on the estimator that must be added to the pipeline, this
         method will fetch the correct pipeline with the right memory in it. If
         the estimator has not been finalized, this will fetch the pipeline with
@@ -4540,7 +5536,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Returns
         -------
-        PyCaretForecastingPipeline
+        ForecastingPipeline
             The pipeline with the correct memory based on the estimator
         """
 
@@ -4551,14 +5547,200 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
         return pipeline_to_use
 
+    @property
+    def X(self):
+        X = self.dataset.drop(self.target_param, axis=1)
+        if X.empty and self.fe_exogenous is None:
+            return None
+        else:
+            # If X is not empty or empty but self.fe_exogenous is provided
+            # Return X instead of None, since the index can be used to
+            # generate features using self.fe_exogenous
+            return X
 
-class TimeSeriesExperiment(TSForecastingExperiment):
-    def __init__(self) -> None:
-        msg = (
-            "DeprecationWarning: TimeSeriesExperiment class will be removed in "
-            "a future release. Please import the following instead. \n"
-            ">>> from pycaret.time_series import TSForecastingExperiment"
+    @property
+    def dataset_transformed(self):
+        # Use fully trained pipeline to get the requested data
+        return pd.concat(
+            [
+                *_pipeline_transform(
+                    pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+                )
+            ],
+            axis=1,
         )
-        warnings.warn(msg, DeprecationWarning)
-        print(msg)
-        super().__init__()
+
+    @property
+    def X_train_transformed(self):
+        # Use pipeline trained on training data only to get the requested data
+        # In time series, the order of arguments and returns may be reversed.
+        return _pipeline_transform(
+            pipeline=self.pipeline, y=self.y_train, X=self.X_train
+        )[1]
+
+    @property
+    def train_transformed(self):
+        # Use pipeline trained on training data only to get the requested data
+        # In time series, the order of arguments and returns may be reversed.
+        return pd.concat(
+            [
+                *_pipeline_transform(
+                    pipeline=self.pipeline, y=self.y_train, X=self.X_train
+                )
+            ],
+            axis=1,
+        )
+
+    @property
+    def X_transformed(self):
+        # Use fully trained pipeline to get the requested data
+        # In time series, the order of arguments and returns may be reversed.
+        return _pipeline_transform(
+            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+        )[1]
+
+    @property
+    def X_train(self):
+        X_train = self.train.drop(self.target_param, axis=1)
+
+        if X_train.empty and self.fe_exogenous is None:
+            return None
+        else:
+            # If X_train is not empty or empty but self.fe_exogenous is provided
+            # Return X_train instead of None, since the index can be used to
+            # generate features using self.fe_exogenous
+            return X_train
+
+    @property
+    def X_test(self):
+        # Use index for y_test (idx 2) to get the data
+        test = self.dataset.loc[self.idx[2], :]
+        X_test = test.drop(self.target_param, axis=1)
+
+        if X_test.empty and self.fe_exogenous is None:
+            return None
+        else:
+            # If X_test is not empty or empty but self.fe_exogenous is provided
+            # Return X_test instead of None, since the index can be used to
+            # generate features using self.fe_exogenous
+            return X_test
+
+    @property
+    def test(self):
+        # Return the y_test indices not X_test indices.
+        # X_test indices are expanded indices for handling FH with gaps.
+        # But if we return X_test indices, then we will get expanded test
+        # indices even for univariate time series without exogenous variables
+        # which would be confusing. Hence, we return y_test indices here and if
+        # we want to get X_test indices, then we use self.X_test directly.
+        # Refer:
+        # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+        # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+        return self.dataset.loc[self.idx[1], :]
+
+    @property
+    def test_transformed(self):
+        # When transforming the test set, we can and should use all data before that
+        # In time series, the order of arguments and returns may be reversed.
+        all_data = pd.concat(
+            [
+                *_pipeline_transform(
+                    pipeline=self.pipeline_fully_trained,
+                    y=self.y,
+                    X=self.X,
+                )
+            ],
+            axis=1,
+        )
+        # Return the y_test indices not X_test indices.
+        # X_test indices are expanded indices for handling FH with gaps.
+        # But if we return X_test indices, then we will get expanded test
+        # indices even for univariate time series without exogenous variables
+        # which would be confusing. Hence, we return y_test indices here and if
+        # we want to get X_test indices, then we use self.X_test directly.
+        # Refer:
+        # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+        # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+        return all_data.loc[self.idx[1]]
+
+    @property
+    def y_transformed(self):
+        # Use fully trained pipeline to get the requested data
+        # In time series, the order of arguments and returns may be reversed.
+        return _pipeline_transform(
+            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+        )[0]
+
+    @property
+    def X_test_transformed(self):
+        # In time series, the order of arguments and returns may be reversed.
+        # When transforming the test set, we can and should use all data before that
+        _, X = _pipeline_transform(
+            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+        )
+
+        if X is None:
+            return None
+        else:
+            return X.loc[self.idx[2]]
+
+    @property
+    def y_train_transformed(self):
+        # Use pipeline trained on training data only to get the requested data
+        # In time series, the order of arguments and returns may be reversed.
+        return _pipeline_transform(
+            pipeline=self.pipeline, y=self.y_train, X=self.X_train
+        )[0]
+
+    @property
+    def y_test_transformed(self):
+        # In time series, the order of arguments and returns may be reversed.
+        # When transforming the test set, we can and should use all data before that
+        y, _ = _pipeline_transform(
+            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+        )
+        return y.loc[self.idx[1]]
+
+
+def _validate_split_requested(split: str):
+    """Checks that the spilt of data requested is one of the allowed types
+    Allowed values are: ["all", "train", "test"]
+
+    Parameters
+    ----------
+    split : str
+        The requested split
+
+    Raises
+    ------
+    ValueError
+        If the requested split is not in the allowed list
+    """
+    allowed_splits = ["all", "train", "test"]
+    if split not in allowed_splits:
+        raise ValueError(
+            f"split value: '{split}' is not supported."
+            f"\nAllowed Values are: {allowed_splits}"
+        )
+
+
+def _validate_data_type(data_type: str):
+    """Checks that the data type requested is one of the allowed types
+    Allowed values are: ["original", "imputed", "transformed"]
+
+    Parameters
+    ----------
+    data_type : str
+        The requested plot data
+
+    Raises
+    ------
+    ValueError
+        If the requested plot data is not in the allowed list
+    """
+    allowed_data_types = ["original", "imputed", "transformed"]
+    if data_type not in allowed_data_types:
+        raise ValueError(
+            f"Data type value: '{data_type}' is not supported."
+            f"\nAllowed Values are: {allowed_data_types}"
+        )

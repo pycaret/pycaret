@@ -1,9 +1,8 @@
-import logging
 import time
 import warnings
 from collections import defaultdict
 from functools import partial
-from typing import Any, Dict, Generator, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -16,40 +15,37 @@ from sklearn.model_selection import (  # type: ignore
     ParameterSampler,
     check_cv,
 )
-from sklearn.model_selection._search import _check_param_grid  # type: ignore
 from sklearn.model_selection._validation import _aggregate_score_dicts  # type: ignore
-from sktime.utils.validation.forecasting import check_y_X  # type: ignore
-
+from sktime.forecasting.compose import ForecastingPipeline
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
+from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 
-from pycaret.internal.utils import get_function_params
-from pycaret.utils import _get_metrics_dict
+from pycaret.internal.logging import get_logger
+from pycaret.utils.generic import _get_metrics_dict, get_function_params
 from pycaret.utils.time_series.forecasting import (
     get_predictions_with_intervals,
     update_additional_scorer_kwargs,
 )
+from pycaret.utils.time_series.forecasting.pipeline import _get_imputed_data
 
-from pycaret.utils.time_series.forecasting.pipeline import (
-    PyCaretForecastingPipeline,
-    _get_imputed_data,
-)
+logger = get_logger()
 
 
 def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
     """
     Returns the train and test indices for the time series data
     """
-    # https://github.com/alan-turing-institute/sktime/blob/main/examples/window_splitters.ipynb
+    # https://github.com/sktime/sktime/blob/main/examples/window_splitters.ipynb
     for train_indices, test_indices in cv.split(y):
         # print(f"Train Indices: {train_indices}, Test Indices: {test_indices}")
         yield train_indices, test_indices
 
 
 def _fit_and_score(
-    pipeline: PyCaretForecastingPipeline,
+    pipeline: ForecastingPipeline,
     y: pd.Series,
     X: Optional[Union[pd.Series, pd.DataFrame]],
     scoring: Dict[str, Union[str, _PredictScorer]],
@@ -58,6 +54,8 @@ def _fit_and_score(
     parameters: Optional[Dict[str, Any]],
     fit_params: Dict[str, Any],
     return_train_score: bool,
+    alpha: Optional[float],
+    coverage: Union[float, List[float]],
     error_score=0,
     **additional_scorer_kwargs,
 ) -> Tuple[Dict[str, float], float, float, Union[pd.PeriodIndex, Any]]:
@@ -66,12 +64,12 @@ def _fit_and_score(
     Difference is that [1] operates on a single fold only, whereas [2] operates on all cv folds.
     Ref:
     [1] https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L449
-    [2] https://github.com/alan-turing-institute/sktime/blob/v0.5.3/sktime/forecasting/model_selection/_tune.py#L95
+    [2] https://github.com/sktime/sktime/blob/v0.5.3/sktime/forecasting/model_selection/_tune.py#L95
 
     Parameters
     ----------
-    pipeline : PyCaretForecastingPipeline
-        Pycaret Forecasting Pipeline that needs to be fitted and scored.
+    pipeline : ForecastingPipeline
+        Forecasting Pipeline that needs to be fitted and scored.
     y : pd.Series
         Target variable values that need to be used for forecasting. This should be the
         untransformed (original) values. Transformation will happen in the fitting process.
@@ -98,6 +96,10 @@ def _fit_and_score(
         e.g. {'fh': ForecastingHorizon([1, 2, 3], is_relative=True)}
     return_train_score : bool
         Should the training scores be returned. Unused for now.
+    alpha: Optional[float]
+        The alpha (quantile) value to use for the point predictions.
+    coverage: Union[float, List[float]]
+        The coverage to be used for prediction intervals.
     error_score : float, optional
         Unused for now, by default 0
     **additional_scorer_kwargs: Dict[str, Any]
@@ -124,10 +126,19 @@ def _fit_and_score(
 
     y_imputed, _ = _get_imputed_data(pipeline=pipeline, y=y, X=X)
 
+    # We need to expand test indices to a full range, since some forecasters
+    # require the full range of exogenous values. This comes into picture when
+    # FH has gaps (e.g. [2, 3]). In that case, some forecasters still need the
+    # exogenous variable values at FH = 1
+    # Refer:
+    # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+    # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+    test_expanded = np.arange(train[-1], test[-1]) + 1
+
     # y_train, X_train, X_test can have missing values since pipeline will impute them
     y_train = y[train]
     X_train = None if X is None else X.iloc[train]
-    X_test = None if X is None else X.iloc[test]
+    X_test = None if X is None else X.iloc[test_expanded]
 
     # y_test is "y_true" and used for metrics, hence it can not have missing values
     # Hence using y_imputed
@@ -143,30 +154,29 @@ def _fit_and_score(
             "\nhttps://github.com/pycaret/pycaret/issues/new/choose"
         )
 
-    #### Fit the forecaster ----
+    # Fit the forecaster ----
     start = time.time()
     try:
         pipeline.fit(y_train, X_train, **fit_params)
     except Exception as error:
-        logging.error(f"Fit failed on {pipeline}")
-        logging.error(error)
+        logger.error(f"Fit failed on {pipeline}")
+        logger.error(error)
 
         if error_score == "raise":
             raise
 
     fit_time = time.time() - start
 
-    #### Determine Cutoff ----
+    # Determine Cutoff ----
     # NOTE: Cutoff is available irrespective of whether fit passed or failed
     cutoff = pipeline.cutoff
 
-    #### Score the model ----
-    lower = pd.Series([])
-    upper = pd.Series([])
+    # Score the model ----
+    lower = pd.Series(dtype="float64")
+    upper = pd.Series(dtype="float64")
     if pipeline.is_fitted:
-        # TODO: Add alpha here???
         y_pred, lower, upper = get_predictions_with_intervals(
-            forecaster=pipeline, X=X_test
+            forecaster=pipeline, alpha=alpha, coverage=coverage, X=X_test
         )
 
         if (y_test_imputed.index.values != y_pred.index.values).any():
@@ -207,7 +217,7 @@ def _fit_and_score(
                 metric = scorer._score_func(
                     y_true=y_test_imputed, y_pred=y_pred, **kwargs
                 )
-            except:
+            except Exception:
                 # Missing values in y_train will cause MASE to fail.
                 metric = np.nan
         else:
@@ -219,7 +229,7 @@ def _fit_and_score(
 
 
 def cross_validate(
-    pipeline: PyCaretForecastingPipeline,
+    pipeline: ForecastingPipeline,
     y: pd.Series,
     X: Optional[Union[pd.Series, pd.DataFrame]],
     cv: Union[ExpandingWindowSplitter, SlidingWindowSplitter],
@@ -227,6 +237,8 @@ def cross_validate(
     fit_params: Dict[str, Any],
     n_jobs: Optional[int],
     return_train_score: bool,
+    alpha: Optional[float],
+    coverage: Union[float, List[float]],
     error_score: float = 0,
     verbose: int = 0,
     **additional_scorer_kwargs,
@@ -240,8 +252,8 @@ def cross_validate(
 
     Parameters
     ----------
-    pipeline : PyCaretForecastingPipeline
-        Pycaret Forecasting Pipeline that needs to be cross-validated.
+    pipeline : ForecastingPipeline
+        Forecasting Pipeline that needs to be cross-validated.
     y : pd.Series
         Target variable values that need to be used for forecasting. This should be the
         untransformed (original) values. Transformation will happen in the fitting process.
@@ -265,6 +277,10 @@ def cross_validate(
         Number of cores to use to parallelize. Refer to sklearn for details
     return_train_score : bool
         Should the training scores be returned. Unused for now.
+    alpha: Optional[float]
+        The alpha (quantile) value to use for the point predictions.
+    coverage: Union[float, List[float]]
+        The coverage to be used for prediction intervals.
     error_score : float, optional
         Unused for now, by default 0
     verbose : int
@@ -301,6 +317,8 @@ def cross_validate(
                 parameters=None,
                 fit_params=fit_params,
                 return_train_score=return_train_score,
+                alpha=alpha,
+                coverage=coverage,
                 error_score=error_score,
                 **additional_scorer_kwargs,
             )
@@ -328,8 +346,10 @@ class BaseGridSearch:
 
     def __init__(
         self,
-        pipeline: PyCaretForecastingPipeline,
+        pipeline: ForecastingPipeline,
         cv: Union[ExpandingWindowSplitter, SlidingWindowSplitter],
+        alpha: Optional[float],
+        coverage: Union[float, List[float]],
         n_jobs=None,
         pre_dispatch=None,
         refit: bool = False,
@@ -343,10 +363,14 @@ class BaseGridSearch:
 
         Parameters
         ----------
-        pipeline : PyCaretForecastingPipeline
-            Pycaret Forecasting Pipeline that needs to be used for Grid Search.
+        pipeline : ForecastingPipeline
+            Forecasting Pipeline that needs to be used for Grid Search.
         cv : Union[ExpandingWindowSplitter, SlidingWindowSplitter]
             The sktime compatible cross-validation object.
+        alpha: Optional[float]
+            The alpha (quantile) value to use for the point predictions.
+        coverage: Union[float, List[float]]
+            The coverage to be used for prediction intervals.
         n_jobs : Optional[int]
             Number of cores to use to parallelize. Refer to sklearn for details,
             by default None
@@ -374,6 +398,8 @@ class BaseGridSearch:
         """
         self.pipeline = pipeline
         self.cv = cv
+        self.alpha = alpha
+        self.coverage = coverage
         self.n_jobs = n_jobs
         self.pre_dispatch = pre_dispatch
         self.refit = refit
@@ -474,6 +500,8 @@ class BaseGridSearch:
                     parameters=parameters,
                     fit_params=fit_params,
                     return_train_score=self.return_train_score,
+                    alpha=self.alpha,
+                    coverage=self.coverage,
                     error_score=self.error_score,
                     **additional_scorer_kwargs,
                 )
@@ -620,6 +648,8 @@ class ForecastingGridSearchCV(BaseGridSearch):
         self,
         forecaster,
         cv,
+        alpha: Optional[float],
+        coverage: Union[float, List[float]],
         param_grid,
         scoring=None,
         n_jobs=None,
@@ -633,6 +663,8 @@ class ForecastingGridSearchCV(BaseGridSearch):
         super(ForecastingGridSearchCV, self).__init__(
             pipeline=forecaster,
             cv=cv,
+            alpha=alpha,
+            coverage=coverage,
             n_jobs=n_jobs,
             pre_dispatch=pre_dispatch,
             refit=refit,
@@ -643,7 +675,7 @@ class ForecastingGridSearchCV(BaseGridSearch):
             return_train_score=return_train_score,
         )
         self.param_grid = param_grid
-        _check_param_grid(param_grid)
+        # _check_param_grid(param_grid)  # TODO: Need refactor for sklearn 1.1
 
     def _run_search(self, evaluate_candidates):
         """Search all candidates in param_grid"""
@@ -661,6 +693,8 @@ class ForecastingRandomizedSearchCV(BaseGridSearch):
         self,
         forecaster,
         cv,
+        alpha: Optional[float],
+        coverage: Union[float, List[float]],
         param_distributions,
         n_iter=10,
         scoring=None,
@@ -676,6 +710,8 @@ class ForecastingRandomizedSearchCV(BaseGridSearch):
         super(ForecastingRandomizedSearchCV, self).__init__(
             pipeline=forecaster,
             cv=cv,
+            alpha=alpha,
+            coverage=coverage,
             n_jobs=n_jobs,
             pre_dispatch=pre_dispatch,
             refit=refit,

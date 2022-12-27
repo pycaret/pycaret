@@ -1,23 +1,18 @@
 import logging
-import numpy as np
+import os
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Union
+
 import pandas as pd
 from joblib.memory import Memory
 
-import pycaret.internal.tabular
-from pycaret.parallel import ParallelBackend
-from pycaret.internal.Display import Display, is_in_colab, enable_colab
-from typing import List, Tuple, Any, Union, Optional, Dict, Callable
-
-from pycaret.regression import RegressionExperiment
-from pycaret.internal.utils import check_if_global_is_not_none
-
-from typing import List, Any, Union, Optional, Dict
-import warnings
-
-warnings.filterwarnings("ignore")
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
+from pycaret.loggers.base_logger import BaseLogger
+from pycaret.regression.oop import RegressionExperiment
+from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE, TARGET_LIKE
+from pycaret.utils.generic import check_if_global_is_not_none
 
 _EXPERIMENT_CLASS = RegressionExperiment
-_CURRENT_EXPERIMENT = None
+_CURRENT_EXPERIMENT: Optional[RegressionExperiment] = None
 _CURRENT_EXPERIMENT_EXCEPTION = (
     "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
 )
@@ -27,10 +22,12 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data: Union[np.array, pd.DataFrame],
-    target: Union[int, str] = -1,
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+    target: TARGET_LIKE = -1,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
     train_size: float = 0.7,
-    test_data: Optional[pd.DataFrame] = None,
+    test_data: Optional[DATAFRAME_LIKE] = None,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -39,18 +36,23 @@ def setup(
     ignore_features: Optional[List[str]] = None,
     keep_features: Optional[List[str]] = None,
     preprocess: bool = True,
+    create_date_columns: List[str] = ["day", "month", "year"],
     imputation_type: Optional[str] = "simple",
     numeric_imputation: Union[int, float, str] = "mean",
-    categorical_imputation: str = "constant",
+    categorical_imputation: str = "mode",
     iterative_imputation_iters: int = 5,
     numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     categorical_iterative_imputer: Union[str, Any] = "lightgbm",
     text_features_method: str = "tf-idf",
-    max_encoding_ohe: int = 5,
+    max_encoding_ohe: int = 25,
     encoding_method: Optional[Any] = None,
+    rare_to_value: Optional[float] = None,
+    rare_value: str = "rare",
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
-    low_variance_threshold: float = 0,
+    low_variance_threshold: Optional[float] = None,
+    group_features: Optional[list] = None,
+    group_names: Optional[Union[str, list]] = None,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
@@ -63,14 +65,15 @@ def setup(
     normalize_method: str = "zscore",
     pca: bool = False,
     pca_method: str = "linear",
-    pca_components: Union[int, float] = 1.0,
+    pca_components: Optional[Union[int, float, str]] = None,
     feature_selection: bool = False,
     feature_selection_method: str = "classic",
     feature_selection_estimator: Union[str, Any] = "lightgbm",
-    n_features_to_select: int = 10,
+    n_features_to_select: Union[int, float] = 0.2,
     transform_target: bool = False,
-    transform_target_method: str = "box-cox",
-    custom_pipeline: Any = None,
+    transform_target_method: str = "yeo-johnson",
+    custom_pipeline: Optional[Any] = None,
+    custom_pipeline_position: int = -1,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,
     fold_strategy: Union[str, Any] = "kfold",
@@ -81,18 +84,17 @@ def setup(
     use_gpu: bool = False,
     html: bool = True,
     session_id: Optional[int] = None,
-    system_log: Union[bool, logging.Logger] = True,
-    log_experiment: bool = False,
+    system_log: Union[bool, str, logging.Logger] = True,
+    log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
     experiment_name: Optional[str] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
-    silent: bool = False,
     verbose: bool = True,
     memory: Union[bool, str, Memory] = True,
     profile: bool = False,
-    profile_kwargs: Dict[str, Any] = None,
+    profile_kwargs: Optional[Dict[str, Any]] = None,
 ):
     """
     This function initializes the training environment and creates the transformation
@@ -108,14 +110,35 @@ def setup(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
 
 
-    data: dataframe-like
-        Shape (n_samples, n_features), where n_samples is the number of samples and
-        n_features is the number of features.
+    data: dataframe-like = None
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
 
 
-    target: int or str, default = -1
-        Name or index of the target column. The default value selects the last
-        column in the dataset. The target can be either binary or multiclass.
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    target: int, str or sequence, default = -1
+        If int or str, respectivcely index or name of the target column in data.
+        The default value selects the last column in the dataset. If sequence,
+        it should have shape (n_samples,). The target can be either binary or
+        multiclass.
+
+
+    index: bool, int, str or sequence, default = False
+        Handle indices in the `data` dataframe.
+            - If False: Reset to RangeIndex.
+            - If True: Keep the provided index.
+            - If int: Position of the column to use as index.
+            - If str: Name of the column to use as index.
+            - If sequence: Array with shape=(n_samples,) to use as index.
 
 
     train_size: float, default = 0.7
@@ -123,10 +146,9 @@ def setup(
         between 0.0 and 1.0.
 
 
-    test_data: pandas.DataFrame, default = None
-        If not None, test_data is used as a hold-out set and ``train_size`` parameter is
-        ignored. test_data must be labelled and the shape of data and test_data must
-        match.
+    test_data: dataframe-like or None, default = None
+        If not None, test_data is used as a hold-out set and `train_size` parameter
+        is ignored. The columns of data and test_data must match.
 
 
     ordinal_features: dict, default = None
@@ -178,6 +200,14 @@ def setup(
         when preprocess is set to False.
 
 
+    create_date_columns: list of str, default = ["day", "month", "year"]
+        Columns to create from the date features. Note that created features
+        with zero variance (e.g. the feature hour in a column that only contains
+        dates) are ignored. Allowed values are datetime attributes from
+        `pandas.Series.dt`. The datetime format of the feature is inferred
+        automatically from the first non NaN value.
+
+
     imputation_type: str or None, default = 'simple'
         The type of imputation to use. Can be either 'simple' or 'iterative'.
         If None, no imputation of missing values is performed.
@@ -224,17 +254,29 @@ def setup(
         text embeddings.
 
 
-    max_encoding_ohe: int, default = 5
+    max_encoding_ohe: int, default = 25
         Categorical columns with `max_encoding_ohe` or less unique values are
         encoded using OneHotEncoding. If more, the `encoding_method` estimator
         is used. Note that columns with exactly two classes are always encoded
-        ordinally.
+        ordinally. Set to below 0 to always use OneHotEncoding.
 
 
     encoding_method: category-encoders estimator, default = None
         A `category-encoders` estimator to encode the categorical columns
         with more than `max_encoding_ohe` unique values. If None,
         `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+
+
+    rare_to_value: float or None, default=None
+        Minimum fraction of category occurrences in a categorical column.
+        If a category is less frequent than `rare_to_value * len(X)`, it is
+        replaced with the string in `rare_value`. Use this parameter to group
+        rare categories before encoding the column. If None, ignores this step.
+
+
+    rare_value: str, default="rare"
+        Value with which to replace rare categories. Ignored when
+        ``rare_to_value`` is None.
 
 
     polynomial_features: bool, default = False
@@ -247,23 +289,38 @@ def setup(
         [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
 
-    low_variance_threshold: float or None, default = 0
+    low_variance_threshold: float or None, default = None
         Remove features with a training-set variance lower than the provided
-        threshold. The default is to keep all features with non-zero variance,
-        i.e. remove the features that have the same value in all samples. If
-        None, skip this treansformation step.
+        threshold. If 0, keep all features with non-zero variance, i.e. remove
+        the features that have the same value in all samples. If None, skip
+        this transformation step.
+
+
+    group_features: list, list of lists or None, default = None
+        When the dataset contains features with related characteristics,
+        replace those fetaures with the following statistical properties
+        of that group: min, max, mean, std, median and mode. The parameter
+        takes a list of feature names or a list of lists of feature names
+        to specify multiple groups.
+
+
+    group_names: str, list, or None, default = None
+        Group names to be used when naming the new features. The length
+        should match with the number of groups specified in ``group_features``.
+        If None, new features are named using the default form, e.g. group_1,
+        group_2, etc... Ignored when ``group_features`` is None.
 
 
     remove_multicollinearity: bool, default = False
-        When set to True, features with the inter-correlations higher than the defined
-        threshold are removed. When two features are highly correlated with each other,
-        the feature that is less correlated with the target variable is removed. Only
-        considers numeric features.
+        When set to True, features with the inter-correlations higher than
+        the defined threshold are removed. For each group, it removes all
+        except the feature with the highest correlation to `y`.
 
 
     multicollinearity_threshold: float, default = 0.9
-        Threshold for correlated features. Ignored when ``remove_multicollinearity``
-        is not True.
+        Minimum absolute Pearson correlation to identify correlated
+        features. The default value removes equal columns. Ignored when
+        ``remove_multicollinearity`` is not True.
 
 
     bin_numeric_features: list of str, default = None
@@ -331,15 +388,18 @@ def setup(
     pca_method: str, default = 'linear'
         Method with which to apply PCA. Possible values are:
             - 'linear': Uses Singular Value  Decomposition.
-            - kernel: Dimensionality reduction through the use of RBF kernel.
-            - incremental: Similar to 'linear', but more efficient for large datasets.
+            - 'kernel': Dimensionality reduction through the use of RBF kernel.
+            - 'incremental': Similar to 'linear', but more efficient for large datasets.
 
 
-    pca_components: int or float, default = 1.0
-        Number of components to keep. If >1, it selects that number of
-        components. If <= 1, it selects that fraction of components from
-        the original features. The value must be smaller than the number
-        of original features. This parameter is ignored when `pca=False`.
+    pca_components: int, float, str or None, default = None
+        Number of components to keep. This parameter is ignored when `pca=False`.
+            - If None: All components are kept.
+            - If int: Absolute number of components.
+            - If float: Such an amount that the variance that needs to be explained
+                        is greater than the percentage specified by `n_components`.
+                        Value should lie between 0 and 1 (ony for pca_method='linear').
+            - If "mle": Minka’s MLE is used to guess the dimension (ony for pca_method='linear').
 
 
     feature_selection: bool, default = False
@@ -351,7 +411,7 @@ def setup(
         Algorithm for feature selection. Choose from:
             - 'univariate': Uses sklearn's SelectKBest.
             - 'classic': Uses sklearn's SelectFromModel.
-            - 'sequential': Uses sklearn's SequtnailFeatureSelector.
+            - 'sequential': Uses sklearn's SequentialFeatureSelector.
 
 
     feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
@@ -361,8 +421,9 @@ def setup(
         parameter is ignored when `feature_selection_method=univariate`.
 
 
-    n_features_to_select: int, default = 10
-        The number of features to select. Note that this parameter doesn't
+    n_features_to_select: int or float, default = 0.2
+        The maximum number of features to select with feature_selection. If <1,
+        it's the fraction of starting features. Note that this parameter doesn't
         take features in ``ignore_features`` or ``keep_features`` into account
         when counting.
 
@@ -373,16 +434,20 @@ def setup(
         from feature transformations.
 
 
-    transform_target_method: str, default = 'box-cox'
-        'Box-cox' and 'yeo-johnson' methods are supported. Box-Cox requires input data to
-        be strictly positive, while Yeo-Johnson supports both positive or negative data.
-        When transform_target_method is 'box-cox' and target variable contains negative
-        values, method is internally forced to 'yeo-johnson' to avoid exceptions.
+    transform_target_method: str, default = 'yeo-johnson'
+        Defines the method for transformation. By default, the transformation method is
+        set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
+        Ignored when ``transform_target`` is not True.
 
 
-    custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
+    custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Addidiotnal custom transformers. If passed, they are applied to the
         pipeline last, after all the build-in transformers.
+
+
+    custom_pipeline_position: int, default = -1
+        Position of the custom pipeline in the overal preprocessing pipeline.
+        The default value adds the custom pipeline last.
 
 
     data_split_shuffle: bool, default = True
@@ -403,6 +468,8 @@ def setup(
         * 'timeseries'
         * a custom CV generator object compatible with scikit-learn.
 
+        For ``groupkfold``, column name must be passed in ``fold_groups`` parameter.
+        Example: ``setup(fold_strategy="groupkfold", fold_groups="COLUMN_NAME")``
 
     fold: int, default = 10
         Number of folds to be used in cross validation. Must be at least 2. This is
@@ -463,16 +530,20 @@ def setup(
 
 
     log_experiment: bool, default = False
-        When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+        corresponding to a logger to determine which experiment loggers to use.
+        Setting to True will use just MLFlow.
+        If ``wandb`` (Weights & Biases) is installed, will also log there.
 
 
-    system_log: bool or logging.Logger, default = True
+    system_log: bool or str or logging.Logger, default = True
         Whether to save the system logging file (as logs.log). If the input
-        already is a logger object, that one is used instead.
+        is a string, use that as the path to the logging file. If the input
+        already is a logger object, use that one instead.
 
 
     experiment_name: str, default = None
-        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is False.
 
 
     experiment_custom_tags: dict, default = None
@@ -483,22 +554,17 @@ def setup(
     log_plots: bool or list, default = False
         When set to True, certain plots are logged automatically in the ``MLFlow`` server.
         To change the type of plots to be logged, pass a list containing plot IDs. Refer
-        to documentation of ``plot_model``. Ignored when ``log_experiment`` is not True.
+        to documentation of ``plot_model``. Ignored when ``log_experiment`` is False.
 
 
     log_profile: bool, default = False
         When set to True, data profile is logged on the ``MLflow`` server as a html file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
 
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
-        Ignored when ``log_experiment`` is not True.
-
-
-    silent: bool, default = False
-        When executing in completely automated mode or on a remote kernel, this must be True.
-        Leave False otherwise
+        Ignored when ``log_experiment`` is False.
 
 
     verbose: bool, default = True
@@ -528,7 +594,9 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        data_func=data_func,
         target=target,
+        index=index,
         train_size=train_size,
         test_data=test_data,
         ordinal_features=ordinal_features,
@@ -539,6 +607,7 @@ def setup(
         ignore_features=ignore_features,
         keep_features=keep_features,
         preprocess=preprocess,
+        create_date_columns=create_date_columns,
         imputation_type=imputation_type,
         numeric_imputation=numeric_imputation,
         categorical_imputation=categorical_imputation,
@@ -548,9 +617,13 @@ def setup(
         text_features_method=text_features_method,
         max_encoding_ohe=max_encoding_ohe,
         encoding_method=encoding_method,
+        rare_to_value=rare_to_value,
+        rare_value=rare_value,
         polynomial_features=polynomial_features,
         polynomial_degree=polynomial_degree,
         low_variance_threshold=low_variance_threshold,
+        group_features=group_features,
+        group_names=group_names,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         bin_numeric_features=bin_numeric_features,
@@ -571,6 +644,7 @@ def setup(
         transform_target=transform_target,
         transform_target_method=transform_target_method,
         custom_pipeline=custom_pipeline,
+        custom_pipeline_position=custom_pipeline_position,
         data_split_shuffle=data_split_shuffle,
         data_split_stratify=data_split_stratify,
         fold_strategy=fold_strategy,
@@ -588,7 +662,6 @@ def setup(
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
-        silent=silent,
         verbose=verbose,
         memory=memory,
         profile=profile,
@@ -611,8 +684,9 @@ def compare_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    engine: Optional[Dict[str, str]] = None,
     verbose: bool = True,
-    # parallel: Optional[ParallelBackend] = None,
+    parallel: Optional[ParallelBackend] = None,
 ):
 
     """
@@ -689,17 +763,6 @@ def compare_models(
         Dictionary of arguments passed to the fit method of the model.
 
 
-    display: pycaret.internal.Display.Display, default = None
-        Custom display object
-
-
-    parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
-        A ParallelBackend instance. For example if you have a SparkSession ``session``,
-        you can use ``FugueBackend(session)`` to make this function running using
-        Spark. For more details, see
-        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
-
-
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when 'GroupKFold' is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
@@ -712,8 +775,22 @@ def compare_models(
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
+    engine: Optional[Dict[str, str]] = None
+        The execution engines to use for the models in the form of a dict
+        of `model_id: engine` - e.g. for Linear Regression ("lr", users can
+        switch between "sklearn" and "sklearnex" by specifying
+        `engine={"lr": "sklearnex"}`
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+
+    parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+        A ParallelBackend instance. For example if you have a SparkSession ``session``,
+        you can use ``FugueBackend(session)`` to make this function running using
+        Spark. For more details, see
+        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
 
 
     Returns:
@@ -728,19 +805,6 @@ def compare_models(
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
 
     """
-    # params = dict(locals())
-    parallel = None
-    if parallel is not None:
-        global _pycaret_setup_call
-        parallel.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
-        if params.get("include", None) is None:
-            _models = models()
-            if turbo:
-                _models = _models[_models.Turbo]
-            params["include"] = _models.index.tolist()
-        del params["parallel"]
-        return parallel.compare_models(compare_models, params)
-
     return _CURRENT_EXPERIMENT.compare_models(
         include=include,
         exclude=exclude,
@@ -755,8 +819,47 @@ def compare_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         experiment_custom_tags=experiment_custom_tags,
+        engine=engine,
         verbose=verbose,
+        parallel=parallel,
     )
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_allowed_engines(estimator: str) -> Optional[str]:
+    """Get all the allowed engines for the specified model
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engines should be retrieved,
+        e.g. "auto_arima"
+    Returns
+    -------
+    Optional[str]
+        The allowed engines for the model. If the model only supports the
+        default engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_allowed_engines(estimator=estimator)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_engine(estimator: str) -> Optional[str]:
+    """Gets the model engine currently set in the experiment for the specified
+    model.
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engine should be retrieved,
+        e.g. "auto_arima"
+    Returns
+    -------
+    Optional[str]
+        The engine for the model. If the model only supports the default sktime
+        engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_engine(estimator=estimator)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -768,7 +871,9 @@ def create_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    engine: Optional[str] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
     **kwargs,
 ):
 
@@ -854,8 +959,21 @@ def create_model(
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
+    engine: Optional[str] = None
+        The execution engine to use for the model, e.g. for Linear Regression ("lr"), users can
+        switch between "sklearn" and "sklearnex" by specifying
+        `engine="sklearnex"`.
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
 
     **kwargs:
@@ -881,7 +999,9 @@ def create_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         experiment_custom_tags=experiment_custom_tags,
+        engine=engine,
         verbose=verbose,
+        return_train_score=return_train_score,
         **kwargs,
     )
 
@@ -905,6 +1025,7 @@ def tune_model(
     return_tuner: bool = False,
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
+    return_train_score: bool = False,
     **kwargs,
 ):
 
@@ -1053,6 +1174,13 @@ def tune_model(
         print more messages. Ignored when ``verbose`` param is False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     **kwargs:
         Additional keyword arguments to pass to the optimizer.
 
@@ -1089,6 +1217,7 @@ def tune_model(
         return_tuner=return_tuner,
         verbose=verbose,
         tuner_verbose=tuner_verbose,
+        return_train_score=return_train_score,
         **kwargs,
     )
 
@@ -1105,75 +1234,83 @@ def ensemble_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
-     This function ensembles a given estimator. The output of this function is
-     a score grid with CV scores by fold. Metrics evaluated during CV can be
-     accessed using the ``get_metrics`` function. Custom metrics can be added
-     or removed using ``add_metric`` and ``remove_metric`` function.
+    This function ensembles a given estimator. The output of this function is
+    a score grid with CV scores by fold. Metrics evaluated during CV can be
+    accessed using the ``get_metrics`` function. Custom metrics can be added
+    or removed using ``add_metric`` and ``remove_metric`` function.
 
 
-     Example
-     --------
-     >>> from pycaret.datasets import get_data
-     >>> boston = get_data('boston')
-     >>> from pycaret.regression import *
-     >>> exp_name = setup(data = boston,  target = 'medv')
-     >>> dt = create_model('dt')
-     >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
+    >>> dt = create_model('dt')
+    >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
     estimator: scikit-learn compatible object
-         Trained model object
+        Trained model object
 
 
-     method: str, default = 'Bagging'
-         Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
+    method: str, default = 'Bagging'
+        Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
 
 
-     fold: int or scikit-learn compatible CV generator, default = None
-         Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-         parameter of the ``setup`` function is used. When an integer is passed,
-         it is interpreted as the 'n_splits' parameter of the CV generator in the
-         ``setup`` function.
+    fold: int or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
+        ``setup`` function.
 
 
-     n_estimators: int, default = 10
-         The number of base estimators in the ensemble. In case of perfect fit, the
-         learning procedure is stopped early.
+    n_estimators: int, default = 10
+        The number of base estimators in the ensemble. In case of perfect fit, the
+        learning procedure is stopped early.
 
 
-     round: int, default = 4
-         Number of decimal places the metrics in the score grid will be rounded to.
+    round: int, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to.
 
 
-     choose_better: bool, default = False
-         When set to True, the returned object is always better performing. The
-         metric used for comparison is defined by the ``optimize`` parameter.
+    choose_better: bool, default = False
+        When set to True, the returned object is always better performing. The
+        metric used for comparison is defined by the ``optimize`` parameter.
 
 
-     optimize: str, default = 'R2'
-         Metric to compare for model selection when ``choose_better`` is True.
+    optimize: str, default = 'R2'
+        Metric to compare for model selection when ``choose_better`` is True.
 
 
-     fit_kwargs: dict, default = {} (empty dict)
-         Dictionary of arguments passed to the fit method of the model.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
 
-     groups: str or array-like, with shape (n_samples,), default = None
-         Optional group labels when GroupKFold is used for the cross validation.
-         It takes an array with shape (n_samples, ) where n_samples is the number
-         of rows in training dataset. When string is passed, it is interpreted as
-         the column name in the dataset containing group labels.
+    groups: str or array-like, with shape (n_samples,), default = None
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as
+        the column name in the dataset containing group labels.
 
 
-     verbose: bool, default = True
-         Score grid is not printed when verbose is set to False.
+    return_train_score: bool, default = False
+       If False, returns the CV Validation scores only.
+       If True, returns the CV training scores along with the CV validation scores.
+       This is useful when the user wants to do bias-variance tradeoff. A high CV
+       training score with a low corresponding CV validation score indicates overfitting.
 
 
-     Returns:
-         Trained Model
+    verbose: bool, default = True
+        Score grid is not printed when verbose is set to False.
+
+
+    Returns:
+        Trained Model
 
     """
 
@@ -1188,6 +1325,7 @@ def ensemble_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -1202,6 +1340,7 @@ def blend_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ):
 
     """
@@ -1267,6 +1406,13 @@ def blend_models(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     Returns:
         Trained Model
 
@@ -1283,6 +1429,7 @@ def blend_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -1299,6 +1446,7 @@ def stack_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ):
 
     """
@@ -1346,7 +1494,7 @@ def stack_models(
         Number of decimal places the metrics in the score grid will be rounded to.
 
 
-    restack: bool, default = True
+    restack: bool, default = False
         When set to False, only the predictions of estimators will be used as
         training data for the ``meta_model``.
 
@@ -1375,6 +1523,13 @@ def stack_models(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     Returns:
         Trained Model
 
@@ -1392,6 +1547,7 @@ def stack_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -1408,7 +1564,7 @@ def plot_model(
     use_train_data: bool = False,
     verbose: bool = True,
     display_format: Optional[str] = None,
-) -> str:
+) -> Optional[str]:
 
     """
     This function analyzes the performance of a trained model on holdout set.
@@ -1432,6 +1588,7 @@ def plot_model(
     plot: str, default = 'residual'
         List of available plots (ID - Name):
 
+        * 'pipeline' - Schematic drawing of the preprocessing pipeline
         * 'residuals_interactive' - Interactive Residual plots
         * 'residuals' - Residuals Plot
         * 'error' - Prediction Error Plot
@@ -1467,6 +1624,12 @@ def plot_model(
 
     plot_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the visualizer class.
+            - pipeline: fontsize -> int
+
+
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+            - pipeline: fontsize -> int
 
 
     groups: str or array-like, with shape (n_samples,), default = None
@@ -1491,7 +1654,7 @@ def plot_model(
 
 
     Returns:
-        None
+        Path to saved file, if any.
 
     """
 
@@ -1600,15 +1763,16 @@ def interpret_model(
 
     """
     This function takes a trained model object and returns an interpretation plot
-    based on the test / hold-out set. It only supports tree based algorithms.
+    based on the test / hold-out set.
 
     This function is implemented based on the SHAP (SHapley Additive exPlanations),
     which is a unified approach to explain the output of any machine learning model.
     SHAP connects game theory with local explanations.
 
-    For more information : https://shap.readthedocs.io/en/latest/
+    For more information: https://shap.readthedocs.io/en/latest/
 
-    For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
+    For more information on Partial Dependence Plot: https://github.com/SauceCat/PDPbox
+
 
     Example
     --------
@@ -1774,7 +1938,7 @@ def finalize_model(
     estimator,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
-    model_only: bool = True,
+    model_only: bool = False,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
 ) -> Any:
 
@@ -1808,9 +1972,9 @@ def finalize_model(
         the column name in the dataset containing group labels.
 
 
-    model_only: bool, default = True
-        When set to False, only model object is re-trained and all the
-        transformations in Pipeline are ignored.
+    model_only : bool, default = False
+        Whether to return the complete fitted pipeline or only the fitted model.
+
 
     experiment_custom_tags: dict, default = None
         Dictionary of tag_name: String -> value: (String, but will be string-ified if
@@ -1818,7 +1982,7 @@ def finalize_model(
 
 
     Returns:
-        Trained Model
+        Trained pipeline or model object fitted on complete dataset.
 
 
     """
@@ -1981,7 +2145,7 @@ def save_model(
 
 # not using check_if_global_is_not_none on purpose
 def load_model(
-    model_name,
+    model_name: str,
     platform: Optional[str] = None,
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,
@@ -2040,7 +2204,12 @@ def load_model(
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def automl(optimize: str = "R2", use_holdout: bool = False, turbo: bool = True) -> Any:
+def automl(
+    optimize: str = "R2",
+    use_holdout: bool = False,
+    turbo: bool = True,
+    return_train_score: bool = False,
+) -> Any:
 
     """
     This function returns the best model out of all trained models in
@@ -2077,6 +2246,13 @@ def automl(optimize: str = "R2", use_holdout: bool = False, turbo: bool = True) 
         compared.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     Returns:
         Trained Model
 
@@ -2084,24 +2260,27 @@ def automl(optimize: str = "R2", use_holdout: bool = False, turbo: bool = True) 
     """
 
     return _CURRENT_EXPERIMENT.automl(
-        optimize=optimize, use_holdout=use_holdout, turbo=turbo
+        optimize=optimize,
+        use_holdout=use_holdout,
+        turbo=turbo,
+        return_train_score=return_train_score,
     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def pull(pop: bool = False) -> pd.DataFrame:
     """
-    Returns last printed score grid. Use ``pull`` function after
-    any training function to store the score grid in pandas.DataFrame.
+    Returns the latest displayed table.
 
-
-    pop: bool, default = False
-        If True, will pop (remove) the returned dataframe from the
+    Parameters
+    ----------
+    pop : bool, default = False
+        If true, will pop (remove) the returned dataframe from the
         display container.
 
-
-    Returns:
-        pandas.DataFrame
+    Returns
+    -------
+    pandas.DataFrame
 
     """
     return _CURRENT_EXPERIMENT.pull(pop=pop)
@@ -2113,7 +2292,6 @@ def models(
     internal: bool = False,
     raise_errors: bool = True,
 ) -> pd.DataFrame:
-
     """
     Returns table of models available in the model library.
 
@@ -2145,6 +2323,7 @@ def models(
         pandas.DataFrame
 
     """
+
     return _CURRENT_EXPERIMENT.models(
         type=type, internal=internal, raise_errors=raise_errors
     )
@@ -2156,9 +2335,8 @@ def get_metrics(
     include_custom: bool = True,
     raise_errors: bool = True,
 ) -> pd.DataFrame:
-
     """
-    Returns table of available metrics used for CV.
+    Returns table of available metrics used in the experiment.
 
 
     Example
@@ -2204,9 +2382,8 @@ def add_metric(
     greater_is_better: bool = True,
     **kwargs,
 ) -> pd.Series:
-
     """
-    Adds a custom metric to be used for CV.
+    Adds a custom metric to be used in the experiment.
 
 
     Example
@@ -2248,7 +2425,6 @@ def add_metric(
         id=id,
         name=name,
         score_func=score_func,
-        target="pred",
         greater_is_better=greater_is_better,
         **kwargs,
     )
@@ -2256,9 +2432,8 @@ def add_metric(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def remove_metric(name_or_id: str):
-
     """
-    Removes a metric from CV.
+    Removes a metric from experiment.
 
 
     Example
@@ -2278,12 +2453,12 @@ def remove_metric(name_or_id: str):
         None
 
     """
+
     return _CURRENT_EXPERIMENT.remove_metric(name_or_id=name_or_id)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
-
     """
     Returns a table of experiment logs. Only works when ``log_experiment``
     is True when initializing the ``setup`` function.
@@ -2316,54 +2491,26 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_config(variable: str):
+def get_config(variable: Optional[str] = None):
 
     """
-    This function retrieves the global variables created when initializing the
-    ``setup`` function. Following variables are accessible:
-
-    - dataset: Transformed dataset
-    - train: Transformed training set
-    - test: Transformed test set
-    - X: Transformed feature set
-    - y: Transformed target column
-    - X_train, X_test, y_train, y_test: Subsets of the train and test sets.
-    - seed: random state set through session_id
-    - pipeline: Transformation pipeline configured through setup
-    - fold_shuffle_param: shuffle parameter used in Kfolds
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment
-    - logging_param: log_experiment param
-    - log_plots_param: log_plots param
-    - USI: Unique session ID parameter
-    - fix_imbalance_param: fix_imbalance param
-    - fix_imbalance_method_param: fix_imbalance_method param
-    - data_before_preprocess: data before preprocessing
-    - target_param: name of target variable
-    - gpu_param: use_gpu param configured through setup
-    - fold_generator: CV splitter configured in fold_strategy
-    - fold_param: fold params defined in the setup
-    - fold_groups_param: fold groups defined in the setup
-    - stratify_param: stratify parameter defined in the setup
-    - transform_target_param: transform_target_param in setup
-    - transform_target_method_param: transform_target_method_param in setup
-
+    This function is used to access global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> X_train = get_config('X_train')
 
+    This will return training features.
 
-    Returns:
-        Global variable
 
+    variable : str, default = None
+        Name of the variable to return the value of. If None,
+        will return a list of possible names.
+
+
+    Returns
+    -------
+    variable
 
     """
 
@@ -2374,71 +2521,37 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function resets the global variables. Following variables are
-    accessible:
-
-    - X: Transformed dataset (X)
-    - y: Transformed dataset (y)
-    - X_train: Transformed train dataset (X)
-    - X_test: Transformed test/holdout dataset (X)
-    - y_train: Transformed train dataset (y)
-    - y_test: Transformed test/holdout dataset (y)
-    - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline
-    - fold_shuffle_param: shuffle parameter used in Kfolds
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment
-    - logging_param: log_experiment param
-    - log_plots_param: log_plots param
-    - USI: Unique session ID parameter
-    - fix_imbalance_param: fix_imbalance param
-    - fix_imbalance_method_param: fix_imbalance_method param
-    - data_before_preprocess: data before preprocessing
-    - target_param: name of target variable
-    - gpu_param: use_gpu param configured through setup
-    - fold_generator: CV splitter configured in fold_strategy
-    - fold_param: fold params defined in the setup
-    - fold_groups_param: fold groups defined in the setup
-    - stratify_param: stratify parameter defined in the setup
-    - transform_target_param: transform_target_param in setup
-    - transform_target_method_param: transform_target_method_param in setup
-
+    This function is used to reset global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> set_config('seed', 123)
 
-
-    Returns:
-        None
+    This will set the global seed to '123'.
 
     """
-
     return _CURRENT_EXPERIMENT.set_config(variable=variable, value=value)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_config(file_name: str):
-
+def save_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO], **cloudpickle_kwargs
+) -> None:
     """
-    This function save all global variables to a pickle file, allowing to
-    later resume without rerunning the ``setup``.
+    Saves the experiment to a pickle file.
+
+    The experiment is saved using cloudpickle to deal with lambda
+    functions. The data or test data is NOT saved with the experiment
+    and will need to be specified again when loading using
+    ``load_experiment``.
 
 
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
-    >>> save_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to save the experiment to.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.dump`` call.
 
 
     Returns:
@@ -2446,29 +2559,81 @@ def save_config(file_name: str):
 
     """
 
-    return _CURRENT_EXPERIMENT.save_config(file_name=file_name)
+    return _CURRENT_EXPERIMENT.save_experiment(
+        path_or_file=path_or_file, **cloudpickle_kwargs
+    )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def load_config(file_name: str):
+def load_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO],
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+    test_data: Optional[DATAFRAME_LIKE] = None,
+    preprocess_data: bool = True,
+    **cloudpickle_kwargs,
+) -> RegressionExperiment:
 
     """
-    This function loads global variables from a pickle file into Python
-    environment.
+    Load an experiment saved with ``save_experiment`` from path
+    or file.
+
+    The data (and test data) is NOT saved with the experiment
+    and will need to be specified again.
 
 
-    Example
-    -------
-    >>> from pycaret.regression import load_config
-    >>> load_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to load the experiment from.
+        The pickle file must be created through ``save_experiment``.
+
+
+    data: dataframe-like
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
+
+
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    test_data: dataframe-like or None, default = None
+        If not None, test_data is used as a hold-out set and `train_size` parameter
+        is ignored. The columns of data and test_data must match.
+
+
+    preprocess_data: bool, default = True
+        If True, the data will be preprocessed again (through running ``setup``
+        internally). If False, the data will not be preprocessed. This means
+        you can save the value of the ``data`` attribute of an experiment
+        separately, and then load it separately and pass it here with
+        ``preprocess_data`` set to False. This is an advanced feature.
+        We recommend leaving it set to True and passing the same data
+        as passed to the initial ``setup`` call.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.load`` call.
 
 
     Returns:
-        Global variables
+        loaded experiment
 
     """
-
-    return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
+    exp = _EXPERIMENT_CLASS.load_experiment(
+        path_or_file=path_or_file,
+        data=data,
+        data_func=data_func,
+        test_data=test_data,
+        preprocess_data=preprocess_data,
+        **cloudpickle_kwargs,
+    )
+    set_current_experiment(exp)
+    return exp
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -2530,18 +2695,13 @@ def get_leaderboard(
     )
 
 
-def set_current_experiment(experiment: RegressionExperiment):
-    global _CURRENT_EXPERIMENT
-
-    if not isinstance(experiment, RegressionExperiment):
-        raise TypeError(
-            f"experiment must be a PyCaret RegressionExperiment object, got {type(experiment)}."
-        )
-    _CURRENT_EXPERIMENT = experiment
-
-
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def dashboard(
-    estimator, display_format="dash", dashboard_kwargs={}, run_kwargs={}, **kwargs
+    estimator,
+    display_format: str = "dash",
+    dashboard_kwargs: Optional[Dict[str, Any]] = None,
+    run_kwargs: Optional[Dict[str, Any]] = None,
+    **kwargs,
 ):
     """
     This function generates the interactive dashboard for a trained model. The
@@ -2586,13 +2746,48 @@ def dashboard(
 
 
     Returns:
-        None
+        ExplainerDashboard
     """
-    return pycaret.internal.tabular.dashboard(
+
+    return _CURRENT_EXPERIMENT.dashboard(
         estimator, display_format, dashboard_kwargs, run_kwargs, **kwargs
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
+
+    """
+    This function creates a basic gradio app for inference.
+    It will later be expanded for other app types such as
+    Streamlit.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
+    >>> lr = create_model('lr')
+    >>> create_app(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    app_kwargs: dict, default = {} (empty dict)
+        arguments to be passed to app class.
+
+
+    Returns:
+        None
+    """
+    return _CURRENT_EXPERIMENT.create_app(estimator=estimator, app_kwargs=app_kwargs)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def convert_model(estimator, language: str = "python") -> str:
 
     """
@@ -2611,7 +2806,7 @@ def convert_model(estimator, language: str = "python") -> str:
     >>> from pycaret.regression import *
     >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
-    >>> lr_java = export_model(lr, 'java')
+    >>> lr_java = convert_model(lr, 'java')
 
 
     estimator: scikit-learn compatible object
@@ -2645,6 +2840,7 @@ def convert_model(estimator, language: str = "python") -> str:
     return _CURRENT_EXPERIMENT.convert_model(estimator, language)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def eda(display_format: str = "bokeh", **kwargs):
 
     """
@@ -2677,6 +2873,7 @@ def eda(display_format: str = "bokeh", **kwargs):
     return _CURRENT_EXPERIMENT.eda(display_format=display_format, **kwargs)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 
     """
@@ -2721,6 +2918,7 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_api(
     estimator, api_name: str, host: str = "127.0.0.1", port: int = 8000
 ) -> None:
@@ -2767,6 +2965,7 @@ def create_api(
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_docker(
     api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
 ) -> None:
@@ -2807,12 +3006,11 @@ def create_docker(
     )
 
 
-def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
-
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
     """
-    This function creates a basic gradio app for inference.
-    It will later be expanded for other app types such as
-    Streamlit.
+    This function runs a full suite check over a trained model
+    using deepchecks library.
 
 
     Example
@@ -2822,20 +3020,49 @@ def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
     >>> from pycaret.regression import *
     >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
-    >>> create_app(lr)
+    >>> deep_check(lr)
 
 
     estimator: scikit-learn compatible object
         Trained model object
 
 
-    app_kwargs: dict, default = {}
-        arguments to be passed to app class.
+    check_kwargs: dict, default = {} (empty dict)
+        arguments to be passed to deepchecks full_suite class.
 
+
+    Returns:
+        Results of deepchecks.suites.full_suite.run
+    """
+    return _CURRENT_EXPERIMENT.deep_check(
+        estimator=estimator, check_kwargs=check_kwargs
+    )
+
+
+def set_current_experiment(experiment: RegressionExperiment):
+    """
+    Set the current experiment to be used with the functional API.
+
+    experiment: RegressionExperiment
+        Experiment object to use.
 
     Returns:
         None
     """
-    return pycaret.internal.tabular.create_app(
-        estimator=estimator, app_kwargs=app_kwargs
-    )
+    global _CURRENT_EXPERIMENT
+
+    if not isinstance(experiment, RegressionExperiment):
+        raise TypeError(
+            f"experiment must be a PyCaret RegressionExperiment object, got {type(experiment)}."
+        )
+    _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> RegressionExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current RegressionExperiment
+    """
+    return _CURRENT_EXPERIMENT

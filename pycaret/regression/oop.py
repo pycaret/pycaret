@@ -1,30 +1,31 @@
-import time
 import logging
-import warnings
+import time
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 import numpy as np  # type: ignore
+import pandas as pd
 from joblib.memory import Memory
-from typing import List, Tuple, Dict, Union, Optional, Any
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
+
+from pycaret.containers.metrics import get_all_reg_metric_containers
+from pycaret.containers.models import get_all_reg_model_containers
+from pycaret.containers.models.regression import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
+)
+from pycaret.internal.display import CommonDisplay
+from pycaret.internal.logging import get_logger
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 
 # Own module
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.preprocess.preprocessor import Preprocessor
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-from pycaret.internal.validation import *
-import pycaret.containers.metrics.regression
-import pycaret.containers.models.regression
-import pycaret.internal.preprocess
-import pycaret.internal.persistence
-from pycaret.internal.Display import Display
+from pycaret.loggers.base_logger import BaseLogger
+from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE, TARGET_LIKE
+from pycaret.utils.generic import MLUsecase, highlight_setup
 
-
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
@@ -33,13 +34,13 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         super().__init__()
         self._ml_usecase = MLUsecase.REGRESSION
         self.exp_name_log = "reg-default-name"
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "transform_target_param",
-                "transform_target_method_param",
             }
         )
         self._available_plots = {
+            "pipeline": "Pipeline Plot",
             "parameter": "Hyperparameters",
             "residuals": "Residuals",
             "error": "Prediction Error",
@@ -57,29 +58,30 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in pycaret.containers.models.regression.get_all_model_containers(
+            for k, v in get_all_reg_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = (
-            pycaret.containers.models.regression.get_all_model_containers(
-                self, raise_errors=raise_errors
-            )
+        all_models_internal = get_all_reg_model_containers(
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return pycaret.containers.metrics.regression.get_all_metric_containers(
-            self.variables, raise_errors=raise_errors
-        )
+        return get_all_reg_metric_containers(self.variables, raise_errors=raise_errors)
+
+    def _get_default_plots_to_log(self) -> List[str]:
+        return ["residuals", "error", "feature"]
 
     def setup(
         self,
-        data: pd.DataFrame,
-        target: Union[int, str] = -1,
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+        target: TARGET_LIKE = -1,
+        index: Union[bool, int, str, SEQUENCE_LIKE] = False,
         train_size: float = 0.7,
-        test_data: Optional[pd.DataFrame] = None,
+        test_data: Optional[DATAFRAME_LIKE] = None,
         ordinal_features: Optional[Dict[str, list]] = None,
         numeric_features: Optional[List[str]] = None,
         categorical_features: Optional[List[str]] = None,
@@ -88,18 +90,23 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         ignore_features: Optional[List[str]] = None,
         keep_features: Optional[List[str]] = None,
         preprocess: bool = True,
+        create_date_columns: List[str] = ["day", "month", "year"],
         imputation_type: Optional[str] = "simple",
         numeric_imputation: str = "mean",
-        categorical_imputation: str = "constant",
+        categorical_imputation: str = "mode",
         iterative_imputation_iters: int = 5,
         numeric_iterative_imputer: Union[str, Any] = "lightgbm",
         categorical_iterative_imputer: Union[str, Any] = "lightgbm",
         text_features_method: str = "tf-idf",
-        max_encoding_ohe: int = 5,
+        max_encoding_ohe: int = 25,
         encoding_method: Optional[Any] = None,
+        rare_to_value: Optional[float] = None,
+        rare_value: str = "rare",
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
-        low_variance_threshold: float = 0,
+        low_variance_threshold: Optional[float] = None,
+        group_features: Optional[list] = None,
+        group_names: Optional[Union[str, list]] = None,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
         bin_numeric_features: Optional[List[str]] = None,
@@ -112,14 +119,15 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         normalize_method: str = "zscore",
         pca: bool = False,
         pca_method: str = "linear",
-        pca_components: Union[int, float] = 1.0,
+        pca_components: Optional[Union[int, float, str]] = None,
         feature_selection: bool = False,
         feature_selection_method: str = "classic",
         feature_selection_estimator: Union[str, Any] = "lightgbm",
-        n_features_to_select: int = 10,
+        n_features_to_select: Union[int, float] = 0.2,
         transform_target: bool = False,
-        transform_target_method: str = "box-cox",
-        custom_pipeline: Any = None,
+        transform_target_method: str = "yeo-johnson",
+        custom_pipeline: Optional[Any] = None,
+        custom_pipeline_position: int = -1,
         data_split_shuffle: bool = True,
         data_split_stratify: Union[bool, List[str]] = False,
         fold_strategy: Union[str, Any] = "kfold",
@@ -130,22 +138,535 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         use_gpu: bool = False,
         html: bool = True,
         session_id: Optional[int] = None,
-        system_log: Union[bool, logging.Logger] = True,
-        log_experiment: bool = False,
+        system_log: Union[bool, str, logging.Logger] = True,
+        log_experiment: Union[
+            bool, str, BaseLogger, List[Union[str, BaseLogger]]
+        ] = False,
         experiment_name: Optional[str] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        silent: bool = False,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
-        profile_kwargs: Dict[str, Any] = None,
+        profile_kwargs: Optional[Dict[str, Any]] = None,
     ):
+
+        """
+        This function initializes the training environment and creates the transformation
+        pipeline. Setup function must be called before executing any other function. It takes
+        two mandatory parameters: ``data`` and ``target``. All the other parameters are
+        optional.
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+
+
+        data: dataframe-like = None
+            Data set with shape (n_samples, n_features), where n_samples is the
+            number of samples and n_features is the number of features. If data
+            is not a pandas dataframe, it's converted to one using default column
+            names.
+
+
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
+
+
+        target: int, str or sequence, default = -1
+            If int or str, respectivcely index or name of the target column in data.
+            The default value selects the last column in the dataset. If sequence,
+            it should have shape (n_samples,). The target can be either binary or
+            multiclass.
+
+
+        index: bool, int, str or sequence, default = False
+            Handle indices in the `data` dataframe.
+                - If False: Reset to RangeIndex.
+                - If True: Keep the provided index.
+                - If int: Position of the column to use as index.
+                - If str: Name of the column to use as index.
+                - If sequence: Array with shape=(n_samples,) to use as index.
+
+
+        train_size: float, default = 0.7
+            Proportion of the dataset to be used for training and validation. Should be
+            between 0.0 and 1.0.
+
+
+        test_data: dataframe-like or None, default = None
+            If not None, test_data is used as a hold-out set and `train_size` parameter
+            is ignored. The columns of data and test_data must match.
+
+
+        ordinal_features: dict, default = None
+            Categorical features to be encoded ordinally. For example, a categorical
+            feature with 'low', 'medium', 'high' values where low < medium < high can
+            be passed as ordinal_features = {'column_name' : ['low', 'medium', 'high']}.
+
+
+        numeric_features: list of str, default = None
+            If the inferred data types are not correct, the numeric_features param can
+            be used to define the data types. It takes a list of strings with column
+            names that are numeric.
+
+
+        categorical_features: list of str, default = None
+            If the inferred data types are not correct, the categorical_features param
+            can be used to define the data types. It takes a list of strings with column
+            names that are categorical.
+
+
+        date_features: list of str, default = None
+            If the inferred data types are not correct, the date_features param can be
+            used to overwrite the data types. It takes a list of strings with column
+            names that are DateTime.
+
+
+        text_features: list of str, default = None
+            Column names that contain a text corpus. If None, no text features are
+            selected.
+
+
+        ignore_features: list of str, default = None
+            ignore_features param can be used to ignore features during preprocessing
+            and model training. It takes a list of strings with column names that are
+            to be ignored.
+
+
+        keep_features: list of str, default = None
+            keep_features param can be used to always keep specific features during
+            preprocessing, i.e. these features are never dropped by any kind of
+            feature selection. It takes a list of strings with column names that are
+            to be kept.
+
+
+        preprocess: bool, default = True
+            When set to False, no transformations are applied except for train_test_split
+            and custom transformations passed in ``custom_pipeline`` param. Data must be
+            ready for modeling (no missing values, no dates, categorical data encoding),
+            when preprocess is set to False.
+
+
+        create_date_columns: list of str, default = ["day", "month", "year"]
+            Columns to create from the date features. Note that created features
+            with zero variance (e.g. the feature hour in a column that only contains
+            dates) are ignored. Allowed values are datetime attributes from
+            `pandas.Series.dt`. The datetime format of the feature is inferred
+            automatically from the first non NaN value.
+
+
+        imputation_type: str or None, default = 'simple'
+            The type of imputation to use. Can be either 'simple' or 'iterative'.
+            If None, no imputation of missing values is performed.
+
+
+        numeric_imputation: int, float or str, default = 'mean'
+            Imputing strategy for numerical columns. Ignored when ``imputation_type=
+            iterative``. Choose from:
+                - "drop": Drop rows containing missing values.
+                - "mean": Impute with mean of column.
+                - "median": Impute with median of column.
+                - "mode": Impute with most frequent value.
+                - "knn": Impute using a K-Nearest Neighbors approach.
+                - int or float: Impute with provided numerical value.
+
+
+        categorical_imputation: str, default = 'mode'
+            Imputing strategy for categorical columns. Ignored when ``imputation_type=
+            iterative``. Choose from:
+                - "drop": Drop rows containing missing values.
+                - "mode": Impute with most frequent value.
+                - str: Impute with provided string.
+
+
+        iterative_imputation_iters: int, default = 5
+            Number of iterations. Ignored when ``imputation_type=simple``.
+
+
+        numeric_iterative_imputer: str or sklearn estimator, default = 'lightgbm'
+            Regressor for iterative imputation of missing values in numeric features.
+            If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
+
+
+        categorical_iterative_imputer: str or sklearn estimator, default = 'lightgbm'
+            Regressor for iterative imputation of missing values in categorical features.
+            If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
+
+
+        text_features_method: str, default = "tf-idf"
+            Method with which to embed the text features in the dataset. Choose
+            between "bow" (Bag of Words - CountVectorizer) or "tf-idf" (TfidfVectorizer).
+            Be aware that the sparse matrix output of the transformer is converted
+            internally to its full array. This can cause memory issues for large
+            text embeddings.
+
+
+        max_encoding_ohe: int, default = 25
+            Categorical columns with `max_encoding_ohe` or less unique values are
+            encoded using OneHotEncoding. If more, the `encoding_method` estimator
+            is used. Note that columns with exactly two classes are always encoded
+            ordinally. Set to below 0 to always use OneHotEncoding.
+
+
+        encoding_method: category-encoders estimator, default = None
+            A `category-encoders` estimator to encode the categorical columns
+            with more than `max_encoding_ohe` unique values. If None,
+            `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+
+
+        rare_to_value: float or None, default=None
+            Minimum fraction of category occurrences in a categorical column.
+            If a category is less frequent than `rare_to_value * len(X)`, it is
+            replaced with the string in `rare_value`. Use this parameter to group
+            rare categories before encoding the column. If None, ignores this step.
+
+
+        rare_value: str, default="rare"
+            Value with which to replace rare categories. Ignored when
+            ``rare_to_value`` is None.
+
+
+        polynomial_features: bool, default = False
+            When set to True, new features are derived using existing numeric features.
+
+
+        polynomial_degree: int, default = 2
+            Degree of polynomial features. For example, if an input sample is two dimensional
+            and of the form [a, b], the polynomial features with degree = 2 are:
+            [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
+
+
+        low_variance_threshold: float or None, default = None
+            Remove features with a training-set variance lower than the provided
+            threshold. If 0, keep all features with non-zero variance, i.e. remove
+            the features that have the same value in all samples. If None, skip
+            this transformation step.
+
+
+        group_features: list, list of lists or None, default = None
+            When the dataset contains features with related characteristics,
+            replace those fetaures with the following statistical properties
+            of that group: min, max, mean, std, median and mode. The parameter
+            takes a list of feature names or a list of lists of feature names
+            to specify multiple groups.
+
+
+        group_names: str, list, or None, default = None
+            Group names to be used when naming the new features. The length
+            should match with the number of groups specified in ``group_features``.
+            If None, new features are named using the default form, e.g. group_1,
+            group_2, etc... Ignored when ``group_features`` is None.
+
+        remove_multicollinearity: bool, default = False
+            When set to True, features with the inter-correlations higher than
+            the defined threshold are removed. For each group, it removes all
+            except the feature with the highest correlation to `y`.
+
+
+        multicollinearity_threshold: float, default = 0.9
+            Minimum absolute Pearson correlation to identify correlated
+            features. The default value removes equal columns. Ignored when
+            ``remove_multicollinearity`` is not True.
+
+
+        bin_numeric_features: list of str, default = None
+            To convert numeric features into categorical, bin_numeric_features parameter can
+            be used. It takes a list of strings with column names to be discretized. It does
+            so by using 'sturges' rule to determine the number of clusters and then apply
+            KMeans algorithm. Original values of the feature are then replaced by the
+            cluster label.
+
+
+        remove_outliers: bool, default = False
+            When set to True, outliers from the training data are removed using an
+            Isolation Forest.
+
+
+        outliers_method: str, default = "iforest"
+            Method with which to remove outliers. Ignored when `remove_outliers=False`.
+            Possible values are:
+                - 'iforest': Uses sklearn's IsolationForest.
+                - 'ee': Uses sklearn's EllipticEnvelope.
+                - 'lof': Uses sklearn's LocalOutlierFactor.
+
+
+        outliers_threshold: float, default = 0.05
+            The percentage of outliers to be removed from the dataset. Ignored
+            when ``remove_outliers=False``.
+
+
+        transformation: bool, default = False
+            When set to True, it applies the power transform to make data more Gaussian-like.
+            Type of transformation is defined by the ``transformation_method`` parameter.
+
+
+        transformation_method: str, default = 'yeo-johnson'
+            Defines the method for transformation. By default, the transformation method is
+            set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
+            Ignored when ``transformation`` is not True.
+
+
+        normalize: bool, default = False
+            When set to True, it transforms the features by scaling them to a given
+            range. Type of scaling is defined by the ``normalize_method`` parameter.
+
+
+        normalize_method: str, default = 'zscore'
+            Defines the method for scaling. By default, normalize method is set to 'zscore'
+            The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize``
+            is not True. The other options are:
+
+            - minmax: scales and translates each feature individually such that it is in
+            the range of 0 - 1.
+            - maxabs: scales and translates each feature individually such that the
+            maximal absolute value of each feature will be 1.0. It does not
+            shift/center the data, and thus does not destroy any sparsity.
+            - robust: scales and translates each feature according to the Interquartile
+            range. When the dataset contains outliers, robust scaler often gives
+            better results.
+
+
+        pca: bool, default = False
+            When set to True, dimensionality reduction is applied to project the data into
+            a lower dimensional space using the method defined in ``pca_method`` parameter.
+
+
+        pca_method: str, default = 'linear'
+            Method with which to apply PCA. Possible values are:
+                - 'linear': Uses Singular Value  Decomposition.
+                - 'kernel': Dimensionality reduction through the use of RBF kernel.
+                - 'incremental': Similar to 'linear', but more efficient for large datasets.
+
+
+        pca_components: int, float, str or None, default = None
+            Number of components to keep. This parameter is ignored when `pca=False`.
+                - If None: All components are kept.
+                - If int: Absolute number of components.
+                - If float: Such an amount that the variance that needs to be explained
+                            is greater than the percentage specified by `n_components`.
+                            Value should lie between 0 and 1 (ony for pca_method='linear').
+                - If "mle": Minka’s MLE is used to guess the dimension (ony for pca_method='linear').
+
+
+        feature_selection: bool, default = False
+            When set to True, a subset of features is selected based on a feature
+            importance score determined by ``feature_selection_estimator``.
+
+
+        feature_selection_method: str, default = 'classic'
+            Algorithm for feature selection. Choose from:
+                - 'univariate': Uses sklearn's SelectKBest.
+                - 'classic': Uses sklearn's SelectFromModel.
+                - 'sequential': Uses sklearn's SequentialFeatureSelector.
+
+
+        feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
+            Classifier used to determine the feature importances. The
+            estimator should have a `feature_importances_` or `coef_`
+            attribute after fitting. If None, it uses LGBRegressor. This
+            parameter is ignored when `feature_selection_method=univariate`.
+
+
+        n_features_to_select: int or float, default = 0.2
+            The maximum number of features to select with feature_selection. If <1,
+            it's the fraction of starting features. Note that this parameter doesn't
+            take features in ``ignore_features`` or ``keep_features`` into account
+            when counting.
+
+
+        transform_target: bool, default = False
+            When set to True, target variable is transformed using the method defined in
+            ``transform_target_method`` param. Target transformation is applied separately
+            from feature transformations.
+
+
+        transform_target_method: str, default = 'yeo-johnson'
+            Defines the method for transformation. By default, the transformation method is
+            set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
+            Ignored when ``transform_target`` is not True.
+
+        custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
+            Addidiotnal custom transformers. If passed, they are applied to the
+            pipeline last, after all the build-in transformers.
+
+
+        custom_pipeline_position: int, default = -1
+            Position of the custom pipeline in the overal preprocessing pipeline.
+            The default value adds the custom pipeline last.
+
+
+        data_split_shuffle: bool, default = True
+            When set to False, prevents shuffling of rows during 'train_test_split'.
+
+
+        data_split_stratify: bool or list, default = False
+            Controls stratification during 'train_test_split'. When set to True, will
+            stratify by target column. To stratify on any other columns, pass a list of
+            column names. Ignored when ``data_split_shuffle`` is False.
+
+
+        fold_strategy: str or sklearn CV generator object, default = 'kfold'
+            Choice of cross validation strategy. Possible values are:
+
+            * 'kfold'
+            * 'groupkfold'
+            * 'timeseries'
+            * a custom CV generator object compatible with scikit-learn.
+
+            For ``groupkfold``, column name must be passed in ``fold_groups`` parameter.
+            Example: ``setup(fold_strategy="groupkfold", fold_groups="COLUMN_NAME")``
+
+        fold: int, default = 10
+            Number of folds to be used in cross validation. Must be at least 2. This is
+            a global setting that can be over-written at function level by using ``fold``
+            parameter. Ignored when ``fold_strategy`` is a custom object.
+
+
+        fold_shuffle: bool, default = False
+            Controls the shuffle parameter of CV. Only applicable when ``fold_strategy``
+            is 'kfold' or 'stratifiedkfold'. Ignored when ``fold_strategy`` is a custom
+            object.
+
+
+        fold_groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when 'GroupKFold' is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in the training dataset. When string is passed, it is interpreted
+            as the column name in the dataset containing group labels.
+
+
+        n_jobs: int, default = -1
+            The number of jobs to run in parallel (for functions that supports parallel
+            processing) -1 means using all processors. To run all functions on single
+            processor set n_jobs to None.
+
+
+        use_gpu: bool or str, default = False
+            When set to True, it will use GPU for training with algorithms that support it,
+            and fall back to CPU if they are unavailable. When set to 'force', it will only
+            use GPU-enabled algorithms and raise exceptions when they are unavailable. When
+            False, all algorithms are trained using CPU only.
+
+            GPU enabled algorithms:
+
+            - Extreme Gradient Boosting, requires no further installation
+
+            - CatBoost Classifier, requires no further installation
+            (GPU is only enabled when data > 50,000 rows)
+
+            - Light Gradient Boosting Machine, requires GPU installation
+            https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
+
+            - Linear Regression, Lasso Regression, Ridge Regression, K Neighbors Regressor,
+            Random Forest, Support Vector Regression, Elastic Net requires cuML >= 0.15
+            https://github.com/rapidsai/cuml
+
+
+        html: bool, default = True
+            When set to False, prevents runtime display of monitor. This must be set to False
+            when the environment does not support IPython. For example, command line terminal,
+            Databricks Notebook, Spyder and other similar IDEs.
+
+
+        session_id: int, default = None
+            Controls the randomness of experiment. It is equivalent to 'random_state' in
+            scikit-learn. When None, a pseudo random number is generated. This can be used
+            for later reproducibility of the entire experiment.
+
+
+        log_experiment: bool, default = False
+            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+            corresponding to a logger to determine which experiment loggers to use.
+            Setting to True will use just MLFlow.
+            If ``wandb`` (Weights & Biases) is installed, will also log there.
+
+
+        system_log: bool or str or logging.Logger, default = True
+            Whether to save the system logging file (as logs.log). If the input
+            is a string, use that as the path to the logging file. If the input
+            already is a logger object, use that one instead.
+
+
+        experiment_name: str, default = None
+            Name of the experiment for logging. Ignored when ``log_experiment`` is False.
+
+
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified
+            if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
+        log_plots: bool or list, default = False
+            When set to True, certain plots are logged automatically in the ``MLFlow`` server.
+            To change the type of plots to be logged, pass a list containing plot IDs. Refer
+            to documentation of ``plot_model``. Ignored when ``log_experiment`` is False.
+
+
+        log_profile: bool, default = False
+            When set to True, data profile is logged on the ``MLflow`` server as a html file.
+            Ignored when ``log_experiment`` is False.
+
+
+        log_data: bool, default = False
+            When set to True, dataset is logged on the ``MLflow`` server as a csv file.
+            Ignored when ``log_experiment`` is False.
+
+
+        engine: Optional[Dict[str, str]] = None
+            The execution engines to use for the models in the form of a dict
+            of `model_id: engine` - e.g. for Linear Regression ("lr", users can
+            switch between "sklearn" and "sklearnex" by specifying
+            `engine={"lr": "sklearnex"}`
+
+
+        verbose: bool, default = True
+            When set to False, Information grid is not printed.
+
+
+        memory: str, bool or Memory, default=True
+            Used to cache the fitted transformers of the pipeline.
+                If False: No caching is performed.
+                If True: A default temp directory is used.
+                If str: Path to the caching directory.
+
+        profile: bool, default = False
+            When set to True, an interactive EDA report is displayed.
+
+
+        profile_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ProfileReport method used
+            to create the EDA report. Ignored if ``profile`` is False.
+
+
+        Returns:
+            Global variables that can be changed using the ``set_config`` function.
+
+        """
+
+        self._register_setup_params(dict(locals()))
+
+        if (data is None and data_func is None) or (
+            data is not None and data_func is not None
+        ):
+            raise ValueError("One and only one of data and data_func must be set")
+
+        # No extra code above this line
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
+
+        self.all_allowed_engines = ALL_ALLOWED_ENGINES
 
         # Define parameter attrs
         self.fold_shuffle_param = fold_shuffle
@@ -167,7 +688,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self.log_plots_param = log_plots
         if self.log_plots_param is True:
-            self.log_plots_param = ["residuals", "error", "feature"]
+            self.log_plots_param = self._get_default_plots_to_log()
         elif isinstance(self.log_plots_param, list):
             for i in self.log_plots_param:
                 if i not in self._available_plots:
@@ -177,7 +698,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                     )
 
         # Check transform_target_method
-        allowed_transform_target_method = ["box-cox", "yeo-johnson"]
+        allowed_transform_target_method = ["quantile", "yeo-johnson"]
         if transform_target_method not in allowed_transform_target_method:
             raise ValueError(
                 "Invalid value for the transform_target_method parameter. "
@@ -188,20 +709,29 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         # Set up data ============================================== >>
 
-        self._prepare_dataset(data)
-        self._prepare_target(target)
+        if data_func is not None:
+            data = data_func()
+
+        self.data = self._prepare_dataset(data, target)
+        self.target_param = self.data.columns[-1]
+        self.index = index
+        self.data_split_stratify = data_split_stratify
+        self.data_split_shuffle = data_split_shuffle
+
         self._prepare_train_test(
             train_size=train_size,
             test_data=test_data,
             data_split_stratify=data_split_stratify,
             data_split_shuffle=data_split_shuffle,
         )
+
         self._prepare_folds(
             fold_strategy=fold_strategy,
             fold=fold,
             fold_shuffle=fold_shuffle,
             fold_groups=fold_groups,
         )
+
         self._prepare_column_types(
             ordinal_features=ordinal_features,
             numeric_features=numeric_features,
@@ -210,6 +740,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             text_features=text_features,
             ignore_features=ignore_features,
             keep_features=keep_features,
+        )
+
+        self._set_exp_model_engines(
+            container_default_engines=get_container_default_engines(),
+            engine=engine,
         )
 
         # Preprocessing ============================================ >>
@@ -227,9 +762,13 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             if self.y.dtype.kind not in "ifu":
                 self._encode_target_column()
 
+            # Power transform the target to be more Gaussian-like
+            if transform_target:
+                self._target_transformation(transform_target_method)
+
             # Convert date feature to numerical values
             if self._fxs["Date"]:
-                self._date_feature_engineering()
+                self._date_feature_engineering(create_date_columns)
 
             # Impute missing values
             if imputation_type == "simple":
@@ -252,15 +791,24 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
             # Encode non-numerical features
             if self._fxs["Ordinal"] or self._fxs["Categorical"]:
-                self._encoding(max_encoding_ohe, encoding_method)
+                self._encoding(
+                    max_encoding_ohe=max_encoding_ohe,
+                    encoding_method=encoding_method,
+                    rare_to_value=rare_to_value,
+                    rare_value=rare_value,
+                )
 
             # Create polynomial features from the existing ones
             if polynomial_features:
                 self._polynomial_features(polynomial_degree)
 
             # Drop features with too low variance
-            if low_variance_threshold:
+            if low_variance_threshold is not None:
                 self._low_variance(low_variance_threshold)
+
+            # Get statistical properties of a group of features
+            if group_features:
+                self._group_features(group_features, group_names)
 
             # Drop features that are collinear with other features
             if remove_multicollinearity:
@@ -296,15 +844,15 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         # Add custom transformers to the pipeline
         if custom_pipeline:
-            self._add_custom_pipeline(custom_pipeline)
+            self._add_custom_pipeline(custom_pipeline, custom_pipeline_position)
 
-        # Remove placeholder step
-        if len(self.pipeline) > 1:
-            self.pipeline.steps.pop(0)
+            # Remove placeholder step
+        if ("placeholder", None) in self.pipeline.steps and len(self.pipeline) > 1:
+            self.pipeline.steps.remove(("placeholder", None))
 
         self.pipeline.fit(self.X_train, self.y_train)
 
-        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
         # Final display ============================================ >>
@@ -314,22 +862,23 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         container = []
         container.append(["Session id", self.seed])
         container.append(["Target", self.target_param])
-        container.append(["Target type", "regression"])
-        container.append(["Data shape", self.dataset.shape])
-        container.append(["Train data shape", self.train.shape])
-        container.append(["Test data shape", self.test.shape])
+        container.append(["Target type", "Regression"])
+        container.append(["Data shape", self.dataset_transformed.shape])
+        container.append(["Train data shape", self.train_transformed.shape])
+        container.append(["Test data shape", self.test_transformed.shape])
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
                 container.append([f"{fx} features", len(cols)])
         if self.data.isna().sum().sum():
-            container.append(["Missing Values", self.data.isna().sum().sum()])
+            n_nans = 100 * self.data.isna().any(axis=1).sum() / len(self.data)
+            container.append(["Rows with missing values", f"{round(n_nans, 1)}%"])
         if preprocess:
             container.append(["Preprocess", preprocess])
             container.append(["Imputation type", imputation_type])
             if imputation_type == "simple":
                 container.append(["Numeric imputation", numeric_imputation])
                 container.append(["Categorical imputation", categorical_imputation])
-            else:
+            elif imputation_type == "iterative":
                 if isinstance(numeric_iterative_imputer, str):
                     num_imputer = numeric_iterative_imputer
                 else:
@@ -355,7 +904,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             if polynomial_features:
                 container.append(["Polynomial features", polynomial_features])
                 container.append(["Polynomial degree", polynomial_degree])
-            if low_variance_threshold:
+            if low_variance_threshold is not None:
                 container.append(["Low variance threshold", low_variance_threshold])
             if remove_multicollinearity:
                 container.append(["Remove multicollinearity", remove_multicollinearity])
@@ -390,21 +939,22 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             container.append(["Fold Generator", self.fold_generator.__class__.__name__])
             container.append(["Fold Number", fold])
             container.append(["CPU Jobs", self.n_jobs_param])
+            container.append(["Use GPU", self.gpu_param])
             container.append(["Log Experiment", self.logging_param])
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [
+        self._display_container = [
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
-        self.logger.info(f"Setup display_container: {self.display_container[0]}")
-        display = Display(
+        self.logger.info(f"Setup _display_container: {self._display_container[0]}")
+        display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
@@ -417,7 +967,12 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         self._all_metrics = self._get_metrics()
 
         runtime = np.array(time.time() - runtime_start).round(2)
-        self._set_up_mlflow(runtime, log_data, log_profile, experiment_custom_tags=experiment_custom_tags)
+        self._set_up_logging(
+            runtime,
+            log_data,
+            log_profile,
+            experiment_custom_tags=experiment_custom_tags,
+        )
 
         self._setup_ran = True
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
@@ -439,7 +994,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
+        parallel: Optional[ParallelBackend] = None,
     ):
 
         """
@@ -523,8 +1080,22 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             as the column name in the dataset containing group labels.
 
 
+        engine: Optional[Dict[str, str]] = None
+            The execution engines to use for the models in the form of a dict
+            of `model_id: engine` - e.g. for Linear Regression ("lr", users can
+            switch between "sklearn" and "sklearnex" by specifying
+            `engine={"lr": "sklearnex"}`
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
+
+
+        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+            A ParallelBackend instance. For example if you have a SparkSession ``session``,
+            you can use ``FugueBackend(session)`` to make this function running using
+            Spark. For more details, see
+            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
 
 
         Returns:
@@ -540,22 +1111,43 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         """
 
-        return super().compare_models(
-            include=include,
-            exclude=exclude,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            sort=sort,
-            n_select=n_select,
-            budget_time=budget_time,
-            turbo=turbo,
-            errors=errors,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-        )
+        caller_params = dict(locals())
+
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_model_engines = self.exp_model_engines.copy()
+            for estimator, eng in engine.items():
+                self._set_engine(estimator=estimator, engine=eng, severity="error")
+
+        try:
+            return_values = super().compare_models(
+                include=include,
+                exclude=exclude,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                sort=sort,
+                n_select=n_select,
+                budget_time=budget_time,
+                turbo=turbo,
+                errors=errors,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                parallel=parallel,
+                caller_params=caller_params,
+            )
+
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engine=initial_model_engines,
+                )
+
+        return return_values
 
     def create_model(
         self,
@@ -566,7 +1158,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engine: Optional[str] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
         **kwargs,
     ):
 
@@ -647,8 +1241,26 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             the column name in the dataset containing group labels.
 
 
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified
+            if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
+        engine: Optional[str] = None
+            The execution engine to use for the model, e.g. for Linear Regression ("lr"), users can
+            switch between "sklearn" and "sklearnex" by specifying
+            `engine="sklearnex"`.
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
+
+
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
 
 
         **kwargs:
@@ -666,17 +1278,33 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         """
 
-        return super().create_model(
-            estimator=estimator,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-            **kwargs,
-        )
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_default_model_engines = self.exp_model_engines.copy()
+            self._set_engine(estimator=estimator, engine=engine, severity="error")
+
+        try:
+            return_values = super().create_model(
+                estimator=estimator,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                return_train_score=return_train_score,
+                **kwargs,
+            )
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engine=initial_default_model_engines,
+                )
+
+        return return_values
 
     def tune_model(
         self,
@@ -697,6 +1325,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         return_tuner: bool = False,
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
+        return_train_score: bool = False,
         **kwargs,
     ):
 
@@ -790,6 +1419,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                 - 'grid' : grid search
                 - 'bayesian' : ``pip install scikit-optimize``
                 - 'hyperopt' : ``pip install hyperopt``
+                - 'optuna' : ``pip install optuna``
                 - 'bohb' : ``pip install hpbandster ConfigSpace``
 
             - 'optuna' possible values:
@@ -841,7 +1471,14 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         tuner_verbose: bool or in, default = True
             If True or above 0, will print messages from the tuner. Higher values
-            print more messages. Ignored when ``verbose`` parameter is False.
+            print more messages. Ignored when ``verbose`` param is False.
+
+
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
 
 
         **kwargs:
@@ -880,6 +1517,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             return_tuner=return_tuner,
             verbose=verbose,
             tuner_verbose=tuner_verbose,
+            return_train_score=return_train_score,
             **kwargs,
         )
 
@@ -895,75 +1533,83 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
     ) -> Any:
 
         """
-            This function ensembles a given estimator. The output of this function is
-            a score grid with CV scores by fold. Metrics evaluated during CV can be
-            accessed using the ``get_metrics`` function. Custom metrics can be added
-            or removed using ``add_metric`` and ``remove_metric`` function.
+        This function ensembles a given estimator. The output of this function is
+        a score grid with CV scores by fold. Metrics evaluated during CV can be
+        accessed using the ``get_metrics`` function. Custom metrics can be added
+        or removed using ``add_metric`` and ``remove_metric`` function.
 
 
-            Example
-            --------
-            >>> from pycaret.datasets import get_data
-            >>> boston = get_data('boston')
-            >>> from pycaret.regression import *
-            >>> exp_name = setup(data = boston,  target = 'medv')
-            >>> dt = create_model('dt')
-            >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> dt = create_model('dt')
+        >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
         estimator: scikit-learn compatible object
-                Trained model object
+            Trained model object
 
 
-            method: str, default = 'Bagging'
-                Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
+        method: str, default = 'Bagging'
+            Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
 
 
-            fold: int or scikit-learn compatible CV generator, default = None
-                Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-                parameter of the ``setup`` function is used. When an integer is passed,
-                it is interpreted as the 'n_splits' parameter of the CV generator in the
-                ``setup`` function.
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+            parameter of the ``setup`` function is used. When an integer is passed,
+            it is interpreted as the 'n_splits' parameter of the CV generator in the
+            ``setup`` function.
 
 
-            n_estimators: int, default = 10
-                The number of base estimators in the ensemble. In case of perfect fit, the
-                learning procedure is stopped early.
+        n_estimators: int, default = 10
+            The number of base estimators in the ensemble. In case of perfect fit, the
+            learning procedure is stopped early.
 
 
-            round: int, default = 4
-                Number of decimal places the metrics in the score grid will be rounded to.
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to.
 
 
-            choose_better: bool, default = False
-                When set to True, the returned object is always better performing. The
-                metric used for comparison is defined by the ``optimize`` parameter.
+        choose_better: bool, default = False
+            When set to True, the returned object is always better performing. The
+            metric used for comparison is defined by the ``optimize`` parameter.
 
 
-            optimize: str, default = 'R2'
-                Metric to compare for model selection when ``choose_better`` is True.
+        optimize: str, default = 'R2'
+            Metric to compare for model selection when ``choose_better`` is True.
 
 
-            fit_kwargs: dict, default = {} (empty dict)
-                Dictionary of arguments passed to the fit method of the model.
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
 
 
-            groups: str or array-like, with shape (n_samples,), default = None
-                Optional group labels when GroupKFold is used for the cross validation.
-                It takes an array with shape (n_samples, ) where n_samples is the number
-                of rows in training dataset. When string is passed, it is interpreted as
-                the column name in the dataset containing group labels.
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as
+            the column name in the dataset containing group labels.
 
 
-            verbose: bool, default = True
-                Score grid is not printed when verbose is set to False.
+        return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
 
-            Returns:
-                Trained Model
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        Returns:
+            Trained Model
 
         """
 
@@ -978,6 +1624,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             fit_kwargs=fit_kwargs,
             groups=groups,
             verbose=verbose,
+            return_train_score=return_train_score,
         )
 
     def blend_models(
@@ -991,6 +1638,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
     ):
 
         """
@@ -1056,6 +1704,13 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Score grid is not printed when verbose is set to False.
 
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+
         Returns:
             Trained Model
 
@@ -1073,6 +1728,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             fit_kwargs=fit_kwargs,
             groups=groups,
             verbose=verbose,
+            return_train_score=return_train_score,
         )
 
     def stack_models(
@@ -1088,6 +1744,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
     ):
 
         """
@@ -1164,6 +1821,13 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Score grid is not printed when verbose is set to False.
 
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+
         Returns:
             Trained Model
 
@@ -1182,6 +1846,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             fit_kwargs=fit_kwargs,
             groups=groups,
             verbose=verbose,
+            return_train_score=return_train_score,
         )
 
     def plot_model(
@@ -1197,7 +1862,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
-    ) -> str:
+    ) -> Optional[str]:
 
         """
         This function analyzes the performance of a trained model on holdout set.
@@ -1221,6 +1886,8 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         plot: str, default = 'residual'
             List of available plots (ID - Name):
 
+            * 'pipeline' - Schematic drawing of the preprocessing pipeline
+            * 'residuals_interactive' - Interactive Residual plots
             * 'residuals' - Residuals Plot
             * 'error' - Prediction Error Plot
             * 'cooks' - Cooks Distance Plot
@@ -1253,6 +1920,16 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Dictionary of arguments passed to the fit method of the model.
 
 
+        plot_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the visualizer class.
+                - pipeline: fontsize -> int
+
+
+        plot_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the visualizer class.
+                - pipeline: fontsize -> int
+
+
         groups: str or array-like, with shape (n_samples,), default = None
             Optional group labels when GroupKFold is used for the cross validation.
             It takes an array with shape (n_samples, ) where n_samples is the number
@@ -1275,7 +1952,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
 
         Returns:
-            None
+            Path to saved file, if any.
 
         """
 
@@ -1290,7 +1967,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             groups=groups,
             verbose=verbose,
             use_train_data=use_train_data,
-            system=True,
             display_format=display_format,
         )
 
@@ -1331,6 +2007,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         fit_kwargs: dict, default = {} (empty dict)
             Dictionary of arguments passed to the fit method of the model.
+
+
+        plot_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the visualizer class.
 
 
         groups: str or array-like, with shape (n_samples,), default = None
@@ -1379,15 +2059,16 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         """
         This function takes a trained model object and returns an interpretation plot
-        based on the test / hold-out set. It only supports tree based algorithms.
+        based on the test / hold-out set.
 
         This function is implemented based on the SHAP (SHapley Additive exPlanations),
         which is a unified approach to explain the output of any machine learning model.
         SHAP connects game theory with local explanations.
 
-        For more information : https://shap.readthedocs.io/en/latest/
+        For more information: https://shap.readthedocs.io/en/latest/
 
-        For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
+        For more information on Partial Dependence Plot: https://github.com/SauceCat/PDPbox
+
 
         Example
         --------
@@ -1507,6 +2188,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             must be available in the unseen dataset.
 
 
+        drift_report: bool, default = False
+            When set to True, interactive drift report is generated on test set
+            with the evidently library.
+
+
         round: int, default = 4
             Number of decimal places to round predictions to.
 
@@ -1544,7 +2230,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         estimator,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
-        model_only: bool = True,
+        model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
 
@@ -1578,14 +2264,16 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             the column name in the dataset containing group labels.
 
 
-        model_only: bool, default = True
-            When set to False, only model object is re-trained and all the
-            transformations in Pipeline are ignored.
+        model_only : bool, default = False
+            Whether to return the complete fitted pipeline or only the fitted model.
 
+
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified if
+            not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
         Returns:
-            Trained Model
-
+            Trained pipeline or model object fitted on complete dataset.
 
         """
 
@@ -1726,6 +2414,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             entire pipeline.
 
 
+        **kwargs:
+            Additional keyword arguments to pass to joblib.dump().
+
+
         verbose: bool, default = True
             Success message is not printed when verbose is set to False.
 
@@ -1745,7 +2437,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
     def load_model(
         self,
-        model_name,
+        model_name: str,
         platform: Optional[str] = None,
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
@@ -1773,7 +2465,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             dictionary of applicable authentication tokens.
 
             when platform = 'aws':
-            {'bucket' : 'S3-bucket-name'}
+            {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
             when platform = 'gcp':
             {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
@@ -1799,7 +2491,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         )
 
     def automl(
-        self, optimize: str = "R2", use_holdout: bool = False, turbo: bool = True
+        self,
+        optimize: str = "Accuracy",
+        use_holdout: bool = False,
+        turbo: bool = True,
+        return_train_score: bool = False,
     ) -> Any:
 
         """
@@ -1837,13 +2533,25 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             compared.
 
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+
         Returns:
             Trained Model
 
 
         """
 
-        return super().automl(optimize=optimize, use_holdout=use_holdout, turbo=turbo)
+        return super().automl(
+            optimize=optimize,
+            use_holdout=use_holdout,
+            turbo=turbo,
+            return_train_score=return_train_score,
+        )
 
     def models(
         self,
@@ -1883,6 +2591,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             pandas.DataFrame
 
         """
+
         return super().models(type=type, internal=internal, raise_errors=raise_errors)
 
     def get_metrics(
@@ -1893,7 +2602,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     ) -> pd.DataFrame:
 
         """
-        Returns table of available metrics used for CV.
+        Returns table of available metrics used in the experiment.
 
 
         Example
@@ -1940,7 +2649,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     ) -> pd.Series:
 
         """
-        Adds a custom metric to be used for CV.
+        Adds a custom metric to be used in the experiment.
 
 
         Example
@@ -1990,7 +2699,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     def remove_metric(self, name_or_id: str):
 
         """
-        Removes a metric from CV.
+        Removes a metric from experiment.
 
 
         Example
@@ -2010,6 +2719,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             None
 
         """
+
         return super().remove_metric(name_or_id=name_or_id)
 
     def get_logs(
@@ -2045,3 +2755,80 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         """
 
         return super().get_logs(experiment_name=experiment_name, save=save)
+
+    def dashboard(
+        self,
+        estimator,
+        display_format: str = "dash",
+        dashboard_kwargs: Optional[Dict[str, Any]] = None,
+        run_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ):
+        """
+        This function generates the interactive dashboard for a trained model. The
+        dashboard is implemented using ExplainerDashboard (explainerdashboard.readthedocs.io)
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> dashboard(lr)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        display_format: str, default = 'dash'
+            Render mode for the dashboard. The default is set to ``dash`` which will
+            render a dashboard in browser. There are four possible options:
+
+            - 'dash' - displays the dashboard in browser
+            - 'inline' - displays the dashboard in the jupyter notebook cell.
+            - 'jupyterlab' - displays the dashboard in jupyterlab pane.
+            - 'external' - displays the dashboard in a separate tab. (use in Colab)
+
+
+        dashboard_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ``ExplainerDashboard`` class.
+
+
+        run_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ``run`` method of ``ExplainerDashboard``.
+
+
+        **kwargs:
+            Additional keyword arguments to pass to the ``ClassifierExplainer`` or
+            ``RegressionExplainer`` class.
+
+
+        Returns:
+            ExplainerDashboard
+        """
+
+        # soft dependencies check
+        super().dashboard(
+            estimator, display_format, dashboard_kwargs, run_kwargs, **kwargs
+        )
+
+        dashboard_kwargs = dashboard_kwargs or {}
+        run_kwargs = run_kwargs or {}
+
+        from explainerdashboard import ExplainerDashboard, RegressionExplainer
+
+        # Replaceing chars which dash doesnt accept for column name `.` , `{`, `}`
+        X_test_df = self.X_test_transformed.copy()
+        X_test_df.columns = [
+            col.replace(".", "__").replace("{", "__").replace("}", "__")
+            for col in X_test_df.columns
+        ]
+        explainer = RegressionExplainer(
+            estimator, X_test_df, self.y_test_transformed, **kwargs
+        )
+        return ExplainerDashboard(
+            explainer, mode=display_format, **dashboard_kwargs
+        ).run(**run_kwargs)

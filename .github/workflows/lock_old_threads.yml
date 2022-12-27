@@ -1,0 +1,23 @@
+name: 'Lock Old Threads'
+
+on:
+  schedule:
+    - cron: '35 1 * * *'
+
+permissions:
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: lock
+
+jobs:
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dessant/lock-threads@v3
+        with:
+          issue-inactive-days: '30'
+          pr-inactive-days: '3650'
+          log-output: true
+          # exclude-any-issue-labels: 'do not lock'

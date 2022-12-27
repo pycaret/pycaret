@@ -1,3 +1,20 @@
+import warnings
+
+import deprecation
+
+from pycaret.utils import __version__
+from pycaret.utils._dependencies import _check_soft_dependencies
+
+deprecated_in = "3.0.0rc5"
+deprecation_msg = " If you want to use the `arules` module, please install `pycaret` version 3.0.0 (preferred) or lower."
+
+
+@deprecation.deprecated(
+    deprecated_in=deprecated_in,
+    removed_in="3.1.0",
+    current_version=__version__,
+    details=deprecation_msg,
+)
 def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
 
     """
@@ -54,15 +71,14 @@ def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
         sys.exit("(Type Error): data passed must be of type pandas.DataFrame")
 
     # ignore warnings
-    import warnings
-
     warnings.filterwarnings("ignore")
 
     # load dependencies
     import random
-    import pandas as pd
+
     import numpy as np
-    from IPython.display import display, HTML, clear_output, update_display
+    import pandas as pd
+    from IPython.display import HTML, clear_output, display, update_display
 
     global X, txid, iid, ignore_list, seed, experiment__
 
@@ -182,9 +198,10 @@ def create_model(
 
     # loading dependencies
     import pandas as pd
-    from IPython.display import display, HTML, clear_output, update_display
-    from mlxtend.frequent_patterns import apriori
-    from mlxtend.frequent_patterns import association_rules
+    from IPython.display import HTML, clear_output, display, update_display
+
+    _check_soft_dependencies("mlxtend", extra="models", severity="error")
+    from mlxtend.frequent_patterns import apriori, association_rules
 
     # reshaping the dataframe
     basket = (
@@ -291,57 +308,32 @@ def plot_model(model, plot="2d", scale=1, display_format=None):
         raise ValueError("display_format can only be None or 'streamlit'.")
 
     if display_format == "streamlit":
-        try:
-            import streamlit as st
-        except ImportError:
-            raise ImportError(
-                "It appears that streamlit is not installed. Do: pip install streamlit"
-            )
+        _check_soft_dependencies("streamlit", extra=None, severity="error")
+        import streamlit as st
 
     """
     error handling ends here
     """
 
-    # loading libraries
     import numpy as np
     import pandas as pd
     import plotly.express as px
-    from IPython.display import display, HTML, clear_output, update_display
-
-    # import cufflinks
-    import cufflinks as cf
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
+    from IPython.display import HTML, clear_output, display, update_display
 
     # copy dataframe
     data_ = model.copy()
 
-    antecedents = []
-    for i in data_["antecedents"]:
-        i = str(i)
-        a = i.split(sep="'")
-        a = a[1]
-        antecedents.append(a)
-
-    data_["antecedents"] = antecedents
+    data_["antecedents"] = [list(i) for i in data_["antecedents"]]
 
     antecedents_short = []
 
-    for i in antecedents:
+    for i in data_["antecedents"]:
         a = i[:10]
         antecedents_short.append(a)
 
     data_["antecedents_short"] = antecedents_short
 
-    consequents = []
-    for i in data_["consequents"]:
-        i = str(i)
-        a = i.split(sep="'")
-        a = a[1]
-        consequents.append(a)
-
-    data_["consequents"] = consequents
+    data_["consequents"] = [list(i) for i in data_["consequents"]]
 
     if plot == "2d":
 
@@ -399,7 +391,7 @@ def get_rules(
     Magic function to get Association Rules in Power Query / Power BI.
     """
 
-    s = setup(
+    setup(
         data=data,
         transaction_id=transaction_id,
         item_id=item_id,

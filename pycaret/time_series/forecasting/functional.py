@@ -3,21 +3,30 @@
 
 import logging
 import os
-import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    BinaryIO,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import pandas as pd
 
-from sktime.forecasting.base import ForecastingHorizon
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
+from pycaret.time_series.forecasting.oop import TSForecastingExperiment
+from pycaret.utils.generic import check_if_global_is_not_none
 
-from pycaret.internal.utils import check_if_global_is_not_none
-from pycaret.time_series import TSForecastingExperiment
-
-warnings.filterwarnings("ignore")
+if TYPE_CHECKING:
+    from sktime.forecasting.base import ForecastingHorizon
 
 _EXPERIMENT_CLASS = TSForecastingExperiment
-_CURRENT_EXPERIMENT = None
+_CURRENT_EXPERIMENT: Optional[TSForecastingExperiment] = None
 _CURRENT_EXPERIMENT_EXCEPTION = (
     "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
 )
@@ -27,31 +36,37 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data: Union[pd.Series, pd.DataFrame],
+    data: Union[pd.Series, pd.DataFrame] = None,
+    data_func: Optional[Callable[[], Union[pd.Series, pd.DataFrame]]] = None,
     target: Optional[str] = None,
     index: Optional[str] = None,
     ignore_features: Optional[List] = None,
-    preprocess: bool = True,
     numeric_imputation_target: Optional[Union[int, float, str]] = None,
     numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
     transform_target: Optional[str] = None,
     transform_exogenous: Optional[str] = None,
+    fe_target_rr: Optional[list] = None,
+    fe_exogenous: Optional[list] = None,
     scale_target: Optional[str] = None,
     scale_exogenous: Optional[str] = None,
     fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
-    fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
+    fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
-    enforce_pi: bool = False,
+    sp_detection: str = "auto",
+    max_sp_to_consider: Optional[int] = None,
+    remove_harmonics: bool = False,
+    harmonic_order_method: str = "harmonic_max",
+    num_sps_to_use: int = 1,
+    point_alpha: Optional[float] = None,
+    coverage: Union[float, List[float]] = 0.9,
     enforce_exogenous: bool = True,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[
-        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-    ] = None,
+    custom_pipeline: Optional[Any] = None,
     html: bool = True,
     session_id: Optional[int] = None,
-    system_log: Union[bool, logging.Logger] = True,
+    system_log: Union[bool, str, logging.Logger] = True,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
     log_plots: Union[bool, list] = False,
@@ -59,8 +74,8 @@ def setup(
     log_data: bool = False,
     verbose: bool = True,
     profile: bool = False,
-    profile_kwargs: Dict[str, Any] = None,
-    fig_kwargs: Dict[str, Any] = None,
+    profile_kwargs: Optional[Dict[str, Any]] = None,
+    fig_kwargs: Optional[Dict[str, Any]] = None,
 ):
     """
     This function initializes the training environment and creates the transformation
@@ -75,8 +90,16 @@ def setup(
     >>> exp_name = setup(data = airline,  fh = 12)
 
 
-    data : pandas.Series or pandas.DataFrame
+    data : pandas.Series or pandas.DataFrame = None
         Shape (n_samples, 1), when pandas.DataFrame, otherwise (n_samples, ).
+
+
+    data_func: Callable[[], Union[pd.Series, pd.DataFrame]] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
 
 
     target : Optional[str], default = None
@@ -95,12 +118,6 @@ def setup(
         List of features to ignore for modeling when the data is a pandas
         Dataframe with more than 1 column. Ignored when data is a pandas Series
         or Dataframe with 1 column.
-
-
-    preprocess: bool, default = True
-        Should preprocessing be done on the data (includes imputation,
-        transformation, scaling)? By default True, but all steps are disabled.
-        Enable the steps that need to be preprocessed using appropriate arguments.
 
 
     numeric_imputation_target: Optional[Union[int, float, str]], default = None
@@ -136,15 +153,102 @@ def setup(
         If None, no transformation is performed. Allowed values are
             "box-cox", "log", "sqrt", "exp", "cos"
 
+
     scale_target: Optional[str], default = None
         Indicates how the target variable should be scaled.
         If None, no scaling is performed. Allowed values are
             "zscore", "minmax", "maxabs", "robust"
 
+
     scale_exogenous: Optional[str], default = None
         Indicates how the exogenous variables should be scaled.
         If None, no scaling is performed. Allowed values are
             "zscore", "minmax", "maxabs", "robust"
+
+
+    fe_target_rr: Optional[list], default = None
+        The transformers to be applied to the target variable in order to
+        extract useful features. By default, None which means that the
+        provided target variable are used "as is".
+
+        NOTE: Most statistical and baseline models already use features (lags)
+        for target variables implicitly. The only place where target features
+        have to be created explicitly is in reduced regression models. Hence,
+        this feature extraction is only applied to reduced regression models.
+
+        Example
+        -------
+
+        >>> import numpy as np
+        >>> from pycaret.datasets import get_data
+        >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+        >>> data = get_data("airline")
+
+        >>> kwargs = {"lag_feature": {"lag": [36, 24, 13, 12, 11, 9, 6, 3, 2, 1]}}
+        >>> fe_target_rr = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
+
+        >>> # Baseline
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(data=data, fh=12, fold=3, session_id=42)
+        >>> model1 = exp.create_model("lr_cds_dt")
+
+        >>> # With Feature Engineering
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(
+        >>>     data=data, fh=12, fold=3, fe_target_rr=fe_target_rr, session_id=42
+        >>> )
+        >>> model2 = exp.create_model("lr_cds_dt")
+
+        >>> exp.plot_model([model1, model2], data_kwargs={"labels": ["Baseline", "With FE"]})
+
+    fe_exogenous : Optional[list] = None
+        The transformations to be applied to the exogenous variables. These
+        transformations are used for all models that accept exogenous variables.
+        By default, None which means that the provided exogenous variables are
+        used "as is".
+
+        Example
+        -------
+
+        >>> import numpy as np
+        >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+        >>> # Example: function num_above_thresh to count how many observations lie above
+        >>> # the threshold within a window of length 2, lagged by 0 periods.
+        >>> def num_above_thresh(x):
+        >>>     '''Count how many observations lie above threshold.'''
+        >>>     return np.sum((x > 0.7)[::-1])
+
+        >>> kwargs1 = {"lag_feature": {"lag": [0, 1], "mean": [[0, 4]]}}
+        >>> kwargs2 = {
+        >>>     "lag_feature": {
+        >>>         "lag": [0, 1], num_above_thresh: [[0, 2]],
+        >>>         "mean": [[0, 4]], "std": [[0, 4]]
+        >>>     }
+        >>> }
+
+        >>> fe_exogenous = [
+        >>>     (
+                    "a", WindowSummarizer(
+        >>>             n_jobs=1, target_cols=["Income"], truncate="bfill", **kwargs1
+        >>>         )
+        >>>     ),
+        >>>     (
+        >>>         "b", WindowSummarizer(
+        >>>             n_jobs=1, target_cols=["Unemployment", "Production"], truncate="bfill", **kwargs2
+        >>>         )
+        >>>     ),
+        >>> ]
+
+        >>> data = get_data("uschange")
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(
+        >>>     data=data, target="Consumption", fh=12,
+        >>>     fe_exogenous=fe_exogenous, session_id=42
+        >>> )
+        >>> print(f"Feature Columns: {exp.get_config('X_transformed').columns}")
+        >>> model = exp.create_model("lr_cds_dt")
 
 
     fold_strategy: str or sklearn CV generator object, default = 'expanding'
@@ -183,31 +287,107 @@ def setup(
 
 
     seasonal_period: list or int or str, default = None
-        Seasonal period in timeseries data. If not provided the frequency of the data
-        index is mapped to a seasonal period as follows:
+        Seasonal periods to check when performing seasonality checks (i.e. candidates).
+        If not provided, then candidates are detected per the sp_detection setting.
 
-        * B, C = 5
-        * D = 7
-        * W = 52
-        * M, BM, CBM, MS, BMS, CBMS = 12
-        * SM, SMS = 24
-        * Q, BQ, QS, BQS = 4
-        * A, Y, BA, BY, AS, YS, BAS, BYS = 1
-        * H = 24
-        * T, min = 60
-        * S = 60
+        Users can provide `seasonal_period` by passing it as an integer or a
+        string corresponding to the keys below (e.g. 'W' for weekly data,
+        'M' for monthly data, etc.).
+            * B, C = 5
+            * D = 7
+            * W = 52
+            * M, BM, CBM, MS, BMS, CBMS = 12
+            * SM, SMS = 24
+            * Q, BQ, QS, BQS = 4
+            * A, Y, BA, BY, AS, YS, BAS, BYS = 1
+            * H = 24
+            * T, min = 60
+            * S = 60
 
-        Alternatively you can provide a custom `seasonal_period` by passing
-        it as an integer or a string corresponding to the keys above (e.g.
-        'W' for weekly data, 'M' for monthly data, etc.). You can also provide
-        a list of such values to use in models that accept multiple seasonal values
-        (currently TBATS). For models that don't accept multiple seasonal values, the
-        first value of the list will be used as the seasonal period.
+        Users can also provide a list of such values to use in models that
+        accept multiple seasonal values (currently TBATS). For models that
+        don't accept multiple seasonal values, the first value of the list
+        will be used as the seasonal period.
 
 
-    enforce_pi: bool, default = False
-        When set to True, only models that support prediction intervals are
-        loaded in the environment.
+    sp_detection: str, default = "auto"
+        If seasonal_period is None, then this parameter determines the algorithm
+        to use to detect the seasonal periods to use in the models.
+
+        Allowed values are ["auto" or "index"].
+
+        If "auto", then seasonal periods are detected using statistical tests.
+        If "index", then the frequency of the data index is mapped to a seasonal
+        period as shown in seasonal_period.
+
+
+    max_sp_to_consider: Optional[int], default = None,
+        Max period to consider when detecting seasonal periods. If None, all
+        periods up to the length of the data are considered.
+
+
+    remove_harmonics: bool, default = False
+        Should harmonics be removed when considering what seasonal periods to
+        use for modeling.
+
+
+    harmonic_order_method: str, default = "harmonic_max"
+        Applicable when remove_harmonics = True. This determines how the harmonics
+        are replaced. Allowed values are "harmonic_strength", "harmonic_max" or "raw_strength.
+        - If set to  "harmonic_max", then lower seasonal period is replaced by its
+        highest harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "harmonic_strength", then lower seasonal period is replaced by its
+        highest strength harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "raw_strength", then lower seasonal periods is removed and the
+        higher harmonic seasonal periods is retained in its original position
+        based on its seasonal strength.
+
+        e.g. Assuming detected seasonal periods in strength order are [2, 3, 4, 50]
+        and remove_harmonics = True, then:
+        - If harmonic_order_method = "harmonic_max", result = [50, 3, 4]
+        - If harmonic_order_method = "harmonic_strength", result = [4, 3, 50]
+        - If harmonic_order_method = "raw_strength", result = [3, 4, 50]
+
+
+    num_sps_to_use: int, default = 1
+        It determines the maximum number of seasonal periods to use in the models.
+        Set to -1 to use all detected seasonal periods (in models that allow
+        multiple seasonalities). If a model only allows one seasonal period
+        and num_sps_to_use > 1, then the most dominant (primary) seasonal
+        that is detected is used.
+
+
+    point_alpha: Optional[float], default = None
+        The alpha (quantile) value to use for the point predictions. By default
+        this is set to None which uses sktime's predict() method to get the
+        point prediction (the mean or the median of the forecast distribution).
+        If this is set to a floating point value, then it switches to using the
+        predict_quantiles() method to get the point prediction at the user
+        specified quantile.
+        Reference: https://robjhyndman.com/hyndsight/quantile-forecasts-in-r/
+
+        NOTE:
+        (1) Not all models support predict_quantiles(), hence, if a float
+        value is provided, these models will be disabled.
+        (2) Under some conditions, the user may want to only work with models
+        that support prediction intervals. Utilizing note 1 to our advantage,
+        the point_alpha argument can be set to 0.5 (or any float value depending
+        on the quantile that the user wants to use for point predictions).
+        This will disable models that do not support prediction intervals.
+
+
+    coverage: Union[float, List[float]], default = 0.9
+        The coverage to be used for prediction intervals (only applicable for
+        models that support prediction intervals).
+
+        If a float value is provides, it corresponds to the coverage needed
+        (e.g. 0.9 means 90% coverage). This corresponds to lower and upper
+        quantiles = 0.05 and 0.95 respectively.
+
+        Alternately, if user wants to get the intervals at specific quantiles,
+        a list of 2 values can be provided directly. e.g. coverage = [0.2. 0.9]
+        will return the lower interval corresponding to a quantile of 0.2 and
+        an upper interval corresponding to a quantile of 0.9.
 
 
     enforce_exogenous: bool, default = True
@@ -228,7 +408,7 @@ def setup(
         Parameter not in use for now. Behavior may change in future.
 
 
-    custom_pipeline: (str, transformer) or list of (str, transformer), default = None
+    custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Parameter not in use for now. Behavior may change in future.
 
 
@@ -244,9 +424,10 @@ def setup(
         for later reproducibility of the entire experiment.
 
 
-    system_log: bool or logging.Logger, default = True
-        Whether to save the system logging file (as logs.log). If the input already is a
-        logger object, that one is used instead.
+    system_log: bool or str or logging.Logger, default = True
+        Whether to save the system logging file (as logs.log). If the input
+        is a string, use that as the path to the logging file. If the input
+        already is a logger object, use that one instead.
 
 
     log_experiment: bool, default = False
@@ -325,7 +506,29 @@ def setup(
         big_data_threshold: The number of data points above which hovering over
             certain plots can be disabled and/or renderer switched to a static
             renderer. This is useful when the time series being modeled has a lot
-            of data which can make notebooks slow to render.
+            of data which can make notebooks slow to render. Also note that setting
+            the `display_format` to a plotly-resampler figure ("plotly-dash" or
+            "plotly-widget") can circumvent these problems by performing dynamic data
+            aggregation.
+
+        resampler_kwargs: The keyword arguments that are fed to configure the
+            `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash" or
+            "plotly-widget") which downsampler will be used; how many datapoints are
+            shown in the front-end. When the plotly-resampler figure is renderd via Dash
+            (by setting the `display_format` to "plotly-dash"), one can also use the
+            "show_dash" key within this dictionary to configure the show_dash method its
+            args.
+
+            example::
+
+                fig_kwargs = {
+                    ...,
+                    "resampler_kwargs":  {
+                        "default_n_shown_samples": 1000,
+                        "show_dash": {"mode": "inline", "port": 9012}
+                    }
+                }
+
 
     Returns:
         Global variables that can be changed using the ``set_config`` function.
@@ -336,21 +539,29 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        data_func=data_func,
         target=target,
         index=index,
         ignore_features=ignore_features,
-        preprocess=preprocess,
         numeric_imputation_target=numeric_imputation_target,
         numeric_imputation_exogenous=numeric_imputation_exogenous,
         transform_target=transform_target,
         transform_exogenous=transform_exogenous,
         scale_target=scale_target,
         scale_exogenous=scale_exogenous,
+        fe_target_rr=fe_target_rr,
+        fe_exogenous=fe_exogenous,
         fold_strategy=fold_strategy,
         fold=fold,
         fh=fh,
         seasonal_period=seasonal_period,
-        enforce_pi=enforce_pi,
+        sp_detection=sp_detection,
+        max_sp_to_consider=max_sp_to_consider,
+        remove_harmonics=remove_harmonics,
+        harmonic_order_method=harmonic_order_method,
+        num_sps_to_use=num_sps_to_use,
+        point_alpha=point_alpha,
+        coverage=coverage,
         enforce_exogenous=enforce_exogenous,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
@@ -377,13 +588,15 @@ def compare_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    sort: str = "SMAPE",
+    sort: str = "MASE",
     n_select: int = 1,
     budget_time: Optional[float] = None,
     turbo: bool = True,
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
+    engine: Optional[Dict[str, str]] = None,
     verbose: bool = True,
+    parallel: Optional[ParallelBackend] = None,
 ):
 
     """
@@ -431,7 +644,7 @@ def compare_models(
         is ignored when cross_validation is set to False.
 
 
-    sort: str, default = 'SMAPE'
+    sort: str, default = 'MASE'
         The sort order of the score grid. It also accepts custom metrics that are
         added through the ``add_metric`` function.
 
@@ -460,8 +673,21 @@ def compare_models(
         Dictionary of arguments passed to the fit method of the model.
 
 
+    engine: Optional[Dict[str, str]] = None
+        The engine to use for the models, e.g. for auto_arima, users can
+        switch between "pmdarima" and "statsforecast" by specifying
+        engine={"auto_arima": "statsforecast"}
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+
+    parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+        A ParallelBackend instance. For example if you have a SparkSession ``session``,
+        you can use ``FugueBackend(session)`` to make this function running using
+        Spark. For more details, see
+        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
 
 
     Returns:
@@ -488,8 +714,51 @@ def compare_models(
         turbo=turbo,
         errors=errors,
         fit_kwargs=fit_kwargs,
+        engine=engine,
         verbose=verbose,
+        parallel=parallel,
     )
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_allowed_engines(estimator: str) -> Optional[str]:
+    """Get all the allowed engines for the specified model
+
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engines should be retrieved,
+        e.g. "auto_arima"
+
+    Returns
+    -------
+    Optional[str]
+        The allowed engines for the model. If the model only supports the
+        default engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_allowed_engines(estimator=estimator)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_engine(estimator: str) -> Optional[str]:
+    """Gets the model engine currently set in the experiment for the specified
+    model.
+
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engine should be retrieved,
+        e.g. "auto_arima"
+
+    Returns
+    -------
+    Optional[str]
+        The engine for the model. If the model only supports the default sktime
+        engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_engine(estimator=estimator)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -499,6 +768,7 @@ def create_model(
     round: int = 4,
     cross_validation: bool = True,
     fit_kwargs: Optional[dict] = None,
+    engine: Optional[str] = None,
     verbose: bool = True,
     **kwargs,
 ):
@@ -525,14 +795,19 @@ def create_model(
         model object consistent with scikit-learn API. Estimators available
         in the model library (ID - Name):
 
+        NOTE: The available estimators depend on multiple factors such as what
+        libraries have been installed and the setup of the experiment. As such,
+        some of these may not be available for your experiment. To see the list
+        of available models, please run `setup()` first, then `models()`.
+
         * 'naive' - Naive Forecaster
         * 'grand_means' - Grand Means Forecaster
         * 'snaive' - Seasonal Naive Forecaster (disabled when seasonal_period = 1)
         * 'polytrend' - Polynomial Trend Forecaster
         * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
         * 'auto_arima' - Auto ARIMA
-        * 'arima' - ARIMA
         * 'exp_smooth' - Exponential Smoothing
+        * 'croston' - Croston Forecaster
         * 'ets' - ETS
         * 'theta' - Theta Forecaster
         * 'tbats' - TBATS
@@ -555,6 +830,7 @@ def create_model(
         * 'gbr_cds_dt' - Gradient Boosting w/ Cond. Deseasonalize & Detrending
         * 'ada_cds_dt' - AdaBoost w/ Cond. Deseasonalize & Detrending
         * 'lightgbm_cds_dt' - Light Gradient Boosting w/ Cond. Deseasonalize & Detrending
+        * 'catboost_cds_dt' - CatBoost w/ Cond. Deseasonalize & Detrending
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -575,6 +851,12 @@ def create_model(
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
+
+
+    engine: Optional[str] = None
+        The engine to use for the model, e.g. for auto_arima, users can
+        switch between "pmdarima" and "statsforecast" by specifying
+        engine="statsforecast".
 
 
     verbose: bool, default = True
@@ -602,6 +884,7 @@ def create_model(
         round=round,
         cross_validation=cross_validation,
         fit_kwargs=fit_kwargs,
+        engine=engine,
         verbose=verbose,
         **kwargs,
     )
@@ -614,7 +897,7 @@ def tune_model(
     round: int = 4,
     n_iter: int = 10,
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-    optimize: str = "SMAPE",
+    optimize: str = "MASE",
     custom_scorer=None,
     search_algorithm: Optional[str] = None,
     choose_better: bool = True,
@@ -669,7 +952,7 @@ def tune_model(
         supported by the defined ``search_library``.
 
 
-    optimize: str, default = 'SMAPE'
+    optimize: str, default = 'MASE'
         Metric name to be evaluated for hyperparameter tuning. It also accepts custom
         metrics that are added through the ``add_metric`` function.
 
@@ -742,7 +1025,7 @@ def blend_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "SMAPE",
+    optimize: str = "MASE",
     weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
@@ -795,7 +1078,7 @@ def blend_models(
         metric used for comparison is defined by the ``optimize`` parameter.
 
 
-    optimize: str, default = 'SMAPE'
+    optimize: str, default = 'MASE'
         Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -843,7 +1126,7 @@ def plot_model(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
     save: Union[str, bool] = False,
-) -> Optional[Tuple[str, Any]]:
+) -> Optional[Tuple[str, list]]:
 
     """
     This function analyzes the performance of a trained model on holdout set.
@@ -865,6 +1148,8 @@ def plot_model(
     >>> plot_model(plot = 'decomp', data_kwargs = {'type' : 'multiplicative'})
     >>> plot_model(plot = 'decomp', data_kwargs = {'seasonal_period': 24})
     >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
+    >>> tuned_arima = tune_model(arima)
+    >>> plot_model([arima, tuned_arima], data_kwargs={"labels": ["Baseline", "Tuned"]})
 
 
     estimator: sktime compatible object, default = None
@@ -893,7 +1178,7 @@ def plot_model(
 
 
     return_fig: : bool, default = False
-            When set to True, it returns the figure used for plotting.
+        When set to True, it returns the figure used for plotting.
 
 
     return_data: bool, default = False
@@ -914,11 +1199,147 @@ def plot_model(
     data_kwargs: dict, default = None
         Dictionary of arguments passed to the data for plotting.
 
+        Available keys are:
+
+        nlags: The number of lags to use when plotting correlation plots, e.g.
+            ACF, PACF, CCF. If not provided, default internally calculated
+            values are used.
+
+        seasonal_period: The seasonal period to use for decomposition plots.
+            If not provided, the default internally detected seasonal period
+            is used.
+
+        type: The type of seasonal decomposition to perform. Options are:
+            ["additive", "multiplicative"]
+
+        order_list: The differencing orders to use for difference plots. e.g.
+            [1, 2] will plot first and second order differences (corresponding
+            to d = 1 and 2 in ARIMA models).
+
+        lags_list: An alternate and more explicit alternate to "order_list"
+            allowing users to specify the exact lags to plot. e.g.
+            [1, [1, 12]] will plot first difference and a second plot with
+            first difference (d = 1 in ARIMA) and seasonal 12th difference
+            (D=1, s=12 in ARIMA models). Also note that "order_list" = [2]
+            can be alternately specified as lags_list = [[1, 1]] i.e. successive
+            differencing twice.
+
+        acf: True/False
+            When specified in difference plots and set to True, this will plot
+            the ACF of the differenced data as well.
+
+        pacf: True/False
+            When specified in difference plots and set to True, this will plot
+            the PACF of the differenced data as well.
+
+        periodogram: True/False
+            When specified in difference plots and set to True, this will plot
+            the Periodogram of the differenced data as well.
+
+        fft: True/False
+            When specified in difference plots and set to True, this will plot
+            the FFT of the differenced data as well.
+
+        labels: When estimator(s) are provided, the corresponding labels to
+            use for the plots. If not provided, the model class is used to
+            derive the labels.
+
+        include: When data contains exogenous variables, then only specific
+            exogenous variables can be plotted using this key.
+            e.g. include = ["col1", "col2"]
+
+        exclude: When data contains exogenous variables, specific exogenous
+            variables can be excluded from the plots using this key.
+            e.g. exclude = ["col1", "col2"]
+
+        alpha: The quantile value to use for point prediction. If not provided,
+            then the value specified during setup is used.
+
+        coverage: The coverage value to use for prediction intervals.  If not
+            provided, then the value specified during setup is used.
+
+        fh: The forecast horizon to use for forecasting. If not provided, then
+            the one used during model training is used.
+
+        X: When a model trained with exogenous variables has been finalized,
+            user can provide the future values of the exogenous variables to
+            make future target time series predictions using this key.
+
+        plot_data_type: When plotting the data used for modeling, user may
+            wish to see plots with the original data set provided, the imputed
+            dataset (if imputation is set) or the transformed dataset (which
+            includes any imputation and transformation set by the user). This
+            keyword can be used to specify which data type to use.
+
+            NOTE:
+            (1) If no imputation is specified, then plotting the "imputed"
+                data type will produce the same results as the "original" data type.
+            (2) If no transformations are specified, then plotting the "transformed"
+                data type will produce the same results as the "imputed" data type.
+
+            Allowed values are (if not specified, defaults to the first one in the list):
+
+            "ts": ["original", "imputed", "transformed"]
+            "train_test_split": ["original", "imputed", "transformed"]
+            "cv": ["original"]
+            "acf": ["transformed", "imputed", "original"]
+            "pacf": ["transformed", "imputed", "original"]
+            "decomp": ["transformed", "imputed", "original"]
+            "decomp_stl": ["transformed", "imputed", "original"]
+            "diagnostics": ["transformed", "imputed", "original"]
+            "diff": ["transformed", "imputed", "original"]
+            "forecast": ["original", "imputed"]
+            "insample": ["original", "imputed"]
+            "residuals": ["original", "imputed"]
+            "periodogram": ["transformed", "imputed", "original"]
+            "fft": ["transformed", "imputed", "original"]
+            "ccf": ["transformed", "imputed", "original"]
+
+            Some plots (marked as True below) will also allow specifying
+            multiple of data types at once.
+
+            "ts": True
+            "train_test_split": True
+            "cv": False
+            "acf": True
+            "pacf": True
+            "decomp": True
+            "decomp_stl": True
+            "diagnostics": True
+            "diff": False
+            "forecast": False
+            "insample": False
+            "residuals": False
+            "periodogram": True
+            "fft": True
+            "ccf": False
+
 
     fig_kwargs: dict, default = {} (empty dict)
         The setting to be used for the plot. Overrides any global setting
         passed during setup. Pass these as key-value pairs. For available
         keys, refer to the `setup` documentation.
+
+        Time-series plots support more display_formats, as a result the fig-kwargs
+        can also contain the `resampler_kwargs` key and its corresponding dict.
+        These are additional keyword arguments that are fed to the display function.
+        This is mainly used for configuring `plotly-resampler` visualizations
+        (i.e., `display_format` "plotly-dash" or "plotly-widget") which down sampler
+        will be used; how many data points are shown in the front-end.
+
+        When the plotly-resampler figure is rendered via Dash (by setting the
+        `display_format` to "plotly-dash"), one can also use the
+        "show_dash" key within this dictionary to configure the show_dash args.
+
+        example::
+
+            fig_kwargs = {
+                "width": None,
+                "resampler_kwargs":  {
+                    "default_n_shown_samples": 1000,
+                    "show_dash": {"mode": "inline", "port": 9012}
+                }
+            }
 
 
     save: string or bool, default = False
@@ -927,12 +1348,9 @@ def plot_model(
 
 
     Returns:
-        Optional[Tuple[str, Any]]
+        Path to saved file and list containing figure and data, if any.
 
     """
-
-    system = os.environ.get("PYCARET_TESTING", "0")
-    system = system == "0"
 
     return _CURRENT_EXPERIMENT.plot_model(
         estimator=estimator,
@@ -942,7 +1360,6 @@ def plot_model(
         display_format=display_format,
         data_kwargs=data_kwargs,
         fig_kwargs=fig_kwargs,
-        system=system,
         save=save,
     )
 
@@ -953,7 +1370,8 @@ def predict_model(
     fh=None,
     X=None,
     return_pred_int=False,
-    alpha=0.05,
+    alpha: Optional[float] = None,
+    coverage: Union[float, List[float]] = 0.9,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -999,8 +1417,14 @@ def predict_model(
         prediction interval, in addition to the point prediction.
 
 
-    alpha: float, default = 0.05
-        alpha for prediction interval. CI = 1 - alpha.
+    alpha: Optional[float], default = None
+        The alpha (quantile) value to use for the point predictions. Refer to
+        the "point_alpha" description in the setup docstring for details.
+
+
+    coverage: Union[float, List[float]], default = 0.9
+        The coverage to be used for prediction intervals. Refer to the "coverage"
+        description in the setup docstring for details.
 
 
     round: int, default = 4
@@ -1027,6 +1451,7 @@ def predict_model(
         X=X,
         return_pred_int=return_pred_int,
         alpha=alpha,
+        coverage=coverage,
         round=round,
         verbose=verbose,
     )
@@ -1034,7 +1459,7 @@ def predict_model(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def finalize_model(
-    estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True
+    estimator, fit_kwargs: Optional[dict] = None, model_only: bool = False
 ) -> Any:
 
     """
@@ -1065,7 +1490,7 @@ def finalize_model(
 
 
     Returns:
-        Trained Model
+        Trained pipeline or model object fitted on complete dataset.
 
 
     """
@@ -1208,7 +1633,7 @@ def save_model(model, model_name: str, model_only: bool = True, verbose: bool = 
 
 # not using check_if_global_is_not_none on purpose
 def load_model(
-    model_name,
+    model_name: str,
     platform: Optional[str] = None,
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,
@@ -1485,7 +1910,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_config(variable: str):
+def get_config(variable: Optional[str] = None):
 
     """
     This function retrieves the global variables created when initializing the
@@ -1503,8 +1928,8 @@ def get_config(variable: str):
     - prep_pipe: Transformation pipeline
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
+    - _master_model_container: model storage container
+    - _display_container: results display container
     - exp_name_log: Name of experiment
     - logging_param: log_experiment param
     - log_plots_param: log_plots param
@@ -1524,6 +1949,11 @@ def get_config(variable: str):
     >>> from pycaret.time_series import *
     >>> exp_name = setup(data = airline,  fh = 12)
     >>> X_train = get_config('X_train')
+
+
+    variable : str, default = None
+        Name of the variable to return the value of. If None,
+        will return a list of possible names.
 
 
     Returns:
@@ -1554,8 +1984,8 @@ def set_config(variable: str, value):
     - prep_pipe: Transformation pipeline
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
+    - _master_model_container: model storage container
+    - _display_container: results display container
     - exp_name_log: Name of experiment
     - logging_param: log_experiment param
     - log_plots_param: log_plots param
@@ -1586,20 +2016,24 @@ def set_config(variable: str, value):
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_config(file_name: str):
-
+def save_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO], **cloudpickle_kwargs
+) -> None:
     """
-    This function save all global variables to a pickle file, allowing to
-    later resume without rerunning the ``setup``.
+    Saves the experiment to a pickle file.
+
+    The experiment is saved using cloudpickle to deal with lambda
+    functions. The data or test data is NOT saved with the experiment
+    and will need to be specified again when loading using
+    ``load_experiment``.
 
 
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> airline = get_data('airline')
-    >>> from pycaret.time_series import *
-    >>> exp_name = setup(data = airline,  fh = 12)
-    >>> save_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to save the experiment to.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.dump`` call.
 
 
     Returns:
@@ -1607,32 +2041,93 @@ def save_config(file_name: str):
 
     """
 
-    return _CURRENT_EXPERIMENT.save_config(file_name=file_name)
+    return _CURRENT_EXPERIMENT.save_experiment(
+        path_or_file=path_or_file, **cloudpickle_kwargs
+    )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def load_config(file_name: str):
+def load_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO],
+    data: Optional[Union[pd.Series, pd.DataFrame]] = None,
+    data_func: Optional[Callable[[], Union[pd.Series, pd.DataFrame]]] = None,
+    test_data: Optional[Union[pd.Series, pd.DataFrame]] = None,
+    preprocess_data: bool = True,
+    **cloudpickle_kwargs,
+) -> TSForecastingExperiment:
 
     """
-    This function loads global variables from a pickle file into Python
-    environment.
+    Load an experiment saved with ``save_experiment`` from path
+    or file.
+
+    The data (and test data) is NOT saved with the experiment
+    and will need to be specified again.
 
 
-    Example
-    -------
-    >>> from pycaret.time_series import load_config
-    >>> load_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to load the experiment from.
+        The pickle file must be created through ``save_experiment``.
+
+
+    data: pandas.Series or pandas.DataFrame
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
+
+
+    data_func: Callable[[], pandas.Series or pandas.DataFrame] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    test_data: pandas.Series or pandas.DataFrame or None, default = None
+        If not None, test_data is used as a hold-out set and `train_size` parameter
+        is ignored. The columns of data and test_data must match.
+
+
+    preprocess_data: bool, default = True
+        If True, the data will be preprocessed again (through running ``setup``
+        internally). If False, the data will not be preprocessed. This means
+        you can save the value of the ``data`` attribute of an experiment
+        separately, and then load it separately and pass it here with
+        ``preprocess_data`` set to False. This is an advanced feature.
+        We recommend leaving it set to True and passing the same data
+        as passed to the initial ``setup`` call.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.load`` call.
 
 
     Returns:
-        Global variables
+        loaded experiment
 
     """
-
-    return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
+    exp = _EXPERIMENT_CLASS.load_experiment(
+        path_or_file=path_or_file,
+        data=data,
+        data_func=data_func,
+        test_data=test_data,
+        preprocess_data=preprocess_data,
+        **cloudpickle_kwargs,
+    )
+    set_current_experiment(exp)
+    return exp
 
 
 def set_current_experiment(experiment: TSForecastingExperiment):
+    """
+    Set the current experiment to be used with the functional API.
+
+    experiment: TSForecastingExperiment
+        Experiment object to use.
+
+    Returns:
+        None
+    """
     global _CURRENT_EXPERIMENT
 
     if not isinstance(experiment, TSForecastingExperiment):
@@ -1640,6 +2135,16 @@ def set_current_experiment(experiment: TSForecastingExperiment):
             f"experiment must be a PyCaret TSForecastingExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> TSForecastingExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current TSForecastingExperiment
+    """
+    return _CURRENT_EXPERIMENT
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -1697,6 +2202,25 @@ def check_stats(
         * 'all' - Complete Dataset
         * 'train' - The Training Split of the dataset
         * 'test' - The Test Split of the dataset
+
+
+    data_type : str, optional
+        The data type to use for the statistical test, by default "transformed".
+
+        User may wish to perform the tests on the original data set provided,
+        the imputed dataset (if imputation is set) or the transformed dataset
+        (which includes any imputation and transformation set by the user).
+        This keyword can be used to specify which data type to use.
+
+        Allowed values are: ["original", "imputed", "transformed"]
+
+        NOTE:
+        (1) If no imputation is specified, then testing on the "imputed"
+            data type will produce the same results as the "original" data type.
+        (2) If no transformations are specified, then testing the "transformed"
+            data type will produce the same results as the "imputed" data type.
+        (3) By default, tests are done on the "transformed" data since that
+            is the data that is fed to the model during training.
 
 
     data_kwargs : Optional[Dict], optional

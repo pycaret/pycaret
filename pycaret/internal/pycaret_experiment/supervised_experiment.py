@@ -1,61 +1,85 @@
-from pycaret.internal.pycaret_experiment.utils import get_ml_task, MLUsecase
-from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
+import datetime
+import gc
+import os
+import time
+import traceback
+import warnings
+from copy import copy, deepcopy
+from functools import partial
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Tuple, Union
+from unittest.mock import patch
+
+import matplotlib.pyplot as plt
+import numpy as np  # type: ignore
+import pandas as pd  # type ignore
+import pandas.io.formats.style
+from sklearn.base import clone  # type: ignore
+from sklearn.pipeline import Pipeline as skPipeline
+from sklearn.utils.validation import check_is_fitted as check_fitted
+
+import pycaret.internal.patches.sklearn
+import pycaret.internal.patches.yellowbrick
+import pycaret.internal.persistence
+import pycaret.internal.preprocess
+from pycaret.containers.metrics import (
+    get_all_class_metric_containers,
+    get_all_reg_metric_containers,
+)
+from pycaret.internal.display import CommonDisplay, DummyDisplay
+from pycaret.internal.distributions import (
+    CategoricalDistribution,
+    Distribution,
+    UniformDistribution,
+    get_base_distributions,
+    get_CS_distributions,
+    get_hyperopt_distributions,
+    get_optuna_distributions,
+    get_skopt_distributions,
+    get_tune_distributions,
+)
+from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.meta_estimators import (
-    PowerTransformedTargetRegressor,
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.pipeline import (
-    get_pipeline_estimator_label,
+    Pipeline,
     estimator_pipeline,
+    get_pipeline_estimator_label,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import (
+from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
+from pycaret.internal.tunable import TunableMixin
+from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
+from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.constants import DATAFRAME_LIKE, LABEL_COLUMN, SCORE_COLUMN
+from pycaret.utils.generic import (
+    MLUsecase,
+    can_early_stop,
     color_df,
-    mlflow_remove_bad_chars,
+    get_label_encoder,
+    get_ml_task,
+    id_or_display_name,
     nullcontext,
     true_warm_start,
-    can_early_stop,
 )
-from pycaret.internal.utils import to_df, id_or_display_name, get_label_encoder
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-from pycaret.internal.distributions import *
-from pycaret.internal.validation import *
-from pycaret.internal.tunable import TunableMixin
-from pycaret.utils._dependencies import _check_soft_dependencies
-import pycaret.internal.preprocess
-import pycaret.internal.persistence
-import pandas as pd  # type ignore
-import numpy as np  # type: ignore
-import os
-import datetime
-import time
-import gc
-from collections import Iterable
-from copy import deepcopy
-from sklearn.base import clone  # type: ignore
-from sklearn.compose import TransformedTargetRegressor  # type: ignore
-from typing import List, Any, Union, Optional, Dict
-import warnings
-from IPython.utils import io
-import traceback
-from unittest.mock import patch
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
 
-from pycaret.internal.Display import Display
+try:
+    from collections.abc import Iterable
+except Exception:
+    from collections import Iterable
 
-
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
 class _SupervisedExperiment(_TabularExperiment):
+    _create_app_predict_kwargs = {}
+
     def __init__(self) -> None:
         super().__init__()
         self.transform_target_param = False  # Default False for both class/reg
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "X",
                 "y",
@@ -65,11 +89,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 "y_test",
                 "target_param",
                 "fold_shuffle_param",
-                "stratify_param",
                 "fold_generator",
-                "fold_param",
                 "fold_groups_param",
-                "fold_groups_param_full",
             }
         )
 
@@ -84,42 +105,63 @@ class _SupervisedExperiment(_TabularExperiment):
         """
         Calculate all metrics in _all_metrics.
         """
-        from pycaret.internal.utils import calculate_metrics
+        from pycaret.utils.generic import calculate_metrics
 
-        try:
-            return calculate_metrics(
-                metrics=self._all_metrics,
-                y_test=y_test,
-                pred=pred,
-                pred_proba=pred_prob,
-                weights=weights,
-                **additional_kwargs,
-            )
-        except Exception:
-            ml_usecase = get_ml_task(y_test)
-            if ml_usecase == MLUsecase.CLASSIFICATION:
-                metrics = (
-                    pycaret.containers.metrics.classification.get_all_metric_containers(
-                        self.variables, True
-                    )
+        with redirect_output(self.logger):
+            try:
+                return calculate_metrics(
+                    metrics=self._all_metrics,
+                    y_test=y_test,
+                    pred=pred,
+                    pred_proba=pred_prob,
+                    weights=weights,
+                    **additional_kwargs,
                 )
-            elif ml_usecase == MLUsecase.REGRESSION:
-                metrics = (
-                    pycaret.containers.metrics.regression.get_all_metric_containers(
-                        self.variables, True
-                    )
+            except Exception:
+                ml_usecase = get_ml_task(y_test)
+                if ml_usecase == MLUsecase.CLASSIFICATION:
+                    metrics = get_all_class_metric_containers(self.variables, True)
+                elif ml_usecase == MLUsecase.REGRESSION:
+                    metrics = get_all_reg_metric_containers(self.variables, True)
+                return calculate_metrics(
+                    metrics=metrics,  # type: ignore
+                    y_test=y_test,
+                    pred=pred,
+                    pred_proba=pred_prob,
+                    weights=weights,
+                    **additional_kwargs,
                 )
-            return calculate_metrics(
-                metrics=metrics,  # type: ignore
-                y_test=y_test,
-                pred=pred,
-                pred_proba=pred_prob,
-                weights=weights,
-                **additional_kwargs,
-            )
 
     def _is_unsupervised(self) -> bool:
         return False
+
+    def _get_final_model_from_pipeline(
+        self,
+        pipeline: Pipeline,
+        check_is_fitted: bool = False,
+    ) -> Any:
+        """Extracts and returns the final model from the pipeline.
+
+        Parameters
+        ----------
+        pipeline : Pipeline
+            The pipeline with a final model
+
+        check_is_fitted : bool, default=False
+            If True, will check if final model is fitted and raise an exception
+            if it is not, by default False.
+
+        Returns
+        -------
+        Model
+            The final model in the pipeline.
+
+        """
+        model = pipeline._final_estimator
+        if check_is_fitted:
+            check_fitted(model)
+
+        return model
 
     def _choose_better(
         self,
@@ -128,7 +170,7 @@ class _SupervisedExperiment(_TabularExperiment):
         fold: int,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
-        display: Optional[Display] = None,
+        display: Optional[CommonDisplay] = None,
     ):
         """
         When choose_better is set to True, optimize metric in scoregrid is
@@ -140,7 +182,6 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("choose_better activated")
         if display is not None:
             display.update_monitor(1, "Compiling Final Results")
-            display.display_monitor()
 
         if not fit_kwargs:
             fit_kwargs = {}
@@ -159,12 +200,21 @@ class _SupervisedExperiment(_TabularExperiment):
         best_model = None
         for model, result in models_and_results:
             if result is not None and is_fitted(model):
-                result = result.loc["Mean"][compare_dimension]
+                try:
+                    indices = self._get_return_train_score_indices_for_logging(
+                        return_train_score=True
+                    )
+                    result = result.loc[indices][compare_dimension]
+                except KeyError:
+                    indices = self._get_return_train_score_indices_for_logging(
+                        return_train_score=False
+                    )
+                    result = result.loc[indices][compare_dimension]
             else:
                 self.logger.info(
                     "SubProcess create_model() called =================================="
                 )
-                model, _ = self.create_model(
+                model, _ = self._create_model(
                     model,
                     verbose=False,
                     system=False,
@@ -175,17 +225,15 @@ class _SupervisedExperiment(_TabularExperiment):
                 self.logger.info(
                     "SubProcess create_model() end =================================="
                 )
-                result = self.pull(pop=True).loc["Mean"][compare_dimension]
+                result = self.pull(pop=True).loc[
+                    self._get_return_train_score_indices_for_logging(
+                        return_train_score=False
+                    )
+                ][compare_dimension]
             self.logger.info(f"{model} result for {compare_dimension} is {result}")
             if not metric.greater_is_better:
                 result *= -1
             if best_result is None or best_result < result:
-                msg = (
-                    "Original model was better than the tuned model, hence it will be returned. "
-                    "NOTE: The display metrics are for the tuned model (not the original one)."
-                )
-                print(msg)
-                self.logger.info(msg)
                 best_result = result
                 best_model = model
 
@@ -195,94 +243,124 @@ class _SupervisedExperiment(_TabularExperiment):
         return best_model
 
     def _get_cv_n_folds(self, fold, X, y=None, groups=None):
-        import pycaret.internal.utils
+        import pycaret.utils.generic
 
-        return pycaret.internal.utils.get_cv_n_folds(
+        return pycaret.utils.generic.get_cv_n_folds(
             fold, default=self.fold_generator, X=X, y=y, groups=groups
         )
 
-    def _set_up_mlflow(
+    def _set_up_logging(
         self, runtime, log_data, log_profile, experiment_custom_tags=None
     ):
-        # log into experiment
-        self.experiment__.append(("Setup Config", self.display_container[0]))
-        self.experiment__.append(("X_training Set", self.X_train))
-        self.experiment__.append(("y_training Set", self.y_train))
-        self.experiment__.append(("X_test Set", self.X_test))
-        self.experiment__.append(("y_test Set", self.y_test))
-        self.experiment__.append(("Transformation Pipeline", self.pipeline))
+        # experiment custom tags
+        if experiment_custom_tags is not None:
+            if not isinstance(experiment_custom_tags, dict):
+                raise TypeError(
+                    "experiment_custom_tags parameter must be dict if not None"
+                )
 
         if self.logging_param:
-            _check_soft_dependencies("mlflow", extra="mlops", error="raise")
-
-            self.logger.info("Logging experiment in MLFlow")
-            import mlflow
-
-            try:
-                self.exp_id = mlflow.create_experiment(self.exp_name_log)
-            except Exception:
-                self.exp_id = None
-                self.logger.warning("Couldn't create mlflow experiment. Exception:")
-                self.logger.warning(traceback.format_exc())
-
-            # mlflow logging
-            mlflow.set_experiment(self.exp_name_log)
-
-            run_name_ = f"Session Initialized {self.USI}"
-
-            mlflow.end_run()
-            mlflow.start_run(run_name=run_name_)
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            k = self.display_container[0].copy()
-            k.set_index("Description", drop=True, inplace=True)
-            kdict = k.to_dict()
-            params = kdict.get("Value")
-            params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
-            mlflow.log_params(params)
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", "setup")
-
-            # set custom tags if applicable
-            if experiment_custom_tags:
-                mlflow.set_tags(experiment_custom_tags)
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", self.USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log the transformation pipeline
-            self.logger.info(
-                "SubProcess save_model() called =================================="
+            self.logging_param.log_experiment(
+                self,
+                log_profile,
+                log_data,
+                experiment_custom_tags,
+                runtime,
             )
-            self.save_model(self.pipeline, "Transformation Pipeline", verbose=False)
-            self.logger.info(
-                "SubProcess save_model() end =================================="
+
+    def _parallel_compare_models(
+        self,
+        parallel: Optional[ParallelBackend],
+        caller_params: Optional[dict],
+        turbo: bool,
+    ) -> List[Any]:
+        params = dict(caller_params)
+        parallel.attach(self)
+        if params.get("include", None) is None:
+            _models = self.models()
+            if turbo:
+                _models = _models[_models.Turbo]
+            params["include"] = _models.index.tolist()
+        del params["self"]
+        del params["__class__"]
+        del params["parallel"]
+        return parallel.compare_models(self, params)
+
+    def _get_greater_is_worse_columns(self) -> Set[str]:
+        input_ml_usecase = self._ml_usecase
+        target_ml_usecase = MLUsecase.TIME_SERIES
+
+        greater_is_worse_columns = {
+            id_or_display_name(v, input_ml_usecase, target_ml_usecase).upper()
+            for k, v in self._all_metrics.items()
+            if not v.greater_is_better
+        }
+        greater_is_worse_columns.add("TT (Sec)")
+        return greater_is_worse_columns
+
+    def _highlight_models(self, master_display_: Any) -> Any:
+        def highlight_max(s):
+            to_highlight = s == s.max()
+            return ["background-color: yellow" if v else "" for v in to_highlight]
+
+        def highlight_min(s):
+            to_highlight = s == s.min()
+            return ["background-color: yellow" if v else "" for v in to_highlight]
+
+        def highlight_cols(s):
+            color = "lightgrey"
+            return f"background-color: {color}"
+
+        greater_is_worse_columns = self._get_greater_is_worse_columns()
+
+        if master_display_ is not None:
+            return (
+                master_display_.apply(
+                    highlight_max,
+                    subset=[
+                        x
+                        for x in master_display_.columns[1:]
+                        if x not in greater_is_worse_columns
+                    ],
+                )
+                .apply(
+                    highlight_min,
+                    subset=[
+                        x
+                        for x in master_display_.columns[1:]
+                        if x in greater_is_worse_columns
+                    ],
+                )
+                .applymap(highlight_cols, subset=["TT (Sec)"])
             )
-            mlflow.log_artifact("Transformation Pipeline.pkl")
-            os.remove("Transformation Pipeline.pkl")
+        else:
+            return pd.DataFrame().style
 
-            # Log pandas profile
-            if log_profile and self.report is not None:
-                self.report.to_file("Data Profile.html")
-                mlflow.log_artifact("Data Profile.html")
-                os.remove("Data Profile.html")
+    def _process_sort(self, sort: Any) -> Tuple[str, bool]:
+        """This function is extracted from different parts from the
+        compare_models function, and it is used for parallel compare_models
+        """
+        input_ml_usecase = self._ml_usecase
+        target_ml_usecase = MLUsecase.TIME_SERIES
 
-            # Log training and testing set
-            if log_data:
-                self.train.to_csv("Train.csv")
-                self.test.to_csv("Test.csv")
-                mlflow.log_artifact("Train.csv")
-                mlflow.log_artifact("Test.csv")
-                os.remove("Train.csv")
-                os.remove("Test.csv")
+        if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
+            sort = self._get_metric_by_name_or_id(sort)
+            if sort is None:
+                raise ValueError(
+                    "Sort method not supported. See docstring for list of available parameters."
+                )
+
+        if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
+            sort_ascending = not sort.greater_is_better
+            sort = id_or_display_name(sort, input_ml_usecase, target_ml_usecase)
+        else:
+            sort_ascending = True
+            sort = "TT (Sec)"
+
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            sort = sort.upper()
+
+        return sort, sort_ascending
 
     def compare_models(
         self,
@@ -305,7 +383,8 @@ class _SupervisedExperiment(_TabularExperiment):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
-        display: Optional[Display] = None,
+        parallel: Optional[ParallelBackend] = None,
+        caller_params: Optional[dict] = None,
     ) -> List[Any]:
 
         """
@@ -402,6 +481,25 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
+
+        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+            A ParallelBackend instance. For example if you have a SparkSession ``session``,
+            you can use ``FugueBackend(session)`` to make this function running using
+            Spark. For more details, see
+            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+
+
+        caller_params: dict, default = None
+            The parameters used to call this function in the subclass. There are inconsistencies
+            in this function's signature between this base class and the subclasses, so this is
+            used to prevent inconsistencies. It must be set when ``parallel`` is not None
+
+
+        extra_params: Any
+            Extra parameters used to call the same method in the derived class. These parameters
+            are mainly used when ``parallel`` is not None.
+
+
         Returns
         -------
         score_grid
@@ -427,6 +525,14 @@ class _SupervisedExperiment(_TabularExperiment):
         - If cross_validation parameter is set to False, no models will be logged with MLFlow.
 
         """
+        self._check_setup_ran()
+
+        if parallel is not None:
+            return self._parallel_compare_models(parallel, caller_params, turbo=turbo)
+
+        # No extra code should be added above this line
+        # --------------------------------------------------------------
+
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
         self.logger.info("Initializing compare_models()")
@@ -496,7 +602,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self.is_multiclass:
             if not sort.is_multiclass:
                 raise TypeError(
                     f"{sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -528,48 +634,42 @@ class _SupervisedExperiment(_TabularExperiment):
         elif exclude:
             len_mod -= len(exclude)
 
-        if not display:
-            progress_args = {"max": (4 * len_mod) + 4 + len_mod}
-            master_display_columns = (
-                ["Model"]
-                + [v.display_name for k, v in self._all_metrics.items()]
-                + ["TT (Sec)"]
-            )
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = Display(
+        progress_args = {"max": (4 * len_mod) + 4 + min(len_mod, abs(n_select))}
+        master_display_columns = (
+            ["Model"]
+            + [v.display_name for k, v in self._all_metrics.items()]
+            + ["TT (Sec)"]
+        )
+        master_display = pd.DataFrame(columns=master_display_columns)
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = (
+            DummyDisplay()
+            if self._remote
+            else CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
+        )
+        if display.can_update_text:
+            display.display(master_display, final_display=False)
 
         input_ml_usecase = self._ml_usecase
         target_ml_usecase = MLUsecase.TIME_SERIES
-
-        greater_is_worse_columns = {
-            id_or_display_name(v, input_ml_usecase, target_ml_usecase).upper()
-            for k, v in self._all_metrics.items()
-            if not v.greater_is_better
-        }
-        greater_is_worse_columns.add("TT (Sec)")
 
         np.random.seed(self.seed)
 
@@ -589,7 +689,6 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         display.update_monitor(1, "Loading Estimator")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -659,19 +758,15 @@ class _SupervisedExperiment(_TabularExperiment):
                 break
             total_runtime_start = runtime_start
 
-            display.move_progress()
-
             """
             MONITOR UPDATE STARTS
             """
 
             display.update_monitor(2, model_name)
-            display.display_monitor()
 
             """
             MONITOR UPDATE ENDS
             """
-            display.replace_master_display(None)
 
             self.logger.info(
                 "SubProcess create_model() called =================================="
@@ -691,11 +786,11 @@ class _SupervisedExperiment(_TabularExperiment):
             )
             results_columns_to_ignore = ["Object", "runtime", "cutoff"]
             if errors == "raise":
-                model, model_fit_time = self.create_model(**create_model_args)
+                model, model_fit_time = self._create_model(**create_model_args)
                 model_results = self.pull(pop=True)
             else:
                 try:
-                    model, model_fit_time = self.create_model(**create_model_args)
+                    model, model_fit_time = self._create_model(**create_model_args)
                     model_results = self.pull(pop=True)
                     assert (
                         np.sum(
@@ -711,7 +806,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     )
                     self.logger.warning(traceback.format_exc())
                     try:
-                        model, model_fit_time = self.create_model(**create_model_args)
+                        model, model_fit_time = self._create_model(**create_model_args)
                         model_results = self.pull(pop=True)
                         assert (
                             np.sum(
@@ -746,7 +841,13 @@ class _SupervisedExperiment(_TabularExperiment):
                 # cutoff only present in time series and when cv = True
                 if "cutoff" in model_results.columns:
                     model_results.drop("cutoff", axis=1, errors="ignore")
-                compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
+                compare_models_ = pd.DataFrame(
+                    model_results.loc[
+                        self._get_return_train_score_indices_for_logging(
+                            return_train_score=False
+                        )
+                    ]
+                ).T.reset_index(drop=True)
             else:
                 compare_models_ = pd.DataFrame(model_results.iloc[0]).T
             compare_models_.insert(
@@ -774,67 +875,38 @@ class _SupervisedExperiment(_TabularExperiment):
 
             master_display_ = master_display.drop(
                 results_columns_to_ignore, axis=1, errors="ignore"
-            ).style.set_precision(round)
+            ).style.format(precision=round)
             master_display_ = master_display_.set_properties(**{"text-align": "left"})
             master_display_ = master_display_.set_table_styles(
                 [dict(selector="th", props=[("text-align", "left")])]
             )
 
-            display.replace_master_display(master_display_)
-
-            display.display_master_display()
+            if display.can_update_text:
+                display.display(master_display_, final_display=False)
 
         display.move_progress()
 
-        def highlight_max(s):
-            to_highlight = s == s.max()
-            return ["background-color: yellow" if v else "" for v in to_highlight]
-
-        def highlight_min(s):
-            to_highlight = s == s.min()
-            return ["background-color: yellow" if v else "" for v in to_highlight]
-
-        def highlight_cols(s):
-            color = "lightgrey"
-            return f"background-color: {color}"
-
-        if master_display_ is not None:
-            compare_models_ = (
-                master_display_.apply(
-                    highlight_max,
-                    subset=[
-                        x
-                        for x in master_display_.columns[1:]
-                        if x not in greater_is_worse_columns
-                    ],
-                )
-                .apply(
-                    highlight_min,
-                    subset=[
-                        x
-                        for x in master_display_.columns[1:]
-                        if x in greater_is_worse_columns
-                    ],
-                )
-                .applymap(highlight_cols, subset=["TT (Sec)"])
-            )
-        else:
-            compare_models_ = pd.DataFrame().style
+        compare_models_ = self._highlight_models(master_display_)
 
         display.update_monitor(1, "Compiling Final Models")
-        display.display_monitor()
 
         display.move_progress()
 
         sorted_models = []
 
         if master_display is not None:
+            clamped_n_select = min(len(master_display), abs(n_select))
             if n_select < 0:
                 n_select_range = range(
-                    len(master_display) - n_select, len(master_display)
+                    len(master_display) - clamped_n_select, len(master_display)
                 )
             else:
-                n_select_range = range(0, n_select)
+                n_select_range = range(0, clamped_n_select)
+
+            if self.logging_param:
+                self.logging_param.log_model_comparison(
+                    master_display, "compare_models"
+                )
 
             for index, row in enumerate(master_display.iterrows()):
                 _, row = row
@@ -850,7 +922,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 if index in n_select_range:
                     display.update_monitor(2, self._get_model_name(model))
-                    display.display_monitor()
                     create_model_args = dict(
                         estimator=model,
                         system=False,
@@ -864,11 +935,11 @@ class _SupervisedExperiment(_TabularExperiment):
                         probability_threshold=probability_threshold,
                     )
                     if errors == "raise":
-                        model, model_fit_time = self.create_model(**create_model_args)
+                        model, model_fit_time = self._create_model(**create_model_args)
                         sorted_models.append(model)
                     else:
                         try:
-                            model, model_fit_time = self.create_model(
+                            model, model_fit_time = self._create_model(
                                 **create_model_args
                             )
                             sorted_models.append(model)
@@ -888,44 +959,42 @@ class _SupervisedExperiment(_TabularExperiment):
                             )
                             self.logger.error(traceback.format_exc())
                             model = None
+                            display.move_progress()
                             continue
+                    display.move_progress()
                     full_logging = True
 
                 if self.logging_param and cross_validation and model is not None:
 
-                    try:
-                        self._mlflow_log_model(
-                            model=model,
-                            model_results=results,
-                            score_dict=avgs_dict_log,
-                            source="compare_models",
-                            runtime=row["runtime"],
-                            model_fit_time=row["TT (Sec)"],
-                            pipeline=self.pipeline,
-                            log_plots=self.log_plots_param if full_logging else False,
-                            log_holdout=full_logging,
-                            URI=URI,
-                            display=display,
-                            experiment_custom_tags=experiment_custom_tags,
-                        )
-                    except Exception:
-                        self.logger.error(
-                            f"_mlflow_log_model() for {model} raised an exception:"
-                        )
-                        self.logger.error(traceback.format_exc())
+                    self._log_model(
+                        model=model,
+                        model_results=results,
+                        score_dict=avgs_dict_log,
+                        source="compare_models",
+                        runtime=row["runtime"],
+                        model_fit_time=row["TT (Sec)"],
+                        pipeline=self.pipeline,
+                        log_plots=self.log_plots_param if full_logging else [],
+                        log_holdout=full_logging,
+                        URI=URI,
+                        display=display,
+                        experiment_custom_tags=experiment_custom_tags,
+                    )
 
         if len(sorted_models) == 1:
             sorted_models = sorted_models[0]
 
-        display.display(compare_models_, clear=True)
+        display.display(compare_models_, final_display=True)
 
         pd.reset_option("display.max_columns")
 
         # store in display container
-        self.display_container.append(compare_models_.data)
+        self._display_container.append(compare_models_.data)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(sorted_models))
         self.logger.info(
@@ -935,7 +1004,17 @@ class _SupervisedExperiment(_TabularExperiment):
         return sorted_models
 
     def _create_model_without_cv(
-        self, model, data_X, data_y, fit_kwargs, predict, system, display
+        self,
+        model,
+        data_X,
+        data_y,
+        fit_kwargs,
+        round,
+        predict,
+        system,
+        display: CommonDisplay,
+        model_only: bool = True,
+        return_train_score: bool = False,
     ):
         with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
@@ -943,7 +1022,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
             self.logger.info("Fitting Model")
             model_fit_start = time.time()
-            with io.capture_output():
+            with redirect_output(self.logger):
                 pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
             model_fit_end = time.time()
 
@@ -952,18 +1031,37 @@ class _SupervisedExperiment(_TabularExperiment):
             display.move_progress()
 
             if predict:
+                if return_train_score:
+                    # call class explicitly to get access to preprocess arg
+                    # in subclasses
+                    _SupervisedExperiment.predict_model(
+                        self,
+                        pipeline_with_model,
+                        data=pd.concat([data_X, data_y], axis=1),
+                        verbose=False,
+                    )
+                    train_results = self.pull(pop=True).drop("Model", axis=1)
+                    train_results.index = ["Train"]
+                else:
+                    train_results = None
+
                 self.predict_model(pipeline_with_model, verbose=False)
                 model_results = self.pull(pop=True).drop("Model", axis=1)
+                model_results.index = ["Test"]
+                if train_results is not None:
+                    model_results = pd.concat([model_results, train_results])
 
-                self.display_container.append(model_results)
+                self._display_container.append(model_results)
 
-                display.display(
-                    model_results,
-                    clear=system,
-                    override=False if not system else None,
-                )
+                model_results = model_results.style.format(precision=round)
 
-                self.logger.info(f"display_container: {len(self.display_container)}")
+                if system:
+                    display.display(model_results)
+
+                self.logger.info(f"_display_container: {len(self._display_container)}")
+
+            if not model_only:
+                return pipeline_with_model, model_fit_time
 
         return model, model_fit_time
 
@@ -980,6 +1078,7 @@ class _SupervisedExperiment(_TabularExperiment):
         refit,
         system,
         display,
+        return_train_score: bool = False,
     ):
         """
         MONITOR UPDATE STARTS
@@ -988,7 +1087,6 @@ class _SupervisedExperiment(_TabularExperiment):
             1,
             f"Fitting {self._get_cv_n_folds(cv, data_X, y=data_y, groups=groups)} Folds",
         )
-        display.display_monitor()
         """
         MONITOR UPDATE ENDS
         """
@@ -999,7 +1097,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Starting cross validation")
 
-        n_jobs = self._gpu_n_jobs_param
+        n_jobs = self.gpu_n_jobs_param
         from sklearn.gaussian_process import (
             GaussianProcessClassifier,
             GaussianProcessRegressor,
@@ -1014,56 +1112,123 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
             model_fit_start = time.time()
-            scores = cross_validate(
-                pipeline_with_model,
-                data_X,
-                data_y,
-                cv=cv,
-                groups=groups,
-                scoring=metrics_dict,
-                fit_params=fit_kwargs,
-                n_jobs=n_jobs,
-                return_train_score=False,
-                error_score=0,
-            )
+            with redirect_output(self.logger):
+                scores = cross_validate(
+                    pipeline_with_model,
+                    data_X,
+                    data_y,
+                    cv=cv,
+                    groups=groups,
+                    scoring=metrics_dict,
+                    fit_params=fit_kwargs,
+                    n_jobs=n_jobs,
+                    return_train_score=return_train_score,
+                    error_score=0,
+                )
             model_fit_end = time.time()
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-            score_dict = {
-                v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
-                for k, v in metrics.items()
-            }
+            score_dict = {}
+            for k, v in metrics.items():
+                score_dict[v.display_name] = []
+                if return_train_score:
+                    train_score = scores[f"train_{k}"] * (
+                        1 if v.greater_is_better else -1
+                    )
+                    train_score = train_score.tolist()
+                    score_dict[v.display_name] = train_score
+                test_score = scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
+                test_score = test_score.tolist()
+                score_dict[v.display_name] += test_score
 
             self.logger.info("Calculating mean and std")
 
-            avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
+            avgs_dict = {}
+            for k, v in metrics.items():
+                avgs_dict[v.display_name] = []
+                if return_train_score:
+                    train_score = scores[f"train_{k}"] * (
+                        1 if v.greater_is_better else -1
+                    )
+                    train_score = train_score.tolist()
+                    avgs_dict[v.display_name] = [
+                        np.mean(train_score),
+                        np.std(train_score),
+                    ]
+                test_score = scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
+                test_score = test_score.tolist()
+                avgs_dict[v.display_name] += [np.mean(test_score), np.std(test_score)]
 
             display.move_progress()
 
             self.logger.info("Creating metrics dataframe")
 
-            model_results = pd.DataFrame(score_dict)
-            model_avgs = pd.DataFrame(
-                avgs_dict,
-                index=["Mean", "SD"],
+            if hasattr(cv, "n_splits"):
+                fold = cv.n_splits
+            elif hasattr(cv, "get_n_splits"):
+                fold = cv.get_n_splits()
+            else:
+                raise ValueError(
+                    "The cross validation class should implement a n_splits "
+                    f"attribute or a get_n_splits method. {cv.__class__.__name__} "
+                    "has neither."
+                )
+
+            if return_train_score:
+                model_results = pd.DataFrame(
+                    {
+                        "Split": ["CV-Train"] * fold
+                        + ["CV-Val"] * fold
+                        + ["CV-Train"] * 2
+                        + ["CV-Val"] * 2,
+                        "Fold": np.arange(fold).tolist()
+                        + np.arange(fold).tolist()
+                        + ["Mean", "Std"] * 2,
+                    }
+                )
+            else:
+                model_results = pd.DataFrame(
+                    {
+                        "Fold": np.arange(fold).tolist() + ["Mean", "Std"],
+                    }
+                )
+
+            model_scores = pd.concat(
+                [pd.DataFrame(score_dict), pd.DataFrame(avgs_dict)]
+            ).reset_index(drop=True)
+
+            model_results = pd.concat([model_results, model_scores], axis=1)
+            model_results.set_index(
+                self._get_return_train_score_columns_for_display(return_train_score),
+                inplace=True,
             )
-
-            model_results = model_results.append(model_avgs)
-            model_results = model_results.round(round)
-
-            # yellow the mean
-            model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-            model_results = model_results.set_precision(round)
 
             if refit:
                 # refitting the model on complete X_train, y_train
                 display.update_monitor(1, "Finalizing Model")
-                display.display_monitor()
                 model_fit_start = time.time()
                 self.logger.info("Finalizing model")
-                with io.capture_output():
+                with redirect_output(self.logger):
                     pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
-                model_fit_end = time.time()
+                    model_fit_end = time.time()
+
+                # calculating metrics on predictions of complete train dataset
+                if return_train_score:
+                    # call class explicitly to get access to preprocess arg
+                    # in subclasses
+                    _SupervisedExperiment.predict_model(
+                        self,
+                        pipeline_with_model,
+                        data=pd.concat([data_X, data_y], axis=1),
+                        verbose=False,
+                    )
+                    metrics = self.pull(pop=True).drop("Model", axis=1)
+                    df_score = pd.DataFrame({"Split": ["Train"], "Fold": [None]})
+                    df_score = pd.concat([df_score, metrics], axis=1)
+                    df_score.set_index(["Split", "Fold"], inplace=True)
+
+                    # concatenating train results to cross-validation socre dataframe
+                    model_results = pd.concat([model_results, df_score])
 
                 model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
             else:
@@ -1071,9 +1236,39 @@ class _SupervisedExperiment(_TabularExperiment):
                     cv, data_X, y=data_y, groups=groups
                 )
 
+        model_results = model_results.round(round)
+
         return model, model_fit_time, model_results, avgs_dict
 
-    def create_model(
+    def _get_return_train_score_columns_for_display(
+        self, return_train_score: bool
+    ) -> List[str]:
+        if return_train_score:
+            columns = ["Split", "Fold"]
+        else:
+            columns = ["Fold"]
+        return columns
+
+    def _get_return_train_score_indices_for_logging(self, return_train_score: bool):
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        return indices
+
+    def _highlight_and_round_model_results(
+        self, model_results: pd.DataFrame, return_train_score: bool, round: int
+    ) -> pandas.io.formats.style.Styler:
+        # yellow the mean
+        if return_train_score:
+            indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+        else:
+            indices = ["Mean"]
+        model_results = color_df(model_results, "yellow", indices, axis=1)
+        model_results = model_results.format(precision=round)
+        return model_results
+
+    def _create_model(
         self,
         estimator,
         fold: Optional[Union[int, Any]] = None,
@@ -1091,13 +1286,337 @@ class _SupervisedExperiment(_TabularExperiment):
         X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
         y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
         metrics=None,
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
+        model_only: bool = True,
+        return_train_score: bool = False,
         **kwargs,
     ) -> Any:
 
         """
-        This is an internal version of the create_model function.
+        Internal version of ``create_model`` with private arguments.
+        """
+        self._check_setup_ran()
 
+        function_params_str = ", ".join(
+            [
+                f"{k}={v}"
+                for k, v in locals().items()
+                if k not in ("X_train_data", "y_train_data")
+            ]
+        )
+
+        self.logger.info("Initializing create_model()")
+        self.logger.info(f"create_model({function_params_str})")
+
+        self.logger.info("Checking exceptions")
+
+        # run_time
+        runtime_start = time.time()
+
+        available_estimators = set(self._all_models_internal.keys())
+
+        if not fit_kwargs:
+            fit_kwargs = {}
+
+        # only raise exception of estimator is of type string.
+        if isinstance(estimator, str):
+            if estimator not in available_estimators:
+                raise ValueError(
+                    f"Estimator {estimator} not available. Please see docstring for list of available estimators."
+                )
+        elif not hasattr(estimator, "fit"):
+            raise ValueError(
+                f"Estimator {estimator} does not have the required fit() method."
+            )
+
+        # checking fold parameter
+        if fold is not None and not (
+            type(fold) is int or is_sklearn_cv_generator(fold)
+        ):
+            raise TypeError(
+                "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
+            )
+
+        # checking round parameter
+        if type(round) is not int:
+            raise TypeError("Round parameter only accepts integer value.")
+
+        # checking verbose parameter
+        if type(verbose) is not bool:
+            raise TypeError(
+                "Verbose parameter can only take argument as True or False."
+            )
+
+        # checking system parameter
+        if type(system) is not bool:
+            raise TypeError("System parameter can only take argument as True or False.")
+
+        # checking cross_validation parameter
+        if type(cross_validation) is not bool:
+            raise TypeError(
+                "cross_validation parameter can only take argument as True or False."
+            )
+
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
+
+        """
+
+        ERROR HANDLING ENDS HERE
+
+        """
+
+        if not display:
+            progress_args = {"max": 4}
+            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+            monitor_rows = [
+                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+                [
+                    "Status",
+                    ". . . . . . . . . . . . . . . . . .",
+                    "Loading Dependencies",
+                ],
+                [
+                    "Estimator",
+                    ". . . . . . . . . . . . . . . . . .",
+                    "Compiling Library",
+                ],
+            ]
+            display = CommonDisplay(
+                verbose=verbose,
+                html_param=self.html_param,
+                progress_args=progress_args,
+                monitor_rows=monitor_rows,
+            )
+
+        self.logger.info("Importing libraries")
+
+        # general dependencies
+
+        np.random.seed(self.seed)
+
+        self.logger.info("Copying training dataset")
+
+        # Storing X_train and y_train in data_X and data_y parameter
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            data_X = self.X_train if X_train_data is None else X_train_data.copy()
+            data_y = self.y_train if y_train_data is None else y_train_data.copy()
+        else:
+            if X_train_data is not None:
+                data_X = X_train_data.copy()
+            else:
+                if self.X_train is None:
+                    data_X = None
+                else:
+                    data_X = self.X_train
+            data_y = self.y_train if y_train_data is None else y_train_data.copy()
+
+        groups = self._get_groups(groups, data=data_X)
+
+        if metrics is None:
+            metrics = self._all_metrics
+
+        display.move_progress()
+
+        self.logger.info("Defining folds")
+
+        # cross validation setup starts here
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            cv = self.get_fold_generator(fold=fold)
+
+            # Add forecast horizon
+            fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
+                fit_kwargs=fit_kwargs, cv=cv
+            )
+
+        else:
+            cv = self._get_cv_splitter(fold)
+
+        self.logger.info("Declaring metric variables")
+
+        """
+        MONITOR UPDATE STARTS
+        """
+        display.update_monitor(1, "Selecting Estimator")
+        """
+        MONITOR UPDATE ENDS
+        """
+
+        self.logger.info("Importing untrained model")
+
+        if isinstance(estimator, str) and estimator in available_estimators:
+            model_definition = self._all_models_internal[estimator]
+            model_args = model_definition.args
+            model_args = {**model_args, **kwargs}
+            model = model_definition.class_def(**model_args)
+            full_name = model_definition.name
+        else:
+            self.logger.info("Declaring custom model")
+
+            model = clone(estimator)
+            model.set_params(**kwargs)
+
+            full_name = self._get_model_name(model)
+
+        # workaround for an issue with set_params in cuML
+        model = clone(model)
+
+        display.update_monitor(2, full_name)
+
+        if (
+            probability_threshold
+            and self._ml_usecase == MLUsecase.CLASSIFICATION
+            and not self.is_multiclass
+        ):
+            if not isinstance(model, CustomProbabilityThresholdClassifier):
+                model = CustomProbabilityThresholdClassifier(
+                    classifier=model,
+                    probability_threshold=probability_threshold,
+                )
+            elif probability_threshold is not None:
+                model.set_params(probability_threshold=probability_threshold)
+        self.logger.info(f"{full_name} Imported successfully")
+
+        display.move_progress()
+
+        """
+        MONITOR UPDATE STARTS
+        """
+        if not cross_validation:
+            display.update_monitor(1, f"Fitting {str(full_name)}")
+        else:
+            display.update_monitor(1, "Initializing CV")
+
+        """
+        MONITOR UPDATE ENDS
+        """
+
+        if not cross_validation:
+            model, model_fit_time = self._create_model_without_cv(
+                model,
+                data_X,
+                data_y,
+                fit_kwargs,
+                round,
+                predict,
+                system,
+                display,
+                model_only=model_only,
+                return_train_score=return_train_score,
+            )
+
+            display.move_progress()
+
+            self.logger.info(str(model))
+            self.logger.info(
+                "create_model() successfully completed......................................"
+            )
+
+            gc.collect()
+
+            if not system:
+                return model, model_fit_time
+            return model
+
+        model, model_fit_time, model_results, _ = self._create_model_with_cv(
+            model,
+            data_X,
+            data_y,
+            fit_kwargs,
+            round,
+            cv,
+            groups,
+            metrics,
+            refit,
+            system,
+            display,
+            return_train_score=return_train_score,
+        )
+
+        # end runtime
+        runtime_end = time.time()
+        runtime = np.array(runtime_end - runtime_start).round(2)
+
+        # dashboard logging
+        if self.logging_param and system and refit:
+            indices = self._get_return_train_score_indices_for_logging(
+                return_train_score
+            )
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+
+            self._log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="create_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                experiment_custom_tags=experiment_custom_tags,
+                display=display,
+            )
+
+        display.move_progress()
+
+        self.logger.info("Uploading results into container")
+
+        if not self._ml_usecase == MLUsecase.TIME_SERIES:
+            model_results.drop("cutoff", axis=1, inplace=True, errors="ignore")
+
+        self._display_container.append(model_results)
+
+        # storing results in _master_model_container
+        if add_to_model_list:
+            self.logger.info("Uploading model into container now")
+            self._master_model_container.append(
+                {"model": model, "scores": model_results, "cv": cv}
+            )
+
+        # yellow the mean
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
+        if system:
+            display.display(model_results)
+
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
+
+        self.logger.info(str(model))
+        self.logger.info(
+            "create_model() successfully completed......................................"
+        )
+        gc.collect()
+
+        if not system:
+            return model, model_fit_time
+
+        return model
+
+    def create_model(
+        self,
+        estimator,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        cross_validation: bool = True,
+        predict: bool = True,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        refit: bool = True,
+        probability_threshold: Optional[float] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        verbose: bool = True,
+        return_train_score: bool = False,
+        **kwargs,
+    ) -> Any:
+
+        """
         This function creates a model and scores it using Cross Validation.
         The output prints a score grid that shows Accuracy, AUC, Recall, Precision,
         F1, Kappa and MCC by fold (default = 10 Fold).
@@ -1177,7 +1696,7 @@ class _SupervisedExperiment(_TabularExperiment):
             If False, method will return a tuple of model and the model fit time.
 
         add_to_model_list: bool, default = True
-            Whether to save model and results in master_model_container.
+            Whether to save model and results in _master_model_container.
 
         X_train_data: pandas.DataFrame, default = None
             If not None, will use this dataframe as training features.
@@ -1186,6 +1705,12 @@ class _SupervisedExperiment(_TabularExperiment):
         y_train_data: pandas.DataFrame, default = None
             If not None, will use this dataframe as training target.
             Intended to be only changed by internal functions.
+
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
 
         **kwargs:
             Additional keyword arguments to pass to the estimator.
@@ -1216,325 +1741,34 @@ class _SupervisedExperiment(_TabularExperiment):
         - If cross_validation parameter is set to False, model will not be logged with MLFlow.
 
         """
-        function_params_str = ", ".join(
-            [
-                f"{k}={v}"
-                for k, v in locals().items()
-                if k not in ("X_train_data", "y_train_data")
-            ]
+
+        # TODO improve error message
+        assert not any(
+            x
+            in (
+                "system",
+                "add_to_model_list",
+                "X_train_data",
+                "y_train_data",
+                "metrics",
+            )
+            for x in kwargs
         )
-
-        self.logger.info("Initializing create_model()")
-        self.logger.info(f"create_model({function_params_str})")
-
-        self.logger.info("Checking exceptions")
-
-        # run_time
-        runtime_start = time.time()
-
-        available_estimators = set(self._all_models_internal.keys())
-
-        if not fit_kwargs:
-            fit_kwargs = {}
-
-        # only raise exception of estimator is of type string.
-        if isinstance(estimator, str):
-            if estimator not in available_estimators:
-                raise ValueError(
-                    f"Estimator {estimator} not available. Please see docstring for list of available estimators."
-                )
-        elif not hasattr(estimator, "fit"):
-            raise ValueError(
-                f"Estimator {estimator} does not have the required fit() method."
-            )
-
-        # checking fold parameter
-        if fold is not None and not (
-            type(fold) is int or is_sklearn_cv_generator(fold)
-        ):
-            raise TypeError(
-                "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
-            )
-
-        # checking round parameter
-        if type(round) is not int:
-            raise TypeError("Round parameter only accepts integer value.")
-
-        # checking verbose parameter
-        if type(verbose) is not bool:
-            raise TypeError(
-                "Verbose parameter can only take argument as True or False."
-            )
-
-        # checking system parameter
-        if type(system) is not bool:
-            raise TypeError("System parameter can only take argument as True or False.")
-
-        # checking cross_validation parameter
-        if type(cross_validation) is not bool:
-            raise TypeError(
-                "cross_validation parameter can only take argument as True or False."
-            )
-
-        """
-
-        ERROR HANDLING ENDS HERE
-
-        """
-
-        groups = self._get_groups(groups, data=X_train_data)
-
-        if not display:
-            progress_args = {"max": 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = Display(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                master_display_columns=master_display_columns,
-                monitor_rows=monitor_rows,
-            )
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
-
-        self.logger.info("Importing libraries")
-
-        # general dependencies
-
-        np.random.seed(self.seed)
-
-        self.logger.info("Copying training dataset")
-
-        # Storing X_train and y_train in data_X and data_y parameter
-        if not self._ml_usecase == MLUsecase.TIME_SERIES:
-            data_X = (
-                self.X_train.copy() if X_train_data is None else X_train_data.copy()
-            )
-            data_y = (
-                self.y_train_transformed.copy()
-                if y_train_data is None
-                else y_train_data.copy()
-            )
-
-            # reset index
-            data_X.reset_index(drop=True, inplace=True)
-            data_y.reset_index(drop=True, inplace=True)
-        else:
-            if X_train_data is not None:
-                data_X = X_train_data.copy()
-            else:
-                if self.X_train is None:
-                    data_X = None
-                else:
-                    data_X = self.X_train.copy()
-            data_y = (
-                self.y_train.copy() if y_train_data is None else y_train_data.copy()
-            )
-
-        if metrics is None:
-            metrics = self._all_metrics
-
-        display.move_progress()
-
-        self.logger.info("Defining folds")
-
-        # cross validation setup starts here
-        if self._ml_usecase == MLUsecase.TIME_SERIES:
-            cv = self.get_fold_generator(fold=fold)
-        else:
-            cv = self._get_cv_splitter(fold)
-
-        if self._ml_usecase == MLUsecase.TIME_SERIES:
-            # Add forecast horizon if use case is Time Series
-            fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
-                fit_kwargs=fit_kwargs, cv=cv
-            )
-
-        self.logger.info("Declaring metric variables")
-
-        """
-        MONITOR UPDATE STARTS
-        """
-        display.update_monitor(1, "Selecting Estimator")
-        display.display_monitor()
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        self.logger.info("Importing untrained model")
-
-        if isinstance(estimator, str) and estimator in available_estimators:
-            model_definition = self._all_models_internal[estimator]
-            model_args = model_definition.args
-            model_args = {**model_args, **kwargs}
-            model = model_definition.class_def(**model_args)
-            full_name = model_definition.name
-        else:
-            self.logger.info("Declaring custom model")
-
-            model = clone(estimator)
-            model.set_params(**kwargs)
-
-            full_name = self._get_model_name(model)
-
-        # workaround for an issue with set_params in cuML
-        model = clone(model)
-
-        display.update_monitor(2, full_name)
-        display.display_monitor()
-
-        if self.transform_target_param and not isinstance(
-            model, TransformedTargetRegressor
-        ):
-            model = PowerTransformedTargetRegressor(
-                regressor=model,
-                power_transformer_method=self.transform_target_method_param,
-            )
-        if (
-            probability_threshold
-            and self._ml_usecase == MLUsecase.CLASSIFICATION
-            and not self._is_multiclass()
-        ):
-            if not isinstance(model, CustomProbabilityThresholdClassifier):
-                model = CustomProbabilityThresholdClassifier(
-                    classifier=model,
-                    probability_threshold=probability_threshold,
-                )
-            elif probability_threshold is not None:
-                model.set_params(probability_threshold=probability_threshold)
-        self.logger.info(f"{full_name} Imported successfully")
-
-        display.move_progress()
-
-        """
-        MONITOR UPDATE STARTS
-        """
-        if not cross_validation:
-            display.update_monitor(1, f"Fitting {str(full_name)}")
-        else:
-            display.update_monitor(1, "Initializing CV")
-
-        display.display_monitor()
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        if not cross_validation:
-            model, model_fit_time = self._create_model_without_cv(
-                model, data_X, data_y, fit_kwargs, predict, system, display
-            )
-
-            display.move_progress()
-
-            self.logger.info(str(model))
-            self.logger.info(
-                "create_models() successfully completed......................................"
-            )
-
-            gc.collect()
-
-            if not system:
-                return model, model_fit_time
-            return model
-
-        model, model_fit_time, model_results, avgs_dict = self._create_model_with_cv(
-            model,
-            data_X,
-            data_y,
-            fit_kwargs,
-            round,
-            cv,
-            groups,
-            metrics,
-            refit,
-            system,
-            display,
+        return self._create_model(
+            estimator=estimator,
+            fold=fold,
+            round=round,
+            cross_validation=cross_validation,
+            predict=predict,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            refit=refit,
+            probability_threshold=probability_threshold,
+            experiment_custom_tags=experiment_custom_tags,
+            verbose=verbose,
+            return_train_score=return_train_score,
+            **kwargs,
         )
-
-        # end runtime
-        runtime_end = time.time()
-        runtime = np.array(runtime_end - runtime_start).round(2)
-
-        # mlflow logging
-        if self.logging_param and system and refit:
-
-            avgs_dict_log = avgs_dict.copy()
-            avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
-
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="create_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    experiment_custom_tags=experiment_custom_tags,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
-
-        display.move_progress()
-
-        self.logger.info("Uploading results into container")
-
-        if (
-            getattr(display, "master_display", None) is not None
-            and "cutoff" not in display.master_display.columns
-        ):
-            model_results.data.drop("cutoff", axis=1, inplace=True, errors="ignore")
-
-        self.display_container.append(model_results.data)
-
-        # storing results in master_model_container
-        if add_to_model_list:
-            self.logger.info("Uploading model into container now")
-            self.master_model_container.append(
-                {"model": model, "scores": model_results.data, "cv": cv}
-            )
-
-        display.display(
-            model_results, clear=system, override=False if not system else None
-        )
-
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
-
-        self.logger.info(str(model))
-        self.logger.info(
-            "create_model() successfully completed......................................"
-        )
-        gc.collect()
-
-        if not system:
-            return model, model_fit_time
-
-        return model
 
     def tune_model(
         self,
@@ -1555,7 +1789,7 @@ class _SupervisedExperiment(_TabularExperiment):
         return_tuner: bool = False,
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
-        display: Optional[Display] = None,
+        return_train_score: bool = False,
         **kwargs,
     ) -> Any:
 
@@ -1689,6 +1923,12 @@ class _SupervisedExperiment(_TabularExperiment):
             If True or above 0, will print messages from the tuner. Higher values
             print more messages. Ignored if verbose parameter is False.
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
         **kwargs:
             Additional keyword arguments to pass to the optimizer.
 
@@ -1722,6 +1962,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
 
         """
+        self._check_setup_ran()
+
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
         self.logger.info("Initializing tune_model()")
@@ -1779,6 +2021,12 @@ class _SupervisedExperiment(_TabularExperiment):
                 "early_stopping_max_iters parameter only accepts integer value."
             )
 
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
+
         # checking search_library parameter
         possible_search_libraries = [
             "scikit-learn",
@@ -1793,12 +2041,13 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         if search_library == "scikit-optimize":
-            try:
-                import skopt
-            except ImportError:
-                raise ImportError(
-                    "'scikit-optimize' requires scikit-optimize package to be installed. Do: pip install scikit-optimize"
-                )
+            _check_soft_dependencies(
+                "skopt",
+                extra="tuners",
+                severity="error",
+                install_name="scikit-optimize",
+            )
+            import skopt
 
             if not search_algorithm:
                 search_algorithm = "bayesian"
@@ -1810,12 +2059,12 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
         elif search_library == "tune-sklearn":
-            try:
-                import tune_sklearn
-            except ImportError:
-                raise ImportError(
-                    "'tune-sklearn' requires tune_sklearn package to be installed. Do: pip install tune-sklearn ray[tune]"
-                )
+            _check_soft_dependencies(
+                "tune_sklearn",
+                extra="tuners",
+                severity="error",
+                install_name="tune-sklearn ray[tune]",
+            )
 
             if not search_algorithm:
                 search_algorithm = "random"
@@ -1834,45 +2083,34 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
             if search_algorithm == "bohb":
-                try:
-                    from ray.tune.suggest.bohb import TuneBOHB
-                    from ray.tune.schedulers import HyperBandForBOHB
-                    import ConfigSpace as CS
-                    import hpbandster
-                except ImportError:
-                    raise ImportError(
-                        "It appears that either HpBandSter or ConfigSpace is not installed. Do: pip install hpbandster ConfigSpace"
-                    )
+                _check_soft_dependencies("ConfigSpace", extra=None, severity="error")
+                _check_soft_dependencies("hpbandster", extra=None, severity="error")
+                _check_soft_dependencies(
+                    "ray", extra="tuners", severity="error", install_name="ray[tune]"
+                )
+
             elif search_algorithm == "hyperopt":
-                try:
-                    from ray.tune.suggest.hyperopt import HyperOptSearch
-                    from hyperopt import hp
-                except ImportError:
-                    raise ImportError(
-                        "It appears that hyperopt is not installed. Do: pip install hyperopt"
-                    )
+                _check_soft_dependencies("hyperopt", extra="tuners", severity="error")
+                _check_soft_dependencies(
+                    "ray", extra="tuners", severity="error", install_name="ray[tune]"
+                )
+
             elif search_algorithm == "bayesian":
-                try:
-                    import skopt
-                except ImportError:
-                    raise ImportError(
-                        "It appears that scikit-optimize is not installed. Do: pip install scikit-optimize"
-                    )
+                _check_soft_dependencies(
+                    "skopt",
+                    extra="tuners",
+                    severity="error",
+                    install_name="scikit-optimize",
+                )
+                import skopt
+
             elif search_algorithm == "optuna":
-                try:
-                    import optuna
-                except ImportError:
-                    raise ImportError(
-                        "'optuna' requires optuna package to be installed. Do: pip install optuna"
-                    )
+                _check_soft_dependencies("optuna", extra="tuners", severity="error")
+                import optuna
 
         elif search_library == "optuna":
-            try:
-                import optuna
-            except ImportError:
-                raise ImportError(
-                    "'optuna' requires optuna package to be installed. Do: pip install optuna"
-                )
+            _check_soft_dependencies("optuna", extra="tuners", severity="error")
+            import optuna
 
             if not search_algorithm:
                 search_algorithm = "tpe"
@@ -1909,7 +2147,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
             # checking optimize parameter for multiclass
-            if self._is_multiclass():
+            if self.is_multiclass:
                 if not optimize.is_multiclass:
                     raise TypeError(
                         "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -1952,42 +2190,27 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-        if not display:
-            progress_args = {"max": 3 + 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = Display(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                master_display_columns=master_display_columns,
-                monitor_rows=monitor_rows,
-            )
-
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
-
-        # ignore warnings
-
-        warnings.filterwarnings("ignore")
+        progress_args = {"max": 3 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         import logging
 
@@ -1995,12 +2218,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Copying training dataset")
         # Storing X_train and y_train in data_X and data_y parameter
-        data_X = self.X_train.copy()
-        data_y = self.y_train_transformed.copy()
-
-        # reset index
-        data_X.reset_index(drop=True, inplace=True)
-        data_y.reset_index(drop=True, inplace=True)
+        data_X = self.X_train
+        data_y = self.y_train
 
         display.move_progress()
 
@@ -2043,7 +2262,6 @@ class _SupervisedExperiment(_TabularExperiment):
         base_estimator = model
 
         display.update_monitor(2, estimator_name)
-        display.display_monitor()
 
         display.move_progress()
 
@@ -2054,7 +2272,6 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         display.update_monitor(1, "Searching Hyperparameters")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -2161,7 +2378,7 @@ class _SupervisedExperiment(_TabularExperiment):
             if estimator_definition is not None:
                 search_kwargs = {**estimator_definition.tune_args, **kwargs}
                 n_jobs = (
-                    self._gpu_n_jobs_param
+                    self.gpu_n_jobs_param
                     if estimator_definition.is_gpu_enabled
                     else self.n_jobs_param
                 )
@@ -2215,7 +2432,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 try:
                     param_grid = get_optuna_distributions(param_grid)
-                except:
+                except Exception:
                     self.logger.warning(
                         "Couldn't convert param_grid to specific library distributions. Exception:"
                     )
@@ -2288,7 +2505,7 @@ class _SupervisedExperiment(_TabularExperiment):
                                 "parameter grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
                             )
 
-                from tune_sklearn import TuneSearchCV, TuneGridSearchCV
+                from tune_sklearn import TuneGridSearchCV, TuneSearchCV
 
                 with true_warm_start(
                     pipeline_with_model
@@ -2314,7 +2531,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         if search_algorithm == "hyperopt":
                             try:
                                 param_grid = get_hyperopt_distributions(param_grid)
-                            except:
+                            except Exception:
                                 self.logger.warning(
                                     "Couldn't convert param_grid to specific library distributions. Exception:"
                                 )
@@ -2322,7 +2539,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         elif search_algorithm == "bayesian":
                             try:
                                 param_grid = get_skopt_distributions(param_grid)
-                            except:
+                            except Exception:
                                 self.logger.warning(
                                     "Couldn't convert param_grid to specific library distributions. Exception:"
                                 )
@@ -2330,7 +2547,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         elif search_algorithm == "bohb":
                             try:
                                 param_grid = get_CS_distributions(param_grid)
-                            except:
+                            except Exception:
                                 self.logger.warning(
                                     "Couldn't convert param_grid to specific library distributions. Exception:"
                                 )
@@ -2338,7 +2555,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         elif search_algorithm != "random":
                             try:
                                 param_grid = get_tune_distributions(param_grid)
-                            except:
+                            except Exception:
                                 self.logger.warning(
                                     "Couldn't convert param_grid to specific library distributions. Exception:"
                                 )
@@ -2348,7 +2565,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         )
                         if (
                             search_algorithm == "optuna"
-                            and not "sampler" in search_kwargs
+                            and "sampler" not in search_kwargs
                         ):
                             import optuna
 
@@ -2368,15 +2585,13 @@ class _SupervisedExperiment(_TabularExperiment):
                             refit=True,
                             verbose=tuner_verbose,
                             pipeline_auto_early_stop=True,
-                            **search_kwargs,
+                            search_kwargs=search_kwargs,
                         )
 
             elif search_library == "scikit-optimize":
-                import skopt
-
                 try:
                     param_grid = get_skopt_distributions(param_grid)
-                except:
+                except Exception:
                     self.logger.warning(
                         "Couldn't convert param_grid to specific library distributions. Exception:"
                     )
@@ -2401,7 +2616,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 try:
                     param_grid = get_base_distributions(param_grid)
-                except:
+                except Exception:
                     self.logger.warning(
                         "Couldn't convert param_grid to specific library distributions. Exception:"
                     )
@@ -2434,7 +2649,6 @@ class _SupervisedExperiment(_TabularExperiment):
                         **search_kwargs,
                     )
 
-            # with io.capture_output():
             if search_library == "scikit-learn":
                 # monkey patching to fix overflows on Windows
                 with patch(
@@ -2459,7 +2673,7 @@ class _SupervisedExperiment(_TabularExperiment):
             cv_results = None
             try:
                 cv_results = model_grid.cv_results_
-            except:
+            except Exception:
                 self.logger.warning(
                     "Couldn't get cv_results from model_grid. Exception:"
                 )
@@ -2481,7 +2695,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info(
             "SubProcess create_model() called =================================="
         )
-        best_model, model_fit_time = self.create_model(
+        best_model, model_fit_time = self._create_model(
             estimator=model,
             system=False,
             display=display,
@@ -2489,6 +2703,7 @@ class _SupervisedExperiment(_TabularExperiment):
             round=round,
             groups=groups,
             fit_kwargs=fit_kwargs,
+            return_train_score=return_train_score,
             **best_params,
         )
         model_results = self.pull()
@@ -2497,7 +2712,7 @@ class _SupervisedExperiment(_TabularExperiment):
         )
 
         if choose_better:
-            best_model = self._choose_better(
+            new_best_model = self._choose_better(
                 [estimator, (best_model, model_results)],
                 compare_dimension,
                 fold,
@@ -2505,41 +2720,50 @@ class _SupervisedExperiment(_TabularExperiment):
                 fit_kwargs=fit_kwargs,
                 display=display,
             )
+            if new_best_model is not best_model:
+                msg = (
+                    "Original model was better than the tuned model, hence it will be returned. "
+                    "NOTE: The display metrics are for the tuned model (not the original one)."
+                )
+                if verbose:
+                    print(msg)
+                self.logger.info(msg)
+            best_model = new_best_model
 
         # end runtime
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
+        # dashboard logging
         if self.logging_param:
+            indices = self._get_return_train_score_indices_for_logging(
+                return_train_score=return_train_score
+            )
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            self.logging_param.log_model_comparison(model_results, "tune_model")
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+            self._log_model(
+                model=best_model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="tune_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                tune_cv_results=cv_results,
+                display=display,
+            )
 
-            try:
-                self._mlflow_log_model(
-                    model=best_model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="tune_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    tune_cv_results=cv_results,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {best_model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
+        display.display(model_results)
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
-        display.display(model_results, clear=True)
-
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(best_model))
         self.logger.info(
@@ -2564,7 +2788,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups: Optional[Union[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        return_train_score: bool = False,
     ) -> Any:
         """
         This function ensembles the trained base estimator using the method defined in
@@ -2634,6 +2858,12 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
         Returns
         -------
         score_grid
@@ -2692,9 +2922,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     n_estimators=n_estimators,
                     **boosting_model_definition.args,
                 )
-                with io.capture_output():
+                with redirect_output(self.logger):
                     check_model.fit(self.X_train_transformed, self.y_train_transformed)
-            except:
+            except Exception:
                 raise TypeError(
                     "Estimator not supported for the Boosting method. Change the estimator or method to 'Bagging'."
                 )
@@ -2725,15 +2955,21 @@ class _SupervisedExperiment(_TabularExperiment):
         optimize = self._get_metric_by_name_or_id(optimize)
         if optimize is None:
             raise ValueError(
-                f"Optimize method not supported. See docstring for list of available parameters."
+                "Optimize method not supported. See docstring for list of available parameters."
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
-                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                    "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
+
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
 
         """
 
@@ -2745,38 +2981,27 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-        if not display:
-            progress_args = {"max": 2 + 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = Display(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                master_display_columns=master_display_columns,
-                monitor_rows=monitor_rows,
-            )
-
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
+        progress_args = {"max": 2 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         self.logger.info("Importing libraries")
 
@@ -2807,14 +3032,12 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info(f"Base model : {estimator_name}")
 
         display.update_monitor(2, estimator_name)
-        display.display_monitor()
 
         """
         MONITOR UPDATE STARTS
         """
 
         display.update_monitor(1, "Selecting Estimator")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -2847,7 +3070,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info(
             "SubProcess create_model() called =================================="
         )
-        model, model_fit_time = self.create_model(
+        model, model_fit_time = self._create_model(
             estimator=model,
             system=False,
             display=display,
@@ -2856,6 +3079,7 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
             probability_threshold=probability_threshold,
+            return_train_score=return_train_score,
         )
         best_model = model
         model_results = self.pull()
@@ -2867,31 +3091,28 @@ class _SupervisedExperiment(_TabularExperiment):
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
+        # dashboard logging
         if self.logging_param:
+            indices = self._get_return_train_score_indices_for_logging(
+                return_train_score=return_train_score
+            )
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            self.logging_param.log_model_comparison(model_results, "ensemble_model")
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
-
-            try:
-                self._mlflow_log_model(
-                    model=best_model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="ensemble_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {best_model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=best_model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="ensemble_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         if choose_better:
-            model = self._choose_better(
+            new_model = self._choose_better(
                 [_estimator_, (best_model, model_results)],
                 compare_dimension,
                 fold,
@@ -2899,17 +3120,29 @@ class _SupervisedExperiment(_TabularExperiment):
                 fit_kwargs=fit_kwargs,
                 display=display,
             )
+            if new_model is not best_model:
+                msg = (
+                    "Original model was better than the ensembled model, hence it will be returned. "
+                    "NOTE: The display metrics are for the ensembled model (not the original one)."
+                )
+                if verbose:
+                    print(msg)
+                self.logger.info(msg)
+            model = new_model
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
-        display.display(model_results, clear=True)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
+        display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
-            "ensemble_model() succesfully completed......................................"
+            "ensemble_model() successfully completed......................................"
         )
 
         gc.collect()
@@ -2928,7 +3161,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups: Optional[Union[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        return_train_score: bool = False,
     ) -> Any:
 
         """
@@ -2996,6 +3229,12 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
         Returns
         -------
         score_grid
@@ -3023,6 +3262,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
 
         """
+        self._check_setup_ran()
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
@@ -3103,15 +3343,21 @@ class _SupervisedExperiment(_TabularExperiment):
         optimize = self._get_metric_by_name_or_id(optimize)
         if optimize is None:
             raise ValueError(
-                f"Optimize method not supported. See docstring for list of available parameters."
+                "Optimize method not supported. See docstring for list of available parameters."
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
-                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                    "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
+
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
 
         """
 
@@ -3127,37 +3373,27 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-        if not display:
-            progress_args = {"max": 2 + 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = Display(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                master_display_columns=master_display_columns,
-                monitor_rows=monitor_rows,
-            )
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
+        progress_args = {"max": 2 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         self.logger.info("Importing libraries")
 
@@ -3176,7 +3412,6 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         display.update_monitor(1, "Compiling Estimators")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -3203,29 +3438,28 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             model = voting_model_definition.class_def(
-                estimators=estimator_list, voting=method, n_jobs=self._gpu_n_jobs_param
+                estimators=estimator_list, voting=method, n_jobs=self.gpu_n_jobs_param
             )
         elif self._ml_usecase == MLUsecase.TIME_SERIES:
             model = voting_model_definition.class_def(
                 forecasters=estimator_list,
                 method=method,
                 weights=weights,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
             )
         else:
             model = voting_model_definition.class_def(
-                estimators=estimator_list, n_jobs=self._gpu_n_jobs_param
+                estimators=estimator_list, n_jobs=self.gpu_n_jobs_param
             )
 
         display.update_monitor(2, voting_model_definition.name)
-        display.display_monitor()
 
         display.move_progress()
 
         self.logger.info(
             "SubProcess create_model() called =================================="
         )
-        model, model_fit_time = self.create_model(
+        model, model_fit_time = self._create_model(
             estimator=model,
             system=False,
             display=display,
@@ -3234,6 +3468,7 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
             probability_threshold=probability_threshold,
+            return_train_score=return_train_score,
         )
 
         model_results = self.pull()
@@ -3245,31 +3480,28 @@ class _SupervisedExperiment(_TabularExperiment):
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
+        # dashboard logging
         if self.logging_param:
+            indices = self._get_return_train_score_indices_for_logging(
+                return_train_score=return_train_score
+            )
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            self.logging_param.log_model_comparison(model_results, "blend_models")
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
-
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="blend_models",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="blend_models",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         if choose_better:
-            model = self._choose_better(
+            new_model = self._choose_better(
                 [(model, model_results)] + estimator_list,
                 compare_dimension,
                 fold,
@@ -3277,17 +3509,29 @@ class _SupervisedExperiment(_TabularExperiment):
                 fit_kwargs=fit_kwargs,
                 display=display,
             )
+            if new_model is not model:
+                msg = (
+                    "Original model was better than the blended model, hence it will be returned. "
+                    "NOTE: The display metrics are for the blended model (not the original one)."
+                )
+                if verbose:
+                    print(msg)
+                self.logger.info(msg)
+            model = new_model
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
-        display.display(model_results, clear=True)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
+        display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
-            "blend_models() succesfully completed......................................"
+            "blend_models() successfully completed......................................"
         )
 
         gc.collect()
@@ -3308,7 +3552,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups: Optional[Union[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
-        display: Optional[Display] = None,
+        return_train_score: bool = False,
     ) -> Any:
 
         """
@@ -3395,6 +3639,12 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
         Returns
         -------
         score_grid
@@ -3475,15 +3725,21 @@ class _SupervisedExperiment(_TabularExperiment):
         optimize = self._get_metric_by_name_or_id(optimize)
         if optimize is None:
             raise ValueError(
-                f"Optimize method not supported. See docstring for list of available parameters."
+                "Optimize method not supported. See docstring for list of available parameters."
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
-                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                    "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
+
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
 
         """
 
@@ -3496,7 +3752,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups = self._get_groups(groups)
 
         self.logger.info("Defining meta model")
-        if meta_model == None:
+        if meta_model is None:
             estimator = "lr"
             meta_model_definition = self._all_models_internal[estimator]
             meta_model_args = meta_model_definition.args
@@ -3504,37 +3760,27 @@ class _SupervisedExperiment(_TabularExperiment):
         else:
             meta_model = clone(get_estimator_from_meta_estimator(meta_model))
 
-        if not display:
-            progress_args = {"max": 2 + 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = Display(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                master_display_columns=master_display_columns,
-                monitor_rows=monitor_rows,
-            )
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
+        progress_args = {"max": 2 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         np.random.seed(self.seed)
 
@@ -3549,7 +3795,6 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         display.update_monitor(1, "Compiling Estimators")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -3578,7 +3823,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 final_estimator=meta_model,
                 cv=meta_model_fold,
                 stack_method=method,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
                 passthrough=restack,
             )
         else:
@@ -3586,19 +3831,18 @@ class _SupervisedExperiment(_TabularExperiment):
                 estimators=estimator_list,
                 final_estimator=meta_model,
                 cv=meta_model_fold,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
                 passthrough=restack,
             )
 
         display.update_monitor(2, stacking_model_definition.name)
-        display.display_monitor()
 
         display.move_progress()
 
         self.logger.info(
             "SubProcess create_model() called =================================="
         )
-        model, model_fit_time = self.create_model(
+        model, model_fit_time = self._create_model(
             estimator=model,
             system=False,
             display=display,
@@ -3607,6 +3851,7 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
             probability_threshold=probability_threshold,
+            return_train_score=return_train_score,
         )
         model_results = self.pull()
         self.logger.info(
@@ -3617,31 +3862,28 @@ class _SupervisedExperiment(_TabularExperiment):
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
+        # dashboard logging
         if self.logging_param:
+            indices = self._get_return_train_score_indices_for_logging(
+                return_train_score=return_train_score
+            )
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            self.logging_param.log_model_comparison(model_results, "stack_model")
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
-
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="stack_models",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="stack_models",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         if choose_better:
-            model = self._choose_better(
+            new_model = self._choose_better(
                 [(model, model_results)] + estimator_list,
                 compare_dimension,
                 fold,
@@ -3649,17 +3891,29 @@ class _SupervisedExperiment(_TabularExperiment):
                 fit_kwargs=fit_kwargs,
                 display=display,
             )
+            if new_model is not model:
+                msg = (
+                    "Original model was better than the stacked model, hence it will be returned. "
+                    "NOTE: The display metrics are for the stacked model (not the original one)."
+                )
+                if verbose:
+                    print(msg)
+                self.logger.info(msg)
+            model = new_model
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
-        display.display(model_results, clear=True)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
+        display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
-            "stack_models() succesfully completed......................................"
+            "stack_models() successfully completed......................................"
         )
 
         gc.collect()
@@ -3772,53 +4026,25 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # checking if shap available
         if plot in ["summary", "correlation", "reason"]:
-            try:
-                import shap
-            except ImportError:
-                self.logger.error(
-                    "shap library not found. pip install shap to use interpret_model function."
-                )
-                raise ImportError(
-                    "shap library not found. pip install shap to use interpret_model function."
-                )
+            _check_soft_dependencies("shap", extra="analysis", severity="error")
+            import shap
 
         # checking if pdpbox is available
         if plot == "pdp":
-            try:
-                from interpret.blackbox import PartialDependence
-            except ImportError:
-                self.logger.error(
-                    "interpretml library not found. pip install interpret to generate pdp plot in interpret_model function."
-                )
-                raise ImportError(
-                    "interpretml library not found. pip install interpret to generate pdp plot in interpret_model function."
-                )
+            _check_soft_dependencies("interpret", extra="analysis", severity="error")
 
         # checking interpret is available
         if plot == "msa":
-            try:
-                from interpret.blackbox import MorrisSensitivity
-            except ImportError:
-                self.logger.error(
-                    "interpretml library not found. pip install interpret to generate msa plot in interpret_model function."
-                )
-                raise ImportError(
-                    "interpretml library not found. pip install interpret to generate msa plot in interpret_model function."
-                )
+            _check_soft_dependencies("interpret", extra="analysis", severity="error")
 
         # checking interpret-community is available
         if plot == "pfi":
-            try:
-                from interpret.ext.blackbox import PFIExplainer
-            except ImportError:
-                self.logger.error(
-                    "interpret-community library not found. pip install interpret-community to generate pfi plot in interpret_model function."
-                )
-                raise ImportError(
-                    "interpret-community library not found. pip install interpret-community to generate pfi plot in interpret_model function."
-                )
-
-        import matplotlib.pyplot as plt
+            _check_soft_dependencies(
+                "interpret_community",
+                extra=None,
+                severity="error",
+                install_name="interpret-community",
+            )
 
         # get estimator from meta estimator
         estimator = get_estimator_from_meta_estimator(estimator)
@@ -3907,7 +4133,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         def correlation(show: bool = True):
 
-            if feature == None:
+            if feature is None:
 
                 self.logger.warning(
                     f"No feature passed. Default value of feature used for correlation plot: {test_X.columns[0]}"
@@ -4038,7 +4264,7 @@ class _SupervisedExperiment(_TabularExperiment):
         def pdp(show: bool = True):
 
             self.logger.info("Checking feature parameter passed")
-            if feature == None:
+            if feature is None:
 
                 self.logger.warning(
                     f"No feature passed. Default value of feature used for pdp : {test_X.columns[0]}"
@@ -4119,7 +4345,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Visual Rendered Successfully")
 
         self.logger.info(
-            "interpret_model() succesfully completed......................................"
+            "interpret_model() successfully completed......................................"
         )
 
         gc.collect()
@@ -4338,7 +4564,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     is_custom=True,
                 )
             )
-        if self._ml_usecase == MLUsecase.TIME_SERIES:
+        elif self._ml_usecase == MLUsecase.TIME_SERIES:
             new_metric = (
                 pycaret.containers.metrics.time_series.TimeSeriesMetricContainer(
                     id=id,
@@ -4387,7 +4613,7 @@ class _SupervisedExperiment(_TabularExperiment):
         try:
             self._all_metrics.pop(name_or_id)
             return
-        except:
+        except Exception:
             pass
 
         try:
@@ -4396,7 +4622,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
             self._all_metrics.pop(k_to_remove)
             return
-        except:
+        except Exception:
             pass
 
         raise ValueError(
@@ -4408,15 +4634,15 @@ class _SupervisedExperiment(_TabularExperiment):
         estimator,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
-        model_only: bool = True,
+        model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
-        display: Optional[Display] = None,
     ) -> Any:  # added in pycaret==2.2.0
 
         """
-        This function fits the estimator onto the complete dataset passed during the
-        setup() stage. The purpose of this function is to prepare for final model
-        deployment after experimentation.
+        This function fits the complete pipeline with the estimator on the
+        complete dataset passed during the setup() stage. The purpose of
+        this function is to prepare for final model deployment after
+        experimentation.
 
         Example
         -------
@@ -4442,14 +4668,16 @@ class _SupervisedExperiment(_TabularExperiment):
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
             If None, will use the value set in fold_groups parameter in setup().
 
-        model_only : bool, default = True
-            When set to True, only trained model object is saved and all the
-            transformations are ignored.
+        model_only : bool, default = False
+            Whether to return the complete fitted pipeline or only the fitted model.
+
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified if
+            not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
         Returns
         -------
-        model
-            Trained model object fitted on complete dataset.
+            Trained pipeline or model object fitted on complete dataset.
 
         Warnings
         --------
@@ -4459,91 +4687,69 @@ class _SupervisedExperiment(_TabularExperiment):
         Once finalize_model() is used, the model is considered ready for deployment and
         should be used on new unseen dataset only.
 
-
         """
+        self._check_setup_ran()
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
         self.logger.info("Initializing finalize_model()")
         self.logger.info(f"finalize_model({function_params_str})")
 
-        # run_time
         runtime_start = time.time()
 
-        if not fit_kwargs:
-            fit_kwargs = {}
-
-        groups = self._get_groups(groups, data=self.X)
-
-        if not display:
-            display = Display(
-                verbose=False,
-                html_param=self.html_param,
-            )
+        display = CommonDisplay(
+            verbose=False,
+            html_param=self.html_param,
+        )
 
         np.random.seed(self.seed)
 
         self.logger.info(f"Finalizing {estimator}")
-        display.clear_output()
-        model_final, model_fit_time = self.create_model(
+        pipeline_final, model_fit_time = self._create_model(
             estimator=estimator,
+            cross_validation=False,
             verbose=False,
             system=False,
             X_train_data=self.X,
             y_train_data=self.y,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
+            fit_kwargs=fit_kwargs or {},
+            predict=False,
+            groups=self._get_groups(groups, data=self.X),
             add_to_model_list=False,
+            model_only=False,
         )
-        model_results = self.pull(pop=True)
 
-        # end runtime
-        runtime_end = time.time()
-        runtime = np.array(runtime_end - runtime_start).round(2)
-
-        # mlflow logging
+        # dashboard logging
         if self.logging_param:
+            self._log_model(
+                model=pipeline_final,
+                model_results=None,
+                score_dict={},
+                source="finalize_model",
+                runtime=np.array(time.time() - runtime_start).round(2),
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                experiment_custom_tags=experiment_custom_tags,
+                display=display,
+            )
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
-
-            try:
-                self._mlflow_log_model(
-                    model=model_final,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="finalize_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    experiment_custom_tags=experiment_custom_tags,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model_final} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
-
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
-        display.display(model_results, clear=True)
-
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
-
-        self.logger.info(str(model_final))
         self.logger.info(
-            "finalize_model() succesfully completed......................................"
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
+
+        self.logger.info(str(pipeline_final))
+        self.logger.info(
+            "finalize_model() successfully completed......................................"
         )
 
         gc.collect()
-        if not model_only:
-            pipeline_final = deepcopy(self.pipeline)
-            pipeline_final.steps.append(["trained_model", model_final])
-            return pipeline_final
 
-        return model_final
+        if model_only:
+            return self._get_final_model_from_pipeline(pipeline_final)
+
+        return pipeline_final
 
     def predict_model(
         self,
@@ -4556,7 +4762,7 @@ class _SupervisedExperiment(_TabularExperiment):
         round: int = 4,  # added in pycaret==2.2.0
         verbose: bool = True,
         ml_usecase: Optional[MLUsecase] = None,
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        preprocess: Union[bool, str] = True,
     ) -> pd.DataFrame:
 
         """
@@ -4600,11 +4806,15 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool, default = True
             Holdout score grid is not printed when verbose is set to False.
 
+        preprocess: bool or 'features', default = True
+            Whether to preprocess unseen data. If 'features', will not
+            preprocess labels.
+
         Returns
         -------
         Predictions
-            Predictions (Label and Score) column attached to the original dataset
-            and returned as pandas dataframe.
+            Predictions (label and score) columns are attached to the original
+            dataset and returned as pandas dataframe.
 
         score_grid
             A table containing the scoring metrics on hold-out / test set.
@@ -4618,11 +4828,15 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        def replace_labels_in_column(labels):
+        def replace_labels_in_column(pipeline, labels: pd.Series) -> pd.Series:
             # Check if there is a LabelEncoder in the pipeline
-            le = get_label_encoder(self.pipeline)
+            le = get_label_encoder(pipeline)
             if le:
-                return le.inverse_transform(label["Label"])
+                return pd.Series(
+                    data=le.inverse_transform(labels),
+                    name=labels.name,
+                    index=labels.index,
+                )
             else:
                 return labels
 
@@ -4667,34 +4881,74 @@ class _SupervisedExperiment(_TabularExperiment):
 
         try:
             np.random.seed(self.seed)
-            if not display:
-                display = Display(
-                    verbose=verbose,
-                    html_param=self.html_param,
-                )
-        except:
-            display = Display(
+            display = CommonDisplay(
+                verbose=verbose,
+                html_param=self.html_param,
+            )
+        except Exception:
+            display = CommonDisplay(
                 verbose=False,
                 html_param=False,
             )
 
+        if isinstance(estimator, skPipeline):
+            if not hasattr(estimator, "feature_names_in_"):
+                raise ValueError(
+                    "If estimator is a Pipeline, it must implement `feature_names_in_`."
+                )
+            # We use copy instead of deepcopy because of https://github.com/pycaret/pycaret/issues/2769
+            # Catboost behaves strange when deep copied. Using copy is fine
+            # since the underlying estimators are only used for transform
+            pipeline = copy(estimator)
+
+            # Temporarily remove final estimator so it's not used for transform
+            final_step = pipeline.steps[-1]
+            estimator = final_step[-1]
+            pipeline.steps = pipeline.steps[:-1]
+        elif not self._setup_ran:
+            raise ValueError(
+                "If estimator is not a Pipeline, you must run setup() first."
+            )
+        else:
+            pipeline = self.pipeline
+            final_step = None
+
+        X_columns = pipeline.feature_names_in_[:-1]
+        y_name = pipeline.feature_names_in_[-1]
+        y_test_ = None
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
         else:
-            data = to_df(data[self.X.columns])  # Ignore all column but the originals
-            X_test_ = self.pipeline.transform(data)
+            if y_name in data.columns:
+                data = self._set_index(self._prepare_dataset(data, y_name))
+                target = data[y_name]
+                data = data.drop(y_name, axis=1)
+            else:
+                data = self._set_index(self._prepare_dataset(data))
+                target = None
+            data = data[X_columns]  # Ignore all columns but the originals
+            if preprocess:
+                X_test_ = pipeline.transform(
+                    X=data,
+                    y=(target if preprocess != "features" else None),
+                )
+                if final_step:
+                    pipeline.steps.append(final_step)
+
+                if isinstance(X_test_, tuple):
+                    X_test_, y_test_ = X_test_
+                elif target is not None:
+                    y_test_ = target
+            else:
+                X_test_ = data
+                y_test_ = target
 
         # generate drift report
         if drift_report:
-            try:
-                from evidently.dashboard import Dashboard
-                from evidently.tabs import DataDriftTab, CatTargetDriftTab
-                from evidently.pipeline.column_mapping import ColumnMapping
-            except ImportError:
-                raise ImportError(
-                    "It appears that evidently (required for `drift_report=True`) is not installed. "
-                    "Do: pip install evidently"
-                )
+            _check_soft_dependencies("evidently", extra="mlops", severity="error")
+            from evidently.dashboard import Dashboard
+            from evidently.pipeline.column_mapping import ColumnMapping
+            from evidently.tabs import CatTargetDriftTab, DataDriftTab
 
             column_mapping = ColumnMapping()
             column_mapping.target = self.target_param
@@ -4704,11 +4958,20 @@ class _SupervisedExperiment(_TabularExperiment):
             column_mapping.categorical_features = self._fxs["Categorical"]
             column_mapping.datetime_features = self._fxs["Date"]
 
+            drift_data = data if data is not None else self.test
+
+            if y_name not in drift_data.columns:
+                raise ValueError(
+                    f"The dataset must contain a label column {y_name} "
+                    "in order to create a drift report."
+                )
+
             dashboard = Dashboard(tabs=[DataDriftTab(), CatTargetDriftTab()])
-            dashboard.calculate(self.train, self.test, column_mapping=column_mapping)
+            dashboard.calculate(self.train, drift_data, column_mapping=column_mapping)
             report_name = f"{self._get_model_name(estimator)}_Drift_Report.html"
             dashboard.save(report_name)
-            print(f"{report_name} saved successfully.")
+            if verbose:
+                print(f"{report_name} saved successfully.")
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):
@@ -4726,71 +4989,77 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 pred_prob = score
 
-        except:
+        except Exception:
             score = None
             pred_prob = None
 
         if probability_threshold is not None and pred_prob is not None:
             try:
                 pred = (pred_prob >= probability_threshold).astype(int)
-            except:
+            except Exception:
                 pass
 
         if pred_prob is None:
             pred_prob = pred
 
         df_score = None
-        if data is None:
+        if y_test_ is not None and self._setup_ran:
             # model name
             full_name = self._get_model_name(estimator)
             metrics = self._calculate_metrics(y_test_, pred, pred_prob)  # type: ignore
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
             df_score = df_score.round(round)
-            display.display(df_score.style.set_precision(round), clear=False)
+            display.display(df_score.style.format(precision=round))
 
-        label = pd.DataFrame(pred, columns=["Label"])
+        label = pd.DataFrame(pred, columns=[LABEL_COLUMN], index=X_test_.index)
         if ml_usecase == MLUsecase.CLASSIFICATION:
             try:
-                label["Label"] = label["Label"].astype(int)
-            except:
+                label[LABEL_COLUMN] = label[LABEL_COLUMN].astype(int)
+            except Exception:
                 pass
 
-        if data is None:
-            label.index = self.test.index  # Adjust index to join successfully
-            if encoded_labels:
-                label["Label"] = replace_labels_in_column(label["Label"])
-                X_test_ = pd.concat([self.test, label], axis=1)
-            else:
-                X_test_ = pd.concat([self.X_test, y_test_, label], axis=1)
-        else:
-            label.index = data.index
-            if encoded_labels:
-                label["Label"] = replace_labels_in_column(label["Label"])
-            X_test_ = pd.concat([data, label], axis=1)
+        if not encoded_labels:
+            label[LABEL_COLUMN] = replace_labels_in_column(
+                pipeline, label[LABEL_COLUMN]
+            )
+            if y_test_ is not None:
+                y_test_ = replace_labels_in_column(pipeline, y_test_)
+        old_index = X_test_.index
+        X_test_ = pd.concat([X_test_, y_test_, label], axis=1)
+        X_test_.index = old_index
 
         if score is not None:
             pred = pred.astype(int)
-            if not raw_score:
-                score = [s[pred[i]] for i, s in enumerate(score)]
-            try:
-                score = pd.DataFrame(score)
-                if raw_score:
-                    score_columns = pd.Series(range(score.shape[1]))
-                    if encoded_labels:
-                        score_columns = replace_labels_in_column(score_columns)
-                    score.columns = [f"Score_{label}" for label in score_columns]
-                else:
-                    score.columns = ["Score"]
-                score = score.round(round)
-                score.index = X_test_.index
-                X_test_ = pd.concat((X_test_, score), axis=1)
-            except:
-                pass
 
-        # store predictions on hold-out in display_container
+            if not raw_score:
+                score = pd.DataFrame(
+                    data=[s[pred[i]] for i, s in enumerate(score)],
+                    index=X_test_.index,
+                    columns=[SCORE_COLUMN],
+                )
+            else:
+                if not encoded_labels:
+                    le = get_label_encoder(pipeline)
+                    if le:
+                        columns = le.classes_
+                    else:
+                        columns = range(score.shape[1])
+                else:
+                    columns = range(score.shape[1])
+
+                score = pd.DataFrame(
+                    data=score,
+                    index=X_test_.index,
+                    columns=[f"{SCORE_COLUMN}_{col}" for col in columns],
+                )
+
+            score = score.round(round)
+            X_test_ = pd.concat((X_test_, score), axis=1)
+
+        # store predictions on hold-out in _display_container
         if df_score is not None:
-            self.display_container.append(df_score)
+            self._display_container.append(df_score)
 
         gc.collect()
         return X_test_
@@ -4802,38 +5071,33 @@ class _SupervisedExperiment(_TabularExperiment):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
-        display: Optional[Display] = None,
     ):
         """
         generates leaderboard for all models run in current run.
         """
-        model_container = self.master_model_container
+        model_container = self._master_model_container
 
-        if not display:
-            progress_args = {"max": len(model_container) + 1}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = Display(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
-
-            display.display_progress()
-            display.display_monitor()
+        progress_args = {"max": len(model_container) + 1}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         result_container_mean = []
         finalized_models = []
@@ -4860,7 +5124,7 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 model = deepcopy(model)
                 if not is_fitted(model):
-                    model, _ = self.create_model(
+                    model, _ = self._create_model(
                         estimator=model,
                         verbose=False,
                         system=False,
@@ -4889,7 +5153,8 @@ class _SupervisedExperiment(_TabularExperiment):
         rearranged_columns = ["Model Name", "Model"] + rearranged_columns
         results = results[rearranged_columns]
         results.set_index("Index", inplace=True, drop=True)
-        display.clear_output()
+        display.close()
+        # display.clear_output()
         return results
 
     def check_fairness(
@@ -4901,28 +5166,53 @@ class _SupervisedExperiment(_TabularExperiment):
         the approach known as group fairness, which asks: Which groups of individuals
         are at risk for experiencing harms. This function provides fairness-related
         metrics between different groups (also called subpopulation).
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> income = get_data('income')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = income,  target = 'income >50K')
+        >>> lr = create_model('lr')
+        >>> lr_fairness = check_fairness(lr, sensitive_features = ['sex', 'race'])
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        sensitive_features: list
+            List of column names as present in the original dataset before any
+            transformations.
+
+
+        plot_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the matplotlib plot.
+
+
+        Returns:
+            pandas.DataFrame
+
         """
 
-        try:
-            import fairlearn
-        except ImportError:
-            raise ImportError(
-                "It appears that fairlearn is not installed. Do: pip install fairlearn"
-            )
-
+        _check_soft_dependencies("fairlearn", extra="analysis", severity="error")
         from fairlearn.metrics import MetricFrame, count, selection_rate
 
-        all_metrics = self.get_metrics()[["Name", "Score Function"]].set_index("Name")
+        all_metrics = self.get_metrics()[["Name", "Score Function", "Args"]].set_index(
+            "Name"
+        )
         metric_dict = {}
         metric_dict["Samples"] = count
         for i in all_metrics.index:
-            metric_dict[i] = all_metrics.loc[i][0]
+            metric_dict[i] = partial(all_metrics.loc[i][0], **all_metrics.loc[i][1])
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             metric_dict["Selection Rate"] = selection_rate
 
-        y_pred = estimator.predict(self.X_test_transformed)
-        y_true = np.array(self.y_test_transformed)
+        y_pred = self.predict_model(estimator)[LABEL_COLUMN]
+        y_true = self.y_test
+
         try:
             multi_metric = MetricFrame(
                 metrics=metric_dict,
@@ -4950,3 +5240,488 @@ class _SupervisedExperiment(_TabularExperiment):
         )
 
         return pd.DataFrame(multi_metric.by_group)
+
+    def automl(
+        self,
+        optimize: str = "Accuracy",
+        use_holdout: bool = False,
+        turbo: bool = True,
+        return_train_score: bool = False,
+    ) -> Any:
+
+        """
+        This function returns the best model out of all models created in
+        current active environment based on metric defined in optimize parameter.
+
+        Parameters
+        ----------
+        optimize : str, default = 'Accuracy'
+            Other values you can pass in optimize parameter are 'AUC', 'Recall', 'Precision',
+            'F1', 'Kappa', and 'MCC'.
+
+        use_holdout: bool, default = False
+            When set to True, metrics are evaluated on holdout set instead of CV.
+
+        turbo: bool, default = True
+            When set to True and use_holdout is False, only models created with default fold
+            parameter will be considered. If set to False, models created with a non-default
+            fold parameter will be scored again using default fold settings, so that they can be
+            compared.
+
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+        Returns:
+            Trained Model
+        """
+
+        function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+        self.logger.info("Initializing automl()")
+        self.logger.info(f"automl({function_params_str})")
+
+        # checking optimize parameter
+        optimize = self._get_metric_by_name_or_id(optimize)
+        if optimize is None:
+            raise ValueError(
+                "Optimize method not supported. See docstring for list of available parameters."
+            )
+
+        # checking optimize parameter for multiclass
+        if self.is_multiclass:
+            if not optimize.is_multiclass:
+                raise TypeError(
+                    "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                )
+
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
+
+        compare_dimension = optimize.display_name
+        greater_is_better = optimize.greater_is_better
+        optimize = optimize.scorer
+
+        best_model = None
+        best_score = None
+
+        def compare_score(new, best):
+            if not best:
+                return True
+            if greater_is_better:
+                return new > best
+            else:
+                return new < best
+
+        if use_holdout:
+            self.logger.info("Model Selection Basis : Holdout set")
+            for i in self._master_model_container:
+                self.logger.info(f"Checking model {i}")
+                model = i["model"]
+                try:
+                    self.predict_model(model, verbose=False)  # type: ignore
+                except Exception:
+                    self.logger.warning(
+                        f"Model {model} is not fitted, running create_model"
+                    )
+                    model, _ = self._create_model(  # type: ignore
+                        estimator=model,
+                        system=False,
+                        verbose=False,
+                        cross_validation=False,
+                        predict=False,
+                        groups=self.fold_groups_param,
+                        return_train_score=return_train_score,
+                    )
+                    self.predict_model(model, verbose=False)  # type: ignore
+
+                p = self.pull(pop=True)
+                p = p[compare_dimension][0]
+                if compare_score(p, best_score):
+                    best_model = model
+                    best_score = p
+
+        else:
+            self.logger.info("Model Selection Basis : CV Results on Training set")
+            for i in range(len(self._master_model_container)):
+                model = self._master_model_container[i]
+                scores = None
+                if model["cv"] is not self.fold_generator:
+                    if turbo or self._is_unsupervised():
+                        continue
+                    self._create_model(  # type: ignore
+                        estimator=model["model"],
+                        system=False,
+                        verbose=False,
+                        cross_validation=True,
+                        predict=False,
+                        groups=self.fold_groups_param,
+                        return_train_score=return_train_score,
+                    )
+                    scores = self.pull(pop=True)
+                    self._master_model_container.pop()
+                self.logger.info(f"Checking model {i}")
+                if scores is None:
+                    scores = model["scores"]
+                r = scores[compare_dimension][-2:][0]
+                if compare_score(r, best_score):
+                    best_model = model["model"]
+                    best_score = r
+
+        automl_model, _ = self._create_model(  # type: ignore
+            estimator=best_model,
+            system=False,
+            verbose=False,
+            cross_validation=False,
+            predict=False,
+            groups=self.fold_groups_param,
+            return_train_score=return_train_score,
+        )
+
+        gc.collect()
+
+        self.logger.info(str(automl_model))
+        self.logger.info(
+            "automl() successfully completed......................................"
+        )
+
+        return automl_model
+
+    def create_app(self, estimator, app_kwargs: Optional[dict]):
+        """
+        This function creates a basic gradio app for inference.
+        It will later be expanded for other app types such as
+        Streamlit.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> create_app(lr)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        app_kwargs: dict, default = {} (empty dict)
+            arguments to be passed to app class.
+
+
+        Returns:
+            None
+        """
+
+        _check_soft_dependencies("gradio", extra="mlops", severity="error")
+        import gradio as gr
+
+        all_inputs = []
+        app_kwargs = app_kwargs or {}
+
+        for i in self.X.columns:
+            if i in self._fxs["Categorical"] or i in self._fxs["Ordinal"]:
+                all_inputs.append(gr.inputs.Dropdown(list(self.X[i].unique()), label=i))
+            else:
+                all_inputs.append(gr.inputs.Textbox(label=i))
+
+        def predict(*dict_input):
+
+            input_df = pd.DataFrame.from_dict([dict_input])
+            input_df.columns = list(self.X.columns)
+            return (
+                self.predict_model(
+                    estimator, data=input_df, **self._create_app_predict_kwargs
+                )
+                .iloc[0]
+                .to_dict()
+            )
+
+        return gr.Interface(
+            fn=predict,
+            inputs=all_inputs,
+            outputs="text",
+            live=False,
+            **app_kwargs,
+        ).launch()
+
+    def dashboard(
+        self,
+        estimator,
+        display_format: str = "dash",
+        dashboard_kwargs: Optional[Dict[str, Any]] = None,
+        run_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ):
+        """
+        This function generates the interactive dashboard for a trained model. The
+        dashboard is implemented using ExplainerDashboard (explainerdashboard.readthedocs.io)
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> dashboard(lr)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        display_format: str, default = 'dash'
+            Render mode for the dashboard. The default is set to ``dash`` which will
+            render a dashboard in browser. There are four possible options:
+
+            - 'dash' - displays the dashboard in browser
+            - 'inline' - displays the dashboard in the jupyter notebook cell.
+            - 'jupyterlab' - displays the dashboard in jupyterlab pane.
+            - 'external' - displays the dashboard in a separate tab. (use in Colab)
+
+
+        dashboard_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ``ExplainerDashboard`` class.
+
+
+        run_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ``run`` method of ``ExplainerDashboard``.
+
+
+        **kwargs:
+            Additional keyword arguments to pass to the ``ClassifierExplainer`` or
+            ``RegressionExplainer`` class.
+
+
+        Returns:
+            None
+        """
+
+        _check_soft_dependencies(
+            "explainerdashboard", extra="analysis", severity="error"
+        )
+
+    def deep_check(self, estimator, check_kwargs: Optional[dict]):
+        """
+        This function runs a full suite check over a trained model
+        using deepchecks library.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> deep_check(lr)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        check_kwargs: dict, default = {} (empty dict)
+            arguments to be passed to deepchecks full_suite class.
+
+
+        Returns:
+            Results of deepchecks.suites.full_suite.run
+        """
+
+        _check_soft_dependencies("deepchecks", extra="analysis", severity="error")
+        check_kwargs = check_kwargs or {}
+
+        from deepchecks import Dataset
+
+        ds_train = Dataset(
+            self.X_train_transformed, label=self.y_train_transformed, cat_features=[]
+        )
+        ds_test = Dataset(
+            self.X_test_transformed, label=self.y_test_transformed, cat_features=[]
+        )
+
+        from deepchecks.tabular.suites import full_suite
+
+        suite = full_suite(**check_kwargs)
+        return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)
+
+    @classmethod
+    def load_experiment(
+        cls,
+        path_or_file: Union[str, os.PathLike, BinaryIO],
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+        test_data: Optional[DATAFRAME_LIKE] = None,
+        preprocess_data: bool = True,
+        **cloudpickle_kwargs,
+    ) -> "_SupervisedExperiment":
+        """
+        Load an experiment saved with ``save_experiment`` from path
+        or file.
+
+        The data (and test data) is NOT saved with the experiment
+        and will need to be specified again.
+
+
+        path_or_file: str or BinaryIO (file pointer)
+            The path/file pointer to load the experiment from.
+            The pickle file must be created through ``save_experiment``.
+
+
+        data: dataframe-like
+            Data set with shape (n_samples, n_features), where n_samples is the
+            number of samples and n_features is the number of features. If data
+            is not a pandas dataframe, it's converted to one using default column
+            names.
+
+
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
+
+
+        test_data: dataframe-like or None, default = None
+            If not None, test_data is used as a hold-out set and `train_size` parameter
+            is ignored. The columns of data and test_data must match.
+
+
+        preprocess_data: bool, default = True
+            If True, the data will be preprocessed again (through running ``setup``
+            internally). If False, the data will not be preprocessed. This means
+            you can save the value of the ``data`` attribute of an experiment
+            separately, and then load it separately and pass it here with
+            ``preprocess_data`` set to False. This is an advanced feature.
+            We recommend leaving it set to True and passing the same data
+            as passed to the initial ``setup`` call.
+
+
+        **cloudpickle_kwargs:
+            Kwargs to pass to the ``cloudpickle.load`` call.
+
+
+        Returns:
+            loaded experiment
+
+        """
+
+        return cls._load_experiment(
+            path_or_file,
+            cloudpickle_kwargs=cloudpickle_kwargs,
+            preprocess_data=preprocess_data,
+            data=data,
+            data_func=data_func,
+            test_data=test_data,
+        )
+
+    @property
+    def X(self):
+        """Feature set."""
+        return self.dataset.drop(self.target_param, axis=1)
+
+    @property
+    def dataset_transformed(self):
+        """Transformed dataset."""
+        return pd.concat([self.train_transformed, self.test_transformed])
+
+    @property
+    def X_train_transformed(self):
+        """Transformed feature set of the training set."""
+        return self.pipeline.transform(
+            X=self.X_train,
+            y=self.y_train,
+            filter_train_only=False,
+        )[0]
+
+    @property
+    def train_transformed(self):
+        """Transformed training set."""
+        return pd.concat(
+            [self.X_train_transformed, self.y_train_transformed],
+            axis=1,
+        )
+
+    @property
+    def X_transformed(self):
+        """Transformed feature set."""
+        return pd.concat([self.X_train_transformed, self.X_test_transformed])
+
+    @property
+    def y(self):
+        """Target column."""
+        return self.dataset[self.target_param]
+
+    @property
+    def X_train(self):
+        """Feature set of the training set."""
+        return self.train.drop(self.target_param, axis=1)
+
+    @property
+    def X_test(self):
+        """Feature set of the test set."""
+        return self.test.drop(self.target_param, axis=1)
+
+    @property
+    def train(self):
+        """Training set."""
+        return self.dataset.loc[self.idx[0], :]
+
+    @property
+    def test(self):
+        """Test set."""
+        return self.dataset.loc[self.idx[1], :]
+
+    @property
+    def y_train(self):
+        """Target column of the training set."""
+        return self.train[self.target_param]
+
+    @property
+    def y_test(self):
+        """Target column of the test set."""
+        return self.test[self.target_param]
+
+    @property
+    def test_transformed(self):
+        """Transformed test set."""
+        return pd.concat(
+            [self.X_test_transformed, self.y_test_transformed],
+            axis=1,
+        )
+
+    @property
+    def y_transformed(self):
+        """Transformed target column."""
+        return pd.concat([self.y_train_transformed, self.y_test_transformed])
+
+    @property
+    def X_test_transformed(self):
+        """Transformed feature set of the test set."""
+        return self.pipeline.transform(self.X_test)
+
+    @property
+    def y_train_transformed(self):
+        """Transformed target column of the training set."""
+        return self.pipeline.transform(
+            X=self.X_train,
+            y=self.y_train,
+            filter_train_only=False,
+        )[1]
+
+    @property
+    def y_test_transformed(self):
+        """Transformed target column of the test set."""
+        return self.pipeline.transform(y=self.y_test)

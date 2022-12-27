@@ -6,8 +6,12 @@ import warnings
 from enum import Enum, IntEnum
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
+from pmdarima.arima.utils import ndiffs
+from sktime.param_est.seasonality import SeasonalityACF
 from sktime.transformations.series.difference import Differencer
+from sktime.utils.plotting import plot_series
 
 
 def _reconcile_order_and_lags(
@@ -72,8 +76,12 @@ def _get_diffs(data: pd.Series, lags_list: List[Any]) -> List[pd.Series]:
     List[pd.Series]
         List of differences per the lags_list
     """
-
-    diffs = [Differencer(lags=lags).fit_transform(data) for lags in lags_list]
+    # Default na_handling changed in sktime 0.13.0 (compared to 0.11.x).
+    # https://www.sktime.org/en/latest/changelog.html#id3. Hence hard coding.
+    diffs = [
+        Differencer(lags=lags, na_handling="drop_na").fit_transform(data)
+        for lags in lags_list
+    ]
     return diffs
 
 
@@ -211,6 +219,149 @@ def get_sp_from_str(str_freq: str) -> int:
             )
 
 
+def auto_detect_sp(
+    y: pd.Series, verbose: bool = False, plot: bool = False
+) -> Tuple[int, list, int]:
+    """Automatically detects the seasonal period of the time series.
+    The time series is internally differenced before the seasonality is detected
+    using ACF.
+
+    Parameters
+    ----------
+    y : pd.Series
+        Time series whose seasonal period has to be detected
+    verbose : bool, optional
+        Whether to print intermediate values , by default False
+    plot : bool, optional
+        Whether to plot original and differenced data, by default False
+
+    Returns
+    -------
+    Tuple[int, list, int]
+        (1) Primary Seasonal Period
+        (2) List of all significant seasonal periods
+        (3) The number of lags used to detected seasonality
+    """
+
+    yt = y.copy()
+    for i in np.arange(ndiffs(y)):
+        if verbose:
+            print(f"Differencing: {i+1}")
+        differencer = Differencer()
+        yt = differencer.fit_transform(yt)
+
+    if plot:
+        _ = plot_series(y, yt, labels=["original", "differenced"])
+
+    nobs = len(yt)
+    # Increasing lags otherwise high sp values are not detected since they are
+    # limited by internal nlags calculation in SeasonalityACF
+    # lags_to_use = min(10 * np.log10(nobs), nobs - 1)
+    # lags_to_use = max(lags_to_use, nobs/3)
+    lags_to_use = nobs - 1
+    lags_to_use = int(lags_to_use)
+
+    sp_est = SeasonalityACF(nlags=lags_to_use)
+    sp_est.fit(yt)
+
+    primary_sp = sp_est.get_fitted_params().get("sp")
+    significant_sps = sp_est.get_fitted_params().get("sp_significant")
+    if isinstance(significant_sps, np.ndarray):
+        significant_sps = significant_sps.tolist()
+
+    if verbose:
+        print(f"\tLags used for seasonal detection: {lags_to_use}")
+        print(f"\tDetected Significant SP: {significant_sps}")
+        print(f"\tDetected Primary SP: {primary_sp}")
+
+    return primary_sp, significant_sps, lags_to_use
+
+
+def remove_harmonics_from_sp(
+    significant_sps: list, harmonic_order_method: str = "raw_strength"
+) -> list:
+    """Remove harmonics from the list provided. Similar to Kats - Ref:
+    https://github.com/facebookresearch/Kats/blob/v0.2.0/kats/detectors/seasonality.py#L311-L321
+
+    Parameters
+    ----------
+    significant_sps : list
+        The list of significant seasonal periods (ordered by significance)
+    harmonic_order_method: str, default = "harmonic_strength"
+        This determines how the harmonics are replaced.
+        Allowed values are "harmonic_strength", "harmonic_max" or "raw_strength.
+        - If set to  "harmonic_strength", then lower seasonal period is replaced by its
+        highest strength harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "harmonic_max", then lower seasonal period is replaced by its
+        highest harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "raw_strength", then lower seasonal periods is removed and the
+        higher harmonic seasonal periods is retained in its original position
+        based on its seasonal strength.
+
+        e.g. Assuming detected seasonal periods in strength order are [2, 3, 4, 50]
+        and remove_harmonics = True, then:
+        - If harmonic_order_method = "harmonic_strength", result = [4, 3, 50]
+        - If harmonic_order_method = "harmonic_max", result = [50, 3, 4]
+        - If harmonic_order_method = "raw_strength", result = [3, 4, 50]
+
+    Returns
+    -------
+    list
+        The list of significant seasonal periods with harmonics removed
+    """
+    # Convert period to frequency for harmonic removal
+    significant_freqs = [1 / sp for sp in significant_sps]
+
+    if len(significant_freqs) > 1:
+        # Sort from lowest freq to highest
+        significant_freqs = sorted(significant_freqs)
+        # Start from highest freq and remove it if it is a multiple of a lower freq
+        # i.e if it is a harmonic of a lower frequency
+        for i in range(len(significant_freqs) - 1, 0, -1):
+            for j in range(i - 1, -1, -1):
+                fraction = (significant_freqs[i] / significant_freqs[j]) % 1
+                if fraction < 0.001 or fraction > 0.999:
+                    significant_freqs.pop(i)
+                    break
+
+    # Convert frequency back to period
+    # Rounding, else there is precision issues
+    filtered_sps = [round(1 / freq, 4) for freq in significant_freqs]
+
+    if harmonic_order_method == "raw_strength":
+        # Keep order of significance
+        final_filtered_sps = [sp for sp in significant_sps if sp in filtered_sps]
+    else:
+        # Replace higher strength sp with lower strength harmonic sp
+        retained = [True if sp in filtered_sps else False for sp in significant_sps]
+        final_filtered_sps = []
+        for i, sp_iter in enumerate(significant_sps):
+            if retained[i] is False:
+                div = [sp / sp_iter for sp in significant_sps]
+                div_int = [round(elem) for elem in div]
+                equal = [True if a == b else False for a, b in zip(div, div_int)]
+                replacement_candidates = [
+                    sp for sp, eq in zip(significant_sps, equal) if eq
+                ]
+                if harmonic_order_method == "harmonic_max":
+                    replacement_sp = max(replacement_candidates)
+                elif harmonic_order_method == "harmonic_strength":
+                    replacement_sp = replacement_candidates[
+                        [
+                            i
+                            for i, candidate in enumerate(replacement_candidates)
+                            if candidate != sp_iter
+                        ][0]
+                    ]
+                final_filtered_sps.append(replacement_sp)
+            else:
+                final_filtered_sps.append(sp_iter)
+        # Replacement for ordered set: https://stackoverflow.com/a/53657523/8925915
+        final_filtered_sps = list(dict.fromkeys(final_filtered_sps))
+
+    return final_filtered_sps
+
+
 class SeasonalPeriod(IntEnum):
     """ENUM corresponding to Seasonal Periods
 
@@ -297,3 +448,9 @@ class TSExogenousPresent(Enum):
 class TSApproachTypes(Enum):
     UNI = "Univariate"
     MULTI = "Multivariate"
+
+
+class TSAllowedPlotDataTypes(Enum):
+    ORIGINAL = "original"
+    TRANSFORMED = "transformed"
+    IMPUTED = "imputed"

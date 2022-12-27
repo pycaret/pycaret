@@ -2,16 +2,18 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-from typing import Dict, Hashable, Optional
-from scipy.stats import uniform, loguniform, randint
+from typing import Dict, Optional
+
+from scipy.stats import loguniform, randint, uniform
 
 try:
     from collections.abc import Hashable
-except:
+except Exception:
     from collections import Hashable
 
-import numpy as np
 from copy import copy
+
+import numpy as np
 
 
 class Distribution:
@@ -73,10 +75,20 @@ class UniformDistribution(Distribution):
     def get_optuna(self):
         import optuna
 
+        optuna_version = int(optuna.__version__[0])
+
         if self.log:
-            return optuna.distributions.LogUniformDistribution(self.lower, self.upper)
+            return (
+                optuna.distributions.FloatDistribution(self.lower, self.upper, log=True)
+                if optuna_version >= 3
+                else optuna.distributions.LogUniformDistribution(self.lower, self.upper)
+            )
         else:
-            return optuna.distributions.UniformDistribution(self.lower, self.upper)
+            return (
+                optuna.distributions.FloatDistribution(self.lower, self.upper)
+                if optuna_version >= 3
+                else optuna.distributions.UniformDistribution(self.lower, self.upper)
+            )
 
     def get_hyperopt(self, label):
         from hyperopt import hp
@@ -143,12 +155,22 @@ class IntUniformDistribution(Distribution):
     def get_optuna(self):
         import optuna
 
+        optuna_version = int(optuna.__version__[0])
+
         if self.log:
-            return optuna.distributions.IntLogUniformDistribution(
-                self.lower, self.upper
+            return (
+                optuna.distributions.IntDistribution(self.lower, self.upper, log=True)
+                if optuna_version >= 3
+                else optuna.distributions.IntLogUniformDistribution(
+                    self.lower, self.upper
+                )
             )
         else:
-            return optuna.distributions.IntUniformDistribution(self.lower, self.upper)
+            return (
+                optuna.distributions.IntDistribution(self.lower, self.upper)
+                if optuna_version >= 3
+                else optuna.distributions.IntUniformDistribution(self.lower, self.upper)
+            )
 
     def get_hyperopt(self, label):
         from hyperopt import hp
@@ -169,8 +191,7 @@ class IntUniformDistribution(Distribution):
         )
 
     def get_tune(self):
-        from ray.tune.sample import Integer
-        from ray.tune.sample import LogUniform
+        from ray.tune.sample import Integer, LogUniform
 
         class LogUniformInteger(Integer):
             class _LogUniform(LogUniform):
@@ -255,8 +276,14 @@ class DiscreteUniformDistribution(Distribution):
     def get_optuna(self):
         import optuna
 
-        return optuna.distributions.DiscreteUniformDistribution(
-            self.lower, self.upper, self.q
+        optuna_version = int(optuna.__version__[0])
+
+        return (
+            optuna.distributions.FloatDistribution(self.lower, self.upper, step=self.q)
+            if optuna_version >= 3
+            else optuna.distributions.DiscreteUniformDistribution(
+                self.lower, self.upper, self.q
+            )
         )
 
     def get_hyperopt(self, label):

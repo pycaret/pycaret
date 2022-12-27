@@ -1,7 +1,10 @@
 """Module to get datasets in pycaret
 """
 from typing import Optional
+
 import requests
+
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 def get_data(
@@ -83,9 +86,12 @@ def get_data(
         (2) If the data does not exist
     """
 
-    import pandas as pd
     import os.path
-    from pycaret.internal.Display import Display
+
+    import pandas as pd
+
+    from pycaret.internal.display import CommonDisplay
+
     extension = ".csv"
     filename = str(dataset) + extension
     if address is None:
@@ -111,14 +117,7 @@ def get_data(
     elif requests.get(complete_address).status_code == 200:
         data = pd.read_csv(complete_address)
     elif dataset in sktime_datasets:
-        try:
-            from sktime.datasets import load_airline, load_lynx, load_uschange
-        except ImportError as e:
-            print(e)
-            raise ImportError(
-                f"Dataset '{dataset}' is meant for time series analysis and needs"
-                " the sktime library to be installed."
-            )
+        from sktime.datasets import load_airline, load_lynx, load_uschange
 
         ts_dataset_mapping = {
             "airline": load_airline,
@@ -131,7 +130,7 @@ def get_data(
             X = data[1]
             data = pd.concat([y, X], axis=1)
     else:
-        raise ValueError(f"Data could not be read. Please check your inputs...")
+        raise ValueError("Data could not be read. Please check your inputs...")
 
     # create a copy for pandas profiler
     data_for_profiling = data.copy()
@@ -140,7 +139,7 @@ def get_data(
         save_name = filename
         data.to_csv(save_name, index=False)
 
-    display = Display(
+    display = CommonDisplay(
         verbose=True,
         html_param=True,
     )
@@ -150,6 +149,12 @@ def get_data(
 
     else:
         if profile:
+            _check_soft_dependencies(
+                "pandas_profiling",
+                extra="analysis",
+                severity="error",
+                install_name="pandas-profiling",
+            )
             import pandas_profiling
 
             pf = pandas_profiling.ProfileReport(data_for_profiling)

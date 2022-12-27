@@ -1,52 +1,39 @@
-from typing import Union, Optional, List
+from typing import Optional, List, Union
 
 from sklearn.preprocessing import (
-    StandardScaler,
-    MinMaxScaler,
     MaxAbsScaler,
+    MinMaxScaler,
     RobustScaler,
+    StandardScaler,
 )
-
-from sktime.transformations.series.compose import ColumnwiseTransformer
+from sktime.transformations.compose import ColumnwiseTransformer
 from sktime.transformations.series.adapt import TabularToSeriesAdaptor
-from sktime.transformations.series.impute import Imputer
 from sktime.transformations.series.boxcox import BoxCoxTransformer, LogTransformer
-from sktime.transformations.series.exponent import ExponentTransformer, SqrtTransformer
 from sktime.transformations.series.cos import CosineTransformer
+from sktime.transformations.series.exponent import ExponentTransformer, SqrtTransformer
+from sktime.transformations.series.impute import Imputer
 from sktime.transformations.series.scaledlogit import ScaledLogitTransformer
 from sktime.base import BaseEstimator
 
-from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
+from pycaret.utils.time_series import TSExogenousPresent
 
 
 class TSForecastingPreprocessor:
     """Class for preprocessing Time Series Forecasting Experiments."""
 
-    def __init__(self):
-        # Initialize empty steps ----
-        self.pipe_steps_target = []
-        self.pipe_steps_exogenous = []
-
-        # Pipeline which is trained only on the training split
-        self.pipeline = None
-
-        # Pipeline which is trained only on the complete data
-        # Used when model has been finalized
-        self.pipeline_fully_trained = None
-
     def _imputation(
         self,
         numeric_imputation_target: Optional[Union[str, int, float]],
         numeric_imputation_exogenous: Optional[Union[str, int, float]],
-        exogenous_present: bool,
+        exogenous_present: TSExogenousPresent,
     ):
-        #### Impute target ----
+        # Impute target ----
         if numeric_imputation_target is not None:
             self._add_imputation_steps(
                 numeric_imputation=numeric_imputation_target, target=True
             )
 
-        #### Impute Exogenous ----
+        # Impute Exogenous ----
         # Only add exogenous pipeline steps if exogenous variables are present.
         if (
             exogenous_present == TSExogenousPresent.YES
@@ -110,9 +97,11 @@ class TSForecastingPreprocessor:
             )
 
         if target:
-            self.pipe_steps_target.extend([("numerical_imputer", num_estimator)])
+            self.transformer_steps_target.extend([("numerical_imputer", num_estimator)])
         else:
-            self.pipe_steps_exogenous.extend([("numerical_imputer", num_estimator)])
+            self.transformer_steps_exogenous.extend(
+                [("numerical_imputer", num_estimator)]
+            )
 
     def _limitation(self,
                     limit_target: Optional[List[Union[int,float,None]]],
@@ -213,13 +202,13 @@ class TSForecastingPreprocessor:
         self,
         transform_target: Optional[Union[str, int, float]],
         transform_exogenous: Optional[Union[str, int, float]],
-        exogenous_present: bool,
+        exogenous_present: TSExogenousPresent,
     ):
-        #### Impute target ----
+        # Impute target ----
         if transform_target is not None:
             self._add_transformation_steps(transform=transform_target, target=True)
 
-        #### Impute Exogenous ----
+        # Impute Exogenous ----
         # Only add exogenous pipeline steps if exogenous variables are present.
         if (
             exogenous_present == TSExogenousPresent.YES
@@ -265,32 +254,32 @@ class TSForecastingPreprocessor:
 
             if transform not in transform_dict:
                 raise ValueError(
-                    f"{type_} transformaton method '{transform}' not allowed."
+                    f"{type_} transformation method '{transform}' not allowed."
                 )
 
         else:
             raise ValueError(
-                f"{type_} transformaton method '{type(transform)}' is not of allowed type."
+                f"{type_} transformation method '{type(transform)}' is not of allowed type."
             )
 
         if target:
             transformer = transform_dict[transform]
-            self.pipe_steps_target.extend([("transformer", transformer)])
+            self.transformer_steps_target.extend([("transformer", transformer)])
         else:
             transformer = ColumnwiseTransformer(transform_dict[transform])
-            self.pipe_steps_exogenous.extend([("transformer", transformer)])
+            self.transformer_steps_exogenous.extend([("transformer", transformer)])
 
     def _scaling(
         self,
         scale_target: Optional[Union[str, int, float]],
         scale_exogenous: Optional[Union[str, int, float]],
-        exogenous_present: bool,
+        exogenous_present: TSExogenousPresent,
     ):
-        #### Scale target ----
+        # Scale target ----
         if scale_target:
             self._add_scaling_steps(scale=scale_target, target=True)
 
-        #### Scale Exogenous ----
+        # Scale Exogenous ----
         # Only add exogenous pipeline steps if exogenous variables are present.
         if exogenous_present == TSExogenousPresent.YES and scale_exogenous is not None:
             self._add_scaling_steps(scale=scale_exogenous, target=False)
@@ -335,13 +324,77 @@ class TSForecastingPreprocessor:
 
         else:
             raise ValueError(
-                f"{type_} transformaton method '{type(scale)}' is not of allowed type."
+                f"{type_} transformation method '{type(scale)}' is not of allowed type."
             )
 
         if target:
-            self.pipe_steps_target.extend([("scaler", scaler)])
+            self.transformer_steps_target.extend([("scaler", scaler)])
         else:
-            self.pipe_steps_exogenous.extend([("scaler", scaler)])
+            self.transformer_steps_exogenous.extend([("scaler", scaler)])
+
+    def _feature_engineering(
+        self,
+        fe_exogenous: Optional[list],
+        exogenous_present: TSExogenousPresent,
+    ):
+        """Add feature engineering steps to the pipeline.
+        NOTE: Only Applied to Reduced regression models (see note in Setup).
+        But in these models, target feature engineering is done internal to the
+        model. Hence target feature engineering is not done here.
+
+        Parameters
+        ----------
+        fe_exogenous : Optional[list]
+            Feature Engineering Transformer to apply to exogenous variables.
+        exogenous_present : TSExogenousPresent
+            TSExogenousPresent.YES if exogenous variables are present in the data,
+            TSExogenousPresent.NO otherwise. Exogenous feature transformers are
+            only added if this is set to TSExogenousPresent.YES.
+        """
+        # Transform exogenous variables ----
+        # Only add exogenous pipeline steps if exogenous variables are present,
+        # but this is an exception. We may not have exogenous variables, but
+        # these could be created using fe_exogenous, so we do not explicitly check
+        # for the presence of exogenous variables to add this to the pipeline.
+        # if exogenous_present == TSExogenousPresent.YES and fe_exogenous is not None:
+        if fe_exogenous is not None:
+            self._add_feat_eng_steps(
+                fe_exogenous=fe_exogenous,
+                target=False,
+            )
+
+    def _add_feat_eng_steps(self, fe_exogenous: list, target: bool = True):
+        """Add feature engineering steps for the data.
+
+        Parameters
+        ----------
+        fe_exogenous : list
+            Feature engineering transformations to be applied to exogenous variables.
+        target : bool, optional
+            If True, feature engineering steps are added to the target variable steps
+            (This is not implemented yet - see note in _feature_engineering)
+            If False, feature engineering steps are added to the exogenous variable steps,
+            by default True
+
+        Raises
+        ------
+        ValueError
+            `fe_exogenous` is not of the correct type.
+        """
+        type_ = "Target" if target else "Exogenous"
+        self.logger.info(f"Set up feature engineering for {type_} variable(s).")
+
+        if not isinstance(fe_exogenous, list):
+            raise ValueError(
+                f"{type_} Feature Engineering input must be of a List or sktime transformers."
+                f"You provided {fe_exogenous}"
+            )
+
+        if target:
+            # This is not implemented yet - see note in _feature_engineering
+            pass
+        else:
+            self.transformer_steps_exogenous.extend(fe_exogenous)
 
     # def _feature_selection(
     #     self,
@@ -358,4 +411,4 @@ class TSForecastingPreprocessor:
     #     """Add custom transformers to the pipeline."""
     #     self.logger.info("Set up custom pipeline.")
     #     for name, estimator in normalize_custom_transformers(custom_pipeline):
-    #         self.pipeline.steps.append((name, TransfomerWrapper(estimator)))
+    #         self.pipeline.steps.append((name, TransformerWrapper(estimator)))

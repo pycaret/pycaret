@@ -5,10 +5,10 @@
 
 # This Ensemble is only to be used internally.
 
-import pandas as pd
-import numpy as np
 import warnings
-from sktime.forecasting.base._base import DEFAULT_ALPHA
+
+import numpy as np
+import pandas as pd
 from sktime.forecasting.base._meta import _HeterogenousEnsembleForecaster
 
 _ENSEMBLE_METHODS = ["voting", "mean", "median"]
@@ -41,7 +41,7 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
     _required_parameters = ["forecasters"]
     _not_required_weights = ["mean", "median"]
     _required_weights = ["voting", "mean"]
-    _available_methods = ["voting", "mean", "median"]
+    _available_methods = _ENSEMBLE_METHODS
 
     def __init__(self, forecasters, method="mean", weights=None, n_jobs=None):
         self.forecasters = forecasters
@@ -112,10 +112,7 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
             forecaster.update(y, X, update_params=update_params)
         return self
 
-    def _predict(self, fh, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
-        if return_pred_int:
-            raise NotImplementedError()
-
+    def _predict(self, fh, X=None):
         self._check_method()
 
         pred_forecasters = pd.concat(self._predict_forecasters(fh, X), axis=1)
