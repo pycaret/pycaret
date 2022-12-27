@@ -11,6 +11,7 @@ from time_series_test_utils import (
     _TRANSFORMATION_METHODS,
     _TRANSFORMATION_METHODS_NO_NEG,
     _return_model_names_for_missing_data,
+    _LIMITS_TESTS
 )
 
 from pycaret.time_series import TSForecastingExperiment
@@ -602,19 +603,6 @@ def test_pipeline_after_finalizing(load_pos_and_neg_data_missing):
         loaded_model._y.index, loaded_model.steps[-1][1].steps[-1][1]._y.index
     )
 
-def test_limit_target_lower_only(load_pos_and_neg_data):
-    """Tests if the target is gte to the lower bound"""
-    data = load_pos_and_neg_data
-
-    exp = TSForecastingExperiment()
-    FH = 12
-    lower_bound = 0.0
-    exp.setup(data=data, fh=FH, limit_target=[lower_bound, None], preprocess=True)
-
-    # Currently fails due to missing values
-    assert np.all(exp.y_transformed.values >= lower_bound)
-    assert np.all(exp.y_train_transformed.values >= lower_bound)
-    assert np.all(exp.y_test_transformed.values >= lower_bound)
 
 def test_no_transform_noexo(load_pos_and_neg_data_missing):
     """
@@ -764,3 +752,26 @@ def test_no_transform_exo(load_uni_exo_data_target_missing):
     assert missing_imputed_data_test.iloc[0].equals(
         missing_imputed_data_all_train.iloc[0]
     )
+
+
+@pytest.mark.parametrize("limits_sequence", _LIMITS_TESTS)
+def test_limit_target_limit_parameterized(load_pos_and_neg_data, limits_sequence):
+    """Tests if the target is conforming to the bounds set by the user"""
+    data = load_pos_and_neg_data
+
+    exp = TSForecastingExperiment()
+    FH = 12
+    lower_bound, upper_bound = limits_sequence
+    exp.setup(data=data, fh=FH, limit_target=limits_sequence, preprocess=True)
+
+    if lower_bound:
+        # Check if all values are greater than or equal to lower bound
+        # ignores NaN values
+        assert np.all(np.isfinite(exp.y_transformed.values >= lower_bound))
+        assert np.all(np.isfinite(exp.y_train_transformed.values >= lower_bound))
+        assert np.all(np.isfinite(exp.y_test_transformed.values >= lower_bound))
+    if upper_bound:
+        # As per above, but for upper bound
+        assert np.all(np.isfinite(exp.y_transformed.values <= upper_bound))
+        assert np.all(np.isfinite(exp.y_train_transformed.values <= upper_bound))
+        assert np.all(np.isfinite(exp.y_test_transformed.values <= upper_bound))
