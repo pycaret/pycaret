@@ -103,33 +103,31 @@ class TSForecastingPreprocessor:
                 [("numerical_imputer", num_estimator)]
             )
 
-    def _limitation(self,
-                    limit_target: Optional[Sequence[Union[int,float,None]]],
-                    limit_exogenous: Optional[Sequence[Union[int,float,None]]],
-                    exogenous_present: bool
-                    ):
+    def _limitation(
+        self,
+        limit_target: Optional[Sequence[Union[int, float, None]]],
+        limit_exogenous: Optional[Sequence[Union[int, float, None]]],
+        exogenous_present: bool,
+    ):
 
-     #### Limit target ----
+        #### Limit target ----
         if limit_target is not None:
-            self._add_limitation_steps(
-                limits=limit_target)
+            self._add_limitation_steps(limits=limit_target)
 
-    #### Limit exogenous ----
+        #### Limit exogenous ----
         # TODO: Not yet implemented
         # Will raise an error
         # Only add exogenous pipeline steps if exogenous variables are present.
-        if (
-            exogenous_present == TSExogenousPresent.YES
-            and limit_exogenous is not None
-        ):
+        if exogenous_present == TSExogenousPresent.YES and limit_exogenous is not None:
             # self._add_limitation_steps(
             #     limits=limit_exogenous, target=False
-            self.logger.warning("Applying limits to exogenous variables is not yet implemented.")
-            
+            self.logger.warning(
+                "Applying limits to exogenous variables is not yet implemented."
+            )
 
-    def _add_limitation_steps(self,
-                              limits: Sequence[Union[int,float,None]],
-                              target: bool = True):
+    def _add_limitation_steps(
+        self, limits: Sequence[Union[int, float, None]], target: bool = True
+    ):
         """Limit/scale Possible forecast values using sktime's ScaledLogitTransformer
 
         Example:
@@ -143,7 +141,7 @@ class TSForecastingPreprocessor:
         ----------
         limits : List[Union[int,float,None]]
             A list (of two values) of the minimum and maximum values
-            
+
         target : bool, optional
             If True, limit is added to the target variable steps
             If False, limit is added to the exogenous variable steps,
@@ -172,7 +170,8 @@ class TSForecastingPreprocessor:
                     # Valid limits values
                     if not isinstance(i, (int, float, None)):
                         raise TypeError(
-                            f"{type_} limit value {i}, '{type(i)}' is not of allowed type.")
+                            f"{type_} limit value {i}, '{type(i)}' is not of allowed type."
+                        )
                 if all([i is None for i in limits]):
                     # No limits as both is none, but exit silently
                     return
@@ -186,7 +185,8 @@ class TSForecastingPreprocessor:
             # TODO: Implement passing sktime compatible transformer directly.
             raise NotImplementedError(
                 "Using transformers directly is not yet implemented,\
-                    please use numeric limits only for now.")
+                    please use numeric limits only for now."
+            )
         else:
             raise TypeError(
                 f"{type_} forecast limit Type '{type(limits)}' is not of allowed type."

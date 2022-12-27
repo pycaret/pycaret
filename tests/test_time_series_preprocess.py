@@ -11,7 +11,7 @@ from time_series_test_utils import (
     _TRANSFORMATION_METHODS,
     _TRANSFORMATION_METHODS_NO_NEG,
     _return_model_names_for_missing_data,
-    _LIMITS_TESTS
+    _LIMITS_TESTS,
 )
 
 from pycaret.time_series import TSForecastingExperiment

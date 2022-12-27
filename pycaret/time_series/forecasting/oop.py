@@ -1079,9 +1079,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
 
             #### Limit variables
-            self._limitation(limit_target=self.limit_target,
-                             limit_exogenous=self.limit_exogenous,
-                             exogenous_present=self.exogenous_present)
+            self._limitation(
+                limit_target=self.limit_target,
+                limit_exogenous=self.limit_exogenous,
+                exogenous_present=self.exogenous_present,
+            )
 
             # Feature Engineering ----
             self._feature_engineering(
@@ -1327,7 +1329,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ignore_features: Optional[List] = None,
         numeric_imputation_target: Optional[Union[int, float, str]] = None,
         numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
-        limit_target: Optional[List[Union[int,float,None]]] = None,
+        limit_target: Optional[List[Union[int, float, None]]] = None,
         transform_target: Optional[str] = None,
         transform_exogenous: Optional[str] = None,
         scale_target: Optional[str] = None,
