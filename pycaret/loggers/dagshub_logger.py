@@ -25,16 +25,10 @@ class DagshubLogger(MlflowLogger):
         self.remote_procdata_root = Path("artifacts/data/process")
         owner_name = os.getenv("REPO_OWNER")
         repo_name = os.getenv("REPO_NAME")
-        username = os.getenv("USER_NAME")
-        password = os.getenv("PASSWORD")
-        token = os.getenv("TOKEN")
         branch = "main" if os.getenv("BRANCH") is None else os.getenv("BRANCH")
         self.repo = Repo(
             owner=owner_name,
             name=repo_name,
-            username=username,
-            password=password,
-            token=token,
             branch=branch,
         )
 
