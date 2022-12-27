@@ -107,7 +107,7 @@ class TSForecastingPreprocessor:
         self,
         limit_target: Optional[Sequence[Union[int, float, None]]],
         limit_exogenous: Optional[Sequence[Union[int, float, None]]],
-        exogenous_present: bool,
+        exogenous_present: TSExogenousPresent,
     ):
 
         # Limit target ----
@@ -139,7 +139,7 @@ class TSForecastingPreprocessor:
 
         Parameters
         ----------
-        limits : List[Union[int,float,None]]
+        limits : Sequence[Union[int, float, None]]
             A list (of two values) of the minimum and maximum values
 
         target : bool, optional
@@ -151,10 +151,10 @@ class TSForecastingPreprocessor:
         Raises
         ------
         TypeError
-            (1)  value in `limits` is not None or float or int.
-            (2) `limits` is not a list.
+            (1)  value in `limits` is not None, float or int.
+            (2) `limits` is not a valid Sequence.
         ValueError
-            (1) `limits` is a list of length not equal to 2.
+            (1) `limits` is not a valid Sequence of length not equal to 2.
         NotImplementedError
             (1) `limits` is a subclass of BaseEstimator.
             (2) `target` is False, as exogenous limiting is not implemented yet.
