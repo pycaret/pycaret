@@ -35,6 +35,7 @@ from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
+from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import (
     MLUsecase,
@@ -256,7 +257,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 remote = os.getenv("MLFLOW_TRACKING_URI")
                 if remote is None:
                     raise TypeError("Invalid URI ## TODO better error :)")
-                return MlflowLogger(remote)
+                return DagshubLogger(remote)
 
         if log_experiment:
             if log_experiment is True:
