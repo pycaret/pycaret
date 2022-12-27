@@ -21,13 +21,14 @@ class DagshubLogger(MlflowLogger):
         self.remote_model_root = Path("artifacts/models")
         self.remote_rawdata_root = Path("artifacts/data/raw")
         self.remote_procdata_root = Path("artifacts/data/process")
+        branch = "main" if os.getenv("BRANCH") is None else os.getenv("BRANCH")
         self.repo = Repo(
             owner=os.getenv("REPO_OWNER"),
             name=os.getenv("REPO_NAME"),
             username=os.getenv("USER_NAME"),
             password=os.getenv("PASSWORD"),
             token=os.getenv("TOKEN"),
-            branch=os.getenv("BRANCH"),
+            branch=branch,
         )
 
     def init_experiment(self, exp_name_log, full_name=None):
