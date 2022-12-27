@@ -18,9 +18,9 @@ class DagshubLogger(MlflowLogger):
         super().__init__()
         self.run = None
         self.remote = remote
-        self.remote_model_root = "artifacts/models"
-        self.remote_rawdata_root = "artifacts/data/raw"
-        self.remote_procdata_root = "artifacts/data/process"
+        self.remote_model_root = Path("artifacts/models")
+        self.remote_rawdata_root = Path("artifacts/data/raw")
+        self.remote_procdata_root = Path("artifacts/data/process")
         self.repo = Repo(
             owner=os.getenv("REPO_OWNER"),
             name=os.getenv("REPO_NAME"),
