@@ -6,6 +6,7 @@ from sklearn.preprocessing import (
     RobustScaler,
     StandardScaler,
 )
+from sktime.base import BaseEstimator
 from sktime.transformations.compose import ColumnwiseTransformer
 from sktime.transformations.series.adapt import TabularToSeriesAdaptor
 from sktime.transformations.series.boxcox import BoxCoxTransformer, LogTransformer
@@ -13,7 +14,6 @@ from sktime.transformations.series.cos import CosineTransformer
 from sktime.transformations.series.exponent import ExponentTransformer, SqrtTransformer
 from sktime.transformations.series.impute import Imputer
 from sktime.transformations.series.scaledlogit import ScaledLogitTransformer
-from sktime.base import BaseEstimator
 
 from pycaret.utils.time_series import TSExogenousPresent
 
