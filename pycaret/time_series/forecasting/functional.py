@@ -11,6 +11,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Sequence,
     Tuple,
     Union,
 )
@@ -43,6 +44,7 @@ def setup(
     ignore_features: Optional[List] = None,
     numeric_imputation_target: Optional[Union[int, float, str]] = None,
     numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
+    limit_target: Optional[Sequence[Union[int, float, None]]] = None,
     transform_target: Optional[str] = None,
     transform_exogenous: Optional[str] = None,
     fe_target_rr: Optional[list] = None,
@@ -140,6 +142,16 @@ def setup(
             "drift", "linear", "nearest", "mean", "median", "backfill",
             "bfill", "pad", "ffill", "random"
         If int or float, imputation method is set to "constant" with the given value.
+
+
+    limit_target: Optional[Sequence[Union[int, float,None]]], default = None
+            List of lower and upper limits for the target.
+            If None, no limits are applied.
+                Example values:
+            >    forecast_limit = None # default - no limits
+            >    forecast_limit = [0, 10000000] # lower and upper limit
+            >    forecast_limit = [0, None]  # lower limit only
+            >    forecast_limit = [None, 10000000] # upper limit only
 
 
     transform_target: Optional[str], default = None
@@ -549,6 +561,7 @@ def setup(
         transform_exogenous=transform_exogenous,
         scale_target=scale_target,
         scale_exogenous=scale_exogenous,
+        limit_target=limit_target,
         fe_target_rr=fe_target_rr,
         fe_exogenous=fe_exogenous,
         fold_strategy=fold_strategy,
