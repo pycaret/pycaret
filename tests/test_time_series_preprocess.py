@@ -755,9 +755,9 @@ def test_no_transform_exo(load_uni_exo_data_target_missing):
 
 
 @pytest.mark.parametrize("limits_sequence", _LIMITS_TESTS)
-def test_limit_target_limit_parameterized(load_pos_and_neg_data, limits_sequence):
+def test_limit_target_limit_parameterized(load_pos_data, limits_sequence):
     """Tests if the target is conforming to the bounds set by the user"""
-    data = load_pos_and_neg_data
+    data = load_pos_data
 
     exp = TSForecastingExperiment()
     FH = 12
