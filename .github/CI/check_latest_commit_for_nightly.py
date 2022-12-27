@@ -88,7 +88,7 @@ def main():
         print("Returning 1", file=sys.stderr)
         return 1
     except Exception:
-        print(f"There was an exception", file=sys.stderr)
+        print("There was an exception", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
     print("Returning 1", file=sys.stderr)
     return 1
