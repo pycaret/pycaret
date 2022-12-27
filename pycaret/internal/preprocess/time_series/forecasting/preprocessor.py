@@ -110,11 +110,11 @@ class TSForecastingPreprocessor:
         exogenous_present: bool,
     ):
 
-        #### Limit target ----
+        # Limit target ----
         if limit_target is not None:
             self._add_limitation_steps(limits=limit_target)
 
-        #### Limit exogenous ----
+        # Limit exogenous ----
         # TODO: Not yet implemented
         # Will raise an error
         # Only add exogenous pipeline steps if exogenous variables are present.

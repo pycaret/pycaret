@@ -1078,7 +1078,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 exogenous_present=self.exogenous_present,
             )
 
-            #### Limit variables
+            # Limit variables
             self._limitation(
                 limit_target=self.limit_target,
                 limit_exogenous=self.limit_exogenous,
