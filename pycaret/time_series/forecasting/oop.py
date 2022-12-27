@@ -7,7 +7,7 @@ import traceback
 import warnings
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Sequence
 
 import numpy as np
 import pandas as pd
@@ -1329,7 +1329,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ignore_features: Optional[List] = None,
         numeric_imputation_target: Optional[Union[int, float, str]] = None,
         numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
-        limit_target: Optional[List[Union[int, float, None]]] = None,
+        limit_target: Optional[Sequence[Union[int, float, None]]] = None,
         transform_target: Optional[str] = None,
         transform_exogenous: Optional[str] = None,
         scale_target: Optional[str] = None,
@@ -1432,7 +1432,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "bfill", "pad", "ffill", "random"
             If int or float, imputation method is set to "constant" with the given value.
 
-        limit_target: Optional[List[Optional[float]]], default = None
+
+        limit_target: Optional[Sequence[Union[int, float,None]]], default = None
             List of lower and upper limits for the target.
             If None, no limits are applied.
                 Example values:
