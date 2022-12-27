@@ -114,16 +114,8 @@ class TSForecastingPreprocessor:
         if limit_target is not None:
             self._add_limitation_steps(limits=limit_target)
 
-        # Limit exogenous ----
-        # TODO: Not yet implemented
-        # Will raise an error
-        # Only add exogenous pipeline steps if exogenous variables are present.
         if exogenous_present == TSExogenousPresent.YES and limit_exogenous is not None:
-            # self._add_limitation_steps(
-            #     limits=limit_exogenous, target=False
-            self.logger.warning(
-                "Applying limits to exogenous variables is not yet implemented."
-            )
+            self._add_limitation_steps(limits=limit_exogenous, target=False)
 
     def _add_limitation_steps(
         self, limits: Sequence[Union[int, float, None]], target: bool = True
@@ -193,12 +185,13 @@ class TSForecastingPreprocessor:
             )
 
         if target:
-            print("creating pipeline limit step")
             self.transformer_steps_target.extend([("target_limiter", limiter)])
         else:
-            raise NotImplementedError(
-                "Limiting exogenous variables is not yet implemented."
+            # This is never actually called, but the user will get a warning
+            self.logger.warning(
+                "Applying limits to exogenous variables is not yet implemented."
             )
+            # self.transformer_steps_exogenous.extend([("exogenous_limiter", limiter)])
 
     def _transformation(
         self,
