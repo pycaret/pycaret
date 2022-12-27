@@ -62,6 +62,12 @@ _TRANSFORMATION_METHODS = ["box-cox", "log", "sqrt", "exp", "cos"]
 _TRANSFORMATION_METHODS_NO_NEG = ["box-cox", "log"]
 _SCALE_METHODS = ["zscore", "minmax", "maxabs", "robust"]
 
+_LIMITS_TESTS = [
+    [0.0, 10.0],  # list, upper & lower
+    (None, 10.0),  # tuple, upper only
+    (0.0, None),  # tuple, lower only
+    ]
+
 
 def _get_all_plots():
     exp = TSForecastingExperiment()
