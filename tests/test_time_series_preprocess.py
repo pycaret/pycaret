@@ -762,7 +762,7 @@ def test_limit_target_limit_parameterized(load_pos_data, limits_sequence):
     exp = TSForecastingExperiment()
     FH = 12
     lower_bound, upper_bound = limits_sequence
-    exp.setup(data=data, fh=FH, limit_target=limits_sequence, preprocess=True)
+    exp.setup(data=data, fh=FH, limit_target=limits_sequence)
 
     if lower_bound:
         # Check if all values are greater than or equal to lower bound
