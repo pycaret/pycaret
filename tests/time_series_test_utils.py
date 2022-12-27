@@ -66,7 +66,7 @@ _LIMITS_TESTS = [
     [0.0, 10.0],  # list, upper & lower
     (None, 10.0),  # tuple, upper only
     (0.0, None),  # tuple, lower only
-    ]
+]
 
 
 def _get_all_plots():
