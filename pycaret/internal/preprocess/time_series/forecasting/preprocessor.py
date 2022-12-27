@@ -194,7 +194,7 @@ class TSForecastingPreprocessor:
 
         if target:
             print("creating pipeline limit step")
-            self.pipe_steps_target.extend([("target_limiter", limiter)])
+            self.transformer_steps_target.extend([("target_limiter", limiter)])
         else:
             raise NotImplementedError(
                 "Limiting exogenous variables is not yet implemented."
