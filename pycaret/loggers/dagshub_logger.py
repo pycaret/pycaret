@@ -3,31 +3,38 @@ from pathlib import Path
 from pycaret.loggers.mlflow_logger import MlflowLogger
 
 try:
-    from dagshub.upload import Repo
+    import dagshub
     import mlflow
 except ImportError:
-    Repo = None
+    dagshub = None
 
 
 class DagshubLogger(MlflowLogger):
     def __init__(self, remote=None) -> None:
-        if Repo is None:
+        if dagshub is None:
             raise ImportError(
-                "DagshubLogger requires mlflow. Install using `pip install mlflow`"
+                "DagshubLogger requires dagshub. Install using `pip install dagshub`"
             )
         super().__init__()
+        from dagshub.upload import Repo
+
         self.run = None
         self.remote = remote
         self.remote_model_root = Path("artifacts/models")
         self.remote_rawdata_root = Path("artifacts/data/raw")
         self.remote_procdata_root = Path("artifacts/data/process")
+        owner_name = os.getenv("REPO_OWNER")
+        repo_name = os.getenv("REPO_NAME")
+        username = os.getenv("USER_NAME")
+        password = os.getenv("PASSWORD")
+        token = os.getenv("TOKEN")
         branch = "main" if os.getenv("BRANCH") is None else os.getenv("BRANCH")
         self.repo = Repo(
-            owner=os.getenv("REPO_OWNER"),
-            name=os.getenv("REPO_NAME"),
-            username=os.getenv("USER_NAME"),
-            password=os.getenv("PASSWORD"),
-            token=os.getenv("TOKEN"),
+            owner=owner_name,
+            name=repo_name,
+            username=username,
+            password=password,
+            token=token,
             branch=branch,
         )
 
