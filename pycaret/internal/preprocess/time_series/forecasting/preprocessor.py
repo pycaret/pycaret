@@ -1,4 +1,4 @@
-from typing import Optional, List, Union
+from typing import Optional, Sequence, Union
 
 from sklearn.preprocessing import (
     MaxAbsScaler,
@@ -104,8 +104,8 @@ class TSForecastingPreprocessor:
             )
 
     def _limitation(self,
-                    limit_target: Optional[List[Union[int,float,None]]],
-                    limit_exogenous: Optional[List[Union[int,float,None]]],
+                    limit_target: Optional[Sequence[Union[int,float,None]]],
+                    limit_exogenous: Optional[Sequence[Union[int,float,None]]],
                     exogenous_present: bool
                     ):
 
@@ -128,7 +128,7 @@ class TSForecastingPreprocessor:
             
 
     def _add_limitation_steps(self,
-                              limits: List[Union[int,float,None]],
+                              limits: Sequence[Union[int,float,None]],
                               target: bool = True):
         """Limit/scale Possible forecast values using sktime's ScaledLogitTransformer
 
@@ -163,12 +163,14 @@ class TSForecastingPreprocessor:
         """
 
         type_ = "Target" if target else "Exogenous"
-        self.logger.info(f"Setting up limits for {type_} variable(s).")
-        if isinstance(limits, list):
+        self.logger.info(f"Setting up forecast limits for {type_} variable(s).")
+        if isinstance(limits, Sequence) and not isinstance(limits, str):
+            # Valid limit sequence types
             if len(limits) == 2:
                 # Valid limits length
                 for i in limits:
-                    if not (isinstance(i, (int, float)) or i is None):
+                    # Valid limits values
+                    if not isinstance(i, (int, float, None)):
                         raise TypeError(
                             f"{type_} limit value {i}, '{type(i)}' is not of allowed type.")
                 if all([i is None for i in limits]):
