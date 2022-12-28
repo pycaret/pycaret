@@ -43,6 +43,16 @@ def _enable_colab():
         COLAB_ENABLED = True
 
 
+def _is_in_jupyter_notebook() -> bool:
+    try:
+        ipython = get_ipython()
+        assert ipython
+        class_name = str(ipython.__class__)
+        return True if "Terminal" not in class_name else False
+    except Exception:
+        return False
+
+
 class DisplayBackend(ABC):
     id: str
     can_update_text: bool
@@ -185,24 +195,17 @@ def detect_backend(
     backend: Optional[Union[str, DisplayBackend]] = None
 ) -> DisplayBackend:
     if backend is None:
-        class_name = ""
-
         if IN_DATABRICKS:
             return DatabricksBackend()
+
+        is_notebook = _is_in_jupyter_notebook()
+
+        if not is_notebook:
+            return CLIBackend()
 
         if IN_COLAB:
             return ColabBackend()
 
-        try:
-            ipython = get_ipython()
-            assert ipython
-            class_name = str(ipython.__class__)
-            is_notebook = True if "Terminal" not in class_name else False
-        except Exception:
-            is_notebook = False
-
-        if not is_notebook:
-            return CLIBackend()
         return JupyterBackend()
 
     if isinstance(backend, str):
