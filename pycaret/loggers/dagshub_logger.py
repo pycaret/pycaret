@@ -28,11 +28,10 @@ class DagshubLogger(MlflowLogger):
 
         # Check mlflow environment variable is set:
         is_mlflow_set = (
-            os.getenv("MLFLOW_TRACKING_USERNAME") is not None
-            and os.getenv("MLFLOW_TRACKING_PASSWORD") is not None
+            os.getenv("MLFLOW_TRACKING_URI") is not None
+            and os.getenv("MLFLOW_TRACKING_USERNAME") is not None
             and os.getenv("MLFLOW_TRACKING_PASSWORD") is not None
         )
-        print("is_mlflow_set: {}".format(is_mlflow_set))
         if not is_mlflow_set:
             os.environ["REPO_OWNER"] = input(
                 "Please insert your repository owner name:"
@@ -53,8 +52,10 @@ class DagshubLogger(MlflowLogger):
         self.__remote_model_root = Path("models")
         self.__remote_rawdata_root = Path("data/raw")
         self.__remote_procdata_root = Path("data/process")
-        owner_name = os.getenv("REPO_OWNER")
-        repo_name = os.getenv("REPO_NAME")
+        owner_name = os.getenv("MLFLOW_TRACKING_URI").split(os.sep)[-2]
+        repo_name = (
+            os.getenv("MLFLOW_TRACKING_URI").split(os.sep)[-1].replace(".mlflow", "")
+        )
         branch = "main" if os.getenv("BRANCH") is None else os.getenv("BRANCH")
         self.repo = Repo(
             owner=owner_name,
