@@ -16,6 +16,34 @@ class DagshubLogger(MlflowLogger):
                 "DagshubLogger requires dagshub. Install using `pip install dagshub`"
             )
         super().__init__()
+
+        # check token exist or not:
+        from dagshub.auth.tokens import _get_token_storage
+
+        is_token_set = (
+            "https://dagshub.com" in _get_token_storage()._load_cache_file().keys()
+        )  # Check OAuth
+        if not is_token_set:
+            dagshub.login()
+
+        # Check mlflow environment variable is set:
+        is_mlflow_set = (
+            os.getenv("MLFLOW_TRACKING_USERNAME") is not None
+            and os.getenv("MLFLOW_TRACKING_PASSWORD") is not None
+            and os.getenv("MLFLOW_TRACKING_PASSWORD") is not None
+        )
+        print("is_mlflow_set: {}".format(is_mlflow_set))
+        if not is_mlflow_set:
+            os.environ["REPO_OWNER"] = input(
+                "Please insert your repository owner name:"
+            )
+            os.environ["REPO_NAME"] = input(
+                "Please insert your repository project name:"
+            )
+            dagshub.init(
+                repo_name=os.getenv("REPO_NAME"), repo_owner=os.getenv("REPO_OWNER")
+            )
+
         from dagshub.upload import Repo
 
         self.run = None
