@@ -19,10 +19,12 @@ class DagshubLogger(MlflowLogger):
         from dagshub.upload import Repo
 
         self.run = None
+
         self.remote = remote
-        self.remote_model_root = Path("artifacts/models")
-        self.remote_rawdata_root = Path("artifacts/data/raw")
-        self.remote_procdata_root = Path("artifacts/data/process")
+        self.__dvc_fld_path = Path("artifacts")
+        self.__remote_model_root = Path("models")
+        self.__remote_rawdata_root = Path("data/raw")
+        self.__remote_procdata_root = Path("data/process")
         owner_name = os.getenv("REPO_OWNER")
         repo_name = os.getenv("REPO_NAME")
         branch = "main" if os.getenv("BRANCH") is None else os.getenv("BRANCH")
@@ -31,22 +33,29 @@ class DagshubLogger(MlflowLogger):
             name=repo_name,
             branch=branch,
         )
+        self.dvc_fld = self.repo.directory(str(self.__dvc_fld_path))
 
     def init_experiment(self, exp_name_log, full_name=None):
         mlflow.set_tracking_uri(self.remote)
         super().init_experiment(exp_name_log, full_name)
 
     def log_artifact(self, file, type="artifact"):
+        def dvc_upload(local_path="", remote_path="", commit=""):
+            assert os.path.isfile(local_path), FileExistsError(
+                f"Invalid file path: {local_path}"
+            )
+            self.dvc_fld.add(file=local_path, path=remote_path)
+            self.dvc_fld.commit(commit, versioning="dvc", force=True)
+
         if type == "model":
             if not file.endswith("Transformation Pipeline.pkl"):
-                remote_filename = os.path.join(self.remote_model_root, file)
-                self.repo.upload(
-                    file=file,
-                    path=remote_filename,
-                    versioning="dvc",
-                    commit_message="update new trained model",
-                    force=True,
+                remote_filename = os.path.join(self.__remote_model_root, file)
+                dvc_upload(
+                    local_path=file,
+                    remote_path=remote_filename,
+                    commit="update new trained model",
                 )
+
         elif type in [
             "train_data_remote",
             "train_transform_data_remote",
@@ -57,17 +66,15 @@ class DagshubLogger(MlflowLogger):
             is_transformed = "transform" in type
             transformed = "transformed " if is_transformed else ""
             remote_dir = (
-                self.remote_procdata_root
+                self.__remote_procdata_root
                 if is_transformed
-                else self.remote_rawdata_root
+                else self.__remote_rawdata_root
             )
             remote_filename = os.path.join(remote_dir, file.split(os.sep)[-1])
-            self.repo.upload(
-                file=file,
-                path=remote_filename,
-                versioning="dvc",
-                commit_message=f"update {transformed}{data_type} data",
-                force=True,
+            dvc_upload(
+                local_path=file,
+                remote_path=remote_filename,
+                commit=f"update {transformed}{data_type} data",
             )
         else:
             mlflow.log_artifact(file)
