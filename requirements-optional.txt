@@ -18,9 +18,8 @@ dpcpp-cpp-rt; platform_machine == 'x86_64' or platform_machine == 'AMD64'  # req
 scikit-learn-intelex>=2021.6.3; platform_machine == 'x86_64' or platform_machine == 'AMD64'
 
 # Tuners
-tune-sklearn>=0.2.1; python_version < '3.10' or platform_system != 'Windows'
-protobuf<4.0.0; python_version < '3.10' or platform_system != 'Windows'  # broken in Ray <1.13
-ray[tune]>=1.0.0; python_version < '3.10' or platform_system != 'Windows'
+tune-sklearn>=0.2.1; platform_system != 'Windows'
+ray[tune]>=1.0.0; platform_system != 'Windows'
 hyperopt>=0.2.7
 optuna>=3.0.0
 scikit-optimize>=0.9.0
@@ -38,6 +37,7 @@ evidently>=0.1.45.dev0  # for drift reporting
 nltk>=3.7
 pyLDAvis>=3.3.1
 gensim>=4.1.2
+pydantic<1.10.3; python_version < '3.8'  # spacy dependency, broken in 1.10.3, see https://github.com/pydantic/pydantic/issues/4885
 spacy>=3.2.3
 wordcloud>=1.8.1
 textblob>=0.17.1
