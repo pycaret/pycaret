@@ -14,14 +14,13 @@ except ImportError:
 
 
 class MlflowLogger(BaseLogger):
-    def __init__(self, remote=None) -> None:
+    def __init__(self) -> None:
         if mlflow is None:
             raise ImportError(
                 "MlflowLogger requires mlflow. Install using `pip install mlflow`"
             )
         super().__init__()
         self.run = None
-        self.remote = remote
 
     def init_experiment(self, exp_name_log, full_name=None):
         # get USI from nlp or tabular
@@ -34,7 +33,6 @@ class MlflowLogger(BaseLogger):
             except Exception:
                 pass
         full_name = full_name or f"{SETUP_TAG} {USI}"
-        if self.remote: mlflow.set_tracking_uri(self.remote)
         mlflow.set_experiment(exp_name_log)
         self.run = mlflow.start_run(run_name=full_name, nested=True)
 
