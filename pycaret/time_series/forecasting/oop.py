@@ -5153,13 +5153,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             elif split == "all":
                 y = self.y
         elif data_type == "imputed":
-            y, _ = _get_imputed_data(pipeline=self.pipeline, y=self.y, X=self.X)
+            y, _ = _get_imputed_data(pipeline=self.pipeline_fully_trained, y=self.y, X=self.X)
             if split == "train":
                 y, _ = _get_imputed_data(
                     pipeline=self.pipeline, y=self.y_train, X=self.X_train
                 )
             elif split == "test":
                 y = y.loc[self.y_test.index]
+            # "imputed" data does not remember the name in all cases for some reason
+            y.name = self.y.name
         elif data_type == "transformed":
             if split == "train":
                 y = self.y_train_transformed
