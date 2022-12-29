@@ -5153,7 +5153,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             elif split == "all":
                 y = self.y
         elif data_type == "imputed":
-            y, _ = _get_imputed_data(pipeline=self.pipeline_fully_trained, y=self.y, X=self.X)
+            y, _ = _get_imputed_data(
+                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+            )
             if split == "train":
                 y, _ = _get_imputed_data(
                     pipeline=self.pipeline, y=self.y_train, X=self.X_train
