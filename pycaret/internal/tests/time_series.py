@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Tuple, Union
 
+import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from pmdarima.arima.utils import ndiffs, nsdiffs
@@ -463,7 +464,7 @@ def _is_white_noise(
     data : pd.Series
         Time Series data on which the test needs to be performed
     lags : List[int], optional
-        The lags used to test the autocorelation for white noise, by default [24, 48]
+        The lags used to test the autocorrelation for white noise, by default [24, 48]
     alpha : float, optional
         Significance Level, by default 0.05
     verbose : bool, optional
@@ -518,7 +519,10 @@ def _is_white_noise(
             )
 
         # Step 2C: Cleanup results ----
-        results[test_category] = results["lb_pvalue"] > alpha
+        # When all values are same, results are NA, hence replace with True
+        results[test_category] = np.where(
+            ~results["lb_pvalue"].isna(), results["lb_pvalue"] > alpha, True
+        )
         is_white_noise = False if results[test_category].all() is False else True
         results.rename(
             columns={"lb_stat": "Test Statictic", "lb_pvalue": "p-value"},
