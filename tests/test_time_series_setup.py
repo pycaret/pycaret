@@ -885,7 +885,7 @@ def test_hyperparameter_splits():
 
     np.random.seed(42)
     indices = np.random.randint(1, int(TRAIN_SIZE / 2), 12)
-    data[indices] = 200
+    data.iloc[indices] = 200
 
     exp1 = TSForecastingExperiment()
     exp1.setup(data=data, fh=FH, fold=FOLD)
