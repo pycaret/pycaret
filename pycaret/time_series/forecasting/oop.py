@@ -4991,7 +4991,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     initial_window=initial_window,
                     step_length=step_length,
                     fh=self.fh,
-                    start_with_window=True,
                 )
 
             if fold_strategy == "sliding":
