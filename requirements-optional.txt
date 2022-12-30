@@ -37,7 +37,6 @@ evidently>=0.1.45.dev0  # for drift reporting
 nltk>=3.7
 pyLDAvis>=3.3.1
 gensim>=4.1.2
-pydantic<1.10.3; python_version < '3.8'  # spacy dependency, broken in 1.10.3, see https://github.com/pydantic/pydantic/issues/4885
 spacy>=3.2.3
 wordcloud>=1.8.1
 textblob>=0.17.1
