@@ -18,11 +18,10 @@ class DagshubLogger(MlflowLogger):
         super().__init__()
 
         # check token exist or not:
-        from dagshub.auth.tokens import _get_token_storage
+        from dagshub.auth.tokens import TokenStorage, _get_token_storage
 
-        is_token_set = (
-            "https://dagshub.com" in _get_token_storage()._load_cache_file().keys()
-        )  # Check OAuth
+        token_dict = _get_token_storage()._load_cache_file()
+        is_token_set = not TokenStorage._is_expired(token_dict)  # Check OAuth
         if not is_token_set:
             dagshub.login()
 
