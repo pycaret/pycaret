@@ -264,8 +264,8 @@ class DashboardLogger:
                         for logger in self.loggers
                     ]
                     # upload data to remote server
-                    self.log_remote_artifact(train_path, type="train_data_remote")
-                    self.log_remote_artifact(test_path, type="test_data_remote")
+                    self.log_remote_artifact(train_path, type="data")
+                    self.log_remote_artifact(test_path, type="data")
                     if experiment.transform_target_param:
                         train_transform_path = os.path.join(
                             tmpdir, "Train_transform.csv"
@@ -273,12 +273,8 @@ class DashboardLogger:
                         test_transform_path = os.path.join(tmpdir, "Test_transform.csv")
                         experiment.train_transformed.to_csv(train_transform_path)
                         experiment.test_transformed.to_csv(test_transform_path)
-                        self.log_remote_artifact(
-                            train_transform_path, type="train_transform_data_remote"
-                        )
-                        self.log_remote_artifact(
-                            test_transform_path, type="test_transform_data_remote"
-                        )
+                        self.log_remote_artifact(train_transform_path, type="data")
+                        self.log_remote_artifact(test_transform_path, type="data")
 
                 else:
                     train_path = os.path.join(tmpdir, "Dataset.csv")
@@ -286,15 +282,14 @@ class DashboardLogger:
                     [logger.log_artifact(train_path, "data") for logger in self.loggers]
 
                     # upload data to remote server
-                    self.log_remote_artifact(test_path, type="train_data_remote")
+                    self.log_remote_artifact(test_path, type="data")
                     if experiment.transform_target_param:
                         train_transform_path = os.path.join(
                             tmpdir, "Dataset_transform.csv"
                         )
                         experiment.train_transformed.to_csv(train_transform_path)
-                        self.log_remote_artifact(
-                            train_transform_path, type="train_transform_data_remote"
-                        )
+                        self.log_remote_artifact(train_transform_path, type="data")
+                self.log_remote_artifact(filename="", type="data_commit")
 
     def log_model_comparison(self, results, source):
         for logger in self.loggers:

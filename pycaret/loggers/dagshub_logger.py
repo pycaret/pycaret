@@ -64,47 +64,44 @@ class DagshubLogger(MlflowLogger):
             branch=branch,
         )
         self.dvc_fld = self.repo.directory(str(self.__dvc_fld_path))
+        self.__commit_data_type = []
 
     def init_experiment(self, exp_name_log, full_name=None):
         mlflow.set_tracking_uri(self.remote)
         super().init_experiment(exp_name_log, full_name)
 
-    def log_artifact(self, file, type="artifact"):
-        def dvc_upload(local_path="", remote_path="", commit=""):
-            assert os.path.isfile(local_path), FileExistsError(
-                f"Invalid file path: {local_path}"
-            )
-            self.dvc_fld.add(file=local_path, path=remote_path)
-            self.dvc_fld.commit(commit, versioning="dvc", force=True)
+    def _dvc_add(self, local_path="", remote_path=""):
+        assert os.path.isfile(local_path), FileExistsError(
+            f"Invalid file path: {local_path}"
+        )
+        self.dvc_fld.add(file=local_path, path=remote_path)
 
+    def _dvc_commit(self, commit=""):
+        self.dvc_fld.commit(commit, versioning="dvc", force=True)
+
+    def log_artifact(self, file, type="artifact"):
         if type == "model":
             if not file.endswith("Transformation Pipeline.pkl"):
                 remote_filename = os.path.join(self.__remote_model_root, file)
-                dvc_upload(
+                self._dvc_add(
                     local_path=file,
                     remote_path=remote_filename,
-                    commit="update new trained model",
                 )
-
-        elif type in [
-            "train_data_remote",
-            "train_transform_data_remote",
-            "test_data_remote",
-            "test_transform_data_remote",
-        ]:
-            data_type = type.split("_")[0].lower()
-            is_transformed = "transform" in type
-            transformed = "transformed " if is_transformed else ""
+                self._dvc_commit(commit="update new trained model")
+        elif type == "data":
+            self.__commit_data_type.append(file.split(os.sep)[-1].lower())
+            is_transformed = "transform" in self.__commit_data_type[-1]
             remote_dir = (
                 self.__remote_procdata_root
                 if is_transformed
                 else self.__remote_rawdata_root
             )
-            remote_filename = os.path.join(remote_dir, file.split(os.sep)[-1])
-            dvc_upload(
-                local_path=file,
-                remote_path=remote_filename,
-                commit=f"update {transformed}{data_type} data",
-            )
+
+            remote_filename = os.path.join(remote_dir, self.__commit_data_type[-1])
+            self._dvc_add(local_path=file, remote_path=remote_filename)
+        elif type == "data_commit":
+            commit_msg = "update data: " + ", ".join(self.__commit_data_type)
+            self._dvc_commit(commit=commit_msg)
+            self.__commit_data_type = []
         else:
             mlflow.log_artifact(file)
