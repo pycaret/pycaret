@@ -33,12 +33,13 @@ class DagshubLogger(MlflowLogger):
             and os.getenv("MLFLOW_TRACKING_PASSWORD") is not None
         )
         if not is_mlflow_set:
-            os.environ["REPO_OWNER"] = input(
-                "Please insert your repository owner name:"
-            )
-            os.environ["REPO_NAME"] = input(
-                "Please insert your repository project name:"
-            )
+            prompt_in = input("Please insert your repository owner_name/repo_name:")
+            prompt_in = prompt_in.split("/")
+            assert (
+                len(prompt_in) == 2
+            ), f"Invalid input, should be owner_name/repo_name, but get {prompt_in} instead"
+            os.environ["REPO_OWNER"] = prompt_in[0]
+            os.environ["REPO_NAME"] = prompt_in[1]
             dagshub.init(
                 repo_name=os.getenv("REPO_NAME"), repo_owner=os.getenv("REPO_OWNER")
             )
