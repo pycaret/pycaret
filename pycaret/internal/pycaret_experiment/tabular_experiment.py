@@ -2401,7 +2401,9 @@ class _TabularExperiment(_PyCaretExperiment):
             use_case=self._ml_usecase,
             **kwargs,
         )
-        self.logging_param.log_remote_artifact(model_name, type="model")
+        if self.logging_param:
+            self.logging_param.log_remote_artifact(model_name, type="model")
+
         return model_, model_name
 
     def load_model(
