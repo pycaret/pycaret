@@ -33,9 +33,9 @@ from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
-from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import (
     MLUsecase,
