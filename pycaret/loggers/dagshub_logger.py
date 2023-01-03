@@ -24,7 +24,7 @@ class DagshubLogger(MlflowLogger):
         token_dict = _get_token_storage()._load_cache_file()
         is_token_set = not TokenStorage._is_expired(token_dict)  # Check OAuth
         if not is_token_set:
-            dagshub.login()
+            dagshub.auth.get_token()
 
         # Check mlflow environment variable is set:
         is_mlflow_set = (
