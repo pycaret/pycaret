@@ -41,30 +41,34 @@ class DagshubLogger(MlflowLogger):
                 len(prompt_in) == 2
             ), f"Invalid input, should be owner_name/repo_name, but get {prompt_in} instead"
 
-            dagshub.init(repo_name=prompt_in[1], repo_owner=prompt_in[0])
+            dagshub.init(repo_name=prompt_in[1], repo_owner=prompt_in[0], dvc=True)
             remote = os.getenv("MLFLOW_TRACKING_URI")
 
         self.run = None
         self.remote = remote
         self.paths = {
             "dvc_directory": Path("artifacts"),
-            "models": self.paths["dvc_directory"] / "models",
-            "data": self.paths["dvc_directory"] / "data",
-            "raw_data": self.paths["data"] / "raw",
-            "processed_data": self.paths["data"] / "processed",
+            "models": Path("artifacts") / "models",
+            "data": Path("artifacts") / "data",
         }
+        self.paths.update(
+            {
+                "raw_data": self.paths["data"] / "raw",
+                "processed_data": self.paths["data"] / "processed",
+            }
+        )
 
         self.repo = Repo(
             owner=self.remote.split(os.sep)[-2],
-            name=self.remote.split(os.sep)[-1].replace(".mlflow"),
+            name=self.remote.split(os.sep)[-1].replace(".mlflow", ""),
             branch=os.getenv("BRANCH", "main"),
         )
-        self.dvc_folder = self.repo.directory(self.paths["dvc_directory"])
+        self.dvc_folder = self.repo.directory(str(self.paths["dvc_directory"]))
         self.__commit_data_type = []
 
-    def init_experiment(self, **args):
+    def init_experiment(self, *args, **kargs):
         mlflow.set_tracking_uri(self.remote)
-        super().init_experiment(**args)
+        super().init_experiment(*args, **kargs)
 
     def _dvc_add(self, local_path="", remote_path=""):
         assert os.path.isfile(local_path), FileExistsError(
@@ -80,15 +84,15 @@ class DagshubLogger(MlflowLogger):
             if not file.endswith("Transformation Pipeline.pkl"):
                 self._dvc_add(
                     local_path=file,
-                    remote_path=os.path.join(self.__remote_model_root, file),
+                    remote_path=os.path.join(self.paths["models"], file),
                 )
                 self._dvc_commit(commit="added new trained model")
         elif type == "data":
             self.__commit_data_type.append(file.split(os.sep)[-1].lower())
             remote_dir = (
-                self.__remote_procdata_root
+                self.paths["processed_data"]
                 if "transform" in self.__commit_data_type[-1]
-                else self.__remote_rawdata_root
+                else self.paths["raw_data"]
             )
 
             self._dvc_add(
