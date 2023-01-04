@@ -6,6 +6,7 @@ from pycaret.loggers.mlflow_logger import MlflowLogger
 try:
     import dagshub
     import mlflow
+    from dagshub.upload import Repo
 except ImportError:
     dagshub = None
 
@@ -22,13 +23,17 @@ class DagshubLogger(MlflowLogger):
         dagshub.auth.get_token()
 
         # Check mlflow environment variable is set:
-        is_mlflow_set = (
-            os.getenv("MLFLOW_TRACKING_URI") is not None
-            and os.getenv("MLFLOW_TRACKING_USERNAME") is not None
-            and os.getenv("MLFLOW_TRACKING_PASSWORD") is not None
-        )
-
-        if not is_mlflow_set or remote is None:
+        if (
+            len(
+                [
+                    "MLFLOW_TRACKING_URI",
+                    "MLFLOW_TRACKING_USERNAME",
+                    "MLFLOW_TRACKING_PASSWORD",
+                ].difference(os.environ)
+            )
+            > 0
+            or not remote
+        ):
             prompt_in = input(
                 "Please insert your repository owner_name/repo_name:"
             ).split("/")
@@ -39,31 +44,27 @@ class DagshubLogger(MlflowLogger):
             dagshub.init(repo_name=prompt_in[1], repo_owner=prompt_in[0])
             remote = os.getenv("MLFLOW_TRACKING_URI")
 
-        from dagshub.upload import Repo
-
         self.run = None
-
         self.remote = remote
-        self.__dvc_folder_path = Path("artifacts")
-        self.__remote_model_root = Path("models")
-        self.__remote_rawdata_root = Path("data/raw")
-        self.__remote_procdata_root = Path("data/process")
-        owner_name = os.getenv("MLFLOW_TRACKING_URI").split(os.sep)[-2]
-        repo_name = (
-            os.getenv("MLFLOW_TRACKING_URI").split(os.sep)[-1].replace(".mlflow", "")
-        )
-        branch = "main" if os.getenv("BRANCH") is None else os.getenv("BRANCH")
+        self.paths = {
+            "dvc_directory": Path("artifacts"),
+            "models": self.paths["dvc_directory"] / "models",
+            "data": self.paths["dvc_directory"] / "data",
+            "raw_data": self.paths["data"] / "raw",
+            "processed_data": self.paths["data"] / "processed",
+        }
+
         self.repo = Repo(
-            owner=owner_name,
-            name=repo_name,
-            branch=branch,
+            owner=self.remote.split(os.sep)[-2],
+            name=self.remote.split(os.sep)[-1].replace(".mlflow"),
+            branch=os.getenv("BRANCH", "main"),
         )
-        self.dvc_folder = self.repo.directory(str(self.__dvc_folder_path))
+        self.dvc_folder = self.repo.directory(self.paths["dvc_directory"])
         self.__commit_data_type = []
 
-    def init_experiment(self, exp_name_log, full_name=None):
+    def init_experiment(self, **args):
         mlflow.set_tracking_uri(self.remote)
-        super().init_experiment(exp_name_log, full_name)
+        super().init_experiment(**args)
 
     def _dvc_add(self, local_path="", remote_path=""):
         assert os.path.isfile(local_path), FileExistsError(
@@ -77,26 +78,27 @@ class DagshubLogger(MlflowLogger):
     def log_artifact(self, file, type="artifact"):
         if type == "model":
             if not file.endswith("Transformation Pipeline.pkl"):
-                remote_filename = os.path.join(self.__remote_model_root, file)
                 self._dvc_add(
                     local_path=file,
-                    remote_path=remote_filename,
+                    remote_path=os.path.join(self.__remote_model_root, file),
                 )
-                self._dvc_commit(commit="update new trained model")
+                self._dvc_commit(commit="added new trained model")
         elif type == "data":
             self.__commit_data_type.append(file.split(os.sep)[-1].lower())
-            is_transformed = "transform" in self.__commit_data_type[-1]
             remote_dir = (
                 self.__remote_procdata_root
-                if is_transformed
+                if "transform" in self.__commit_data_type[-1]
                 else self.__remote_rawdata_root
             )
 
-            remote_filename = os.path.join(remote_dir, self.__commit_data_type[-1])
-            self._dvc_add(local_path=file, remote_path=remote_filename)
+            self._dvc_add(
+                local_path=file,
+                remote_path=os.path.join(remote_dir, self.__commit_data_type[-1]),
+            )
         elif type == "data_commit":
-            commit_msg = "update data: " + ", ".join(self.__commit_data_type)
-            self._dvc_commit(commit=commit_msg)
+            self._dvc_commit(
+                commit="update data: " + ", ".join(self.__commit_data_type)
+            )
             self.__commit_data_type = []
         else:
             mlflow.log_artifact(file)
