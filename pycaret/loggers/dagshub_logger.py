@@ -13,27 +13,18 @@ except ImportError:
 
 class DagshubLogger(MlflowLogger):
     def __init__(self, remote=None) -> None:
+        super().__init__()
         if dagshub is None:
             raise ImportError(
                 "DagshubLogger requires dagshub. Install using `pip install dagshub`"
             )
-        super().__init__()
-
         # check token exist or not:
-        dagshub.auth.get_token()
+        token = dagshub.auth.get_token()
+        os.environ["MLFLOW_TRACKING_USERNAME"] = token
+        os.environ["MLFLOW_TRACKING_PASSWORD"] = token
 
         # Check mlflow environment variable is set:
-        if (
-            len(
-                {
-                    "MLFLOW_TRACKING_URI",
-                    "MLFLOW_TRACKING_USERNAME",
-                    "MLFLOW_TRACKING_PASSWORD",
-                }.difference(os.environ)
-            )
-            > 0
-            or not remote
-        ):
+        if not remote or "dagshub" not in os.getenv("MLFLOW_TRACKING_URI"):
             prompt_in = input(
                 "Please insert your repository owner_name/repo_name:"
             ).split("/")
