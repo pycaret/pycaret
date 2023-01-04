@@ -30,12 +30,17 @@ class DagshubLogger(MlflowLogger):
         is_mlflow_set = (
             os.getenv("MLFLOW_TRACKING_URI") is not None
             and os.getenv("MLFLOW_TRACKING_USERNAME") is not None
-            and os.getenv("MLFLOW_TRACKING_PASSWORD") is not None)
-        
+            and os.getenv("MLFLOW_TRACKING_PASSWORD") is not None
+        )
+
         if not is_mlflow_set or remote is None:
-            prompt_in = input("Please insert your repository owner_name/repo_name:").split("/")
-            assert (len(prompt_in) == 2), f"Invalid input, should be owner_name/repo_name, but get {prompt_in} instead"
-            
+            prompt_in = input(
+                "Please insert your repository owner_name/repo_name:"
+            ).split("/")
+            assert (
+                len(prompt_in) == 2
+            ), f"Invalid input, should be owner_name/repo_name, but get {prompt_in} instead"
+
             dagshub.init(repo_name=prompt_in[0], repo_owner=prompt_in[1])
             remote = os.getenv("MLFLOW_TRACKING_URI")
 
@@ -44,7 +49,7 @@ class DagshubLogger(MlflowLogger):
         self.run = None
 
         self.remote = remote
-        self.__dvc_fld_path = Path("artifacts")
+        self.__dvc_folder_path = Path("artifacts")
         self.__remote_model_root = Path("models")
         self.__remote_rawdata_root = Path("data/raw")
         self.__remote_procdata_root = Path("data/process")
@@ -58,7 +63,7 @@ class DagshubLogger(MlflowLogger):
             name=repo_name,
             branch=branch,
         )
-        self.dvc_fld = self.repo.directory(str(self.__dvc_fld_path))
+        self.dvc_folder = self.repo.directory(str(self.__dvc_folder_path))
         self.__commit_data_type = []
 
     def init_experiment(self, exp_name_log, full_name=None):
@@ -69,10 +74,10 @@ class DagshubLogger(MlflowLogger):
         assert os.path.isfile(local_path), FileExistsError(
             f"Invalid file path: {local_path}"
         )
-        self.dvc_fld.add(file=local_path, path=remote_path)
+        self.dvc_folder.add(file=local_path, path=remote_path)
 
     def _dvc_commit(self, commit=""):
-        self.dvc_fld.commit(commit, versioning="dvc", force=True)
+        self.dvc_folder.commit(commit, versioning="dvc", force=True)
 
     def log_artifact(self, file, type="artifact"):
         if type == "model":
