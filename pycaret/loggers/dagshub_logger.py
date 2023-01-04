@@ -25,11 +25,11 @@ class DagshubLogger(MlflowLogger):
         # Check mlflow environment variable is set:
         if (
             len(
-                [
+                {
                     "MLFLOW_TRACKING_URI",
                     "MLFLOW_TRACKING_USERNAME",
                     "MLFLOW_TRACKING_PASSWORD",
-                ].difference(os.environ)
+                }.difference(os.environ)
             )
             > 0
             or not remote
