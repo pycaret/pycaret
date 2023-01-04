@@ -41,7 +41,7 @@ class DagshubLogger(MlflowLogger):
                 len(prompt_in) == 2
             ), f"Invalid input, should be owner_name/repo_name, but get {prompt_in} instead"
 
-            dagshub.init(repo_name=prompt_in[1], repo_owner=prompt_in[0], dvc=True)
+            dagshub.init(repo_name=prompt_in[1], repo_owner=prompt_in[0])
             remote = os.getenv("MLFLOW_TRACKING_URI")
 
         self.run = None
