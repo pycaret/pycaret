@@ -48,15 +48,10 @@ class DagshubLogger(MlflowLogger):
         self.remote = remote
         self.paths = {
             "dvc_directory": Path("artifacts"),
-            "models": Path("artifacts") / "models",
-            "data": Path("artifacts") / "data",
+            "models": Path("models"),
+            "raw_data": Path("data") / "raw",
+            "processed_data": Path("data") / "processed",
         }
-        self.paths.update(
-            {
-                "raw_data": self.paths["data"] / "raw",
-                "processed_data": self.paths["data"] / "processed",
-            }
-        )
 
         self.repo = Repo(
             owner=self.remote.split(os.sep)[-2],
