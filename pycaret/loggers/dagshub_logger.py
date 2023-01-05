@@ -18,22 +18,6 @@ class DagshubLogger(MlflowLogger):
             raise ImportError(
                 "DagshubLogger requires dagshub. Install using `pip install dagshub`"
             )
-        # check token exist or not:
-        token = dagshub.auth.get_token()
-        os.environ["MLFLOW_TRACKING_USERNAME"] = token
-        os.environ["MLFLOW_TRACKING_PASSWORD"] = token
-
-        # Check mlflow environment variable is set:
-        if not remote or "dagshub" not in os.getenv("MLFLOW_TRACKING_URI"):
-            prompt_in = input(
-                "Please insert your repository owner_name/repo_name:"
-            ).split("/")
-            assert (
-                len(prompt_in) == 2
-            ), f"Invalid input, should be owner_name/repo_name, but get {prompt_in} instead"
-
-            dagshub.init(repo_name=prompt_in[1], repo_owner=prompt_in[0])
-            remote = os.getenv("MLFLOW_TRACKING_URI")
 
         self.run = None
         self.remote = remote
@@ -53,13 +37,29 @@ class DagshubLogger(MlflowLogger):
         self.__commit_data_type = []
 
     def init_experiment(self, *args, **kargs):
+        # check token exist or not:
+        token = dagshub.auth.get_token()
+        os.environ["MLFLOW_TRACKING_USERNAME"] = token
+        os.environ["MLFLOW_TRACKING_PASSWORD"] = token
+
+        # Check mlflow environment variable is set:
+        if not self.remote or "dagshub" not in os.getenv("MLFLOW_TRACKING_URI"):
+            prompt_in = input(
+                "Please insert your repository owner_name/repo_name:"
+            ).split("/")
+            assert (
+                len(prompt_in) == 2
+            ), f"Invalid input, should be owner_name/repo_name, but get {prompt_in} instead"
+
+            dagshub.init(repo_name=prompt_in[1], repo_owner=prompt_in[0])
+            self.remote = os.getenv("MLFLOW_TRACKING_URI")
+
         mlflow.set_tracking_uri(self.remote)
         super().init_experiment(*args, **kargs)
 
     def _dvc_add(self, local_path="", remote_path=""):
-        assert os.path.isfile(local_path), FileExistsError(
-            f"Invalid file path: {local_path}"
-        )
+        if not os.path.isfile(local_path):
+            FileExistsError(f"Invalid file path: {local_path}")
         self.dvc_folder.add(file=local_path, path=remote_path)
 
     def _dvc_commit(self, commit=""):
