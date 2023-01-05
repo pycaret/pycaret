@@ -1417,9 +1417,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups, data=data_X)
 
-        # Remove weird characters to avoid errors with LightGBM
-        data_X = data_X.rename(columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x)))
-
         if metrics is None:
             metrics = self._all_metrics
 
@@ -4946,9 +4943,6 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 X_test_ = data
                 y_test_ = target
-
-        # Remove weird characters to avoid errors with LightGBM
-        X_test_ = X_test_.rename(columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", str(x)))
 
         # generate drift report
         if drift_report:

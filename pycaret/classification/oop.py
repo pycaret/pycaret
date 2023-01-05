@@ -791,6 +791,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
 
+            # Remove weird characters from column names
+            if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
+                self._clean_column_names()
+
             # Encode the target column
             y_unique = self.y.unique()
             if sorted(list(y_unique)) != list(range(len(y_unique))):

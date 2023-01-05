@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -758,9 +759,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
 
-            # Encode the target column
-            if self.y.dtype.kind not in "ifu":
-                self._encode_target_column()
+            # Remove weird characters from column names
+            if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
+                self._clean_column_names()
 
             # Power transform the target to be more Gaussian-like
             if transform_target:

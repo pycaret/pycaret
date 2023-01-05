@@ -67,6 +67,7 @@ from pycaret.containers.models import (
 )
 from pycaret.internal.preprocess.iterative_imputer import IterativeImputer
 from pycaret.internal.preprocess.transformers import (
+    CleanColumnNames,
     DropImputer,
     EmbedTextFeatures,
     ExtractDateTimeFeatures,
@@ -364,6 +365,13 @@ class Preprocessor:
             self.fold_generator = TimeSeriesSplit(fold)
         else:
             self.fold_generator = fold_strategy
+
+    def _clean_column_names(self):
+        """Add CleanColumnNames to the pipeline."""
+        self.logger.info("Set up column name cleaning.")
+        self.pipeline.steps.append(
+            ("clean_column_names", TransformerWrapper(CleanColumnNames()))
+        )
 
     def _encode_target_column(self):
         """Add LabelEncoder to the pipeline."""
