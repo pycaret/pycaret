@@ -4918,6 +4918,7 @@ class _SupervisedExperiment(_TabularExperiment):
         y_test_ = None
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
+            X_test_untransformed, y_test_untransformed = self.X_test, self.y_test
         else:
             if y_name in data.columns:
                 data = self._set_index(self._prepare_dataset(data, y_name))
@@ -4942,6 +4943,8 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 X_test_ = data
                 y_test_ = target
+            X_test_untransformed = data
+            y_test_untransformed = target
 
         # generate drift report
         if drift_report:
@@ -5012,7 +5015,9 @@ class _SupervisedExperiment(_TabularExperiment):
             df_score = df_score.round(round)
             display.display(df_score.style.format(precision=round))
 
-        label = pd.DataFrame(pred, columns=[LABEL_COLUMN], index=X_test_.index)
+        label = pd.DataFrame(
+            pred, columns=[LABEL_COLUMN], index=X_test_untransformed.index
+        )
         if ml_usecase == MLUsecase.CLASSIFICATION:
             try:
                 label[LABEL_COLUMN] = label[LABEL_COLUMN].astype(int)
@@ -5023,10 +5028,10 @@ class _SupervisedExperiment(_TabularExperiment):
             label[LABEL_COLUMN] = replace_labels_in_column(
                 pipeline, label[LABEL_COLUMN]
             )
-            if y_test_ is not None:
-                y_test_ = replace_labels_in_column(pipeline, y_test_)
-        old_index = X_test_.index
-        X_test_ = pd.concat([X_test_, y_test_, label], axis=1)
+        else:
+            y_test_untransformed = y_test_
+        old_index = X_test_untransformed.index
+        X_test_ = pd.concat([X_test_untransformed, y_test_untransformed, label], axis=1)
         X_test_.index = old_index
 
         if score is not None:
