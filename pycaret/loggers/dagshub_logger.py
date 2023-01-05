@@ -33,7 +33,6 @@ class DagshubLogger(MlflowLogger):
         else:
             self.repo_name, self.repo_owner = None, None
 
-        self.dvc_folder = self.repo.directory(str(self.paths["dvc_directory"]))
         self.__commit_data_type = []
 
     @staticmethod
@@ -65,6 +64,7 @@ class DagshubLogger(MlflowLogger):
             name=self.remote.split(os.sep)[-1].replace(".mlflow", ""),
             branch=os.getenv("BRANCH", "main"),
         )
+        self.dvc_folder = self.repo.directory(str(self.paths["dvc_directory"]))
 
         mlflow.set_tracking_uri(self.remote)
         super().init_experiment(*args, **kargs)
