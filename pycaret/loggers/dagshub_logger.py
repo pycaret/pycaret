@@ -40,7 +40,7 @@ class DagshubLogger(MlflowLogger):
         splitted = repo.split("/")
         if len(splitted) != 2:
             raise ValueError(
-                f"Invalid input, should be owner_name/repo_name, but get {prompt_in} instead"
+                f"Invalid input, should be owner_name/repo_name, but got {repo} instead"
             )
         return splitted[1], splitted[0]
 
