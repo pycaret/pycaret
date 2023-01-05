@@ -51,12 +51,13 @@ class DagshubLogger(MlflowLogger):
         os.environ["MLFLOW_TRACKING_PASSWORD"] = token
 
         # Check mlflow environment variable is set:
-        if not self.remote or "dagshub" not in os.getenv("MLFLOW_TRACKING_URI"):
+        if not self.repo_name or not self.repo_owner:
             self.repo_name, self.repo_owner = self.splitter(
                 input("Please insert your repository owner_name/repo_name:")
             )
 
-            dagshub.init(repo_name=prompt_in[1], repo_owner=prompt_in[0])
+        if not self.remote or "dagshub" not in os.getenv("MLFLOW_TRACKING_URI"):
+            dagshub.init(repo_name=self.repo_name, repo_owner=self.repo_owner)
             self.remote = os.getenv("MLFLOW_TRACKING_URI")
 
         self.repo = Repo(
