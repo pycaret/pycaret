@@ -254,8 +254,7 @@ class _TabularExperiment(_PyCaretExperiment):
             if obj == "wandb":
                 return WandbLogger()
             if obj == "dagshub":
-                remote = os.getenv("MLFLOW_TRACKING_URI")
-                return DagshubLogger(remote)
+                return DagshubLogger(os.getenv("MLFLOW_TRACKING_URI"))
 
         if log_experiment:
             if log_experiment is True:

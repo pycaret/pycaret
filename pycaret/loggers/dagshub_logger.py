@@ -12,7 +12,7 @@ except ImportError:
 
 
 class DagshubLogger(MlflowLogger):
-    def __init__(self, remote=None) -> None:
+    def __init__(self, remote=None, repo=None) -> None:
         super().__init__()
         if dagshub is None:
             raise ImportError(
@@ -28,13 +28,22 @@ class DagshubLogger(MlflowLogger):
             "processed_data": Path("data") / "processed",
         }
 
-        self.repo = Repo(
-            owner=self.remote.split(os.sep)[-2],
-            name=self.remote.split(os.sep)[-1].replace(".mlflow", ""),
-            branch=os.getenv("BRANCH", "main"),
-        )
+        if repo:
+            self.repo_name, self.repo_owner = self.splitter(repo)
+        else:
+            self.repo_name, self.repo_owner = None, None
+
         self.dvc_folder = self.repo.directory(str(self.paths["dvc_directory"]))
         self.__commit_data_type = []
+
+    @staticmethod
+    def splitter(repo):
+        splitted = repo.split("/")
+        if len(splitted) != 2:
+            raise ValueError(
+                f"Invalid input, should be owner_name/repo_name, but get {prompt_in} instead"
+            )
+        return splitted[1], splitted[0]
 
     def init_experiment(self, *args, **kargs):
         # check token exist or not:
@@ -44,15 +53,18 @@ class DagshubLogger(MlflowLogger):
 
         # Check mlflow environment variable is set:
         if not self.remote or "dagshub" not in os.getenv("MLFLOW_TRACKING_URI"):
-            prompt_in = input(
-                "Please insert your repository owner_name/repo_name:"
-            ).split("/")
-            assert (
-                len(prompt_in) == 2
-            ), f"Invalid input, should be owner_name/repo_name, but get {prompt_in} instead"
+            self.repo_name, self.repo_owner = self.splitter(
+                input("Please insert your repository owner_name/repo_name:")
+            )
 
             dagshub.init(repo_name=prompt_in[1], repo_owner=prompt_in[0])
             self.remote = os.getenv("MLFLOW_TRACKING_URI")
+
+        self.repo = Repo(
+            owner=self.remote.split(os.sep)[-2],
+            name=self.remote.split(os.sep)[-1].replace(".mlflow", ""),
+            branch=os.getenv("BRANCH", "main"),
+        )
 
         mlflow.set_tracking_uri(self.remote)
         super().init_experiment(*args, **kargs)
