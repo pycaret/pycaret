@@ -1,6 +1,5 @@
 import functools
 import inspect
-import re
 import warnings
 from collections.abc import Mapping
 from copy import deepcopy
