@@ -5630,7 +5630,7 @@ class _SupervisedExperiment(_TabularExperiment):
     @property
     def X(self):
         """Feature set."""
-        return self.data.drop(self.target_param, axis=1)
+        return self.dataset.drop(self.target_param, axis=1)
 
     @property
     def dataset_transformed(self):
