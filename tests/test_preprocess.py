@@ -180,7 +180,9 @@ def test_simple_categorical_imputation(imputation_method):
     assert X.isna().sum().sum() == 0
 
 
-def test_iterative_imputer():
+@pytest.mark.parametrize("dtypes_to_select", ("mixed", "num_only", "cat_only"))
+@pytest.mark.parametrize("imputer", ("catboost", "lightgbm", "rf", "lr"))
+def test_iterative_imputer(dtypes_to_select, imputer):
     """Test iterative imputer"""
     data = pycaret.datasets.get_data("juice")
     categories = {}
@@ -191,21 +193,31 @@ def test_iterative_imputer():
         if col in ("Purchase", "Store7"):
             categories[col] = set(data[col].unique())
         data.loc[data.sample(frac=0.1, random_state=i).index, col] = pd.np.nan
-    for imputer in ["catboost", "lightgbm", "rf", "lr"]:
-        data = data.copy()
-        pc = pycaret.classification.setup(
-            data=data,
-            imputation_type="iterative",
-            numeric_iterative_imputer=imputer,
-            categorical_iterative_imputer=imputer,
-        )
-        transformer = pc.pipeline.named_steps["iterative_imputer"]
-        df = transformer.transform(data, data["STORE"])[0]
-        assert not df.isnull().values.any()
-        assert all(categories[col] == set(df[col].unique()) for col in categories)
-        df = transformer.transform(data, data["STORE"])[0]
-        assert not df.isnull().values.any()
-        assert all(categories[col] == set(df[col].unique()) for col in categories)
+
+    if dtypes_to_select == "num_only":
+        data_subset = data.select_dtypes(include="float")
+        categories = {}
+    elif dtypes_to_select == "cat_only":
+        data_subset = data.select_dtypes(exclude="float")
+    else:
+        data_subset = data
+    data_subset["STORE"] = data["STORE"]
+
+    data_subset = data_subset.copy()
+    pc = pycaret.classification.setup(
+        data=data_subset,
+        target="STORE",
+        imputation_type="iterative",
+        numeric_iterative_imputer=imputer,
+        categorical_iterative_imputer=imputer,
+    )
+    transformer = pc.pipeline.named_steps["iterative_imputer"]
+    df = transformer.transform(data_subset, data_subset["STORE"])[0]
+    assert not df.isnull().values.any()
+    assert all(categories[col] == set(df[col].unique()) for col in categories)
+    df = transformer.transform(data_subset, data_subset["STORE"])[0]
+    assert not df.isnull().values.any()
+    assert all(categories[col] == set(df[col].unique()) for col in categories)
 
 
 @pytest.mark.parametrize("embedding_method", ["bow", "tf-idf"])
