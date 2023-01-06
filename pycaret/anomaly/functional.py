@@ -1252,7 +1252,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_config(variable: str):
+def get_config(variable: Optional[str] = None):
 
     """
     This function is used to access global environment variables.
@@ -1262,6 +1262,12 @@ def get_config(variable: str):
     >>> X_train = get_config('X_train')
 
     This will return training features.
+
+
+    variable : str, default = None
+        Name of the variable to return the value of. If None,
+        will return a list of possible names.
+
 
     Returns
     -------

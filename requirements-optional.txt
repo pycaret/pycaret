@@ -14,12 +14,12 @@ catboost>=0.23.2
 kmodes>=0.11.1
 mlxtend>=0.19.0
 statsforecast>=0.5.5
+dpcpp-cpp-rt; platform_machine == 'x86_64' or platform_machine == 'AMD64'  # required for intelex, https://github.com/intel/scikit-learn-intelex/issues/1098
 scikit-learn-intelex>=2021.6.3; platform_machine == 'x86_64' or platform_machine == 'AMD64'
 
 # Tuners
-tune-sklearn>=0.2.1; python_version < '3.10' or platform_system != 'Windows'
-protobuf<4.0.0; python_version < '3.10' or platform_system != 'Windows'  # broken in Ray <1.13
-ray[tune]>=1.0.0; python_version < '3.10' or platform_system != 'Windows'
+tune-sklearn>=0.2.1; platform_system != 'Windows'
+ray[tune]>=1.0.0; platform_system != 'Windows'
 hyperopt>=0.2.7
 optuna>=3.0.0
 scikit-optimize>=0.9.0

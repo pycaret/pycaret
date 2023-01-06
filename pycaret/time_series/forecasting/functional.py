@@ -52,6 +52,7 @@ def setup(
     fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
     fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
+    hyperparameter_split: str = "all",
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     sp_detection: str = "auto",
     max_sp_to_consider: Optional[int] = None,
@@ -284,6 +285,15 @@ def setup(
         (4) Can also be a sktime compatible ForecastingHorizon object.
         (5) If fh = None, then fold_strategy must be a sktime compatible cross validation
             object. In this case, fh is derived from this object.
+
+
+    hyperparameter_split: str, default = "all"
+        The split of data used to determine certain hyperparameters such as
+        "seasonal_period", whether multiplicative seasonality can be used or not,
+        whether the data is white noise or not, the values of non-seasonal difference
+        "d" and seasonal difference "D" to use in certain models.
+        Allowed values are: ["all", "train"].
+        Refer for more details: https://github.com/pycaret/pycaret/issues/3202
 
 
     seasonal_period: list or int or str, default = None
@@ -554,6 +564,7 @@ def setup(
         fold_strategy=fold_strategy,
         fold=fold,
         fh=fh,
+        hyperparameter_split=hyperparameter_split,
         seasonal_period=seasonal_period,
         sp_detection=sp_detection,
         max_sp_to_consider=max_sp_to_consider,
@@ -1910,7 +1921,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_config(variable: str):
+def get_config(variable: Optional[str] = None):
 
     """
     This function retrieves the global variables created when initializing the
@@ -1949,6 +1960,11 @@ def get_config(variable: str):
     >>> from pycaret.time_series import *
     >>> exp_name = setup(data = airline,  fh = 12)
     >>> X_train = get_config('X_train')
+
+
+    variable : str, default = None
+        Name of the variable to return the value of. If None,
+        will return a list of possible names.
 
 
     Returns:
