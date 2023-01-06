@@ -90,7 +90,6 @@ def test_splitter_pass_cv_object(load_pos_and_neg_data):
         step_length=12,
         # window_length=12,
         fh=fh,
-        start_with_window=True,
     )
 
     exp_name = setup(
@@ -850,3 +849,48 @@ def test_missing_indices():
     exceptionmsg = errmsg.value.args[0]
 
     assert "Data has missing indices!" in exceptionmsg
+
+
+def test_hyperparameter_splits():
+    """Tests the splits to use to determine the hyperparameters"""
+
+    # 1.0 Recommended d, white noise, seasonal_period ----
+    data = get_data("airline")
+
+    FOLD = 1
+    FH = 60
+    TRAIN_SIZE = len(data) - FH
+    # Train set
+    data[:TRAIN_SIZE] = 1
+    print("Experiment 1 ----")
+    exp1 = TSForecastingExperiment()
+    exp1.setup(data=data, fh=FH, fold=FOLD)
+
+    print("Experiment 2 ----")
+    exp2 = TSForecastingExperiment()
+    exp2.setup(data=data, hyperparameter_split="train", fh=FH, fold=FOLD)
+
+    assert exp1.primary_sp_to_use != exp2.primary_sp_to_use
+    assert exp1.lowercase_d != exp2.lowercase_d
+    assert exp1.white_noise != exp2.white_noise
+    # uppercase_d turns out to be the same, hence tested separately
+    assert exp1.uppercase_d == exp2.uppercase_d
+
+    # 2.0 Recommended Seasonal D
+    data = get_data("airline")
+
+    FOLD = 1
+    FH = 36
+    TRAIN_SIZE = len(data) - FH
+
+    np.random.seed(42)
+    indices = np.random.randint(1, int(TRAIN_SIZE / 2), 12)
+    data.iloc[indices] = 200
+
+    exp1 = TSForecastingExperiment()
+    exp1.setup(data=data, fh=FH, fold=FOLD)
+
+    exp2 = TSForecastingExperiment()
+    exp2.setup(data=data, hyperparameter_split="train", fh=FH, fold=FOLD)
+
+    assert exp1.uppercase_d != exp2.uppercase_d

@@ -244,7 +244,7 @@ def auto_detect_sp(
     """
 
     yt = y.copy()
-    for i in np.arange(ndiffs(y)):
+    for i in np.arange(ndiffs(yt)):
         if verbose:
             print(f"Differencing: {i+1}")
         differencer = Differencer()

@@ -187,6 +187,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ["Fold Generator", type(self.fold_generator).__name__],
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
+            ["Splits used for hyperparameters", self.hyperparameter_split],
             ["Seasonality Detection Algo", self.sp_detection],
             ["Max Period to Consider", self.max_sp_to_consider],
             ["Seasonal Period(s) Tested", self.candidate_sps],
@@ -690,17 +691,20 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         skip_autocorrelation_test = False
 
-        # We use y_transformed here instead of y for 2 reasons:
+        # We use the transformed dataset here instead of y for 2 reasons:
         # (1) Missing values in y will cause issues with this test (seasonality
         #     will not be detected properly).
         # (2) The actual forecaster will see transformed values of y for training.
         #     Hence, these transformed values should be used to determine seasonality.
+        data_to_use = self._get_y_data(
+            split=self.hyperparameter_split, data_type="transformed"
+        )
 
         # 1.0 Set the candidate seasonal periods based on inputs and settings ----
         candidate_sps = self.seasonal_period
         if candidate_sps is None:
             if self.sp_detection == "auto":
-                _, candidate_sps, _ = auto_detect_sp(y=self.y_transformed)
+                _, candidate_sps, _ = auto_detect_sp(y=data_to_use)
                 # Test is already done in detection process so we should skip further tests
                 skip_autocorrelation_test = True
             elif self.sp_detection == "index":
@@ -721,7 +725,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             seasonality_test_results = [True for sp in candidate_sps]
         else:
             seasonality_test_results = [
-                autocorrelation_seasonality_test(self.y_transformed, sp)
+                autocorrelation_seasonality_test(data_to_use, sp)
                 for sp in candidate_sps
             ]
         self.seasonality_present = any(seasonality_test_results)
@@ -1136,6 +1140,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         self.logger.info("Set up whether Multiplicative components allowed.")
         # Should multiplicative components be allowed in models that support it
+        # NOTE: This can still use all the data to determine if multiplicative
+        # components should be potentially allowed, but when eventually deciding
+        # they type of seasonality (multiplicative or additive), we should respect
+        # the users choice in hyperparameter_split.
         self.strictly_positive = np.all(self.y_transformed > 0)
         return self
 
@@ -1148,7 +1156,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The experiment object to allow chaining of methods
         """
         self.white_noise = None
-        wn_results = self.check_stats(test="white_noise", data_type="transformed")
+
+        # We use the transformed dataset here instead of y for 2 reasons:
+        # (1) Missing values in y will cause issues with this test
+        # (2) The actual forecaster will see transformed values of y for training.
+        #     Hence, these transformed values should be used to determine seasonality.
+        wn_results = self.check_stats(
+            test="white_noise",
+            split=self.hyperparameter_split,
+            data_type="transformed",
+        )
         wn_values = wn_results.query("Property == 'White Noise'")["Value"]
 
         # There can be multiple lags values tested.
@@ -1176,7 +1193,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
-        self.lowercase_d = recommend_lowercase_d(data=self.y_transformed)
+        # We use the transformed dataset here instead of y for 2 reasons:
+        # (1) Missing values in y will cause issues with this test (seasonality
+        #     will not be detected properly).
+        # (2) The actual forecaster will see transformed values of y for training.
+        #     Hence, these transformed values should be used to determine seasonality.
+        data_to_use = self._get_y_data(
+            split=self.hyperparameter_split, data_type="transformed"
+        )
+        self.lowercase_d = recommend_lowercase_d(data=data_to_use)
         return self
 
     def _set_uppercase_d(self) -> "TSForecastingExperiment":
@@ -1192,18 +1217,26 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
+        # We use the transformed dataset here instead of y for 2 reasons:
+        # (1) Missing values in y will cause issues with this test (seasonality
+        #     will not be detected properly).
+        # (2) The actual forecaster will see transformed values of y for training.
+        #     Hence, these transformed values should be used to determine seasonality.
+        data_to_use = self._get_y_data(
+            split=self.hyperparameter_split, data_type="transformed"
+        )
         if self.primary_sp_to_use > 1:
             try:
                 max_D = 2
                 uppercase_d = recommend_uppercase_d(
-                    data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
+                    data=data_to_use, sp=self.primary_sp_to_use, max_D=max_D
                 )
             except ValueError:
                 self.logger.info("Test for computing 'D' failed at max_D = 2.")
                 try:
                     max_D = 1
                     uppercase_d = recommend_uppercase_d(
-                        data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
+                        data=data_to_use, sp=self.primary_sp_to_use, max_D=max_D
                     )
                 except ValueError:
                     self.logger.info("Test for computing 'D' failed at max_D = 1.")
@@ -1331,6 +1364,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
+        hyperparameter_split: str = "all",
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
         sp_detection: str = "auto",
         max_sp_to_consider: Optional[int] = None,
@@ -1567,6 +1601,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             (4) Can also be a sktime compatible ForecastingHorizon object.
             (5) If fh = None, then fold_strategy must be a sktime compatible cross validation
                 object. In this case, fh is derived from this object.
+
+
+        hyperparameter_split: str, default = "all"
+            The split of data used to determine certain hyperparameters such as
+            "seasonal_period", whether multiplicative seasonality can be used or not,
+            whether the data is white noise or not, the values of non-seasonal difference
+            "d" and seasonal difference "D" to use in certain models.
+            Allowed values are: ["all", "train"].
+            Refer for more details: https://github.com/pycaret/pycaret/issues/3202
 
 
         seasonal_period: list or int or str, default = None
@@ -1859,6 +1902,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.fold_strategy = fold_strategy
         self.fold = fold
+
+        allowed_hyperparameter_splits = ["all", "train"]
+        if hyperparameter_split not in allowed_hyperparameter_splits:
+            raise ValueError(
+                f"hyperparameters_using must be one of '{', '.join(allowed_hyperparameter_splits)}'. "
+                f"You provided {hyperparameter_split}."
+            )
+        self.hyperparameter_split = hyperparameter_split
 
         # Variables related to seasonal period and detection ----
         self.seasonal_period = seasonal_period
@@ -4991,7 +5042,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     initial_window=initial_window,
                     step_length=step_length,
                     fh=self.fh,
-                    start_with_window=True,
                 )
 
             if fold_strategy == "sliding":
@@ -5154,13 +5204,19 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             elif split == "all":
                 y = self.y
         elif data_type == "imputed":
-            y, _ = _get_imputed_data(pipeline=self.pipeline, y=self.y, X=self.X)
             if split == "train":
                 y, _ = _get_imputed_data(
                     pipeline=self.pipeline, y=self.y_train, X=self.X_train
                 )
-            elif split == "test":
-                y = y.loc[self.y_test.index]
+            else:
+                # split == "test" or split == "all"
+                y, _ = _get_imputed_data(
+                    pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+                )
+                if split == "test":
+                    y = y.loc[self.y_test.index]
+            # "imputed" data does not remember the name in all cases for some reason
+            y.name = self.y.name
         elif data_type == "transformed":
             if split == "train":
                 y = self.y_train_transformed
