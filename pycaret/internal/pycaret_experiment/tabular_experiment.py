@@ -2401,7 +2401,10 @@ class _TabularExperiment(_PyCaretExperiment):
             **kwargs,
         )
         if self.logging_param:
-            self.logging_param.log_remote_artifact(model_filename, type="model")
+            [
+                logger.log_artifact(file=model_filename, type="model") 
+                for logger in self.logging_param.loggers if hasattr(logger, "remote")
+            ]
 
         return model_, model_filename
 
