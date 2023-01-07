@@ -2402,8 +2402,9 @@ class _TabularExperiment(_PyCaretExperiment):
         )
         if self.logging_param:
             [
-                logger.log_artifact(file=model_filename, type="model") 
-                for logger in self.logging_param.loggers if hasattr(logger, "remote")
+                logger.log_artifact(file=model_filename, type="model")
+                for logger in self.logging_param.loggers
+                if hasattr(logger, "remote")
             ]
 
         return model_, model_filename
