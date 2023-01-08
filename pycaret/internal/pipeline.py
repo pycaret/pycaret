@@ -24,6 +24,21 @@ from pycaret.utils._show_versions import _get_deps_info
 from pycaret.utils.generic import get_all_object_vars_and_properties, variable_return
 
 
+def _copy_estimator_state(source, target) -> None:
+    """Copy the state of source to target."""
+    try:
+        state = source.__getstate__()
+    except Exception:
+        state = source.__dict__
+
+    try:
+        target.__setstate__(state)
+    except Exception:
+        target.__dict__ = state
+
+    del source
+
+
 def _final_estimator_has(attr):
     """Check that final_estimator has attribute `attr`.
 
@@ -82,7 +97,7 @@ def _inverse_transform_one(transformer, y=None):
 
 def _fit_transform_one(transformer, X=None, y=None, message=None, **fit_params):
     """Fit and transform the data using one transformer."""
-    _fit_one(transformer, X, y, message, **fit_params)
+    transformer = _fit_one(transformer, X, y, message, **fit_params)
     X, y = _transform_one(transformer, X, y)
 
     return X, y, transformer
@@ -234,12 +249,13 @@ class Pipeline(imblearn.pipeline.Pipeline):
         with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
             if self._final_estimator != "passthrough":
                 fit_params_last_step = fit_params_steps[self.steps[-1][0]]
-                self.steps[-1] = (
-                    self.steps[-1][0],
-                    self._memory_fit(
-                        clone(self._final_estimator), X, y, **fit_params_last_step
-                    ),
+                fitted_estimator = self._memory_fit(
+                    clone(self.steps[-1][1]), X, y, **fit_params_last_step
                 )
+                # Hacky way to make sure that the state of the estimator
+                # loaded from cache is carried over to the estimator
+                # in steps
+                _copy_estimator_state(fitted_estimator, self.steps[-1][1])
 
         return self
 
@@ -263,12 +279,13 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 return variable_return(X, y)
 
             fit_params_last_step = fit_params_steps[self.steps[-1][0]]
-            self.steps[-1] = (
-                self.steps[-1][0],
-                self._memory_fit(
-                    clone(self._final_estimator), X, y, **fit_params_last_step
-                ),
+            fitted_estimator = self._memory_fit(
+                clone(self.steps[-1][1]), X, y, **fit_params_last_step
             )
+            # Hacky way to make sure that the state of the estimator
+            # loaded from cache is carried over to the estimator
+            # in steps
+            _copy_estimator_state(fitted_estimator, self.steps[-1][1])
             X, y = self._memory_transform(self._final_estimator, X, y)
 
         return variable_return(X, y)
