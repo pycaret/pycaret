@@ -46,13 +46,13 @@ def _test_synthetic_data(data, repeats: int = 100):
     globals_with_data["data"] = data
     pycaret_joblib_time = min(
         Timer(
-            f"fast_hash(data)",
+            "fast_hash(data)",
             setup="gc.collect()",
             globals=globals_with_data,
         ).repeat(repeats, 1)
     )
     original_joblib_time = min(
-        Timer(f"hash(data)", setup="gc.collect()", globals=globals_with_data).repeat(
+        Timer("hash(data)", setup="gc.collect()", globals=globals_with_data).repeat(
             repeats, 1
         )
     )
