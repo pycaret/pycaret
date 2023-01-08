@@ -1,6 +1,7 @@
 import datetime
 import gc
 import logging
+import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -791,6 +792,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
 
+            # Remove weird characters from column names
+            if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
+                self._clean_column_names()
+
             # Encode the target column
             y_unique = self.y.unique()
             if sorted(list(y_unique)) != list(range(len(y_unique))):
@@ -903,7 +908,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             container.append(
                 ["Target mapping", ", ".join([f"{k}: {v}" for k, v in mapping.items()])]
             )
-        container.append(["Original data shape", self.dataset.shape])
+        container.append(["Original data shape", self.data.shape])
         container.append(["Transformed data shape", self.dataset_transformed.shape])
         container.append(["Transformed train set shape", self.train_transformed.shape])
         container.append(["Transformed test set shape", self.test_transformed.shape])

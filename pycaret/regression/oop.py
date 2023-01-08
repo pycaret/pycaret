@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -758,9 +759,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
 
-            # Encode the target column
-            if self.y.dtype.kind not in "ifu":
-                self._encode_target_column()
+            # Remove weird characters from column names
+            if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
+                self._clean_column_names()
 
             # Power transform the target to be more Gaussian-like
             if transform_target:
@@ -863,9 +864,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         container.append(["Session id", self.seed])
         container.append(["Target", self.target_param])
         container.append(["Target type", "Regression"])
-        container.append(["Data shape", self.dataset_transformed.shape])
-        container.append(["Train data shape", self.train_transformed.shape])
-        container.append(["Test data shape", self.test_transformed.shape])
+        container.append(["Original data shape", self.data.shape])
+        container.append(["Transformed data shape", self.dataset_transformed.shape])
+        container.append(["Transformed train set shape", self.train_transformed.shape])
+        container.append(["Transformed test set shape", self.test_transformed.shape])
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
                 container.append([f"{fx} features", len(cols)])

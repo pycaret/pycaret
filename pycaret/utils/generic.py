@@ -104,9 +104,8 @@ def to_df(data, index=None, columns=None, dtypes=None):
             if dtypes is not None:
                 data = data.astype(dtypes)
 
-        else:
-            # Convert all column names to str
-            data.columns = [str(col) for col in data.columns]
+        # Convert all column names to str
+        data = data.rename(columns=lambda col: str(col))
 
     return data
 
