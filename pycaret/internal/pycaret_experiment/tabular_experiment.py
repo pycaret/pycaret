@@ -33,6 +33,7 @@ from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
@@ -227,7 +228,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
     def _validate_log_experiment(self, obj: Any) -> None:
         return isinstance(obj, (bool, BaseLogger)) or (
-            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb"]
+            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb", "dagshub"]
         )
 
     def _convert_log_experiment(
@@ -241,7 +242,7 @@ class _TabularExperiment(_PyCaretExperiment):
             or self._validate_log_experiment(log_experiment)
         ):
             raise TypeError(
-                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb'; or a list of the former."
+                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb', 'dagshub'; or a list of the former."
             )
 
         def convert_logging_param(obj):
@@ -252,6 +253,8 @@ class _TabularExperiment(_PyCaretExperiment):
                 return MlflowLogger()
             if obj == "wandb":
                 return WandbLogger()
+            if obj == "dagshub":
+                return DagshubLogger(os.getenv("MLFLOW_TRACKING_URI"))
 
         if log_experiment:
             if log_experiment is True:
@@ -2389,7 +2392,7 @@ class _TabularExperiment(_PyCaretExperiment):
         else:
             pipeline_to_use = self.pipeline
 
-        return pycaret.internal.persistence.save_model(
+        model_, model_filename = pycaret.internal.persistence.save_model(
             model=model,
             model_name=model_name,
             prep_pipe_=None if model_only else pipeline_to_use,
@@ -2397,6 +2400,14 @@ class _TabularExperiment(_PyCaretExperiment):
             use_case=self._ml_usecase,
             **kwargs,
         )
+        if self.logging_param:
+            [
+                logger.log_artifact(file=model_filename, type="model")
+                for logger in self.logging_param.loggers
+                if hasattr(logger, "remote")
+            ]
+
+        return model_, model_filename
 
     def load_model(
         self,
