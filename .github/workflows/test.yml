@@ -254,11 +254,8 @@ jobs:
           python --version
           which python
           pip list
-      - name: Remove tests
-        run: |
-          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_sp_detection.py' -delete
       - name: Run benchmarks
-        run: pytest -s --durations=0
+        run: pytest tests/benchmarks --durations=0
 
   # test_tuning:
 
