@@ -12,6 +12,7 @@ from ipywidgets.widgets import fixed, interact_manual
 from pycaret import show_versions
 from pycaret.loggers import DashboardLogger
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
 from pycaret.utils import __version__
@@ -282,7 +283,7 @@ def setup(
     # log_experiment
     def validate_log_experiment(obj):
         return isinstance(obj, (bool, BaseLogger)) or (
-            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb"]
+            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb", "dagshub"]
         )
 
     if not (
@@ -293,7 +294,7 @@ def setup(
         or validate_log_experiment(log_experiment)
     ):
         raise TypeError(
-            "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb'; or a list of the former."
+            "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb', 'dagshub'; or a list of the former."
         )
 
     # experiment custom tags
@@ -447,6 +448,8 @@ def setup(
             return MlflowLogger()
         if obj == "wandb":
             return WandbLogger()
+        if obj == "dagshub":
+            return DagshubLogger(os.getenv("MLFLOW_TRACKING_URI"))
 
     if logging_param:
         loggers_list = []
