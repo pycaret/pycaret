@@ -20,6 +20,7 @@ importlib_metadata>=4.12.0
 nbformat>=4.2.0
 cloudpickle
 deprecation>=2.1.0
+xxhash  # for faster hashing
 
 # Plotting
 matplotlib>=3.3.0
