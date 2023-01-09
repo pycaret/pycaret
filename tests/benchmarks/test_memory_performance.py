@@ -163,7 +163,6 @@ def test_numpy_hashing_performance(gc_fixture):
     assert pycaret_joblib_time < 0.01
 
 
-@pytest.mark.skip(reason="Inconsistent results, revisit later")
 def test_numpy_object_hashing_performance(gc_fixture):
     rng = np.random.RandomState(42)
     X_numpy = rng.randint(low=1, high=100, size=(100000, 10)).astype(str).astype(object)
@@ -171,7 +170,7 @@ def test_numpy_object_hashing_performance(gc_fixture):
         X_numpy, repeats=20
     )
     assert pycaret_joblib_time < original_joblib_time
-    assert pycaret_joblib_time < 0.2
+    assert pycaret_joblib_time < 2
 
 
 @pytest.mark.parametrize("shape", ((10000, 10), (100000, 100)))

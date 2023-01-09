@@ -6,7 +6,7 @@ Changes include:
 1. Using the xxhash algorithm by default instead of md5.
 2. Using the default available pickle protocol.
 3. Using O(1) hashing (https://github.com/joblib/joblib/pull/1011)
-4. Special support for pandas and numpy object arrays
+4. Special support for numpy object arrays
 5. Caching the function output only if the call takes more than N seconds
 6. Avoiding hashing the function signature twice in Memory
 """
@@ -17,6 +17,7 @@ import sys
 import tempfile
 import time
 import traceback
+from math import prod
 from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
@@ -120,6 +121,10 @@ class FastNumpyHasher(FastHasher):
             klass = arr.__class__
         return klass
 
+    def _get_numpy_metadata_tuple(self, arr: "np.ndarray"):
+        klass = self._get_coerced_mmap_class(arr)
+        return (klass, ("HASHED", arr.dtype, arr.shape, arr.strides))
+
     def save(self, obj):
         """Subclass the save method, to hash ndarray subclass, rather
         than pickling them. Off course, this is a total abuse of
@@ -135,13 +140,11 @@ class FastNumpyHasher(FastHasher):
             except ValueError:
                 self.stream.write(memoryview(obj_c_contiguous.view(self.np.uint8)))
 
-            klass = self._get_coerced_mmap_class(obj)
-
             # We also return the dtype and the shape, to distinguish
             # different views on the same data with different dtypes.
 
             # The object will be pickled by the pickler hashed at the end.
-            obj = (klass, ("HASHED", obj.dtype, obj.shape, obj.strides))
+            obj = self._get_numpy_metadata_tuple(obj)
         elif isinstance(obj, self.np.dtype):
             # numpy.dtype consistent hashing is tricky to get right. This comes
             # from the fact that atomic np.dtype objects are interned:
@@ -180,18 +183,16 @@ class FastPandasHasher(FastNumpyHasher):
 
     def save(self, obj):
         if (
-            (
-                isinstance(obj, self.pd.DataFrame)
-                and any(dtype == "object" for dtype in obj.dtypes)
-            )
-            or isinstance(obj, self.pd.Series)
-            and obj.dtype == "object"
+            isinstance(obj, self.np.ndarray)
+            and obj.dtype.hasobject
+            and obj.ndim >= 1
+            and prod(obj.shape) > 1000
         ):
             try:
-                obj.to_pickle(self.stream, protocol=self.proto)
-                return
-            except Exception:
-                # Fall back to super().save
+                meta = self._get_numpy_metadata_tuple(obj)
+                super().save(self.pd.util.hash_array(self.np.ravel(obj)))
+                obj = meta
+            except TypeError:
                 pass
         super().save(obj)
 
@@ -201,7 +202,7 @@ def fast_hash(obj, hash_name="xxhash", coerce_mmap=False, protocol=None):
     containing numpy arrays.
 
     Compared to default joblib, this function uses the xxhash algorithm,
-    hashes in O(1) space and has special handling for Pandas.
+    hashes in O(1) space and has special handling for object arrays.
 
     Parameters
     -----------
