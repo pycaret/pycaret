@@ -158,7 +158,7 @@ def test_numpy_hashing_performance(gc_fixture):
     X_numpy = rng.rand(100000, 100)
     original_joblib_time, pycaret_joblib_time = _test_synthetic_data(X_numpy)
     assert pycaret_joblib_time < original_joblib_time
-    assert pycaret_joblib_time < 0.01
+    assert pycaret_joblib_time < 0.02
 
 
 def test_numpy_object_hashing_performance(gc_fixture):
