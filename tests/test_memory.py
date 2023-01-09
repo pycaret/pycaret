@@ -42,6 +42,8 @@ def relative_time(func1, func2, *args):
     """
     time_func1 = time_func(func1, *args)
     time_func2 = time_func(func2, *args)
+    if time_func1 + time_func2 == 0:
+        return 0
     relative_diff = 0.5 * (abs(time_func1 - time_func2) / (time_func1 + time_func2))
     return relative_diff
 
@@ -187,7 +189,12 @@ def test_hash_numpy_performance():
     # 3 times as much as hashing one array
     time_hashlib = 3 * time_func(get_hash_digest, a)
     time_hash = time_func(hash, (a, a, a))
-    relative_diff = 0.5 * (abs(time_hash - time_hashlib) / (time_hash + time_hashlib))
+    if time_hash + time_hashlib == 0:
+        relative_diff = 0
+    else:
+        relative_diff = 0.5 * (
+            abs(time_hash - time_hashlib) / (time_hash + time_hashlib)
+        )
     assert relative_diff < 0.3
 
 
