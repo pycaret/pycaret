@@ -128,7 +128,7 @@ def test_compare_models_engines_local_args():
     assert isinstance(model, sklearn.linear_model._base.LinearRegression)
 
 
-@pytest.mark.parametrize("model", ("lr", "lasso", "ridge", "en", "knn", "svm"))
+@pytest.mark.parametrize("algo", ("lr", "lasso", "ridge", "en", "knn", "svm"))
 def test_sklearnex_model(algo: str):
     boston_dataframe = pycaret.datasets.get_data("boston")
     exp = pycaret.regression.RegressionExperiment()
