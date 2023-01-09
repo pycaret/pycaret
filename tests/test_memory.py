@@ -4,6 +4,7 @@
 import gc
 import itertools
 import pickle
+import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
 
@@ -162,18 +163,12 @@ def test_hash_memmap(tmpdir, coerce_mmap):
             gc.collect()
 
 
+# This is also skipped in joblib tests.
+@pytest.skipif(
+    sys.platform == "win32",
+    reason="This test is not stable under windows" " for some reason",
+)
 def test_hash_numpy_performance():
-    """Check the performance of hashing numpy arrays:
-    In [22]: a = np.random.random(1000000)
-    In [23]: %timeit hashlib.md5(a).hexdigest()
-    100 loops, best of 3: 20.7 ms per loop
-    In [24]: %timeit hashlib.md5(pickle.dumps(a, protocol=2)).hexdigest()
-    1 loops, best of 3: 73.1 ms per loop
-    In [25]: %timeit hashlib.md5(cPickle.dumps(a, protocol=2)).hexdigest()
-    10 loops, best of 3: 53.9 ms per loop
-    In [26]: %timeit hash(a)
-    100 loops, best of 3: 20.8 ms per loop
-    """
     rnd = np.random.RandomState(0)
     a = rnd.random_sample(1000000)
 
