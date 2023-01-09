@@ -2,7 +2,7 @@ from sklearn.metrics._scorer import _PredictScorer, get_scorer  # type: ignore
 
 from pycaret.utils.generic import check_metric
 
-version_ = "3.0.0.rc6"
+version_ = "3.0.0.rc7"
 nightly_version_ = "3.0.0"
 
 __version__ = version_
