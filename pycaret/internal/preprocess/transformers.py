@@ -266,7 +266,7 @@ class TransformerWrapperWithInverse(TransformerWrapper):
 class CleanColumnNames(BaseEstimator, TransformerMixin):
     """Remove weird characters from column names."""
 
-    def __init__(self, match=r"[\]\[\,\{\}"\:]+"):
+    def __init__(self, match=r"[\]\[\,\{\}\"\:]+"):
         self.match = match
 
     def fit(self, X, y=None):
