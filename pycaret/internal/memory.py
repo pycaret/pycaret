@@ -17,7 +17,6 @@ import sys
 import tempfile
 import time
 import traceback
-from math import prod
 from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
@@ -35,6 +34,16 @@ from joblib.memory import (
     get_func_name,
 )
 from xxhash import xxh128 as xxh
+
+try:
+    from math import prod
+except ImportError:
+    import operator
+    from functools import reduce
+
+    def prod(iterable) -> float:
+        return reduce(operator.mul, iterable, 1)
+
 
 if TYPE_CHECKING:
     import numpy as np

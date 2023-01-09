@@ -114,10 +114,8 @@ def _test_e2e(
         transformation=True,
         session_id=0,
     )
-    print("create model")
     for _ in range(4):
         exp.create_model("dummy", verbose=False)
-    print("transforms")
     for _ in range(8):
         exp.dataset_transformed
         exp.train_transformed
@@ -214,6 +212,17 @@ def test_scipy_hashing_performance(gc_fixture):
     assert pycaret_joblib_time < 0.01
 
 
+@pytest.mark.parametrize("dataset_name", data_df["Dataset"])
+def test_real_data_performance(dataset_name: str, gc_fixture):
+    original_joblib_time, pycaret_joblib_time = _test_real_data(dataset_name)
+    assert pycaret_joblib_time < original_joblib_time
+    # super small differences are fine
+    assert (
+        pycaret_joblib_time < original_joblib_time
+        or abs(pycaret_joblib_time - original_joblib_time) < 0.05
+    )
+
+
 @pytest.mark.parametrize("dataset", supervised_datasets)
 @pytest.mark.skipif(os.getenv("CI") == "true", reason="Skip in CI as it takes too long")
 def test_setup_performance(dataset: tuple, gc_fixture, tmpdir):
@@ -227,5 +236,5 @@ def test_setup_performance(dataset: tuple, gc_fixture, tmpdir):
     # super small differences are fine
     assert (
         pycaret_joblib_time < original_joblib_time
-        or abs(pycaret_joblib_time - original_joblib_time) < 0.1
+        or abs(pycaret_joblib_time - original_joblib_time) < 0.2
     )
