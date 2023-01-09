@@ -122,10 +122,11 @@ def test_ignore_features():
 def test_weird_chars_in_column_names():
     """Assert that weird characters from column names are dropped."""
     data = pycaret.datasets.get_data("parkinsons")
-    assert "#" in data.columns[0]
+    data.columns = ["[col"] + list(data.columns[1:])
+    assert "[" in data.columns[0]
 
     pc = pycaret.regression.setup(data)
-    assert "#" not in pc.dataset_transformed.columns[0]
+    assert pc.dataset_transformed.columns[0] == "col"
 
 
 def test_encode_target():
