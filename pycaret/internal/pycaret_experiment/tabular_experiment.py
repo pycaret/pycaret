@@ -36,6 +36,7 @@ from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
+from pycaret.loggers.comet_logger import CometLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import (
     MLUsecase,
@@ -228,7 +229,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
     def _validate_log_experiment(self, obj: Any) -> None:
         return isinstance(obj, (bool, BaseLogger)) or (
-            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb", "dagshub"]
+            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb", "dagshub", "comet_ml"]
         )
 
     def _convert_log_experiment(
@@ -242,7 +243,7 @@ class _TabularExperiment(_PyCaretExperiment):
             or self._validate_log_experiment(log_experiment)
         ):
             raise TypeError(
-                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb', 'dagshub'; or a list of the former."
+                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb', 'dagshub', 'comet'; or a list of the former."
             )
 
         def convert_logging_param(obj):

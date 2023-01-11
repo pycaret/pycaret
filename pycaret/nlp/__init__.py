@@ -14,7 +14,7 @@ from pycaret.loggers import DashboardLogger
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
-from pycaret.loggers.wandb_logger import WandbLogger
+from pycaret.loggers.comet_logger import CometLogger
 from pycaret.utils import __version__
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import get_logger
@@ -82,7 +82,7 @@ def setup(
 
 
     log_experiment: bool, default = False
-        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb', 'comet_ml')
         corresponding to a logger to determine which experiment loggers to use.
         Setting to True will use just MLFlow.
 
