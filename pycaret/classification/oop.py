@@ -627,7 +627,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
 
         log_experiment: bool or str or BaseLogger or list of str or BaseLogger, default = False
-            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb', 'dagshub')
             corresponding to a logger to determine which experiment loggers to use.
             Setting to True will use just MLFlow.
 
@@ -661,6 +661,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         log_data: bool, default = False
             When set to True, dataset is logged on the ``MLflow`` server as a csv file.
             Ignored when ``log_experiment`` is False.
+            When ``log_experiment`` is set to ``dagshub``, raw/processed data will be pushed to
+            your ``DagsHub`` repository under directory ``artifacts/data``
 
 
         engine: Optional[Dict[str, str]] = None

@@ -455,7 +455,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
 
         log_experiment: bool, default = False
-            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb', 'dagshub')
             corresponding to a logger to determine which experiment loggers to use.
             Setting to True will use just MLFlow.
             If ``wandb`` (Weights & Biases) is installed, will also log there.
@@ -484,7 +484,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         log_data: bool, default = False
             When set to True, dataset is logged on the ``MLflow`` server as a csv file.
             Ignored when ``log_experiment`` is False.
-
+            When ``log_experiment`` is set to ``dagshub``, raw/processed data will be pushed to
+            your ``DagsHub`` repository under directory ``artifacts/data``
 
         verbose: bool, default = True
             When set to False, Information grid is not printed.
