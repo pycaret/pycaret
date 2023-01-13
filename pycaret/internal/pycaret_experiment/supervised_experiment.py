@@ -4945,8 +4945,6 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 X_test_ = data
                 y_test_ = target
-            # X_test_untransformed = data
-            # y_test_untransformed = target
 
         # generate drift report
         if drift_report:
