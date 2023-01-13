@@ -34,6 +34,22 @@ jobs:
           path: pycaret tests
 
   # JOBS MUST START WITH test !!!!
+  test_examples:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v2
+      - name: Set up Python environment
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          pip install -U pytest pytest-xdist nbmake
+          pip install -e .
+      - name: Run notebooks
+        run: pytest --nbmake -n=auto ./examples/
+
   test_linux:
     runs-on: ubuntu-latest
     strategy:
