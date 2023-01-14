@@ -253,7 +253,7 @@ class LinearRegressionContainer(RegressorContainer):
 
         args = {}
         tune_args = {}
-        tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+        tune_grid = {"fit_intercept": [True, False]}
         tune_distributions = {}
 
         if not gpu_imported:
@@ -310,7 +310,6 @@ class LassoRegressionContainer(RegressorContainer):
         tune_grid = {
             "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
@@ -368,7 +367,6 @@ class RidgeRegressionContainer(RegressorContainer):
         tune_grid = {
             "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
@@ -427,7 +425,6 @@ class ElasticNetContainer(RegressorContainer):
             "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "l1_ratio": np_list_arange(0.01, 1, 0.001, inclusive=False),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "alpha": UniformDistribution(0, 1),
@@ -464,7 +461,6 @@ class LarsContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "fit_intercept": [True, False],
-            "normalize": [True, False],
             "eps": [
                 0.00001,
                 0.0001,
@@ -509,7 +505,6 @@ class LassoLarsContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "fit_intercept": [True, False],
-            "normalize": [True, False],
             "alpha": [
                 0.0000001,
                 0.000001,
@@ -573,7 +568,6 @@ class OrthogonalMatchingPursuitContainer(RegressorContainer):
         tune_grid = {
             "n_nonzero_coefs": range(1, len(experiment.X_train.columns) + 1),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "n_nonzero_coefs": IntUniformDistribution(
@@ -663,7 +657,6 @@ class BayesianRidgeContainer(RegressorContainer):
             ],
             "compute_score": [True, False],
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "alpha_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),
@@ -768,7 +761,6 @@ class AutomaticRelevanceDeterminationContainer(RegressorContainer):
             ],
             "compute_score": [True, False],
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "alpha_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),

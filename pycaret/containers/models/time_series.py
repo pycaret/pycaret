@@ -1467,7 +1467,6 @@ class LinearCdsDtContainer(CdsDtContainer):
             "degree": [1],
             "window_length": [10],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1526,7 +1525,6 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
             "regressor__alpha": [0.01, 0.1, 1, 10],
             "regressor__l1_ratio": [0.01, 0.1, 0.5, 1.0],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1586,7 +1584,6 @@ class RidgeCdsDtContainer(CdsDtContainer):
             "window_length": [10],
             "regressor__alpha": [0.01, 0.1, 1, 10],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1605,7 +1602,6 @@ class RidgeCdsDtContainer(CdsDtContainer):
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__alpha": UniformDistribution(0.001, 10),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
-            "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
         return tune_distributions
 
@@ -1647,7 +1643,6 @@ class LassoCdsDtContainer(CdsDtContainer):
             "window_length": [10],
             "regressor__alpha": [0.01, 0.1, 1, 10],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1666,7 +1661,6 @@ class LassoCdsDtContainer(CdsDtContainer):
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__alpha": UniformDistribution(0.001, 10),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
-            "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
         return tune_distributions
 
@@ -1691,7 +1685,6 @@ class LarsCdsDtContainer(CdsDtContainer):
             "window_length": [10],
             "regressor__eps": [0.0001, 0.001, 0.01, 0.1],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1710,7 +1703,6 @@ class LarsCdsDtContainer(CdsDtContainer):
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__eps": UniformDistribution(0.00001, 0.1, log=True),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
-            "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
         return tune_distributions
 
@@ -1736,7 +1728,6 @@ class LassoLarsCdsDtContainer(CdsDtContainer):
             "regressor__alpha": [0.01, 0.1, 1, 10],
             "regressor__eps": [0.0001, 0.001, 0.01, 0.1],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1756,7 +1747,6 @@ class LassoLarsCdsDtContainer(CdsDtContainer):
             "regressor__alpha": UniformDistribution(0.0000001, 1, log=True),
             "regressor__eps": UniformDistribution(0.00001, 0.1, log=True),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
-            "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
         return tune_distributions
 
@@ -1785,7 +1775,6 @@ class BayesianRidgeCdsDtContainer(CdsDtContainer):
             "regressor__lambda_2": [0.01, 0.1],
             "regressor__compute_score": [True, False],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1943,7 +1932,6 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
                 1, self.num_features + 1, 1, inclusive=True
             ),
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
