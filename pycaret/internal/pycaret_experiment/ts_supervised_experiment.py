@@ -3,7 +3,6 @@ import pandas as pd
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
-
 from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
 
 
@@ -161,8 +160,7 @@ class _TSSupervisedExperiment(_SupervisedExperiment):
             pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
         )
         return y.loc[self.idx[1]]
-    
-    
+
     def _create_model_get_train_X_y(self, X_train, y_train):
         """Return appropriate training X and y values depending on whether
         X_train and y_train are passed or not. If X_train and y_train are not

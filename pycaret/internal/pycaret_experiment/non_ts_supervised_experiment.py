@@ -1,4 +1,5 @@
 import pandas as pd
+
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )

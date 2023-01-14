@@ -35,7 +35,6 @@ from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-
 from pycaret.internal.plots.time_series import _get_plot
 from pycaret.internal.plots.utils.time_series import (
     _clean_model_results_labels,
@@ -84,7 +83,6 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _add_model_to_pipeline,
     _get_imputed_data,
     _get_pipeline_estimator_label,
-    
 )
 
 LOGGER = get_logger()
@@ -5585,8 +5583,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             else self.pipeline
         )
         return pipeline_to_use
-
-    
 
 
 def _validate_split_requested(split: str):
