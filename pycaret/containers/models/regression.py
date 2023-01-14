@@ -1145,7 +1145,7 @@ class DecisionTreeRegressorContainer(RegressorContainer):
                 0.4,
                 0.5,
             ],
-            "criterion": ["mse", "mae", "friedman_mse"],
+            "criterion": ["squared_error", "absolute_error", "friedman_mse"],
         }
         tune_distributions = {
             "max_depth": IntUniformDistribution(1, 16),
@@ -1241,7 +1241,7 @@ class RandomForestRegressorContainer(RegressorContainer):
         if gpu_imported:
             tune_grid["split_criterion"] = [2, 3]
         else:
-            tune_grid["criterion"] = ["mse", "mae"]
+            tune_grid["criterion"] = ["squared_error", "absolute_error"]
             tune_grid["min_samples_split"] = [2, 5, 7, 9, 10]
             tune_grid["min_samples_leaf"] = [2, 3, 4, 5, 6]
             tune_distributions["min_samples_split"] = IntUniformDistribution(2, 10)
@@ -1276,7 +1276,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
-            "criterion": ["mse", "mae"],
+            "criterion": ["squared_error", "absolute_error"],
             "max_depth": np_list_arange(1, 11, 1, inclusive=True),
             "min_impurity_decrease": [
                 0,

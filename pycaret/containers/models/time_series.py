@@ -2043,7 +2043,7 @@ class DecisionTreeCdsDtContainer(CdsDtContainer):
             "regressor__min_impurity_decrease": [0.1, 0.5],
             "regressor__min_samples_leaf": [2, 6],
             "regressor__min_samples_split": [2, 10],
-            "regressor__criterion": ["mse", "mae", "friedman_mse"],
+            "regressor__criterion": ["squared_error", "absolute_error", "friedman_mse"],
         }
         return tune_grid
 
@@ -2140,7 +2140,7 @@ class ExtraTreesCdsDtContainer(CdsDtContainer):
             "degree": [1],
             "window_length": [10],
             "regressor__n_estimators": np_list_arange(10, 300, 150, inclusive=True),
-            # "regressor__criterion": ["mse", "mae"],  # Too many combinations
+            # "regressor__criterion": ["squared_error", "absolute_error"],  # Too many combinations
             "regressor__max_depth": np_list_arange(1, 10, 10, inclusive=True),
             "regressor__min_impurity_decrease": [0.1, 0.5],
             "regressor__max_features": [1.0, "sqrt", "log2"],
@@ -2164,7 +2164,9 @@ class ExtraTreesCdsDtContainer(CdsDtContainer):
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
-            "regressor__criterion": CategoricalDistribution(values=["mse", "mae"]),
+            "regressor__criterion": CategoricalDistribution(
+                values=["squared_error", "absolute_error"]
+            ),
             "regressor__max_depth": IntUniformDistribution(lower=1, upper=11),
             "regressor__min_impurity_decrease": UniformDistribution(
                 0.000000001, 0.5, log=True
