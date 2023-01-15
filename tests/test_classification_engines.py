@@ -130,7 +130,8 @@ def test_compare_models_engines_local_args():
     assert isinstance(model, sklearn.linear_model._logistic.LogisticRegression)
 
 
-@pytest.mark.parametrize("algo", ("lr", "knn", "rbfsvm"))
+# "rbfsvm" is broken in CI intel/scikit-learn-intelex/issues/1158
+@pytest.mark.parametrize("algo", ("lr", "knn"))
 def test_sklearnex_model(algo: str):
     juice_dataframe = pycaret.datasets.get_data("juice")
     exp = pycaret.classification.ClassificationExperiment()
