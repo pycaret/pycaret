@@ -5579,13 +5579,11 @@ class _SupervisedExperiment(_TabularExperiment):
         categorical_features: Optional[List[str]] = None
             Names of categorical columns. If not specified, will use
             the columns specified/inferred in ``setup()``.
-            Must be specified if ``setup()`` has not been run.
 
 
         date_features: Optional[List[str]] = None
             Names of date columns. If not specified, will use
             the columns specified/inferred in ``setup()``.
-            Must be specified if ``setup()`` has not been run.
 
 
         filename: Optional[str] = None
@@ -5604,17 +5602,15 @@ class _SupervisedExperiment(_TabularExperiment):
             target = self.target_param if target is None else target
             numeric_features = numeric_features or self._fxs["Numeric"]
             categorical_features = categorical_features or self._fxs["Categorical"]
-            datetime_features = date_features or self._fxs["Date"]
+            date_features = date_features or self._fxs["Date"]
         none_vars = [
-            x
-            for x in (
-                reference_data,
-                current_data,
-                target,
-                categorical_features,
-                datetime_features,
-            )
-            if x is None
+            k
+            for k, v in {
+                "reference_data": reference_data,
+                "current_data": current_data,
+                "target": target,
+            }.items()
+            if v is None
         ]
         if none_vars:
             raise ValueError(
@@ -5624,11 +5620,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 "above."
             )
 
+        date_features = date_features or []
+        categorical_features = categorical_features or []
+
         if numeric_features is None:
             numeric_features = list(
                 set(reference_data.columns)
                 .difference(categorical_features)
-                .difference(datetime_features)
+                .difference(date_features)
             )
 
         from evidently.dashboard import Dashboard
@@ -5641,7 +5640,7 @@ class _SupervisedExperiment(_TabularExperiment):
         column_mapping.datetime = None
         column_mapping.numerical_features = numeric_features
         column_mapping.categorical_features = categorical_features
-        column_mapping.datetime_features = datetime_features
+        column_mapping.datetime_features = date_features
 
         if target not in reference_data.columns or target not in current_data.columns:
             raise ValueError(
