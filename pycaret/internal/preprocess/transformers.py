@@ -2,6 +2,7 @@
 # License: MIT
 
 
+import re
 from collections import defaultdict
 from inspect import signature
 
@@ -260,6 +261,19 @@ class TransformerWrapperWithInverse(TransformerWrapper):
         y = to_series(y, index=getattr(y, "index", None))
         output = self.transformer.inverse_transform(y)
         return to_series(output, index=y.index, name=y.name)
+
+
+class CleanColumnNames(BaseEstimator, TransformerMixin):
+    """Remove weird characters from column names."""
+
+    def __init__(self, match=r"[\]\[\,\{\}\"\:]+"):
+        self.match = match
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        return X.rename(columns=lambda x: re.sub(self.match, "", str(x)))
 
 
 class ExtractDateTimeFeatures(BaseEstimator, TransformerMixin):

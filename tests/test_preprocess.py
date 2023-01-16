@@ -119,6 +119,16 @@ def test_ignore_features():
     assert "Purchase" not in X
 
 
+def test_weird_chars_in_column_names():
+    """Assert that weird characters from column names are dropped."""
+    data = pycaret.datasets.get_data("parkinsons")
+    data.columns = ["[col"] + list(data.columns[1:])
+    assert "[" in data.columns[0]
+
+    pc = pycaret.regression.setup(data)
+    assert pc.dataset_transformed.columns[0] == "col"
+
+
 def test_encode_target():
     """Assert that the target column is automatically encoded."""
     data = pycaret.datasets.get_data("telescope")

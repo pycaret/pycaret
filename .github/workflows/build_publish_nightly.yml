@@ -38,7 +38,7 @@ jobs:
         fi
     - name: Checkout last passing commit
       if: env.REF_TO_CHECKOUT != '0'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         ref: ${{ env.REF_TO_CHECKOUT }}
     - name: Build nightly distribution
