@@ -4,11 +4,11 @@ performance.
 
 Changes include:
 1. Using the xxhash algorithm by default instead of md5.
-2. Using the default available pickle protocol.
-3. Using O(1) hashing (https://github.com/joblib/joblib/pull/1011)
-4. Special support for numpy object arrays
-5. Caching the function output only if the call takes more than N seconds
-6. Avoiding hashing the function signature twice in Memory
+2. Using the highest available pickle protocol by default.
+3. Using O(1) hashing (https://github.com/joblib/joblib/pull/1011).
+4. Special support for pandas/numpy object arrays.
+5. Caching the function output only if the call takes more than 0.1 seconds.
+6. Avoiding hashing the function signature twice in Memory class.
 """
 
 import hashlib
@@ -48,7 +48,7 @@ except ImportError:
 if TYPE_CHECKING:
     import numpy as np
 
-DEFAULT_MIN_TIME_TO_CACHE = 0.05
+DEFAULT_MIN_TIME_TO_CACHE = 0.1
 
 
 # From https://github.com/joblib/joblib/pull/1011
