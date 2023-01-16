@@ -3331,8 +3331,63 @@ def drift_report(
     categorical_features: Optional[List[str]] = None,
     date_features: Optional[List[str]] = None,
     filename: Optional[str] = None,
-    verbose: bool = True,
-):
+) -> str:
+    """
+    This function generates a drift report file using the
+    evidently library.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> drift_report()
+
+
+    reference_data: Optional[pd.DataFrame] = None
+        Reference data. If not specified, will use training data.
+        Must be specified if ``setup()`` has not been run.
+
+
+    current_data: Optional[pd.DataFrame] = None
+        Current data. If not specified, will use test data.
+        Must be specified if ``setup()`` has not been run.
+
+
+    target: Optional[str] = None
+        Name of the target column. If not specified, will use
+        the column specified in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    numeric_features: Optional[List[str]] = None
+        Names of numeric columns. If not specified, will use
+        the columns specified/inferred in ``setup()``, or
+        all non-categorical and non-date columns otherwise.
+
+
+    categorical_features: Optional[List[str]] = None
+        Names of categorical columns. If not specified, will use
+        the columns specified/inferred in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    date_features: Optional[List[str]] = None
+        Names of date columns. If not specified, will use
+        the columns specified/inferred in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    filename: Optional[str] = None
+        Path to save the generated HTML file to. If not specified,
+        will default to '[EXPERIMENT_NAME]_[TIMESTAMP]_Drift_Report.html'.
+
+
+    Returns:
+        Path the generated HTML file was saved to.
+    """
     experiment = _CURRENT_EXPERIMENT
     if experiment is None:
         experiment = _EXPERIMENT_CLASS()
@@ -3345,7 +3400,6 @@ def drift_report(
         categorical_features=categorical_features,
         date_features=date_features,
         filename=filename,
-        verbose=verbose,
     )
 
 

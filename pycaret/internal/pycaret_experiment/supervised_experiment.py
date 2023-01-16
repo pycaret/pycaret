@@ -5539,8 +5539,63 @@ class _SupervisedExperiment(_TabularExperiment):
         categorical_features: Optional[List[str]] = None,
         date_features: Optional[List[str]] = None,
         filename: Optional[str] = None,
-        verbose: bool = True,
-    ):
+    ) -> str:
+        """
+        This function generates a drift report file using the
+        evidently library.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> drift_report()
+
+
+        reference_data: Optional[pd.DataFrame] = None
+            Reference data. If not specified, will use training data.
+            Must be specified if ``setup()`` has not been run.
+
+
+        current_data: Optional[pd.DataFrame] = None
+            Current data. If not specified, will use test data.
+            Must be specified if ``setup()`` has not been run.
+
+
+        target: Optional[str] = None
+            Name of the target column. If not specified, will use
+            the column specified in ``setup()``.
+            Must be specified if ``setup()`` has not been run.
+
+
+        numeric_features: Optional[List[str]] = None
+            Names of numeric columns. If not specified, will use
+            the columns specified/inferred in ``setup()``, or
+            all non-categorical and non-date columns otherwise.
+
+
+        categorical_features: Optional[List[str]] = None
+            Names of categorical columns. If not specified, will use
+            the columns specified/inferred in ``setup()``.
+            Must be specified if ``setup()`` has not been run.
+
+
+        date_features: Optional[List[str]] = None
+            Names of date columns. If not specified, will use
+            the columns specified/inferred in ``setup()``.
+            Must be specified if ``setup()`` has not been run.
+
+
+        filename: Optional[str] = None
+            Path to save the generated HTML file to. If not specified,
+            will default to '[EXPERIMENT_NAME]_[TIMESTAMP]_Drift_Report.html'.
+
+
+        Returns:
+            Path the generated HTML file was saved to.
+        """
         _check_soft_dependencies("evidently", extra="mlops", severity="error")
 
         if self._setup_ran:
@@ -5556,7 +5611,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 reference_data,
                 current_data,
                 target,
-                numeric_features,
                 categorical_features,
                 datetime_features,
             )
@@ -5568,6 +5622,13 @@ class _SupervisedExperiment(_TabularExperiment):
                 f"from the experiment state: {none_vars}."
                 "If you have not ran `setup()`, you must pass all of the arguments"
                 "above."
+            )
+
+        if numeric_features is None:
+            numeric_features = list(
+                set(reference_data.columns)
+                .difference(categorical_features)
+                .difference(datetime_features)
             )
 
         from evidently.dashboard import Dashboard
@@ -5594,8 +5655,7 @@ class _SupervisedExperiment(_TabularExperiment):
             filename or f"{self.exp_name_log}_{int(time.time())}_Drift_Report.html"
         )
         dashboard.save(filename)
-        if verbose:
-            print(f"{filename} saved successfully.")
+        return filename
 
     @classmethod
     def load_experiment(
