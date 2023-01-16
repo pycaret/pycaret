@@ -10,9 +10,10 @@ from pycaret.utils.generic import mlflow_remove_bad_chars
 try:
     import mlflow
     import mlflow.sklearn
-    from mlflow.tracking.fluent import _active_run_stack, _get_or_start_run
+    from mlflow.tracking.fluent import _active_run_stack
 except ImportError:
     mlflow = None
+    _active_run_stack = None
 
 
 @contextmanager
