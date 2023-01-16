@@ -18,6 +18,7 @@ except ImportError:
 
 @contextmanager
 def set_active_mlflow_run(run):
+    """Set active MLFlow run to ``run`` and then back to what it was."""
     global _active_run_stack
     _active_run_stack.append(run)
     yield
@@ -29,6 +30,7 @@ def set_active_mlflow_run(run):
 
 @contextmanager
 def clean_active_mlflow_run():
+    """Trick MLFLow into thinking there are no active runs."""
     global _active_run_stack
     old_run_stack = _active_run_stack.copy()
     _active_run_stack.clear()
@@ -61,6 +63,8 @@ class MlflowLogger(BaseLogger):
         full_name = full_name or f"{SETUP_TAG} {USI}"
         mlflow.set_experiment(exp_name_log)
         if setup:
+            # If we are starting a new experiment with setup,
+            # make sure we do not nest it in any other run
             with clean_active_mlflow_run():
                 run = mlflow.start_run(run_name=full_name)
         else:
