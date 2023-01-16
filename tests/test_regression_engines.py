@@ -1,6 +1,7 @@
 import uuid
 
 import daal4py
+import pytest
 import sklearn
 
 import pycaret.datasets
@@ -127,11 +128,11 @@ def test_compare_models_engines_local_args():
     assert isinstance(model, sklearn.linear_model._base.LinearRegression)
 
 
-def test_all_sklearnex_models():
+# "svm" is broken in CI intel/scikit-learn-intelex/issues/1158
+@pytest.mark.parametrize("algo", ("lr", "lasso", "ridge", "en", "knn"))
+def test_sklearnex_model(algo: str):
     boston_dataframe = pycaret.datasets.get_data("boston")
     exp = pycaret.regression.RegressionExperiment()
-
-    ALGORITHMS_LIST = ["lr", "lasso", "ridge", "en", "knn", "svm"]
 
     exp.setup(
         data=boston_dataframe,
@@ -145,14 +146,12 @@ def test_all_sklearnex_models():
         experiment_name=uuid.uuid4().hex,
     )
 
-    for algo in ALGORITHMS_LIST:
-        model = exp.create_model(algo)
-        parent_library = model.__module__
-        assert parent_library.startswith("sklearn")
+    model = exp.create_model(algo)
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearn")
 
-    for algo in ALGORITHMS_LIST:
-        model = exp.create_model(algo, engine="sklearnex")
-        parent_library = model.__module__
-        assert parent_library.startswith("sklearnex") or parent_library.startswith(
-            "daal4py"
-        )
+    model = exp.create_model(algo, engine="sklearnex")
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
+    )
