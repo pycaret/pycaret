@@ -19,5 +19,5 @@ def test_drift_report():
     lr = pycaret.classification.create_model("lr")
 
     # generate drift report
-    pycaret.classification.predict_model(lr, drift_report=True)
+    pycaret.classification.drift_report(lr)
     assert 1 == 1

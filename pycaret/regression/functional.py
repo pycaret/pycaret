@@ -1863,7 +1863,6 @@ def interpret_model(
 def predict_model(
     estimator,
     data: Optional[pd.DataFrame] = None,
-    drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -1891,11 +1890,6 @@ def predict_model(
     data : pandas.DataFrame
         Shape (n_samples, n_features). All features used during training
         must be available in the unseen dataset.
-
-
-    drift_report: bool, default = False
-        When set to True, interactive drift report is generated on test set
-        with the evidently library.
 
 
     round: int, default = 4
@@ -1927,7 +1921,6 @@ def predict_model(
     return experiment.predict_model(
         estimator=estimator,
         data=data,
-        drift_report=drift_report,
         round=round,
         verbose=verbose,
     )
@@ -3036,6 +3029,32 @@ def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
     """
     return _CURRENT_EXPERIMENT.deep_check(
         estimator=estimator, check_kwargs=check_kwargs
+    )
+
+
+def drift_report(
+    reference_data: Optional[pd.DataFrame] = None,
+    current_data: Optional[pd.DataFrame] = None,
+    target: Optional[str] = None,
+    numeric_features: Optional[List[str]] = None,
+    categorical_features: Optional[List[str]] = None,
+    date_features: Optional[List[str]] = None,
+    filename: Optional[str] = None,
+    verbose: bool = True,
+):
+    experiment = _CURRENT_EXPERIMENT
+    if experiment is None:
+        experiment = _EXPERIMENT_CLASS()
+
+    return experiment.drift_report(
+        reference_data=reference_data,
+        current_data=current_data,
+        target=target,
+        numeric_features=numeric_features,
+        categorical_features=categorical_features,
+        date_features=date_features,
+        filename=filename,
+        verbose=verbose,
     )
 
 

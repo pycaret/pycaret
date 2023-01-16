@@ -2122,7 +2122,6 @@ def predict_model(
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,
     raw_score: bool = False,
-    drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -2168,11 +2167,6 @@ def predict_model(
         When set to True, scores for all labels will be returned.
 
 
-    drift_report: bool, default = False
-        When set to True, interactive drift report is generated on test set
-        with the evidently library.
-
-
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
@@ -2204,7 +2198,6 @@ def predict_model(
         probability_threshold=probability_threshold,
         encoded_labels=encoded_labels,
         raw_score=raw_score,
-        drift_report=drift_report,
         round=round,
         verbose=verbose,
     )
@@ -3327,6 +3320,32 @@ def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
     """
     return _CURRENT_EXPERIMENT.deep_check(
         estimator=estimator, check_kwargs=check_kwargs
+    )
+
+
+def drift_report(
+    reference_data: Optional[pd.DataFrame] = None,
+    current_data: Optional[pd.DataFrame] = None,
+    target: Optional[str] = None,
+    numeric_features: Optional[List[str]] = None,
+    categorical_features: Optional[List[str]] = None,
+    date_features: Optional[List[str]] = None,
+    filename: Optional[str] = None,
+    verbose: bool = True,
+):
+    experiment = _CURRENT_EXPERIMENT
+    if experiment is None:
+        experiment = _EXPERIMENT_CLASS()
+
+    return experiment.drift_report(
+        reference_data=reference_data,
+        current_data=current_data,
+        target=target,
+        numeric_features=numeric_features,
+        categorical_features=categorical_features,
+        date_features=date_features,
+        filename=filename,
+        verbose=verbose,
     )
 
 

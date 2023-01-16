@@ -12,6 +12,7 @@ from pycaret.regression.functional import (
     dashboard,
     deep_check,
     deploy_model,
+    drift_report,
     eda,
     ensemble_model,
     evaluate_model,
@@ -82,4 +83,5 @@ __all__ = [
     "create_app",
     "get_allowed_engines",
     "get_engine",
+    "drift_report",
 ]
