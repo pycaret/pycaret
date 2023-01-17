@@ -7,11 +7,11 @@ import joblib
 try:
     import comet_ml
 except ImportError:
-    comet = None
+    comet_ml = None
 
 class CometLogger(BaseLogger):
     def __init__(self) -> None:
-        if comet is None:
+        if comet_ml is None:
             raise ImportError(
                 "CometLogger requires Comet. Install using `pip install comet_ml`"
             )
@@ -20,7 +20,6 @@ class CometLogger(BaseLogger):
     
     def init_experiment(self, exp_name_log, full_name=None, **kwargs):
         self.run = comet_ml.Experiment(project_name=exp_name_log, **kwargs)
-        self.run.set_name(full_name)
         return self.run
     
     def log_params(self, params, model_name=None):
@@ -58,7 +57,7 @@ class CometLogger(BaseLogger):
         file_name, extension = None, ""
         file_pathlib = Path(file)
         file_name = file_pathlib.stem.replace(" ", "_") + str(uuid.uuid1())[:8]
-        artifact = comet_ml.Artifact(name=file_name)
+        artifact = comet_ml.Artifact(name=file_name, artifact_type=type)
         artifact.add(file)
         self.run.log_artifact(artifact)
 

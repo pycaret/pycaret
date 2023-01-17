@@ -256,6 +256,8 @@ class _TabularExperiment(_PyCaretExperiment):
                 return WandbLogger()
             if obj == "dagshub":
                 return DagshubLogger(os.getenv("MLFLOW_TRACKING_URI"))
+            if obj == "comet_ml":
+                return CometLogger()
 
         if log_experiment:
             if log_experiment is True:

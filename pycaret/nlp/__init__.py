@@ -450,6 +450,8 @@ def setup(
             return WandbLogger()
         if obj == "dagshub":
             return DagshubLogger(os.getenv("MLFLOW_TRACKING_URI"))
+        if obj == "comet_ml":
+            return CometLogger()
 
     if logging_param:
         loggers_list = []
