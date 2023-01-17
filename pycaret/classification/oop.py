@@ -26,8 +26,8 @@ from pycaret.internal.meta_estimators import (
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.preprocess.preprocessor import Preprocessor
-from pycaret.internal.pycaret_experiment.supervised_experiment import (
-    _SupervisedExperiment,
+from pycaret.internal.pycaret_experiment.non_ts_supervised_experiment import (
+    _NonTSSupervisedExperiment,
 )
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
@@ -42,7 +42,7 @@ from pycaret.utils.generic import (
 LOGGER = get_logger()
 
 
-class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
+class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
     _create_app_predict_kwargs = {"raw_score": True}
 
     def __init__(self) -> None:
