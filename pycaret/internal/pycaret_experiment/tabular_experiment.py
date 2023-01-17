@@ -243,7 +243,7 @@ class _TabularExperiment(_PyCaretExperiment):
             or self._validate_log_experiment(log_experiment)
         ):
             raise TypeError(
-                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb', 'dagshub', 'comet'; or a list of the former."
+                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb', 'dagshub', 'comet_ml'; or a list of the former."
             )
 
         def convert_logging_param(obj):
