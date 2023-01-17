@@ -4,6 +4,7 @@ import os
 import time
 import traceback
 import warnings
+from abc import abstractmethod
 from copy import copy, deepcopy
 from functools import partial
 from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Tuple, Union
@@ -1268,6 +1269,12 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.format(precision=round)
         return model_results
 
+    @abstractmethod
+    def _create_model_get_train_X_y(self, X_train, y_train):
+        """Return appropriate training X and y values depending on whether
+        X_train and y_train are passed or not."""
+        pass
+
     def _create_model(
         self,
         estimator,
@@ -1401,18 +1408,9 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Copying training dataset")
 
         # Storing X_train and y_train in data_X and data_y parameter
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            data_X = self.X_train if X_train_data is None else X_train_data.copy()
-            data_y = self.y_train if y_train_data is None else y_train_data.copy()
-        else:
-            if X_train_data is not None:
-                data_X = X_train_data.copy()
-            else:
-                if self.X_train is None:
-                    data_X = None
-                else:
-                    data_X = self.X_train
-            data_y = self.y_train if y_train_data is None else y_train_data.copy()
+        data_X, data_y = self._create_model_get_train_X_y(
+            X_train=X_train_data, y_train=y_train_data
+        )
 
         groups = self._get_groups(groups, data=data_X)
 
@@ -5633,36 +5631,34 @@ class _SupervisedExperiment(_TabularExperiment):
         )
 
     @property
+    @abstractmethod
     def X(self):
         """Feature set."""
-        return self.dataset.drop(self.target_param, axis=1)
+        pass
 
     @property
+    @abstractmethod
     def dataset_transformed(self):
         """Transformed dataset."""
-        return pd.concat([self.train_transformed, self.test_transformed])
+        pass
 
     @property
+    @abstractmethod
     def X_train_transformed(self):
         """Transformed feature set of the training set."""
-        return self.pipeline.transform(
-            X=self.X_train,
-            y=self.y_train,
-            filter_train_only=False,
-        )[0]
+        pass
 
     @property
+    @abstractmethod
     def train_transformed(self):
         """Transformed training set."""
-        return pd.concat(
-            [self.X_train_transformed, self.y_train_transformed],
-            axis=1,
-        )
+        pass
 
     @property
+    @abstractmethod
     def X_transformed(self):
         """Transformed feature set."""
-        return pd.concat([self.X_train_transformed, self.X_test_transformed])
+        pass
 
     @property
     def y(self):
@@ -5670,14 +5666,16 @@ class _SupervisedExperiment(_TabularExperiment):
         return self.dataset[self.target_param]
 
     @property
+    @abstractmethod
     def X_train(self):
         """Feature set of the training set."""
-        return self.train.drop(self.target_param, axis=1)
+        pass
 
     @property
+    @abstractmethod
     def X_test(self):
         """Feature set of the test set."""
-        return self.test.drop(self.target_param, axis=1)
+        pass
 
     @property
     def train(self):
@@ -5685,9 +5683,10 @@ class _SupervisedExperiment(_TabularExperiment):
         return self.dataset.loc[self.idx[0], :]
 
     @property
+    @abstractmethod
     def test(self):
         """Test set."""
-        return self.dataset.loc[self.idx[1], :]
+        pass
 
     @property
     def y_train(self):
@@ -5700,33 +5699,31 @@ class _SupervisedExperiment(_TabularExperiment):
         return self.test[self.target_param]
 
     @property
+    @abstractmethod
     def test_transformed(self):
         """Transformed test set."""
-        return pd.concat(
-            [self.X_test_transformed, self.y_test_transformed],
-            axis=1,
-        )
+        pass
 
     @property
+    @abstractmethod
     def y_transformed(self):
         """Transformed target column."""
-        return pd.concat([self.y_train_transformed, self.y_test_transformed])
+        pass
 
     @property
+    @abstractmethod
     def X_test_transformed(self):
         """Transformed feature set of the test set."""
-        return self.pipeline.transform(self.X_test)
+        pass
 
     @property
+    @abstractmethod
     def y_train_transformed(self):
         """Transformed target column of the training set."""
-        return self.pipeline.transform(
-            X=self.X_train,
-            y=self.y_train,
-            filter_train_only=False,
-        )[1]
+        pass
 
     @property
+    @abstractmethod
     def y_test_transformed(self):
         """Transformed target column of the test set."""
-        return self.pipeline.transform(y=self.y_test)
+        pass
