@@ -4927,6 +4927,8 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 data = self._set_index(self._prepare_dataset(data))
                 target = None
+            X_test_untransformed = data
+            y_test_untransformed = target
             data = data[X_columns]  # Ignore all columns but the originals
             if preprocess:
                 X_test_ = pipeline.transform(
@@ -4943,8 +4945,6 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 X_test_ = data
                 y_test_ = target
-            X_test_untransformed = data
-            y_test_untransformed = target
 
         # generate drift report
         if drift_report:
