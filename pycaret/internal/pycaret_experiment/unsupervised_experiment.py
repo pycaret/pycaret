@@ -458,7 +458,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb', 'comet_ml')
             corresponding to a logger to determine which experiment loggers to use.
             Setting to True will use just MLFlow.
-            If ``wandb`` (Weights & Biases) ``comet_ml``is installed, will also log there.
+            If ``wandb`` (Weights & Biases) or ``comet_ml``is installed, will also log there.
 
 
         experiment_name: str, default = None
