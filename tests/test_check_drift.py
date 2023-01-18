@@ -7,7 +7,7 @@ import pycaret.classification
 import pycaret.datasets
 
 
-def test_drift_report(tmpdir):
+def test_check_drift(tmpdir):
     # loading dataset
     data = pycaret.datasets.get_data("blood")
     experiment = pycaret.classification.ClassificationExperiment()
@@ -21,21 +21,21 @@ def test_drift_report(tmpdir):
     )
 
     # generate drift report
-    file = experiment.drift_report()
+    file = experiment.check_drift()
     assert os.path.exists(file)
 
 
-def test_drift_report_no_setup(tmpdir):
+def test_check_drift_no_setup(tmpdir):
     # loading dataset
     data = pycaret.datasets.get_data("blood")
     reference_data, current_data = train_test_split(data, test_size=0.2, shuffle=False)
     experiment = pycaret.classification.ClassificationExperiment()
 
     with pytest.raises(ValueError):
-        experiment.drift_report()
+        experiment.check_drift()
 
     # generate drift report
-    file = experiment.drift_report(
+    file = experiment.check_drift(
         reference_data=reference_data,
         current_data=current_data,
         target="Class",

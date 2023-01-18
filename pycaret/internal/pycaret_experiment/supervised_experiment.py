@@ -5530,7 +5530,7 @@ class _SupervisedExperiment(_TabularExperiment):
         suite = full_suite(**check_kwargs)
         return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)
 
-    def drift_report(
+    def check_drift(
         self,
         reference_data: Optional[pd.DataFrame] = None,
         current_data: Optional[pd.DataFrame] = None,
@@ -5551,7 +5551,7 @@ class _SupervisedExperiment(_TabularExperiment):
         >>> juice = get_data('juice')
         >>> from pycaret.classification import *
         >>> exp_name = setup(data = juice,  target = 'Purchase')
-        >>> drift_report()
+        >>> check_drift()
 
 
         reference_data: Optional[pd.DataFrame] = None

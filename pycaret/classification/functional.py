@@ -3323,7 +3323,7 @@ def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
     )
 
 
-def drift_report(
+def check_drift(
     reference_data: Optional[pd.DataFrame] = None,
     current_data: Optional[pd.DataFrame] = None,
     target: Optional[str] = None,
@@ -3343,7 +3343,7 @@ def drift_report(
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> drift_report()
+    >>> check_drift()
 
 
     reference_data: Optional[pd.DataFrame] = None
@@ -3392,7 +3392,7 @@ def drift_report(
     if experiment is None:
         experiment = _EXPERIMENT_CLASS()
 
-    return experiment.drift_report(
+    return experiment.check_drift(
         reference_data=reference_data,
         current_data=current_data,
         target=target,
