@@ -14,8 +14,7 @@ catboost>=0.23.2
 kmodes>=0.11.1
 mlxtend>=0.19.0
 statsforecast>=0.5.5
-dpcpp-cpp-rt; platform_machine == 'x86_64' or platform_machine == 'AMD64'  # required for intelex, https://github.com/intel/scikit-learn-intelex/issues/1098
-scikit-learn-intelex>=2021.6.3; platform_machine == 'x86_64' or platform_machine == 'AMD64'
+scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'
 
 # Tuners
 tune-sklearn>=0.2.1; platform_system != 'Windows'
