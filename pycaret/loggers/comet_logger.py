@@ -28,8 +28,9 @@ class CometLogger(BaseLogger):
         self.run.log_parameters(params, prefix=model_name)
     
     def set_tags(self, source, experiment_custom_tags, runtime):
-        tags = [source, experiment_custom_tags, runtime]
+        tags = [source, runtime]
         self.run.add_tags(tags)
+        self.run.log_others(experiment_custom_tags)
 
     def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
         
