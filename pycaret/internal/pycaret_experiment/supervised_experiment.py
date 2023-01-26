@@ -1464,17 +1464,18 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.update_monitor(2, full_name)
 
-        if (
-            probability_threshold
-            and self._ml_usecase == MLUsecase.CLASSIFICATION
-            and not self.is_multiclass
-        ):
+        if probability_threshold is not None:
+            if self._ml_usecase != MLUsecase.CLASSIFICATION or self.is_multiclass:
+                raise ValueError(
+                    "Cannot use probability_threshold with non-binary "
+                    "classification usecases."
+                )
             if not isinstance(model, CustomProbabilityThresholdClassifier):
                 model = CustomProbabilityThresholdClassifier(
                     classifier=model,
                     probability_threshold=probability_threshold,
                 )
-            elif probability_threshold is not None:
+            else:
                 model.set_params(probability_threshold=probability_threshold)
         self.logger.info(f"{full_name} Imported successfully")
 
