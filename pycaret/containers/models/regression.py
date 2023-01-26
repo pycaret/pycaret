@@ -1246,9 +1246,7 @@ class RandomForestRegressorContainer(RegressorContainer):
             "max_features": UniformDistribution(0.4, 1),
         }
 
-        if gpu_imported:
-            tune_grid["split_criterion"] = [2, 3]
-        else:
+        if not gpu_imported:
             tune_grid["criterion"] = ["mse", "mae"]
             tune_grid["min_samples_split"] = [2, 5, 7, 9, 10]
             tune_grid["min_samples_leaf"] = [2, 3, 4, 5, 6]
