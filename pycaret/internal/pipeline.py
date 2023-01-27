@@ -9,15 +9,12 @@
 # This pipeline is only to be used internally.
 
 import platform
-import tempfile
 import warnings
 from copy import deepcopy
 from inspect import signature
-from typing import Union
 
 import imblearn.pipeline
 import sklearn.pipeline
-from joblib.memory import Memory
 from sklearn.base import clone
 from sklearn.utils import _print_elapsed_time
 from sklearn.utils.metaestimators import available_if
@@ -25,6 +22,21 @@ from sklearn.utils.validation import check_memory
 
 from pycaret.utils._show_versions import _get_deps_info
 from pycaret.utils.generic import get_all_object_vars_and_properties, variable_return
+
+
+def _copy_estimator_state(source, target) -> None:
+    """Copy the state of source to target."""
+    try:
+        state = source.__getstate__()
+    except Exception:
+        state = source.__dict__
+
+    try:
+        target.__setstate__(state)
+    except Exception:
+        target.__dict__ = state
+
+    del source
 
 
 def _final_estimator_has(attr):
@@ -52,6 +64,7 @@ def _fit_one(transformer, X=None, y=None, message=None, **fit_params):
             if "y" in signature(transformer.fit).parameters:
                 args.append(y)
             transformer.fit(*args, **fit_params)
+    return transformer
 
 
 def _transform_one(transformer, X=None, y=None):
@@ -84,10 +97,16 @@ def _inverse_transform_one(transformer, y=None):
 
 def _fit_transform_one(transformer, X=None, y=None, message=None, **fit_params):
     """Fit and transform the data using one transformer."""
-    _fit_one(transformer, X, y, message, **fit_params)
+    transformer = _fit_one(transformer, X, y, message, **fit_params)
     X, y = _transform_one(transformer, X, y)
 
     return X, y, transformer
+
+
+def _full_transform(pipeline: "Pipeline", X, y, **kwargs):
+    for _, _, transformer in pipeline._iter(**kwargs):
+        X, y = pipeline._memory_transform(transformer, X, y)
+    return X, y
 
 
 class Pipeline(imblearn.pipeline.Pipeline):
@@ -95,6 +114,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         super().__init__(steps, memory=memory, verbose=verbose)
         self._fit_vars = set()
         self._feature_names_in = None
+        self._cache_full_transform = True
 
     def __getattr__(self, name: str):
         # override getattr to allow grabbing of final estimator attrs
@@ -146,8 +166,16 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def memory(self, value):
         """Set up cache memory objects."""
         self._memory = check_memory(value)
-        self._memory_fit = self._memory.cache(_fit_transform_one)
+        self._memory_fit = self._memory.cache(_fit_one)
         self._memory_transform = self._memory.cache(_transform_one)
+        self.__memory_full_transform = self._memory.cache(_full_transform)
+
+    @property
+    def _memory_full_transform(self):
+        if self._cache_full_transform:
+            return self.__memory_full_transform
+        else:
+            return _full_transform
 
     def _iter(self, with_final=True, filter_passthrough=True, filter_train_only=True):
         """Generate (idx, name, trans) tuples from self.steps.
@@ -188,13 +216,21 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 else:
                     cloned = clone(transformer)
 
+                if hasattr(cloned, "_cache_full_transform"):
+                    cloned._cache_full_transform = False
+
                 # Fit or load the current transformer from cache
-                X, y, fitted_transformer = self._memory_fit(
+                fitted_transformer = self._memory_fit(
                     transformer=cloned,
                     X=X,
                     y=y,
                     message=self._log_message(step_idx),
                     **fit_params_steps.get(name, {}),
+                )
+                X, y = self._memory_transform(
+                    transformer=fitted_transformer,
+                    X=X,
+                    y=y,
                 )
 
             # Replace the transformer of the step with the fitted
@@ -213,16 +249,24 @@ class Pipeline(imblearn.pipeline.Pipeline):
         with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
             if self._final_estimator != "passthrough":
                 fit_params_last_step = fit_params_steps[self.steps[-1][0]]
-                _fit_one(self._final_estimator, X, y, **fit_params_last_step)
+                fitted_estimator = self._memory_fit(
+                    clone(self.steps[-1][1]), X, y, **fit_params_last_step
+                )
+                # Hacky way to make sure that the state of the estimator
+                # loaded from cache is carried over to the estimator
+                # in steps
+                _copy_estimator_state(fitted_estimator, self.steps[-1][1])
 
         return self
 
     def transform(self, X=None, y=None, filter_train_only=True):
-        for _, _, transformer in self._iter(
+        X, y = self._memory_full_transform(
+            self,
+            X,
+            y,
             with_final=hasattr(self._final_estimator, "transform"),
             filter_train_only=filter_train_only,
-        ):
-            X, y = self._memory_transform(transformer, X, y)
+        )
 
         return variable_return(X, y)
 
@@ -230,20 +274,25 @@ class Pipeline(imblearn.pipeline.Pipeline):
         fit_params_steps = self._check_fit_params(**fit_params)
         X, y, _ = self._fit(X, y, **fit_params_steps)
 
-        last_step = self._final_estimator
         with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
-            if last_step == "passthrough":
+            if self._final_estimator == "passthrough":
                 return variable_return(X, y)
 
             fit_params_last_step = fit_params_steps[self.steps[-1][0]]
-            X, y, _ = _fit_transform_one(last_step, X, y, **fit_params_last_step)
+            fitted_estimator = self._memory_fit(
+                clone(self.steps[-1][1]), X, y, **fit_params_last_step
+            )
+            # Hacky way to make sure that the state of the estimator
+            # loaded from cache is carried over to the estimator
+            # in steps
+            _copy_estimator_state(fitted_estimator, self.steps[-1][1])
+            X, y = self._memory_transform(self._final_estimator, X, y)
 
         return variable_return(X, y)
 
     @available_if(_final_estimator_has("predict"))
     def predict(self, X, **predict_params):
-        for _, name, transformer in self._iter(with_final=False):
-            X, _ = self._memory_transform(transformer, X)
+        X, _ = self._memory_full_transform(self, X, None, with_final=False)
 
         y = self.steps[-1][-1].predict(X, **predict_params)
 
@@ -254,29 +303,25 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
     @available_if(_final_estimator_has("predict_proba"))
     def predict_proba(self, X):
-        for _, _, transformer in self._iter(with_final=False):
-            X, _ = self._memory_transform(transformer, X)
+        X, _ = self._memory_full_transform(self, X, None, with_final=False)
 
         return self.steps[-1][-1].predict_proba(X)
 
     @available_if(_final_estimator_has("predict_log_proba"))
     def predict_log_proba(self, X):
-        for _, _, transformer in self._iter(with_final=False):
-            X, _ = self._memory_transform(transformer, X)
+        X, _ = self._memory_full_transform(self, X, None, with_final=False)
 
         return self.steps[-1][-1].predict_log_proba(X)
 
     @available_if(_final_estimator_has("decision_function"))
     def decision_function(self, X):
-        for _, _, transformer in self._iter(with_final=False):
-            X, _ = self._memory_transform(transformer, X)
+        X, _ = self._memory_full_transform(self, X, None, with_final=False)
 
         return self.steps[-1][-1].decision_function(X)
 
     @available_if(_final_estimator_has("score"))
     def score(self, X, y, sample_weight=None):
-        for _, _, transformer in self._iter(with_final=False):
-            X, y = self._memory_transform(transformer, X, y)
+        X, y = self._memory_full_transform(self, X, y, with_final=False)
 
         return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
 
@@ -395,16 +440,14 @@ class TimeSeriesPipeline(Pipeline):
     @available_if(_final_estimator_has("score"))
     def score(self, X=None, y=None, **score_params):
         Xt = X
-        for _, name, transform in self._iter(with_final=False):
-            Xt = transform.transform(Xt)
+        Xt, _ = self._memory_full_transform(self, Xt, None, with_final=False)
         result = self.steps[-1][-1].score(y=y, X=Xt, **score_params)
         return result
 
     def predict(self, X=None, fh=None, **predict_params):
         Xt = X
         if Xt is not None:
-            for _, name, transform in self._iter(with_final=False):
-                Xt = transform.transform(Xt)
+            Xt, _ = self._memory_full_transform(self, Xt, None, with_final=False)
         return self.steps[-1][-1].predict(fh=fh, X=Xt, **predict_params)
 
     def fit(self, X=None, y=None, **fit_params):
@@ -520,16 +563,3 @@ def get_pipeline_fit_kwargs(pipeline: Pipeline, fit_kwargs: dict) -> dict:
         return fit_kwargs
 
     return {f"{model_step[0]}__{k}": v for k, v in fit_kwargs.items()}
-
-
-def get_memory(memory: Union[bool, str, Memory]) -> Memory:
-    if memory is None or isinstance(memory, (str, Memory)):
-        return memory
-    if isinstance(memory, bool):
-        if not memory:
-            return None
-        if memory:
-            return Memory(tempfile.gettempdir(), verbose=0)
-    raise TypeError(
-        f"memory must be a bool, str or joblib.Memory object, got {type(memory)}"
-    )
