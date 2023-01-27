@@ -42,5 +42,5 @@ wordcloud>=1.8.1
 textblob>=0.17.1
 
 # Parallel
-fugue~=0.6.6
+fugue>=0.8.0
 flask>=2.0.3

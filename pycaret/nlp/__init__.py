@@ -9,13 +9,12 @@ from IPython.display import display
 from ipywidgets import widgets
 from ipywidgets.widgets import fixed, interact_manual
 
-from pycaret import show_versions
+from pycaret import __version__, show_versions
 from pycaret.loggers import DashboardLogger
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
-from pycaret.utils import __version__
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import get_logger
 
@@ -124,7 +123,7 @@ def setup(
     # exception checking
     import sys
 
-    from pycaret.utils import __version__
+    from pycaret import __version__
 
     ver = __version__
 

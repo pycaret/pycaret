@@ -2052,17 +2052,17 @@ def calibrate_model(
 def optimize_threshold(
     estimator,
     optimize: str = "Accuracy",
-    grid_interval: float = 0.1,
     return_data: bool = False,
     plot_kwargs: Optional[dict] = None,
+    **shgo_kwargs,
 ):
 
     """
     This function optimizes probability threshold for a trained classifier. It
-    iterates over performance metrics at different ``probability_threshold`` with
-    a step size defined in ``grid_interval`` parameter. This function will display
-    a plot of the performance metrics at each probability threshold and returns the
-    best model based on the metric defined under ``optimize`` parameter.
+    uses the SHGO optimizer from ``scipy`` to optimize for the given metric.
+    This function will display a plot of the performance metrics at each probability
+    threshold checked by the optimizer and returns the best model based on the metric
+    defined under ``optimize`` parameter.
 
 
     Example
@@ -2084,16 +2084,16 @@ def optimize_threshold(
         Metric to be used for selecting best model.
 
 
-    grid_interval : float, default = 0.0001
-        Grid interval for threshold grid search. Default 10 iterations.
-
-
     return_data :  bool, default = False
         When set to True, data used for visualization is also returned.
 
 
     plot_kwargs :  dict, default = {} (empty dict)
         Dictionary of arguments passed to the visualizer class.
+
+
+    **shgo_kwargs:
+        Kwargs to pass to ``scipy.optimize.shgo``.
 
 
     Returns
@@ -2109,9 +2109,9 @@ def optimize_threshold(
     return _CURRENT_EXPERIMENT.optimize_threshold(
         estimator=estimator,
         optimize=optimize,
-        grid_interval=grid_interval,
         return_data=return_data,
         plot_kwargs=plot_kwargs,
+        **shgo_kwargs,
     )
 
 
