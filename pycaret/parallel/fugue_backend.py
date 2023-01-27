@@ -159,7 +159,7 @@ class FugueBackend(ParallelBackend):
             engine=self._engine,
             engine_conf=self._conf,
             callback=None if not self._display_remote else du.update,
-            force_output_fugue_dataframe=True,
+            as_fugue=True,
             as_local=True,
         ).as_array()
         res = pd.concat(cloudpickle.loads(x[0]) for x in outputs)
