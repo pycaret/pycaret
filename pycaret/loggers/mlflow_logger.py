@@ -2,8 +2,8 @@ import secrets
 from copy import deepcopy
 
 import pycaret
+from pycaret import __version__
 from pycaret.loggers.base_logger import SETUP_TAG, BaseLogger
-from pycaret.utils import __version__
 from pycaret.utils.generic import mlflow_remove_bad_chars
 
 try:
