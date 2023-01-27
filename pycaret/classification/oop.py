@@ -2767,7 +2767,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         probability_threshold: Optional[float] = None,
         encoded_labels: bool = False,
         raw_score: bool = False,
-        drift_report: bool = False,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -2813,11 +2812,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             When set to True, scores for all labels will be returned.
 
 
-        drift_report: bool, default = False
-            When set to True, interactive drift report is generated on test set
-            with the evidently library.
-
-
         round: int, default = 4
             Number of decimal places the metrics in the score grid will be rounded to.
 
@@ -2845,7 +2839,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             probability_threshold=probability_threshold,
             encoded_labels=encoded_labels,
             raw_score=raw_score,
-            drift_report=drift_report,
             round=round,
             verbose=verbose,
         )
