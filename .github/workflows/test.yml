@@ -59,7 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -70,9 +70,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, nlp, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
@@ -103,7 +102,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -114,9 +113,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, nlp, test]"
           pip install -r requirements-prophet.txt
-          pip install -r requirements-test.txt
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
@@ -140,7 +138,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -150,8 +148,7 @@ jobs:
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install --upgrade pip
           python -m pip install -U pytest codecov numpy
-          pip install -e ".[full, nlp]"
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
+          pip install -e ".[full, nlp, test]"
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
@@ -174,7 +171,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -185,9 +182,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, nlp, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
 
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
@@ -211,7 +207,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -222,9 +218,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, nlp, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
 
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
@@ -248,7 +243,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -259,9 +254,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, nlp, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
 
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
@@ -283,7 +277,7 @@ jobs:
   #   steps:
   #   - uses: actions/checkout@v3
   #   - name: Set up Python 3.8
-  #     uses: actions/setup-python@v2
+  #     uses: actions/setup-python@v4
   #     with:
   #       python-version: 3.8
   #   - name: Install dependencies
@@ -307,7 +301,7 @@ jobs:
   #   steps:
   #   - uses: actions/checkout@v3
   #   - name: Set up Python 3.8
-  #     uses: actions/setup-python@v2
+  #     uses: actions/setup-python@v4
   #     with:
   #       python-version: 3.8
   #   - name: Install dependencies
@@ -330,7 +324,7 @@ jobs:
   #   steps:
   #   - uses: actions/checkout@v3
   #   - name: Set up Python 3.8
-  #     uses: actions/setup-python@v2
+  #     uses: actions/setup-python@v4
   #     with:
   #       python-version: 3.8
   #   - name: Install dependencies
