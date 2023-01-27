@@ -54,9 +54,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, nlp, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
@@ -98,9 +97,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, nlp, test]"
           pip install -r requirements-prophet.txt
-          pip install -r requirements-test.txt
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
@@ -134,8 +132,7 @@ jobs:
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install --upgrade pip
           python -m pip install -U pytest codecov numpy
-          pip install -e ".[full, nlp]"
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
+          pip install -e ".[full, nlp, test]"
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
@@ -169,9 +166,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, nlp, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
 
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
@@ -206,9 +202,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, nlp, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
 
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
@@ -243,9 +238,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, nlp, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
 
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
@@ -254,11 +248,8 @@ jobs:
           python --version
           which python
           pip list
-      - name: Remove tests
-        run: |
-          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_sp_detection.py' -delete
       - name: Run benchmarks
-        run: pytest --durations=0
+        run: pytest tests/benchmarks --durations=0
 
   # test_tuning:
 

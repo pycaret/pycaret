@@ -1,6 +1,11 @@
 import numpy as np
 import pytest
 
+import pycaret.anomaly.functional
+import pycaret.classification.functional
+import pycaret.clustering.functional
+import pycaret.regression.functional
+import pycaret.time_series.forecasting.functional
 from pycaret.containers.models import get_all_ts_model_containers
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
@@ -13,6 +18,16 @@ from pycaret.time_series import TSForecastingExperiment
 @pytest.fixture(name="change_test_dir", autouse=True)
 def change_test_dir(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+
+
+@pytest.fixture(autouse=True)
+def reset_experiments():
+    yield
+    pycaret.classification.functional._CURRENT_EXPERIMENT = None
+    pycaret.regression.functional._CURRENT_EXPERIMENT = None
+    pycaret.anomaly.functional._CURRENT_EXPERIMENT = None
+    pycaret.clustering.functional._CURRENT_EXPERIMENT = None
+    pycaret.time_series.forecasting.functional._CURRENT_EXPERIMENT = None
 
 
 @pytest.fixture(scope="session", name="load_pos_data")
