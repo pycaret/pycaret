@@ -289,7 +289,7 @@ class _TabularExperiment(_PyCaretExperiment):
         target column.
 
         """
-        from pycaret.utils import __version__
+        from pycaret import __version__
 
         # Parameter attrs
         self.n_jobs_param = n_jobs

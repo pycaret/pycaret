@@ -2,7 +2,7 @@ import warnings
 
 import deprecation
 
-from pycaret.utils import __version__
+from pycaret import __version__
 from pycaret.utils._dependencies import _check_soft_dependencies
 
 deprecated_in = "3.0.0rc5"
