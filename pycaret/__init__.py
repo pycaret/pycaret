@@ -1,4 +1,3 @@
-import os
 import sys
 
 from pycaret.utils import __version__
@@ -10,4 +9,6 @@ __all__ = ["show_versions", "__version__"]
 # Otherwise, it will default to cloudpickle which
 # uses pickle5, causing exceptions with joblib
 if sys.version_info < (3, 8):
-    os.environ["LOKY_PICKLER"] = "pickle"
+    from joblib.externals.loky.backend.reduction import set_loky_pickler
+
+    set_loky_pickler("pickle")
