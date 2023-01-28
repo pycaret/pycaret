@@ -358,13 +358,13 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 f"Data must be a pandas Series or DataFrame, got object of {type(data)} type!"
             )
 
-        # Make a local copy (to perfrom inplace operation on the original dataset)
+        # Make a local copy (to perform inplace operation on the original dataset)
         data_ = data.copy()
 
         if isinstance(data_, pd.Series):
             # Set data name is not already set
             data_.name = data_.name if data.name is not None else "Time Series"
-            data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
+            data_ = pd.DataFrame(data_)  # Force conversion to DataFrame
 
         # Clean column names ----
         data_.columns = [str(x) for x in data_.columns]
@@ -474,9 +474,13 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         (3) If sp_detection == "index" and the index is not one of the allowed type
         (pd.PeriodIndex, pd.DatetimeIndex), then seasonal period must be provided.
 
-        Finally, index is coerced into period index which is used in subsequent
-        steps and the appropriate class for data index is set so that it can be
-        used to disable certain models which do not support that type of index.
+        If 'index' column is specified & is not of type int (e.g. RangeIndex, Int64Index),
+        it is assumed to be coercible to pd.DatetimeIndex and it is coerced.
+
+        Finally, if index is of type pd.DatetimeIndex, it is coerced into
+        pd.PeriodIndex which is used in subsequent steps and the appropriate
+        class for data index is set so that it can be used to disable certain
+        models which do not support that type of index.
 
         Parameters
         ----------
@@ -505,7 +509,16 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 unique_index_before = len(self.data[index]) == len(
                     set(self.data[index])
                 )
-                self.data[index] = pd.to_datetime(self.data[index])
+                # If index is of type int (e.g. RangeIndex, Int64Index),
+                # keep it as is, else, coerce to pd.DatetimeIndex
+                index_type_is_int = all(
+                    [
+                        isinstance(self.data[index][i], int)
+                        for i in np.arange(len(self.data))
+                    ]
+                )
+                if not index_type_is_int:
+                    self.data[index] = pd.to_datetime(self.data[index])
                 unique_index_after = len(self.data[index]) == len(set(self.data[index]))
                 if unique_index_before and not unique_index_after:
                     raise ValueError(
@@ -539,7 +552,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
 
-        # Convert DateTimeIndex index to PeriodIndex ----
+        # Convert DatetimeIndex index to PeriodIndex ----
         # We use PeriodIndex in PyCaret since it seems to be more robust per `sktime``
         # Ref: https://github.com/sktime/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
         if isinstance(self.data.index, pd.DatetimeIndex):
