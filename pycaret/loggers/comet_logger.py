@@ -30,7 +30,8 @@ class CometLogger(BaseLogger):
     def set_tags(self, source, experiment_custom_tags, runtime):
         tags = [source, runtime]
         self.run.add_tags(tags)
-        self.run.log_others(experiment_custom_tags)
+        if experiment_custom_tags:
+            self.run.log_others(experiment_custom_tags)
 
     def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
         
@@ -60,10 +61,16 @@ class CometLogger(BaseLogger):
         file_name, extension = None, ""
         file_pathlib = Path(file)
         file_name = file_pathlib.stem.replace(" ", "_") + str(uuid.uuid1())[:8]
-        artifact = comet_ml.Artifact(name=file_name, artifact_type=type)
-        artifact.add(file)
-        self.run.log_artifact(artifact)
+        extension = file_pathlib.suffix
+
+        if extension == "html":
+            self.run.log_html(file)
+        elif extension == "csv":
+            self.run.log_table(file)
+        else:
+            self.run.log_asset(file)
 
     def finish_experiment(self):
-        if self.run:
-            self.run.end()
+        if self.run is None:
+            return
+        self.run.end()
