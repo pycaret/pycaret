@@ -119,9 +119,7 @@ class TSForecastingPreprocessor:
         ):
             self._add_transformation_steps(transform=transform_exogenous, target=False)
 
-    def _add_transformation_steps(
-        self, transform: Optional[Union[str, int, float]], target: bool = True
-    ):
+    def _add_transformation_steps(self, transform: str, target: bool = True):
         """Power transform the data to be more Gaussian-like.
 
         Parameters
@@ -189,9 +187,7 @@ class TSForecastingPreprocessor:
         if exogenous_present == TSExogenousPresent.YES and scale_exogenous is not None:
             self._add_scaling_steps(scale=scale_exogenous, target=False)
 
-    def _add_scaling_steps(
-        self, scale: Optional[Union[str, int, float]], target: bool = True
-    ):
+    def _add_scaling_steps(self, scale: str, target: bool = True):
         """Scale the data.
 
         Parameters
