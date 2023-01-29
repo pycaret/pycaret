@@ -172,8 +172,10 @@ def _check_model_creation_and_indices(
     ----------
     exp : TSForecastingExperiment
         The Time Series experiment object
-    prophet : bool, optional
-        Should Prophet model be created, by default True
+    model : str
+        The model to create using the experiment provided
+    expected_return_index_type: Any
+        The expected return type of the index of the predictions dataframe
     """
     if model in exp.models().index:
         model = exp.create_model(model)
