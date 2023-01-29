@@ -8,7 +8,7 @@ from pycaret.time_series import TSForecastingExperiment
 ids = ["raw_strength", "harmonic_max", "harmonic_strength"]
 params = [
     (ids[0], 0.9211, 0.9307, 0.1230, 0.8365),
-    (ids[1], 0.9211, 0.9307, 0.1211, 0.9538),
+    (ids[1], 0.9211, 0.9307, 0.1211, 0.9519),
     (ids[2], 0.9211, 0.9307, 0.1230, 0.9480),
 ]
 
