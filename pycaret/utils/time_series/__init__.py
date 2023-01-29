@@ -258,10 +258,10 @@ def auto_detect_sp(
     # limited by internal nlags calculation in SeasonalityACF
     # lags_to_use = min(10 * np.log10(nobs), nobs - 1)
     # lags_to_use = max(lags_to_use, nobs/3)
-    lags_to_use = nobs - 1
-    lags_to_use = int(lags_to_use)
-
-    sp_est = SeasonalityACF(nlags=lags_to_use)
+    lags_to_use = int((nobs - 1) / 2)
+    # +1 added since SeasonalityACF uses uses upto nlags-1
+    # TODO: Remove after https://github.com/sktime/sktime/issues/4169 is fixed
+    sp_est = SeasonalityACF(nlags=lags_to_use + 1)
     sp_est.fit(yt)
 
     primary_sp = sp_est.get_fitted_params().get("sp")

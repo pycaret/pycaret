@@ -358,7 +358,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 f"Data must be a pandas Series or DataFrame, got object of {type(data)} type!"
             )
 
-        # Make a local copy (to perfrom inplace operation on the original dataset)
+        # Make a local copy (to perform inplace operation on the original dataset)
         data_ = data.copy()
 
         if isinstance(data_, pd.Series):
@@ -1364,7 +1364,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         hyperparameter_split: str = "all",
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
         sp_detection: str = "auto",
-        max_sp_to_consider: Optional[int] = None,
+        max_sp_to_consider: Optional[int] = 60,
         remove_harmonics: bool = False,
         harmonic_order_method: str = "harmonic_max",
         num_sps_to_use: int = 1,
@@ -1644,9 +1644,10 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             period as shown in seasonal_period.
 
 
-        max_sp_to_consider: Optional[int], default = None,
+        max_sp_to_consider: Optional[int], default = 60,
             Max period to consider when detecting seasonal periods. If None, all
-            periods up to the length of the data are considered.
+            periods up to int(("length of data"-1)/2) are considered. Length of
+            the data is determined by hyperparameter_split setting.
 
 
         remove_harmonics: bool, default = False
