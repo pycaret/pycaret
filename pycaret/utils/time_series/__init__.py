@@ -37,8 +37,8 @@ def _reconcile_order_and_lags(
         (2) Names corresponding to the difference lags
     """
 
-    return_lags = []
-    return_names = []
+    return_lags: List = []
+    return_names: List = []
 
     if order_list is not None and lags_list is not None:
         msg = "ERROR: Can not specify both 'order_list' and 'lags_list'. Please specify only one."
@@ -122,7 +122,7 @@ def get_diffs(
 
 def _get_diff_name_list(
     data: pd.Series, data_name: Optional[str] = None, data_kwargs: Optional[Dict] = None
-) -> Tuple[List[pd.Series], List[str]]:
+) -> Tuple[List[pd.Series], List[Optional[str]]]:
     """Returns the data along with any differences that are requested
     If no differences are requested, only the original data is returned.
 
@@ -148,8 +148,8 @@ def _get_diff_name_list(
     order_list = data_kwargs.get("order_list", None)
     lags_list = data_kwargs.get("lags_list", None)
 
-    diff_list = []
-    name_list = []
+    diff_list: List = []
+    name_list: List = []
     if order_list or lags_list:
         diff_list, name_list = get_diffs(
             data=data, order_list=order_list, lags_list=lags_list
