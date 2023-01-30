@@ -2160,7 +2160,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         self,
         estimator,
         data: Optional[pd.DataFrame] = None,
-        drift_report: bool = False,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -2190,11 +2189,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
             must be available in the unseen dataset.
 
 
-        drift_report: bool, default = False
-            When set to True, interactive drift report is generated on test set
-            with the evidently library.
-
-
         round: int, default = 4
             Number of decimal places to round predictions to.
 
@@ -2222,7 +2216,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
             data=data,
             probability_threshold=None,
             encoded_labels=False,
-            drift_report=drift_report,
             round=round,
             verbose=verbose,
         )

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Optional, Type, Union
 
 import tqdm.notebook
 import tqdm.std
@@ -119,6 +119,9 @@ class ProgressBarDisplay(DisplayComponent):
         backend: Optional[Union[str, DisplayBackend]] = None
     ) -> None:
         super().__init__(verbose=verbose, backend=backend)
+        self.pbar_backend_cls: Optional[
+            Union[Type[CLIProgressBarBackend], Type[JupyterProgressBarBackend]]
+        ] = None
         if isinstance(self.backend, JupyterBackend) and not isinstance(
             self.backend, DatabricksBackend
         ):
