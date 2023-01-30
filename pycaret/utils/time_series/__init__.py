@@ -37,8 +37,8 @@ def _reconcile_order_and_lags(
         (2) Names corresponding to the difference lags
     """
 
-    return_lags = []
-    return_names = []
+    return_lags: List = []
+    return_names: List = []
 
     if order_list is not None and lags_list is not None:
         msg = "ERROR: Can not specify both 'order_list' and 'lags_list'. Please specify only one."
@@ -122,7 +122,7 @@ def get_diffs(
 
 def _get_diff_name_list(
     data: pd.Series, data_name: Optional[str] = None, data_kwargs: Optional[Dict] = None
-) -> Tuple[List[pd.Series], List[str]]:
+) -> Tuple[List[pd.Series], List[Optional[str]]]:
     """Returns the data along with any differences that are requested
     If no differences are requested, only the original data is returned.
 
@@ -148,8 +148,8 @@ def _get_diff_name_list(
     order_list = data_kwargs.get("order_list", None)
     lags_list = data_kwargs.get("lags_list", None)
 
-    diff_list = []
-    name_list = []
+    diff_list: List = []
+    name_list: List = []
     if order_list or lags_list:
         diff_list, name_list = get_diffs(
             data=data, order_list=order_list, lags_list=lags_list
@@ -258,10 +258,10 @@ def auto_detect_sp(
     # limited by internal nlags calculation in SeasonalityACF
     # lags_to_use = min(10 * np.log10(nobs), nobs - 1)
     # lags_to_use = max(lags_to_use, nobs/3)
-    lags_to_use = nobs - 1
-    lags_to_use = int(lags_to_use)
-
-    sp_est = SeasonalityACF(nlags=lags_to_use)
+    lags_to_use = int((nobs - 1) / 2)
+    # +1 added since SeasonalityACF uses uses upto nlags-1
+    # TODO: Remove after https://github.com/sktime/sktime/issues/4169 is fixed
+    sp_est = SeasonalityACF(nlags=lags_to_use + 1)
     sp_est.fit(yt)
 
     primary_sp = sp_est.get_fitted_params().get("sp")

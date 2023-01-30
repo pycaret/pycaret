@@ -55,7 +55,7 @@ def setup(
     hyperparameter_split: str = "all",
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     sp_detection: str = "auto",
-    max_sp_to_consider: Optional[int] = None,
+    max_sp_to_consider: Optional[int] = 60,
     remove_harmonics: bool = False,
     harmonic_order_method: str = "harmonic_max",
     num_sps_to_use: int = 1,
@@ -110,9 +110,12 @@ def setup(
 
 
     index: Optional[str], default = None
-        Column name to be used as the datetime index for modeling. Column is
-        internally converted to datetime using `pd.to_datetime()`. If None,
-        then the data's index is used as is for modeling.
+        Column name to be used as the datetime index for modeling. If 'index'
+        column is specified & is of type string, it is assumed to be coercible
+        to pd.DatetimeIndex using `pd.to_datetime()`. It can also be of type
+        Int (e.g. RangeIndex, Int64Index), or DatetimeIndex or PeriodIndex
+        in which case, it is processed appropriately. If None, then the
+        data's index is used as is for modeling.
 
 
     ignore_features: Optional[List], default = None
@@ -331,9 +334,10 @@ def setup(
         period as shown in seasonal_period.
 
 
-    max_sp_to_consider: Optional[int], default = None,
+    max_sp_to_consider: Optional[int], default = 60,
         Max period to consider when detecting seasonal periods. If None, all
-        periods up to the length of the data are considered.
+        periods up to int(("length of data"-1)/2) are considered. Length of
+        the data is determined by hyperparameter_split setting.
 
 
     remove_harmonics: bool, default = False
@@ -522,12 +526,12 @@ def setup(
             aggregation.
 
         resampler_kwargs: The keyword arguments that are fed to configure the
-            `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash" or
-            "plotly-widget") which downsampler will be used; how many datapoints are
-            shown in the front-end. When the plotly-resampler figure is renderd via Dash
-            (by setting the `display_format` to "plotly-dash"), one can also use the
-            "show_dash" key within this dictionary to configure the show_dash method its
-            args.
+            `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash"
+            or "plotly-widget") which down sampler will be used; how many data points
+            are shown in the front-end. When the plotly-resampler figure is rendered
+            via Dash (by setting the `display_format` to "plotly-dash"), one can
+            also use the "show_dash" key within this dictionary to configure the
+            show_dash method its args.
 
             example::
 

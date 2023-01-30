@@ -118,6 +118,7 @@ def create_logger(
         logger.handlers.clear()
 
     path = "logs.log" if isinstance(log, bool) else log
+    ch: Optional[Union[logging.FileHandler, logging.NullHandler]] = None
     try:
         ch = logging.FileHandler(path)
     except Exception:

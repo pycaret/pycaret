@@ -283,6 +283,21 @@ def test_sp_to_use_using_auto():
     assert exp.all_sps_to_use == [12, 24, 36, 11, 48]
     assert exp.primary_sp_to_use == 12
 
+    # 2.0 Auto Detection based on length of data ----
+    # 2.1 Length barely enough to detect seasonality (2*sp + 1)
+    np.random.seed(42)
+    sp = 60
+    data = np.random.randint(0, 100, size=sp)
+    data = pd.DataFrame(np.concatenate((np.tile(data, 2), [data[0]])))
+    exp = TSForecastingExperiment()
+    exp.setup(data=data)
+    assert exp.primary_sp_to_use == sp
+
+    # 2.2 Length just below threshold to detect seasonality (2*sp)
+    exp = TSForecastingExperiment()
+    exp.setup(data=data.iloc[: 2 * sp])
+    assert exp.primary_sp_to_use < sp
+
 
 def test_sp_to_use_upto_max_sp():
     """Seasonal Period detection upto a max seasonal period provided by user."""

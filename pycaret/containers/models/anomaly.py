@@ -207,7 +207,7 @@ class COFAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
         get_logger()
         np.random.seed(experiment.seed)
-        from pyod.models.cof import COF
+        from pycaret.internal.patches.pyod import COFPatched
 
         args = {}
         tune_args = {}
@@ -217,7 +217,7 @@ class COFAnomalyContainer(AnomalyContainer):
         super().__init__(
             id="cof",
             name="Connectivity-Based Local Outlier",
-            class_def=COF,
+            class_def=COFPatched,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
@@ -395,7 +395,7 @@ class SODAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
         get_logger()
         np.random.seed(experiment.seed)
-        from pyod.models.sod import SOD
+        from pycaret.internal.patches.pyod import SODPatched
 
         args = {}
         tune_args = {}
@@ -405,7 +405,7 @@ class SODAnomalyContainer(AnomalyContainer):
         super().__init__(
             id="sod",
             name="Subspace Outlier Detection",
-            class_def=SOD,
+            class_def=SODPatched,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
@@ -417,7 +417,7 @@ class SOSAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
         get_logger()
         np.random.seed(experiment.seed)
-        from pyod.models.sos import SOS
+        from pycaret.internal.patches.pyod import SOSPatched
 
         args = {}
         tune_args = {}
@@ -427,7 +427,7 @@ class SOSAnomalyContainer(AnomalyContainer):
         super().__init__(
             id="sos",
             name="Stochastic Outlier Selection",
-            class_def=SOS,
+            class_def=SOSPatched,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,

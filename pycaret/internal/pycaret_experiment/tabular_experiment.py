@@ -26,8 +26,8 @@ import pycaret.internal.preprocess
 import pycaret.loggers
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import create_logger, get_logger, redirect_output
+from pycaret.internal.memory import get_memory
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
-from pycaret.internal.pipeline import get_memory
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
@@ -292,7 +292,7 @@ class _TabularExperiment(_PyCaretExperiment):
         target column.
 
         """
-        from pycaret.utils import __version__
+        from pycaret import __version__
 
         # Parameter attrs
         self.n_jobs_param = n_jobs

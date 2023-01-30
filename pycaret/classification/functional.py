@@ -2052,17 +2052,17 @@ def calibrate_model(
 def optimize_threshold(
     estimator,
     optimize: str = "Accuracy",
-    grid_interval: float = 0.1,
     return_data: bool = False,
     plot_kwargs: Optional[dict] = None,
+    **shgo_kwargs,
 ):
 
     """
     This function optimizes probability threshold for a trained classifier. It
-    iterates over performance metrics at different ``probability_threshold`` with
-    a step size defined in ``grid_interval`` parameter. This function will display
-    a plot of the performance metrics at each probability threshold and returns the
-    best model based on the metric defined under ``optimize`` parameter.
+    uses the SHGO optimizer from ``scipy`` to optimize for the given metric.
+    This function will display a plot of the performance metrics at each probability
+    threshold checked by the optimizer and returns the best model based on the metric
+    defined under ``optimize`` parameter.
 
 
     Example
@@ -2084,16 +2084,16 @@ def optimize_threshold(
         Metric to be used for selecting best model.
 
 
-    grid_interval : float, default = 0.0001
-        Grid interval for threshold grid search. Default 10 iterations.
-
-
     return_data :  bool, default = False
         When set to True, data used for visualization is also returned.
 
 
     plot_kwargs :  dict, default = {} (empty dict)
         Dictionary of arguments passed to the visualizer class.
+
+
+    **shgo_kwargs:
+        Kwargs to pass to ``scipy.optimize.shgo``.
 
 
     Returns
@@ -2109,9 +2109,9 @@ def optimize_threshold(
     return _CURRENT_EXPERIMENT.optimize_threshold(
         estimator=estimator,
         optimize=optimize,
-        grid_interval=grid_interval,
         return_data=return_data,
         plot_kwargs=plot_kwargs,
+        **shgo_kwargs,
     )
 
 
@@ -2122,7 +2122,6 @@ def predict_model(
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,
     raw_score: bool = False,
-    drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -2168,11 +2167,6 @@ def predict_model(
         When set to True, scores for all labels will be returned.
 
 
-    drift_report: bool, default = False
-        When set to True, interactive drift report is generated on test set
-        with the evidently library.
-
-
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
@@ -2204,7 +2198,6 @@ def predict_model(
         probability_threshold=probability_threshold,
         encoded_labels=encoded_labels,
         raw_score=raw_score,
-        drift_report=drift_report,
         round=round,
         verbose=verbose,
     )
@@ -3327,6 +3320,86 @@ def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
     """
     return _CURRENT_EXPERIMENT.deep_check(
         estimator=estimator, check_kwargs=check_kwargs
+    )
+
+
+def check_drift(
+    reference_data: Optional[pd.DataFrame] = None,
+    current_data: Optional[pd.DataFrame] = None,
+    target: Optional[str] = None,
+    numeric_features: Optional[List[str]] = None,
+    categorical_features: Optional[List[str]] = None,
+    date_features: Optional[List[str]] = None,
+    filename: Optional[str] = None,
+) -> str:
+    """
+    This function generates a drift report file using the
+    evidently library.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> check_drift()
+
+
+    reference_data: Optional[pd.DataFrame] = None
+        Reference data. If not specified, will use training data.
+        Must be specified if ``setup()`` has not been run.
+
+
+    current_data: Optional[pd.DataFrame] = None
+        Current data. If not specified, will use test data.
+        Must be specified if ``setup()`` has not been run.
+
+
+    target: Optional[str] = None
+        Name of the target column. If not specified, will use
+        the column specified in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    numeric_features: Optional[List[str]] = None
+        Names of numeric columns. If not specified, will use
+        the columns specified/inferred in ``setup()``, or
+        all non-categorical and non-date columns otherwise.
+
+
+    categorical_features: Optional[List[str]] = None
+        Names of categorical columns. If not specified, will use
+        the columns specified/inferred in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    date_features: Optional[List[str]] = None
+        Names of date columns. If not specified, will use
+        the columns specified/inferred in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    filename: Optional[str] = None
+        Path to save the generated HTML file to. If not specified,
+        will default to '[EXPERIMENT_NAME]_[TIMESTAMP]_Drift_Report.html'.
+
+
+    Returns:
+        Path the generated HTML file was saved to.
+    """
+    experiment = _CURRENT_EXPERIMENT
+    if experiment is None:
+        experiment = _EXPERIMENT_CLASS()
+
+    return experiment.check_drift(
+        reference_data=reference_data,
+        current_data=current_data,
+        target=target,
+        numeric_features=numeric_features,
+        categorical_features=categorical_features,
+        date_features=date_features,
+        filename=filename,
     )
 
 
