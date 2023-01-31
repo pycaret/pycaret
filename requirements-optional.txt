@@ -32,7 +32,6 @@ uvicorn>=0.17.6  # For web api
 m2cgen>=0.9.0  # For model conversion
 evidently>=0.1.45.dev0  # for drift reporting
 comet_ml>=3.31.22 #comet ml tracking
-joblib >=1.2.0 #file pipeliing
 
 # NLP
 nltk>=3.7
