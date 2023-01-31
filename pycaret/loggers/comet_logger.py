@@ -9,6 +9,7 @@ try:
 except ImportError:
     comet_ml = None
 
+
 class CometLogger(BaseLogger):
     def __init__(self) -> None:
         if comet_ml is None:
@@ -17,16 +18,16 @@ class CometLogger(BaseLogger):
             )
         super().__init__()
         self.run = None
-    
+
     def init_experiment(self, exp_name_log, full_name=None, **kwargs):
         self.run = comet_ml.Experiment(project_name=exp_name_log, **kwargs)
         self.run.set_name(full_name)
-        self.run.log_other('Created from', 'pycaret')
+        self.run.log_other("Created from", "pycaret")
         return self.run
-    
+
     def log_params(self, params, model_name=None):
         self.run.log_parameters(params, prefix=model_name)
-    
+
     def set_tags(self, source, experiment_custom_tags, runtime):
         tags = [source, runtime]
         self.run.add_tags(tags)
@@ -34,11 +35,11 @@ class CometLogger(BaseLogger):
             self.run.log_others(experiment_custom_tags)
 
     def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
-        
+
         pipeline = deepcopy(prep_pipe)
         pipeline.steps.append(["trained_model", model])
-        joblib.dump(pipeline, 'pipeline.pkl')
-        self.run.log_model(name='model', file_or_folder='pipeline.pkl')
+        joblib.dump(pipeline, "pipeline.pkl")
+        self.run.log_model(name="model", file_or_folder="pipeline.pkl")
 
     def log_model_comparison(self, model_result, source):
         result_copy = deepcopy(model_result)
