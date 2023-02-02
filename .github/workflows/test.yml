@@ -21,9 +21,10 @@ jobs:
       - name: Check out source repository
         uses: actions/checkout@v3
       - name: Run black
-        uses: psf/black@22.12.0
+        uses: psf/black@stable
         with:
           src: pycaret tests
+          version: 22.12.0
       - name: Check imports
         uses: jamescurtin/isort-action@master
         with:
