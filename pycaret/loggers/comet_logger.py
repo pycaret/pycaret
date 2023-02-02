@@ -1,8 +1,10 @@
-from pycaret.loggers.base_logger import BaseLogger
-from pathlib import Path
 import uuid
 from copy import deepcopy
+from pathlib import Path
+
 import joblib
+
+from pycaret.loggers.base_logger import BaseLogger
 
 try:
     import comet_ml

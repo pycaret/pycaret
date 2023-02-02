@@ -33,10 +33,10 @@ from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.loggers.comet_logger import CometLogger
 from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
-from pycaret.loggers.comet_logger import CometLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import (
     MLUsecase,
@@ -229,7 +229,8 @@ class _TabularExperiment(_PyCaretExperiment):
 
     def _validate_log_experiment(self, obj: Any) -> None:
         return isinstance(obj, (bool, BaseLogger)) or (
-            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb", "dagshub", "comet_ml"]
+            isinstance(obj, str)
+            and obj.lower() in ["mlflow", "wandb", "dagshub", "comet_ml"]
         )
 
     def _convert_log_experiment(
