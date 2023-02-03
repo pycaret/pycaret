@@ -37,7 +37,6 @@ class CometLogger(BaseLogger):
             self.run.log_others(experiment_custom_tags)
 
     def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
-
         pipeline = deepcopy(prep_pipe)
         pipeline.steps.append(["trained_model", model])
         joblib.dump(pipeline, "pipeline.pkl")
@@ -61,9 +60,8 @@ class CometLogger(BaseLogger):
         self.run.log_html(html_file)
 
     def log_artifact(self, file, type="artifact"):
-        file_name, extension = None, ""
+        _, extension = None, ""
         file_pathlib = Path(file)
-        file_name = file_pathlib.stem.replace(" ", "_") + str(uuid.uuid1())[:8]
         extension = file_pathlib.suffix
 
         if extension == "html":
