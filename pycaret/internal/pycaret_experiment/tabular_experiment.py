@@ -343,6 +343,13 @@ class _TabularExperiment(_PyCaretExperiment):
                 cuml_version = __version__
                 self.logger.info(f"cuml=={cuml_version}")
 
+                try:
+                    import cuml.common.memory_utils
+
+                    cuml.common.memory_utils.set_global_output_type("numpy")
+                except Exception:
+                    self.logger.exception("Couldn't set cuML global output type")
+
             if cuml_version is None or not version.parse(cuml_version) >= version.parse(
                 "22.10"
             ):
