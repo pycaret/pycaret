@@ -2,6 +2,7 @@ from pycaret.regression.functional import (
     add_metric,
     automl,
     blend_models,
+    check_drift,
     check_fairness,
     compare_models,
     convert_model,
@@ -82,4 +83,5 @@ __all__ = [
     "create_app",
     "get_allowed_engines",
     "get_engine",
+    "check_drift",
 ]
