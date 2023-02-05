@@ -7,20 +7,10 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
-import plotly.graph_objects as go  # type: ignore
 from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
-from sklearn.preprocessing import LabelEncoder
 
-from pycaret.containers.metrics import (
-    get_all_class_metric_containers,
-    get_all_clust_metric_containers,
-    get_all_reg_metric_containers,
-)
-from pycaret.containers.models import (
-    get_all_class_model_containers,
-    get_all_reg_model_containers,
-)
+from pycaret.containers.metrics import get_all_clust_metric_containers
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
@@ -30,7 +20,7 @@ from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExper
 from pycaret.internal.validation import is_sklearn_pipeline
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
-from pycaret.utils.generic import MLUsecase, highlight_setup, infer_ml_usecase
+from pycaret.utils.generic import MLUsecase, highlight_setup
 
 LOGGER = get_logger()
 
