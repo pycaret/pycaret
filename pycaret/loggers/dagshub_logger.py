@@ -44,7 +44,7 @@ class DagshubLogger(MlflowLogger):
             )
         return splitted[1], splitted[0]
 
-    def init_experiment(self, *args, setup=True, **kargs):
+    def init_experiment(self, *args, setup=True, **kwargs):
         # check token exist or not:
         if setup:
             token = dagshub.auth.get_token()
@@ -69,7 +69,7 @@ class DagshubLogger(MlflowLogger):
             self.dvc_folder = self.repo.directory(str(self.paths["dvc_directory"]))
 
             mlflow.set_tracking_uri(self.remote)
-        super().init_experiment(*args, **kargs)
+        super().init_experiment(*args, **kwargs)
 
     def _dvc_add(self, local_path="", remote_path=""):
         if not os.path.isfile(local_path):
