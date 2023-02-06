@@ -7,7 +7,6 @@ import os
 import traceback
 import warnings
 from contextlib import redirect_stderr, redirect_stdout
-from functools import partial
 from typing import Callable, Optional, Union
 
 
@@ -85,7 +84,7 @@ def get_logger() -> logging.Logger:
     try:
         assert bool(LOGGER)
         return LOGGER
-    except:
+    except Exception:
         return create_logger(True)
 
 
@@ -111,17 +110,21 @@ def create_logger(
     logger = logging.getLogger("logs")
     level = os.getenv("PYCARET_CUSTOM_LOGGING_LEVEL", "DEBUG")
     logger.setLevel(level)
+    # Do not propagate to the root logger in Jupyter
+    logger.propagate = False
 
     # create console handler and set level to debug
     if logger.hasHandlers():
         logger.handlers.clear()
 
     path = "logs.log" if isinstance(log, bool) else log
+    ch: Optional[Union[logging.FileHandler, logging.NullHandler]] = None
     try:
         ch = logging.FileHandler(path)
-    except:
+    except Exception:
         warnings.warn(
-            f"Could not attach a FileHandler to the logger at path {path}! No logs will be saved."
+            f"Could not attach a FileHandler to the logger at path {path}! "
+            "No logs will be saved."
         )
         traceback.print_exc()
         ch = logging.NullHandler()

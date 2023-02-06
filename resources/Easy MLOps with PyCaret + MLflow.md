@@ -1,11 +1,11 @@
 
-## Easy MLOps with PyCaret + MLflow
+# Easy MLOps with PyCaret + MLflow
 
-### A beginner-friendly, step-by-step tutorial on integrating MLOps in your Machine Learning experiments using PyCaret
+# A beginner-friendly, step-by-step tutorial on integrating MLOps in your Machine Learning experiments using PyCaret
 
 ![Photo by [Adi Goldstein](https://unsplash.com/@adigold1?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)](https://cdn-images-1.medium.com/max/7832/0*WSGn8A3YB42ALgSg)
 
-## PyCaret
+# PyCaret
 
 PyCaret is an open-source, low-code machine learning library and end-to-end model management tool built-in Python for automating machine learning workflows. It is known for its ease of use, simplicity, and ability to quickly and efficiently build and deploy end-to-end ML prototypes.
 
@@ -15,7 +15,7 @@ PyCaret is an alternate low-code library that can replace hundreds of code lines
 
 To learn more about PyCaret, you can check out their [GitHub](https://www.github.com/pycaret/pycaret).
 
-## MLflow
+# MLflow
 
 MLflow is an open-source platform to manage the ML lifecycle, including experimentation, reproducibility, deployment, and a central model registry. MLflow currently offers four components:
 
@@ -23,7 +23,7 @@ MLflow is an open-source platform to manage the ML lifecycle, including experime
 
 To learn more about MLflow, you can check out [GitHub](https://github.com/mlflow/mlflow).
 
-## Installing PyCaret
+# Installing PyCaret
 
 Installing PyCaret is very easy and takes only a few minutes. We strongly recommend using a virtual environment to avoid potential conflicts with other libraries.
 
@@ -37,7 +37,7 @@ PyCaret’s default installation is a slim version of pycaret that only installs
 
 When you install the full version of pycaret, all the optional dependencies as [listed here](https://github.com/pycaret/pycaret/blob/master/requirements-optional.txt) are also installed. MLflow is part of PyCaret’s dependency and hence does not need to be installed separately.
 
-## 👉 Let’s get started
+# 👉 Let’s get started
 
 Before I talk about MLOps, let’s talk a little bit about the machine learning lifecycle at a high level:
 
@@ -57,7 +57,7 @@ Before I talk about MLOps, let’s talk a little bit about the machine learning 
 
 The old way of doing all this is pretty cumbersome, long, and requires a lot of technical know-how and I possibly cannot cover it in one tutorial. However, in this tutorial, I will use PyCaret to demonstrate how easy it has become for a data scientist to do all this very efficiently. Before we get to the practical part, let’s talk a little bit more about MLOps.
 
-## 👉 **What is MLOps?**
+# 👉 **What is MLOps?**
 
 MLOps is an engineering discipline that aims to combine machine learning development i.e. experimentation (model training, hyperparameter tuning, model ensembling, model selection, etc.), normally performed by Data Scientist with ML engineering and operations in order to standardize and streamline the continuous delivery of machine learning models in production.
 
@@ -68,11 +68,11 @@ This is a very toned-down definition of MLOps. In reality, it involved a little 
 
 Now let’s follow the same workflow as shown in the diagram above to do a practical demo, make sure you have pycaret installed.
 
-## 👉 Business Problem
+# 👉 Business Problem
 
 For this tutorial, I will be using a very popular case study by Darden School of Business, published in [Harvard Business](https://hbsp.harvard.edu/product/UV0869-PDF-ENG). The case is regarding the story of two people who are going to be married in the future. The guy named *Greg *wanted to buy a ring to propose to a girl named *Sarah*. The problem is to find the ring Sarah will like, but after a suggestion from his close friend, Greg decides to buy a diamond stone instead so that Sarah can decide her choice. Greg then collects data of 6000 diamonds with their price and attributes like cut, color, shape, etc.
 
-## 👉 Data
+# 👉 Data
 
 In this tutorial, I will be using a dataset from a very popular case study by the Darden School of Business, published in [Harvard Business](https://hbsp.harvard.edu/product/UV0869-PDF-ENG). The goal of this tutorial is to predict the diamond price based on its attributes like carat weight, cut, color, etc. You can download the dataset from [PyCaret’s repository](https://github.com/pycaret/pycaret/tree/master/datasets).
 
@@ -82,7 +82,7 @@ In this tutorial, I will be using a dataset from a very popular case study by th
 
 ![Sample rows from data](https://cdn-images-1.medium.com/max/2000/0*rDRvbnmVe7vDGPVM.png)
 
-## 👉 Exploratory Data Analysis
+# 👉 Exploratory Data Analysis
 
 Let’s do some quick visualization to assess the relationship of independent features (weight, cut, color, clarity, etc.) with the target variable i.e. Price
 
@@ -121,7 +121,7 @@ Notice that distribution of Price is right-skewed, we can quickly check to see i
 
 This confirms our hypothesis. The transformation will help us to get away with skewness and make the target variable approximately normal. Based on this, we will transform the Price variable before training our models.
 
-## 👉 Data Preparation
+# 👉 Data Preparation
 
 Common to all modules in PyCaret, the setup is the first and the only mandatory step in any machine learning experiment using PyCaret. This function takes care of all the data preparation required prior to training models. Besides performing some basic default processing tasks, PyCaret also offers a wide array of pre-processing features. To learn more about all the preprocessing functionalities in PyCaret, you can see this [link](https://pycaret.org/preprocessing/).
 
@@ -141,7 +141,7 @@ Notice that:
 
 ![Output from setup — truncated for display](https://cdn-images-1.medium.com/max/2000/0*b5w1YKkwK2G9n_YA.png)
 
-## 👉 Model Training & Selection
+# 👉 Model Training & Selection
 
 Now that data is ready for modeling, let’s start the training process by using compare_models function. It will train all the algorithms available in the model library and evaluates multiple performance metrics using k-fold cross-validation.
 
@@ -160,7 +160,7 @@ Now that data is ready for modeling, let’s start the training process by using
 
 ![](https://cdn-images-1.medium.com/max/2068/0*m8k8VaglnYOkNx5x.png)
 
-### Finalize and Save Pipeline
+# Finalize and Save Pipeline
 
 Let’s now finalize the best model i.e. train the best model on the entire dataset including the test set and then save the pipeline as a pickle file.
 
@@ -174,7 +174,7 @@ save_model function will save the entire pipeline (including the model) as a pic
 
     save_model(final_best, 'c:/users/moez/models/diamond-pipeline'
 
-## 👉 Deployment
+# 👉 Deployment
 
 Remember we passed log_experiment = True in the setup function along with experiment_name = 'diamond' . Let’s see the magic PyCaret has done with the help of MLflow behind the scene. To see the magic let’s initiate the MLflow server:
 
@@ -222,7 +222,7 @@ Let’s now use this Pipeline to generate predictions on the new data
 
 Woohoo! We now have inference from our trained Pipeline. Congrats, if this is your first one. Notice that all the transformations such as target transformation, one-hot-encoding, missing value imputation, etc. happened behind the scene automatically. You get a data frame with prediction in actual scale, and this is what you care about.
 
-## Coming Soon!
+# Coming Soon!
 
 What I have shown today is one out of many ways you can serve trained Pipelines from PyCaret in production with the help of MLflow. In the next tutorial, I plan to show how you can using MLflow native serving functionalities to register your models, version them and serve as an API.
 
@@ -232,7 +232,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## You may also be interested in:
+# You may also be interested in:
 
 [Build your own AutoML in Power BI using PyCaret 2.0](https://towardsdatascience.com/build-your-own-automl-in-power-bi-using-pycaret-8291b64181d)
 [Deploy Machine Learning Pipeline on Azure using Docker](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01)
@@ -243,7 +243,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 [Build and deploy machine learning web app using PyCaret and Streamlit](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104)
 [Deploy Machine Learning App built using Streamlit and PyCaret on GKE](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb)
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -253,7 +253,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

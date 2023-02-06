@@ -1,11 +1,11 @@
 
-## Predict Lead Score (the Right Way) Using PyCaret
+# Predict Lead Score (the Right Way) Using PyCaret
 
-### A step-by-step guide on how to build a lead scoring model using PyCaret and increase the ROI on marketing campaigns.
+# A step-by-step guide on how to build a lead scoring model using PyCaret and increase the ROI on marketing campaigns.
 
 ![Predict Lead Conversions (the right way) using PyCaret — Image by Author](https://cdn-images-1.medium.com/max/2674/1*UKajo1_fRw6h5UpW7lQhWQ.png)
 
-## **Introduction**
+# **Introduction**
 
 Leads are the driving force of many businesses today. With the advancement of subscription-based business models particularly in the start-up space, the ability to convert leads into paying customers is key to survival. In simple terms, a “lead” represents a potential customer interested in buying your product/service.
 
@@ -21,25 +21,25 @@ Normally when you acquire the lead, either through a third party service or by r
 
 * Referral details, etc.
 
-## Lead Management process at a glance
+# Lead Management process at a glance
 
 ![Lead Management Process at a glance — Image by Author](https://cdn-images-1.medium.com/max/2236/1*IvCN08YMCv2gh6Apt80SiA.png)
 
 A significant amount of time, money, and effort is spent by marketing and sales departments on lead management, a concept that we will take to encompass the three key phases of lead generation, qualification, and monetization.
 
-## 👉Lead Generation
+# 👉Lead Generation
 
 Lead generation is the initiation of customer interest or inquiry into the products or services of your business. Leads are created with the intent of converting the interest or inquiry into sales. There is an unlimited number of third-party companies on the internet that promises to generate the best leads. However, you can also do it yourself by running marketing campaigns. The methods for generating leads typically fall under the umbrella of advertising, but may also include non-paid sources such as organic search engine results or referrals from existing customers.
 
-## 👉 **Lead Qualification**
+# 👉 **Lead Qualification**
 
 Lead qualification refers to the process of determining which potential customers are most likely to make an actual purchase. It’s an integral part of the sales funnel, which often takes in many leads but only converts a fraction of them. Lead qualification in simple terms means **assessing and prioritizing the leads to come up with the likelihood of conversion** so that your marketing and sales department can chase the prioritized leads instead of all the leads which can often by in thousands.
 
-## 👉**Lead Conversion**
+# 👉**Lead Conversion**
 
 Lead conversion is a phase where you finally convert a qualified lead into paying customer. It entails all the marketing practices that stimulate a desire to buy a product or service and push a lead towards a purchasing decision*. *This is a monetization or closing phase and the outcome of this generally defines the success of the overall marketing campaign.
 
-## 👉 **What does Lead Scoring really mean?**
+# 👉 **What does Lead Scoring really mean?**
 
 Imagine your team has many leads (potential customers) but not enough resources to pursue them all. Whether you are a product-led business with tons of freemium users, have a great inbound funnel of leads, or simply an amazing door-to-door sales team, at the end of the day, **you need to prioritize the time of your sales teams and give them the “best” leads.**
 > # The question is how do you do it so you **maximize your win rate**?
@@ -56,20 +56,20 @@ How do you get the target variable? Well, most CRM systems like Salesforce, Zoho
 
 ![Predictive Lead Scoring Workflow — Image Permission by Author](https://cdn-images-1.medium.com/max/2000/1*roT_nhFL9cdR5Dg0QfLR5A.png)
 
-## Let’s get started with the practical example 👇
+# Let’s get started with the practical example 👇
 
-## What is PyCaret?
+# What is PyCaret?
 
 [PyCaret](https://www.pycaret.org/) is an open-source, low-code machine learning library and end-to-end model management tool in Python to automate machine learning workflows. Using PyCaret you can efficiently build and deploy end-to-end machine learning pipelines. To learn more about PyCaret, check out their [GitHub](https://www.github.com/pycaret/pycaret).
 
 ![Features of PyCaret — Image by Author](https://cdn-images-1.medium.com/max/2084/0*FdaGo2BLH96-e-4_.png)
 
-## Install PyCaret
+# Install PyCaret
 
     **# install pycaret
     **pip install pycaret
 
-## 👉Dataset
+# 👉Dataset
 
 For this tutorial, I am using a [Lead Conversion](https://www.kaggle.com/ashydv/leads-dataset) dataset from Kaggle. The dataset contains over 9,000 leads with customer features such as lead origin, source of lead, total time spent on the website, total visits on the website, demographics information, and the target column Converted (*indicating 1 for conversion and 0 for no conversion*).
 
@@ -83,7 +83,7 @@ For this tutorial, I am using a [Lead Conversion](https://www.kaggle.com/ashydv/
 
 ![Sample Dataset — Image by Author](https://cdn-images-1.medium.com/max/2076/1*SuUA__cJ_KdbQJzDrT9U0A.png)
 
-## 👉 Exploratory Data Analysis
+# 👉 Exploratory Data Analysis
 
     **# check data info
     **data.info()
@@ -100,7 +100,7 @@ Intuitively time spent on the website and the activity score along with the sour
 
 Notice that leads coming from the “Add Forms” are likely to convert into sales irrespective of the time spent on the website or the score. For lead originated through API or landing page of the website tells a different story. A higher score along with higher time spent on the website is more likely to convert leads into final sales.
 
-## 👉Data Preparation
+# 👉Data Preparation
 
 Common to all modules in PyCaret, the setup is the first and the only mandatory step in any machine learning experiment performed in PyCaret. This function takes care of all the data preparation required prior to training models. Besides performing some basic default processing tasks, PyCaret also offers a wide array of pre-processing features. To learn more about all the preprocessing functionalities in PyCaret, you can see this [link](https://pycaret.org/preprocessing/).
 
@@ -116,7 +116,7 @@ Also, notice that I have passed ignore_features = ['Prospect ID', 'Lead Number']
 
 ![Output from setup — truncated for display — Image by Author (Image truncated)](https://cdn-images-1.medium.com/max/2000/1*U-BErPLaoUkIePiO_6pQLQ.png)
 
-## 👉 Model Training & Selection
+# 👉 Model Training & Selection
 
 Now that data preparation is done, let’s start the training process by using compare_models functionality. This function trains all the algorithms available in the model library and evaluates multiple performance metrics using cross-validation.
 
@@ -135,9 +135,9 @@ The best model based on **AUC*** *is **Catboost Classifier**with an average 10 f
 
 ![Catboost Hyperparameters — Image by Author](https://cdn-images-1.medium.com/max/2000/1*bJhAnG55xtkNzIgGZNlciQ.png)
 
-## 👉 Model Analysis
+# 👉 Model Analysis
 
-## **AUC-ROC Plot**
+# **AUC-ROC Plot**
 
 AUC — ROC curve is a performance measurement for the classification problems at various threshold settings. ROC is a probability curve and AUC represents the degree or measure of separability. It tells how much the model is capable of distinguishing between classes. The higher the AUC, the better the model is at predicting positive and negative classes. While it is very helpful to assess and compare the performance of different models, it is not easy to translate this metric into business value.
 
@@ -146,7 +146,7 @@ AUC — ROC curve is a performance measurement for the classification problems a
 
 ![AUC plot of the best_model — Image by Author](https://cdn-images-1.medium.com/max/2000/1*r1FSRw2KrRS5U8k-xlKtRw.png)
 
-## **SHAP Values**
+# **SHAP Values**
 
 Unlike AUC-ROC, shap values do not tell you anything about model performance but instead, interpret the impact of having a certain value for a given feature in comparison to the prediction we’d make if that feature took some baseline value. In the chart below, the y-axis (left) has all the important features of the model, the x-axis is the Shapley value of associated features and the color scale (on right) is the actual value of the feature. Each dot on a graph at each feature is a customer lead (from the test set) — overlapping each other.
 
@@ -157,7 +157,7 @@ The higher the shap value is (x-axis), the higher the likelihood of positive cla
 
 ![Shapley Feature Importance plot of the best_model — Image by Author](https://cdn-images-1.medium.com/max/2000/1*ww3sMXldXtxko2wKxQyBqg.png)
 
-## Feature Importance Plot
+# Feature Importance Plot
 
 A feature importance plot is just another way to interpret model results. While Shap values only work for complex tree-based model, feature importance plot is more common and can be used for different families of models. Unlike shap values, feature importance does not tell us the impact of the feature on a particular class, it only tells us if the feature is important.
 
@@ -166,7 +166,7 @@ A feature importance plot is just another way to interpret model results. While 
 
 ![Feature Importance plot of the best_model — Image by Author](https://cdn-images-1.medium.com/max/2140/1*2VrWvA8YG5OBcSqCpUt0eQ.png)
 
-## Confusion Matrix
+# Confusion Matrix
 
 The confusion matrix is another way to look at model performance. Out of all the possible tools, this is perhaps the simplest one. It basically compared the predictions with actual labels and divide them into four quadrants:
 
@@ -210,7 +210,7 @@ If you just do a little maths here, you will arrive at **$88,830 in profit**. He
 
 This may be a good model but it is not a business-smart model as we haven't fed in the assumptions of cost/profit yet. By default, any machine learning algorithm will optimize conventional metrics like AUC. In order to achieve the business goal, we have to train, select, and optimize models using business metrics.
 
-## 👉 Adding Custom Metric in PyCaret
+# 👉 Adding Custom Metric in PyCaret
 
 Thanks to PyCaret, it is extremely easy to achieve this using add_metric function.
 
@@ -244,7 +244,7 @@ The total number of customers is still the same (2,773 customers in the test set
 
 The profit is now $89,925 compared to $88,830 when Catboost Classifier was used. This is a 1.2% lift which depending on the magnitude and cost of false positive and false negative could translate into millions of dollars. There are few other things you can do on top of this such as tune hyperparameters of your best model by explicitly optimizing **Profit** instead of AUC, Accuracy, Recall, Precision, or any other conventional metric.
 
-## How to use the model to generate a lead score?
+# How to use the model to generate a lead score?
 
 Well, you must be asking now that we have selected the best model, how do I apply this model to new leads to generate the score? Well, that ain’t hard.
 
@@ -271,7 +271,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -281,7 +281,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## More PyCaret related tutorials:
+# More PyCaret related tutorials:
 [**Predict Customer Churn (the right way) using PyCaret**
 towardsdatascience.com](https://towardsdatascience.com/predict-customer-churn-the-right-way-using-pycaret-8ba6541608ac)
 [**Build with PyCaret, Deploy with FastAPI**

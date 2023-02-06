@@ -1,21 +1,20 @@
 import datetime
 import gc
 import logging
+import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from unittest.mock import patch
 
 import numpy as np  # type: ignore
 import pandas as pd
 import plotly.express as px
 import sklearn
 from joblib.memory import Memory
+from scipy.optimize import shgo
 
-import pycaret.containers.metrics.classification
-import pycaret.containers.models.classification
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
+from pycaret.containers.metrics import get_all_class_metric_containers
+from pycaret.containers.models import get_all_class_model_containers
 from pycaret.containers.models.classification import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
@@ -29,27 +28,31 @@ from pycaret.internal.meta_estimators import (
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.preprocess.preprocessor import Preprocessor
-from pycaret.internal.pycaret_experiment.supervised_experiment import (
-    _SupervisedExperiment,
+from pycaret.internal.pycaret_experiment.non_ts_supervised_experiment import (
+    _NonTSSupervisedExperiment,
 )
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.internal.utils import get_classification_task, get_label_encoder
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE, TARGET_LIKE
+from pycaret.utils.generic import (
+    MLUsecase,
+    get_classification_task,
+    get_label_encoder,
+    highlight_setup,
+)
 
 LOGGER = get_logger()
 
 
-class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
+class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
     _create_app_predict_kwargs = {"raw_score": True}
 
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.CLASSIFICATION
         self.exp_name_log = "clf-default-name"
-        self.variable_keys = self.variable_keys.union(
-            {"fix_imbalance", "_is_multiclass"}
+        self._variable_keys = self._variable_keys.union(
+            {"fix_imbalance", "is_multiclass"}
         )
         self._available_plots = {
             "pipeline": "Pipeline Plot",
@@ -78,38 +81,36 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in pycaret.containers.models.classification.get_all_model_containers(
+            for k, v in get_all_class_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = (
-            pycaret.containers.models.classification.get_all_model_containers(
-                self, raise_errors=raise_errors
-            )
+        all_models_internal = get_all_class_model_containers(
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return pycaret.containers.metrics.classification.get_all_metric_containers(
+        return get_all_class_metric_containers(
             self.variables, raise_errors=raise_errors
         )
 
     @property
-    def _is_multiclass(self) -> bool:
+    def is_multiclass(self) -> bool:
         """
         Method to check if the problem is multiclass.
         """
         # Cache the result to avoid calculating it every time
-        if hasattr(self, "__is_multiclass"):
-            return self.__is_multiclass
+        if hasattr(self, "_is_multiclass"):
+            return self._is_multiclass
         if getattr(self, "y", None) is None:
             return False
         try:
-            self.__is_multiclass = self.y.value_counts().count() > 2
+            self._is_multiclass = self.y.value_counts().count() > 2
         except Exception:
-            self.__is_multiclass = False
-        return self.__is_multiclass
+            self._is_multiclass = False
+        return self._is_multiclass
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["auc", "confusion_matrix", "feature"]
@@ -133,18 +134,18 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         create_date_columns: List[str] = ["day", "month", "year"],
         imputation_type: Optional[str] = "simple",
         numeric_imputation: str = "mean",
-        categorical_imputation: str = "constant",
+        categorical_imputation: str = "mode",
         iterative_imputation_iters: int = 5,
         numeric_iterative_imputer: Union[str, Any] = "lightgbm",
         categorical_iterative_imputer: Union[str, Any] = "lightgbm",
         text_features_method: str = "tf-idf",
-        max_encoding_ohe: int = 5,
+        max_encoding_ohe: int = 25,
         encoding_method: Optional[Any] = None,
         rare_to_value: Optional[float] = None,
         rare_value: str = "rare",
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
-        low_variance_threshold: Optional[float] = 0,
+        low_variance_threshold: Optional[float] = None,
         group_features: Optional[list] = None,
         group_names: Optional[Union[str, list]] = None,
         remove_multicollinearity: bool = False,
@@ -165,7 +166,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         feature_selection: bool = False,
         feature_selection_method: str = "classic",
         feature_selection_estimator: Union[str, Any] = "lightgbm",
-        n_features_to_select: int = 10,
+        n_features_to_select: Union[int, float] = 0.2,
         custom_pipeline: Optional[Any] = None,
         custom_pipeline_position: int = -1,
         data_split_shuffle: bool = True,
@@ -187,7 +188,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
@@ -218,7 +219,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         data_func: Callable[[], DATAFRAME_LIKE] = None
             The function that generate ``data`` (the dataframe-like input). This
             is useful when the dataset is large, and you need parallel operations
-            such as ``compare_models``. It can avoid boradcasting large dataset
+            such as ``compare_models``. It can avoid broadcasting large dataset
             from driver to workers. Notice one and only one of ``data`` and
             ``data_func`` must be set.
 
@@ -352,7 +353,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             text embeddings.
 
 
-        max_encoding_ohe: int, default = 5
+        max_encoding_ohe: int, default = 25
             Categorical columns with `max_encoding_ohe` or less unique values are
             encoded using OneHotEncoding. If more, the `encoding_method` estimator
             is used. Note that columns with exactly two classes are always encoded
@@ -387,11 +388,11 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
 
-        low_variance_threshold: float or None, default = 0
+        low_variance_threshold: float or None, default = None
             Remove features with a training-set variance lower than the provided
-            threshold. The default is to keep all features with non-zero variance,
-            i.e. remove the features that have the same value in all samples. If
-            None, skip this transformation step.
+            threshold. If 0, keep all features with non-zero variance, i.e. remove
+            the features that have the same value in all samples. If None, skip
+            this transformation step.
 
 
         group_features: list, list of lists or None, default = None
@@ -521,7 +522,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Algorithm for feature selection. Choose from:
                 - 'univariate': Uses sklearn's SelectKBest.
                 - 'classic': Uses sklearn's SelectFromModel.
-                - 'sequential': Uses sklearn's SequtnailFeatureSelector.
+                - 'sequential': Uses sklearn's SequentialFeatureSelector.
 
 
         feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
@@ -531,8 +532,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             parameter is ignored when `feature_selection_method=univariate`.
 
 
-        n_features_to_select: int, default = 10
-            The number of features to select. Note that this parameter doesn't
+        n_features_to_select: int or float, default = 0.2
+            The maximum number of features to select with feature_selection. If <1,
+            it's the fraction of starting features. Note that this parameter doesn't
             take features in ``ignore_features`` or ``keep_features`` into account
             when counting.
 
@@ -664,11 +666,11 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Ignored when ``log_experiment`` is False.
 
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The execution engines to use for the models in the form of a dict
             of `model_id: engine` - e.g. for Logistic Regression ("lr", users can
             switch between "sklearn" and "sklearnex" by specifying
-            `engines={"lr": "sklearnex"}`
+            `engine={"lr": "sklearnex"}`
 
 
         verbose: bool, default = True
@@ -708,9 +710,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         runtime_start = time.time()
 
-        if data_func is not None:
-            data = data_func()
-
         # Configuration
         sklearn.set_config(print_changed_only=False)
 
@@ -746,16 +745,27 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                     )
 
         # Set up data ============================================== >>
+        if data_func is not None:
+            data = data_func()
 
         self.data = self._prepare_dataset(data, target)
         self.target_param = self.data.columns[-1]
         self.index = index
+        self.data_split_stratify = data_split_stratify
+        self.data_split_shuffle = data_split_shuffle
 
         self._prepare_train_test(
             train_size=train_size,
             test_data=test_data,
             data_split_stratify=data_split_stratify,
             data_split_shuffle=data_split_shuffle,
+        )
+
+        self._prepare_folds(
+            fold_strategy=fold_strategy,
+            fold=fold,
+            fold_shuffle=fold_shuffle,
+            fold_groups=fold_groups,
         )
 
         self._prepare_column_types(
@@ -768,16 +778,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             keep_features=keep_features,
         )
 
-        self._prepare_folds(
-            fold_strategy=fold_strategy,
-            fold=fold,
-            fold_shuffle=fold_shuffle,
-            fold_groups=fold_groups,
-        )
-
         self._set_exp_model_engines(
             container_default_engines=get_container_default_engines(),
-            engines=engines,
+            engine=engine,
         )
 
         # Preprocessing ============================================ >>
@@ -790,6 +793,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
+
+            # Remove weird characters from column names
+            if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
+                self._clean_column_names()
 
             # Encode the target column
             y_unique = self.y.unique()
@@ -903,7 +910,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             container.append(
                 ["Target mapping", ", ".join([f"{k}: {v}" for k, v in mapping.items()])]
             )
-        container.append(["Original data shape", self.dataset.shape])
+        container.append(["Original data shape", self.data.shape])
         container.append(["Transformed data shape", self.dataset_transformed.shape])
         container.append(["Transformed train set shape", self.train_transformed.shape])
         container.append(["Transformed test set shape", self.test_transformed.shape])
@@ -919,7 +926,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             if imputation_type == "simple":
                 container.append(["Numeric imputation", numeric_imputation])
                 container.append(["Categorical imputation", categorical_imputation])
-            else:
+            elif imputation_type == "iterative":
                 if isinstance(numeric_iterative_imputer, str):
                     num_imputer = numeric_iterative_imputer
                 else:
@@ -985,17 +992,17 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [
+        self._display_container = [
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
-        self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        self.logger.info(f"Setup _display_container: {self._display_container[0]}")
         display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
@@ -1036,7 +1043,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ) -> Union[Any, List[Any]]:
@@ -1132,11 +1139,11 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             in this parameter. Only applicable for binary classification.
 
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The execution engines to use for the models in the form of a dict
             of `model_id: engine` - e.g. for Logistic Regression ("lr", users can
             switch between "sklearn" and "sklearnex" by specifying
-            `engines={"lr": "sklearnex"}`
+            `engine={"lr": "sklearnex"}`
 
 
         verbose: bool, default = True
@@ -1168,11 +1175,11 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         # No extra code above this line
 
-        if engines is not None:
+        if engine is not None:
             # Save current engines, then set to user specified options
             initial_model_engines = self.exp_model_engines.copy()
-            for estimator, engine in engines.items():
-                self._set_engine(estimator=estimator, engine=engine, severity="error")
+            for estimator, eng in engine.items():
+                self._set_engine(estimator=estimator, engine=eng, severity="error")
 
         try:
             return_values = super().compare_models(
@@ -1195,11 +1202,11 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                 caller_params=caller_params,
             )
         finally:
-            if engines is not None:
+            if engine is not None:
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_model_engines,
+                    engine=initial_model_engines,
                 )
 
         return return_values
@@ -1358,7 +1365,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_default_model_engines,
+                    engine=initial_default_model_engines,
                 )
 
         return return_values
@@ -2544,12 +2551,14 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
-            "calibrate_model() succesfully completed......................................"
+            "calibrate_model() successfully completed......................................"
         )
 
         gc.collect()
@@ -2559,17 +2568,17 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self,
         estimator,
         optimize: str = "Accuracy",
-        grid_interval: float = 0.1,
         return_data: bool = False,
         plot_kwargs: Optional[dict] = None,
+        **shgo_kwargs,
     ):
 
         """
         This function optimizes probability threshold for a trained classifier. It
-        iterates over performance metrics at different ``probability_threshold`` with
-        a step size defined in ``grid_interval`` parameter. This function will display
-        a plot of the performance metrics at each probability threshold and returns the
-        best model based on the metric defined under ``optimize`` parameter.
+        uses the SHGO optimizer from ``scipy`` to optimize for the given metric.
+        This function will display a plot of the performance metrics at each probability
+        threshold checked by the optimizer and returns the best model based on the metric
+        defined under ``optimize`` parameter.
 
 
         Example
@@ -2591,16 +2600,16 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Metric to be used for selecting best model.
 
 
-        grid_interval : float, default = 0.0001
-            Grid interval for threshold grid search. Default 10 iterations.
-
-
         return_data :  bool, default = False
             When set to True, data used for visualization is also returned.
 
 
         plot_kwargs :  dict, default = {} (empty dict)
             Dictionary of arguments passed to the visualizer class.
+
+
+        **shgo_kwargs:
+            Kwargs to pass to ``scipy.optimize.shgo``.
 
 
         Returns
@@ -2631,7 +2640,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self.logger.info("Checking exceptions")
 
         # exception 1 for multi-class
-        if self._is_multiclass:
+        if self.is_multiclass:
             raise TypeError(
                 "optimize_threshold() cannot be used when target is multi-class."
             )
@@ -2643,19 +2652,19 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                     "Estimator doesn't support predict_proba function and cannot be used in optimize_threshold()."
                 )
 
-        allowed_types = [int, float]
+        if "func" in shgo_kwargs or "bounds" in shgo_kwargs or "args" in shgo_kwargs:
+            raise ValueError("shgo_kwargs cannot contain 'func', 'bounds' or 'args'.")
 
-        if type(grid_interval) not in allowed_types or grid_interval > 1.0:
-            raise TypeError("grid_interval should be float and less than 1.0.")
+        shgo_kwargs.setdefault("sampling_method", "sobol")
 
-        if isinstance(optimize, str):
-            # checking optimize parameter
-            optimize = self._get_metric_by_name_or_id(optimize)
-            if optimize is None:
-                raise ValueError(
-                    "Optimize method not supported. See docstring for list of available parameters."
-                )
-            optimize = optimize.display_name
+        # checking optimize parameter
+        optimize = self._get_metric_by_name_or_id(optimize)
+        if optimize is None:
+            raise ValueError(
+                "Optimize method not supported. See docstring for list of available parameters."
+            )
+        direction = -1 if optimize.greater_is_better else 1
+        optimize = optimize.display_name
 
         """
         ERROR HANDLING ENDS HERE
@@ -2665,23 +2674,19 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         # get estimator name
         model_name = self._get_model_name(estimator)
 
-        # defines grid
-        grid = np.arange(0, 1.0001, grid_interval)
-
         # defines empty list
-        models_by_threshold = []
         results_df = []
 
-        self.logger.info("starting optimization loop")
-        # loop starts here
-        for i in grid:
+        self.logger.info("starting optimization")
+
+        def objective(x, *args):
+            probability_threshold = x[0]
             model = self._create_model(
-                estimator, verbose=False, system=False, probability_threshold=i
+                estimator,
+                verbose=False,
+                system=False,
+                probability_threshold=probability_threshold,
             )
-            try:
-                models_by_threshold.append(model[0])
-            except:
-                models_by_threshold.append(model)
             model_results = (
                 self.pull(pop=True)
                 .reset_index()
@@ -2695,22 +2700,38 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                     ]
                 ]
             )
-            model_results["probability_threshold"] = i
+            model_results["probability_threshold"] = probability_threshold
+            model_results["model"] = model[0]
             results_df.append(model_results)
+            return model_results[optimize] * direction
 
-        self.logger.info("optimization loop finished successfully")
+        # This is necessary to make sure the sampler has a
+        # deterministic seed.
+        class FixedRandom(np.random.RandomState):
+            def __init__(self_, seed=None) -> None:  # noqa
+                super().__init__(self.seed)
+
+        with patch("numpy.random.RandomState", FixedRandom):
+            result = shgo(objective, ((0, 1),), **shgo_kwargs)
+
+        message = (
+            "optimization loop finished successfully. "
+            f"Best threshold: {result.x[0]} with {optimize}={result.fun*direction}"
+        )
+        print(message)
+        self.logger.info(message)
 
         results_concat = pd.concat(results_df, axis=0)
-        results_concat_melted = results_concat.melt(
+        results_concat = results_concat.sort_values("probability_threshold")
+        results_concat_melted = results_concat.drop("model", axis=1).melt(
             id_vars=["probability_threshold"],
             value_vars=list(results_concat.columns[:-1]),
         )
-        optimized_metric_index = np.array(
-            results_concat_melted[results_concat_melted["variable"] == optimize][
-                "value"
-            ]
-        ).argmax()
-        best_model_by_metric = models_by_threshold[optimized_metric_index]
+        best_model_by_metric = results_concat[
+            results_concat["probability_threshold"] == result.x[0]
+        ]["model"].iloc[0]
+        assert isinstance(best_model_by_metric, CustomProbabilityThresholdClassifier)
+        assert best_model_by_metric.probability_threshold == result.x[0]
 
         self.logger.info("plotting optimization threshold using plotly")
 
@@ -2724,19 +2745,18 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             color="variable",
             **plot_kwargs,
         )
-        self.logger.info("Figure ready for render")
         fig.show()
 
         self.logger.info("returning model with best metric")
         if return_data:
             self.logger.info("also returning data as return_data = True")
             self.logger.info(
-                "optimize_threshold() succesfully completed......................................"
+                "optimize_threshold() successfully completed......................................"
             )
             return (results_concat_melted, best_model_by_metric)
         else:
             self.logger.info(
-                "optimize_threshold() succesfully completed......................................"
+                "optimize_threshold() successfully completed......................................"
             )
             return best_model_by_metric
 
@@ -2747,7 +2767,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         probability_threshold: Optional[float] = None,
         encoded_labels: bool = False,
         raw_score: bool = False,
-        drift_report: bool = False,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -2793,11 +2812,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             When set to True, scores for all labels will be returned.
 
 
-        drift_report: bool, default = False
-            When set to True, interactive drift report is generated on test set
-            with the evidently library.
-
-
         round: int, default = 4
             Number of decimal places the metrics in the score grid will be rounded to.
 
@@ -2825,7 +2839,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             probability_threshold=probability_threshold,
             encoded_labels=encoded_labels,
             raw_score=raw_score,
-            drift_report=drift_report,
             round=round,
             verbose=verbose,
         )

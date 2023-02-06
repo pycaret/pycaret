@@ -1,15 +1,15 @@
 
-## Build with PyCaret, Deploy with FastAPI
+# Build with PyCaret, Deploy with FastAPI
 
-### A step-by-step, beginner-friendly tutorial on how to build an end-to-end Machine Learning Pipeline with PyCaret and deploy it as an API.
+# A step-by-step, beginner-friendly tutorial on how to build an end-to-end Machine Learning Pipeline with PyCaret and deploy it as an API.
 
 ![PyCaret — an open-source, low-code machine learning library in Python](https://cdn-images-1.medium.com/max/2332/1*X-TkH_enuSrM71f1zrbHSg.png)
 
-## 👉 Introduction
+# 👉 Introduction
 
 This is a step-by-step, beginner-friendly tutorial on how to build an end-to-end Machine Learning Pipeline with [PyCaret](https://www.pycaret.org) and deploy it in production as a web API using [FastAPI](https://fastapi.tiangolo.com/).
 
-### Learning Goals of this Tutorial
+# Learning Goals of this Tutorial
 
 * Build an end-to-end machine learning pipeline using PyCaret
 
@@ -23,9 +23,9 @@ This tutorial will cover the entire machine learning life cycle at a high level 
 
 ![PyCaret — Machine Learning High-Level Workflow](https://cdn-images-1.medium.com/max/2580/1*m_dqCv42rZmxqyFzQ7rpUQ.png)
 
-## 💻 What tools we will use in this tutorial?
+# 💻 What tools we will use in this tutorial?
 
-### 👉 PyCaret
+# 👉 PyCaret
 
 PyCaret is an open-source, low-code machine learning library and end-to-end model management tool built-in Python for automating machine learning workflows. It is incredibly popular for its ease of use, simplicity, and ability to build and deploy end-to-end ML prototypes quickly and efficiently.
 
@@ -35,7 +35,7 @@ PyCaret is **simple and** **easy to use**. All the operations performed in PyCar
 
 To learn more about PyCaret, check out their [GitHub](https://www.github.com/pycaret/pycaret).
 
-### 👉 FastAPI
+# 👉 FastAPI
 
 FastAPI is a modern, fast (high-performance), web framework for building APIs with Python 3.6+ based on standard Python type hints. The key features are:
 
@@ -49,7 +49,7 @@ To learn more about FastAPI, check out their [GitHub](https://github.com/tiangol
 
 ![The workflow for PyCaret and FastAPI](https://cdn-images-1.medium.com/max/2318/1*cTds_qxWkAmBCovv0bmnIg.png)
 
-### 👉 Installing PyCaret
+# 👉 Installing PyCaret
 
 Installing PyCaret is very easy and takes only a few minutes. We strongly recommend using a virtual environment to avoid potential conflicts with other libraries.
 
@@ -63,17 +63,17 @@ PyCaret’s default installation is a slim version of pycaret that only installs
 
 When you install the full version of pycaret, all the optional dependencies as [listed here](https://github.com/pycaret/pycaret/blob/master/requirements-optional.txt) are also installed.
 
-### 👉 Installing FastAPI
+# 👉 Installing FastAPI
 
 You can install FastAPI from pip.
 
     pip install fastapi
 
-## 👉 Business Problem
+# 👉 Business Problem
 
 For this tutorial, I will be using a very popular case study by Darden School of Business, published in [Harvard Business](https://hbsp.harvard.edu/product/UV0869-PDF-ENG). The case is regarding the story of two people who are going to be married in the future. The guy named *Greg *wanted to buy a ring to propose to a girl named *Sarah*. The problem is to find the ring Sarah will like, but after a suggestion from his close friend, Greg decides to buy a diamond stone instead so that Sarah can decide her choice. Greg then collects data of 6000 diamonds with their price and attributes like cut, color, shape, etc.
 
-## 👉 Data
+# 👉 Data
 
 In this tutorial, I will be using a dataset from a very popular case study by the Darden School of Business, published in [Harvard Business](https://hbsp.harvard.edu/product/UV0869-PDF-ENG). The goal of this tutorial is to predict the diamond price based on its attributes like carat weight, cut, color, etc. You can download the dataset from [PyCaret’s repository](https://github.com/pycaret/pycaret/tree/master/datasets).
 
@@ -83,7 +83,7 @@ In this tutorial, I will be using a dataset from a very popular case study by th
 
 ![Sample rows from data](https://cdn-images-1.medium.com/max/2000/1*e-rJPY4j9GYciT-L-lZnWw.png)
 
-## 👉 Exploratory Data Analysis
+# 👉 Exploratory Data Analysis
 
 Let’s do some quick visualization to assess the relationship of independent features (weight, cut, color, clarity, etc.) with the target variable i.e. Price
 
@@ -122,7 +122,7 @@ Notice that distribution of Price is right-skewed, we can quickly check to see i
 
 This confirms our hypothesis. The transformation will help us to get away with skewness and make the target variable approximately normal. Based on this, we will transform the Price variable before training our models.
 
-## 👉 Data Preparation
+# 👉 Data Preparation
 
 Common to all modules in PyCaret, the setup is the first and the only mandatory step in any machine learning experiment performed in PyCaret. This function takes care of all the data preparation required prior to training models. Besides performing some basic default processing tasks, PyCaret also offers a wide array of pre-processing features. To learn more about all the preprocessing functionalities in PyCaret, you can see this [link](https://pycaret.org/preprocessing/).
 
@@ -138,7 +138,7 @@ Notice that I have used transform_target = True inside the setup. PyCaret will t
 
 ![Output from setup — truncated for display](https://cdn-images-1.medium.com/max/2000/1*Xm7xnZr1UjSTM_dTFwbv6g.png)
 
-## 👉 Model Training & Selection
+# 👉 Model Training & Selection
 
 Now that data preparation is done, let’s start the training process by using compare_models functionality. This function trains all the algorithms available in the model library and evaluates multiple performance metrics using cross-validation.
 
@@ -159,7 +159,7 @@ The best model based on *Mean Absolute Error (MAE)* is CatBoost Regressor. MAE u
 
 ![Feature Importance of best model](https://cdn-images-1.medium.com/max/2068/1*azpWQD8M5dPycAzWBGtNaQ.png)
 
-## Finalize and Save Pipeline
+# Finalize and Save Pipeline
 
 Let’s now finalize the best model i.e. train the best model on the entire dataset including the test set and then save the pipeline as a pickle file.
 
@@ -169,7 +169,7 @@ Let’s now finalize the best model i.e. train the best model on the entire data
     **# save model to disk
     **save_model(final_best, 'diamond-pipeline')
 
-## 👉 Deployment
+# 👉 Deployment
 >  ***First, let’s understand why to deploy machine learning models?***
 
 *The deployment of machine learning models is the process of making models available in production where web applications, enterprise software, and APIs can consume the trained model by providing new data points and generating predictions. Normally machine learning models are built so that they can be used to predict an outcome (binary value i.e. 1 or 0 for Classification, continuous values for Regression, labels for Clustering, etc. There are two broad ways of generating predictions (i) predict by batch; and (ii) predict in real-time. This tutorial will show how you can deploy your machine learning models as API to predict in real-time.*
@@ -210,7 +210,7 @@ Notice that prediction is 5396 that's because I have used the same values here a
 
 I hope that you will appreciate the ease of use and simplicity in PyCaret and FastAPI. In less than 25 lines of code and few minutes of experimentation, I have trained and evaluated multiple models using PyCaret and deployed ML Pipeline using an API.
 
-## Coming Soon!
+# Coming Soon!
 
 Next week I will be writing a tutorial to advance deployment to the next level, I will introduce the concepts like Containerization and Dockers in my next tutorial. Please follow me on [Medium](https://medium.com/@moez-62905), [LinkedIn](https://www.linkedin.com/in/profile-moez/), and [Twitter](https://twitter.com/moezpycaretorg1) to get more updates.
 
@@ -220,7 +220,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## You may also be interested in:
+# You may also be interested in:
 
 [Build your own AutoML in Power BI using PyCaret 2.0](https://towardsdatascience.com/build-your-own-automl-in-power-bi-using-pycaret-8291b64181d)
 [Deploy Machine Learning Pipeline on Azure using Docker](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01)
@@ -231,7 +231,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 [Build and deploy machine learning web app using PyCaret and Streamlit](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104)
 [Deploy Machine Learning App built using Streamlit and PyCaret on GKE](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb)
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -241,7 +241,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

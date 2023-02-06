@@ -1,7 +1,7 @@
 
 ![PyCaret 2.1 is now available for download using pip. [https://www.pycaret.org](https://www.pycaret.org)](https://cdn-images-1.medium.com/max/4800/1*OYS6O-iLkoE88fBbd3IKcw.jpeg)
 
-## PyCaret 2.1 is here — What’s new?
+# PyCaret 2.1 is here — What’s new?
 
 We are excited to announce PyCaret 2.1 — update for the month of Aug 2020.
 
@@ -11,7 +11,7 @@ In comparison with the other open-source machine learning libraries, PyCaret is 
 
 If you haven’t heard or used PyCaret before, please see our [previous announcement](https://towardsdatascience.com/announcing-pycaret-2-0-39c11014540e) to get started quickly.
 
-## Installing PyCaret
+# Installing PyCaret
 
 Installing PyCaret is very easy and takes only a few minutes. We strongly recommend using virtual environment to avoid potential conflict with other libraries. See the following example code to create a ***conda environment ***and install pycaret within that conda environment:
 
@@ -27,9 +27,9 @@ Installing PyCaret is very easy and takes only a few minutes. We strongly recomm
     **# create notebook kernel linked with the conda environment 
     **python -m ****ipykernel install --user --name yourenvname --display-name "display-name"
 
-## **PyCaret 2.1 Feature Summary**
+# **PyCaret 2.1 Feature Summary**
 
-## 👉 Hyperparameter Tuning on GPU
+# 👉 Hyperparameter Tuning on GPU
 
 In PyCaret 2.0 we have announced GPU-enabled training for certain algorithms (XGBoost, LightGBM and Catboost). What’s new in 2.1 is now you can also tune the hyperparameters of those models on GPU.
 
@@ -44,11 +44,11 @@ No additional parameter needed inside **tune_model **function as it automaticall
 
 ![XGBoost Training on GPU (using Google Colab)](https://cdn-images-1.medium.com/max/2180/1*1lAya7O3sEad9-epPH1sUw.jpeg)
 
-## 👉 Model Deployment
+# 👉 Model Deployment
 
 Since the first release of PyCaret in April 2020, you can deploy trained models on AWS simply by using the **deploy_model **from ****your Notebook. In the recent release, we have added functionalities to support deployment on GCP as well as Microsoft Azure.
 
-### **Microsoft Azure**
+# **Microsoft Azure**
 
 To deploy a model on Microsoft Azure, environment variables for connection string must be set. The connection string can be obtained from the ‘Access Keys’ of your storage account in Azure.
 
@@ -73,7 +73,7 @@ BOOM! That’s it. Just by using one line of code**, **your entire machine learn
     **from pycaret.classification import predict_model
     **predictions = predict_model(loaded_model, data = new-dataframe)
 
-### Google Cloud Platform
+# Google Cloud Platform
 
 To deploy a model on Google Cloud Platform (GCP), you must create a project first either using a command line or GCP console. Once the project is created, you must create a service account and download the service account key as a JSON file, which is then used to set the environment variable.
 
@@ -98,7 +98,7 @@ Model uploaded. You can now access the model from the GCP bucket using the **loa
     **from pycaret.classification import predict_model
     **predictions = predict_model(loaded_model, data = new-dataframe)
 
-## 👉 MLFlow Deployment
+# 👉 MLFlow Deployment
 
 In addition to using PyCaret’s native deployment functionalities, you can now also use all the MLFlow deployment capabilities. To use those, you must log your experiment using the **log_experiment** parameter in the **setup **function.
 
@@ -148,7 +148,7 @@ MLFlow also provide integration with AWS Sagemaker and Azure Machine Learning Se
 
 To learn more about all deployment capabilities of MLFlow, [click here](https://www.mlflow.org/docs/latest/models.html#).
 
-## 👉 MLFlow Model Registry
+# 👉 MLFlow Model Registry
 
 The MLflow Model Registry component is a centralized model store, set of APIs, and UI, to collaboratively manage the full lifecycle of an MLflow Model. It provides model lineage (which MLflow experiment and run produced the model), model versioning, stage transitions (for example from staging to production), and annotations.
 
@@ -156,7 +156,7 @@ If running your own MLflow server, you must use a database-backed backend store 
 
 ![[https://databricks.com/blog/2020/06/25/announcing-mlflow-model-serving-on-databricks.html](https://databricks.com/blog/2020/06/25/announcing-mlflow-model-serving-on-databricks.html)](https://cdn-images-1.medium.com/max/2048/1*XlT58YrFuszGb-1PIXvKZw.gif)
 
-## 👉 High-Resolution Plotting
+# 👉 High-Resolution Plotting
 
 This is not ground-breaking but indeed a very useful addition for people using PyCaret for research and publications. The **plot_model** now has an additional parameter called “scale” through which you can control the resolution and generate high quality plot for your publications.
 
@@ -168,7 +168,7 @@ This is not ground-breaking but indeed a very useful addition for people using P
 
 ![High-Resolution Residual Plot from PyCaret](https://cdn-images-1.medium.com/max/3456/1*O413K8IUvgYTgD3aTtcYjw.png)
 
-## 👉 User-Defined Loss Function
+# 👉 User-Defined Loss Function
 
 This is one of the most requested feature ever since release of the first version. Allowing to tune hyperparameters of a model using custom / user-defined function gives immense flexibility to data scientists. It is now possible to use user-defined custom loss functions using **custom_scorer **parameter in the **tune_model **function.
 
@@ -187,7 +187,7 @@ This is one of the most requested feature ever since release of the first versio
     **# tune catboost using custom scorer
     **tuned_catboost = tune_model(catboost, custom_scorer = my_own_scorer)
 
-## 👉 Feature Selection
+# 👉 Feature Selection
 
 Feature selection is a fundamental step in machine learning. You dispose of a bunch of features and you want to select only the relevant ones and to discard the others. The aim is simplifying the problem by removing unuseful features which would introduce unnecessary noise.
 
@@ -197,7 +197,7 @@ In PyCaret 2.1 we have introduced implementation of Boruta algorithm in Python (
 
 To read more about Boruta algorithm, [click here.](https://towardsdatascience.com/boruta-explained-the-way-i-wish-someone-explained-it-to-me-4489d70e154a)
 
-## 👉 Other Changes
+# 👉 Other Changes
 
 * blacklist and whitelist parameters in compare_models function is now renamed to exclude and include with no change in functionality.
 
@@ -215,7 +215,7 @@ There is no limit to what you can achieve using the lightweight workflow automat
 
 To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/company/pycaret/) and [Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g).
 
-## Important Links
+# Important Links
 
 [User Guide](https://www.pycaret.org/guide)
 [Documentation](https://pycaret.readthedocs.io/en/latest/)
@@ -223,7 +223,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 ](https://github.com/pycaret/pycaret/tree/master/tutorials)[Example Notebooks](https://github.com/pycaret/pycaret/tree/master/examples)
 [Other Resources](https://github.com/pycaret/pycaret/tree/master/resources)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

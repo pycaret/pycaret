@@ -1,14 +1,15 @@
 import logging
-from typing import Any, Callable, Dict, List, Optional, Union
+import os
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Union
 
 import pandas as pd
 from joblib.memory import Memory
 
 from pycaret.classification.oop import ClassificationExperiment
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-from pycaret.internal.utils import check_if_global_is_not_none
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE, TARGET_LIKE
+from pycaret.utils.generic import check_if_global_is_not_none
 
 _EXPERIMENT_CLASS = ClassificationExperiment
 _CURRENT_EXPERIMENT: Optional[ClassificationExperiment] = None
@@ -38,18 +39,18 @@ def setup(
     create_date_columns: List[str] = ["day", "month", "year"],
     imputation_type: Optional[str] = "simple",
     numeric_imputation: Union[int, float, str] = "mean",
-    categorical_imputation: str = "constant",
+    categorical_imputation: str = "mode",
     iterative_imputation_iters: int = 5,
     numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     categorical_iterative_imputer: Union[str, Any] = "lightgbm",
     text_features_method: str = "tf-idf",
-    max_encoding_ohe: int = 5,
+    max_encoding_ohe: int = 25,
     encoding_method: Optional[Any] = None,
     rare_to_value: Optional[float] = None,
     rare_value: str = "rare",
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
-    low_variance_threshold: Optional[float] = 0,
+    low_variance_threshold: Optional[float] = None,
     group_features: Optional[list] = None,
     group_names: Optional[Union[str, list]] = None,
     remove_multicollinearity: bool = False,
@@ -70,7 +71,7 @@ def setup(
     feature_selection: bool = False,
     feature_selection_method: str = "classic",
     feature_selection_estimator: Union[str, Any] = "lightgbm",
-    n_features_to_select: int = 10,
+    n_features_to_select: Union[int, float] = 0.2,
     custom_pipeline: Optional[Any] = None,
     custom_pipeline_position: int = -1,
     data_split_shuffle: bool = True,
@@ -120,7 +121,7 @@ def setup(
     data_func: Callable[[], DATAFRAME_LIKE] = None
         The function that generate ``data`` (the dataframe-like input). This
         is useful when the dataset is large, and you need parallel operations
-        such as ``compare_models``. It can avoid boradcasting large dataset
+        such as ``compare_models``. It can avoid broadcasting large dataset
         from driver to workers. Notice one and only one of ``data`` and
         ``data_func`` must be set.
 
@@ -254,7 +255,7 @@ def setup(
         text embeddings.
 
 
-    max_encoding_ohe: int, default = 5
+    max_encoding_ohe: int, default = 25
         Categorical columns with `max_encoding_ohe` or less unique values are
         encoded using OneHotEncoding. If more, the `encoding_method` estimator
         is used. Note that columns with exactly two classes are always encoded
@@ -289,11 +290,11 @@ def setup(
         [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
 
-    low_variance_threshold: float or None, default = 0
+    low_variance_threshold: float or None, default = None
         Remove features with a training-set variance lower than the provided
-        threshold. The default is to keep all features with non-zero variance,
-        i.e. remove the features that have the same value in all samples. If
-        None, skip this transformation step.
+        threshold. If 0, keep all features with non-zero variance, i.e. remove
+        the features that have the same value in all samples. If None, skip
+        this transformation step.
 
 
     group_features: list, list of lists or None, default = None
@@ -423,7 +424,7 @@ def setup(
         Algorithm for feature selection. Choose from:
             - 'univariate': Uses sklearn's SelectKBest.
             - 'classic': Uses sklearn's SelectFromModel.
-            - 'sequential': Uses sklearn's SequtnailFeatureSelector.
+            - 'sequential': Uses sklearn's SequentialFeatureSelector.
 
 
     feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
@@ -433,8 +434,9 @@ def setup(
         parameter is ignored when `feature_selection_method=univariate`.
 
 
-    n_features_to_select: int, default = 10
-        The number of features to select. Note that this parameter doesn't
+    n_features_to_select: int or float, default = 0.2
+        The maximum number of features to select with feature_selection. If <1,
+        it's the fraction of starting features. Note that this parameter doesn't
         take features in ``ignore_features`` or ``keep_features`` into account
         when counting.
 
@@ -686,7 +688,7 @@ def compare_models(
     groups: Optional[Union[str, Any]] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     probability_threshold: Optional[float] = None,
-    engines: Optional[Dict[str, str]] = None,
+    engine: Optional[Dict[str, str]] = None,
     verbose: bool = True,
     parallel: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
@@ -782,11 +784,11 @@ def compare_models(
         in this parameter. Only applicable for binary classification.
 
 
-    engines: Optional[Dict[str, str]] = None
+    engine: Optional[Dict[str, str]] = None
         The execution engines to use for the models in the form of a dict
         of `model_id: engine` - e.g. for Logistic Regression ("lr", users can
         switch between "sklearn" and "sklearnex" by specifying
-        `engines={"lr": "sklearnex"}`
+        `engine={"lr": "sklearnex"}`
 
 
     verbose: bool, default = True
@@ -828,7 +830,7 @@ def compare_models(
         groups=groups,
         experiment_custom_tags=experiment_custom_tags,
         probability_threshold=probability_threshold,
-        engines=engines,
+        engine=engine,
         verbose=verbose,
         parallel=parallel,
     )
@@ -846,7 +848,7 @@ def get_allowed_engines(estimator: str) -> Optional[str]:
     -------
     Optional[str]
         The allowed engines for the model. If the model only supports the
-        default sktime engine, then it return `None`.
+        default engine, then it return `None`.
     """
 
     return _CURRENT_EXPERIMENT.get_allowed_engines(estimator=estimator)
@@ -2050,17 +2052,17 @@ def calibrate_model(
 def optimize_threshold(
     estimator,
     optimize: str = "Accuracy",
-    grid_interval: float = 0.1,
     return_data: bool = False,
     plot_kwargs: Optional[dict] = None,
+    **shgo_kwargs,
 ):
 
     """
     This function optimizes probability threshold for a trained classifier. It
-    iterates over performance metrics at different ``probability_threshold`` with
-    a step size defined in ``grid_interval`` parameter. This function will display
-    a plot of the performance metrics at each probability threshold and returns the
-    best model based on the metric defined under ``optimize`` parameter.
+    uses the SHGO optimizer from ``scipy`` to optimize for the given metric.
+    This function will display a plot of the performance metrics at each probability
+    threshold checked by the optimizer and returns the best model based on the metric
+    defined under ``optimize`` parameter.
 
 
     Example
@@ -2082,16 +2084,16 @@ def optimize_threshold(
         Metric to be used for selecting best model.
 
 
-    grid_interval : float, default = 0.0001
-        Grid interval for threshold grid search. Default 10 iterations.
-
-
     return_data :  bool, default = False
         When set to True, data used for visualization is also returned.
 
 
     plot_kwargs :  dict, default = {} (empty dict)
         Dictionary of arguments passed to the visualizer class.
+
+
+    **shgo_kwargs:
+        Kwargs to pass to ``scipy.optimize.shgo``.
 
 
     Returns
@@ -2107,9 +2109,9 @@ def optimize_threshold(
     return _CURRENT_EXPERIMENT.optimize_threshold(
         estimator=estimator,
         optimize=optimize,
-        grid_interval=grid_interval,
         return_data=return_data,
         plot_kwargs=plot_kwargs,
+        **shgo_kwargs,
     )
 
 
@@ -2120,7 +2122,6 @@ def predict_model(
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,
     raw_score: bool = False,
-    drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -2166,11 +2167,6 @@ def predict_model(
         When set to True, scores for all labels will be returned.
 
 
-    drift_report: bool, default = False
-        When set to True, interactive drift report is generated on test set
-        with the evidently library.
-
-
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
@@ -2202,7 +2198,6 @@ def predict_model(
         probability_threshold=probability_threshold,
         encoded_labels=encoded_labels,
         raw_score=raw_score,
-        drift_report=drift_report,
         round=round,
         verbose=verbose,
     )
@@ -2554,7 +2549,6 @@ def pull(pop: bool = False) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        Equivalent to get_config('display_container')[-1]
 
     """
     return _CURRENT_EXPERIMENT.pull(pop=pop)
@@ -2784,7 +2778,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_config(variable: str):
+def get_config(variable: Optional[str] = None):
 
     """
     This function is used to access global environment variables.
@@ -2793,7 +2787,13 @@ def get_config(variable: str):
     -------
     >>> X_train = get_config('X_train')
 
-    This will return X_train transformed dataset.
+    This will return training features.
+
+
+    variable : str, default = None
+        Name of the variable to return the value of. If None,
+        will return a list of possible names.
+
 
     Returns
     -------
@@ -2822,20 +2822,24 @@ def set_config(variable: str, value):
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_config(file_name: str):
-
+def save_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO], **cloudpickle_kwargs
+) -> None:
     """
-    This function save all global variables to a pickle file, allowing to
-    later resume without rerunning the ``setup``.
+    Saves the experiment to a pickle file.
+
+    The experiment is saved using cloudpickle to deal with lambda
+    functions. The data or test data is NOT saved with the experiment
+    and will need to be specified again when loading using
+    ``load_experiment``.
 
 
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> save_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to save the experiment to.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.dump`` call.
 
 
     Returns:
@@ -2843,29 +2847,81 @@ def save_config(file_name: str):
 
     """
 
-    return _CURRENT_EXPERIMENT.save_config(file_name=file_name)
+    return _CURRENT_EXPERIMENT.save_experiment(
+        path_or_file=path_or_file, **cloudpickle_kwargs
+    )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def load_config(file_name: str):
+def load_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO],
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+    test_data: Optional[DATAFRAME_LIKE] = None,
+    preprocess_data: bool = True,
+    **cloudpickle_kwargs,
+) -> ClassificationExperiment:
 
     """
-    This function loads global variables from a pickle file into Python
-    environment.
+    Load an experiment saved with ``save_experiment`` from path
+    or file.
+
+    The data (and test data) is NOT saved with the experiment
+    and will need to be specified again.
 
 
-    Example
-    -------
-    >>> from pycaret.classification import load_config
-    >>> load_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to load the experiment from.
+        The pickle file must be created through ``save_experiment``.
+
+
+    data: dataframe-like
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
+
+
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    test_data: dataframe-like or None, default = None
+        If not None, test_data is used as a hold-out set and `train_size` parameter
+        is ignored. The columns of data and test_data must match.
+
+
+    preprocess_data: bool, default = True
+        If True, the data will be preprocessed again (through running ``setup``
+        internally). If False, the data will not be preprocessed. This means
+        you can save the value of the ``data`` attribute of an experiment
+        separately, and then load it separately and pass it here with
+        ``preprocess_data`` set to False. This is an advanced feature.
+        We recommend leaving it set to True and passing the same data
+        as passed to the initial ``setup`` call.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.load`` call.
 
 
     Returns:
-        Global variables
+        loaded experiment
 
     """
-
-    return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
+    exp = _EXPERIMENT_CLASS.load_experiment(
+        path_or_file=path_or_file,
+        data=data,
+        data_func=data_func,
+        test_data=test_data,
+        preprocess_data=preprocess_data,
+        **cloudpickle_kwargs,
+    )
+    set_current_experiment(exp)
+    return exp
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -3267,6 +3323,86 @@ def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
     )
 
 
+def check_drift(
+    reference_data: Optional[pd.DataFrame] = None,
+    current_data: Optional[pd.DataFrame] = None,
+    target: Optional[str] = None,
+    numeric_features: Optional[List[str]] = None,
+    categorical_features: Optional[List[str]] = None,
+    date_features: Optional[List[str]] = None,
+    filename: Optional[str] = None,
+) -> str:
+    """
+    This function generates a drift report file using the
+    evidently library.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> check_drift()
+
+
+    reference_data: Optional[pd.DataFrame] = None
+        Reference data. If not specified, will use training data.
+        Must be specified if ``setup()`` has not been run.
+
+
+    current_data: Optional[pd.DataFrame] = None
+        Current data. If not specified, will use test data.
+        Must be specified if ``setup()`` has not been run.
+
+
+    target: Optional[str] = None
+        Name of the target column. If not specified, will use
+        the column specified in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    numeric_features: Optional[List[str]] = None
+        Names of numeric columns. If not specified, will use
+        the columns specified/inferred in ``setup()``, or
+        all non-categorical and non-date columns otherwise.
+
+
+    categorical_features: Optional[List[str]] = None
+        Names of categorical columns. If not specified, will use
+        the columns specified/inferred in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    date_features: Optional[List[str]] = None
+        Names of date columns. If not specified, will use
+        the columns specified/inferred in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    filename: Optional[str] = None
+        Path to save the generated HTML file to. If not specified,
+        will default to '[EXPERIMENT_NAME]_[TIMESTAMP]_Drift_Report.html'.
+
+
+    Returns:
+        Path the generated HTML file was saved to.
+    """
+    experiment = _CURRENT_EXPERIMENT
+    if experiment is None:
+        experiment = _EXPERIMENT_CLASS()
+
+    return experiment.check_drift(
+        reference_data=reference_data,
+        current_data=current_data,
+        target=target,
+        numeric_features=numeric_features,
+        categorical_features=categorical_features,
+        date_features=date_features,
+        filename=filename,
+    )
+
+
 def set_current_experiment(experiment: ClassificationExperiment) -> None:
     """
     Set the current experiment to be used with the functional API.
@@ -3284,3 +3420,13 @@ def set_current_experiment(experiment: ClassificationExperiment) -> None:
             f"experiment must be a PyCaret ClassificationExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> ClassificationExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current ClassificationExperiment
+    """
+    return _CURRENT_EXPERIMENT

@@ -1,6 +1,6 @@
-## Tutorials Index
+# Tutorials Index
 
-### This contains the tutorials of basic modules
+# This contains the tutorials of basic modules
 | Topic      | Notebook Link | 
 | :---        |        ---: |
 | Anomaly Detection      | [link](https://github.com/pycaret/pycaret/blob/master/tutorials/Anomaly%20Detection%20Tutorial%20Level%20Beginner%20-%20ANO101.ipynb)       | 

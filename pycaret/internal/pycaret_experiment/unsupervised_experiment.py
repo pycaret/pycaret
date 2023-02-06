@@ -3,16 +3,14 @@ import gc
 import logging
 import time
 import traceback
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
 import plotly.graph_objects as go  # type: ignore
 from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
-
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
@@ -21,17 +19,25 @@ from pycaret.containers.models.clustering import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
 )
+from pycaret.containers.metrics import (
+    get_all_class_metric_containers,
+    get_all_clust_metric_containers,
+    get_all_reg_metric_containers,
+)
+from pycaret.containers.models import (
+    get_all_class_model_containers,
+    get_all_reg_model_containers,
+)
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.pipeline import estimator_pipeline, get_pipeline_fit_kwargs
 from pycaret.internal.preprocess.preprocessor import Preprocessor
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.internal.utils import infer_ml_usecase, to_df
 from pycaret.internal.validation import is_sklearn_pipeline
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
+from pycaret.utils.generic import MLUsecase, highlight_setup, infer_ml_usecase
 
 LOGGER = get_logger()
 
@@ -39,14 +45,14 @@ LOGGER = get_logger()
 class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     def __init__(self) -> None:
         super().__init__()
-        self.variable_keys = self.variable_keys.union({"X"})
+        self._variable_keys = self._variable_keys.union({"X"})
         return
 
     def _calculate_metrics(self, X, labels, ground_truth=None, ml_usecase=None) -> dict:
         """
         Calculate all metrics in _all_metrics.
         """
-        from pycaret.internal.utils import calculate_unsupervised_metrics
+        from pycaret.utils.generic import calculate_unsupervised_metrics
 
         if ml_usecase is None:
             ml_usecase = self._ml_usecase
@@ -57,11 +63,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
         except Exception:
             if ml_usecase == MLUsecase.CLUSTERING:
-                metrics = (
-                    pycaret.containers.metrics.clustering.get_all_metric_containers(
-                        self.variables, True
-                    )
-                )
+                metrics = get_all_clust_metric_containers(self.variables, True)
             return calculate_unsupervised_metrics(
                 metrics=metrics,  # type: ignore
                 X=X,
@@ -90,7 +92,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
     def setup(
         self,
-        data: DATAFRAME_LIKE,
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], Union[pd.Series, pd.DataFrame]]] = None,
         index: Union[bool, int, str, SEQUENCE_LIKE] = False,
         ordinal_features: Optional[Dict[str, list]] = None,
         numeric_features: Optional[List[str]] = None,
@@ -103,7 +106,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         create_date_columns: List[str] = ["day", "month", "year"],
         imputation_type: Optional[str] = "simple",
         numeric_imputation: str = "mean",
-        categorical_imputation: str = "constant",
+        categorical_imputation: str = "mode",
         text_features_method: str = "tf-idf",
         max_encoding_ohe: int = -1,
         encoding_method: Optional[Any] = None,
@@ -111,7 +114,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         rare_value: str = "rare",
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
-        low_variance_threshold: Optional[float] = 0,
+        low_variance_threshold: Optional[float] = None,
         group_features: Optional[list] = None,
         group_names: Optional[Union[str, list]] = None,
         remove_multicollinearity: bool = False,
@@ -169,6 +172,13 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             is not a pandas dataframe, it's converted to one using default column
             names.
 
+
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
 
         index: bool, int, str or sequence, default = False
             Handle indices in the `data` dataframe.
@@ -270,7 +280,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         encoding_method: category-encoders estimator, default = None
             A `category-encoders` estimator to encode the categorical columns
             with more than `max_encoding_ohe` unique values. If None,
-            `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+            `category_encoders.basen.BaseN` is used.
 
 
         rare_to_value: float or None, default=None
@@ -295,11 +305,11 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
 
-        low_variance_threshold: float or None, default = 0
+        low_variance_threshold: float or None, default = None
             Remove features with a training-set variance lower than the provided
-            threshold. The default is to keep all features with non-zero variance,
-            i.e. remove the features that have the same value in all samples. If
-            None, skip this transformation step.
+            threshold. If 0, keep all features with non-zero variance, i.e. remove
+            the features that have the same value in all samples. If None, skip
+            this transformation step.
 
 
         group_features: list, list of lists or None, default = None
@@ -509,6 +519,13 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         """
 
+        self._register_setup_params(dict(locals()))
+
+        if (data is None and data_func is None) or (
+            data is not None and data_func is not None
+        ):
+            raise ValueError("One and only one of data and data_func must be set")
+
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
@@ -541,6 +558,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                     )
 
         # Set up data ============================================== >>
+        if data_func is not None:
+            data = data_func()
 
         self.index = index
         self.data = self._set_index(self._prepare_dataset(data))
@@ -646,7 +665,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.pipeline.fit(self.X)
 
-        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
         # Final display ============================================ >>
@@ -655,7 +674,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         container = []
         container.append(["Session id", self.seed])
-        container.append(["Original data shape", self.dataset.shape])
+        container.append(["Original data shape", self.data.shape])
         container.append(["Transformed data shape", self.dataset_transformed.shape])
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
@@ -707,17 +726,17 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [
+        self._display_container = [
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
-        self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        self.logger.info(f"Setup _display_container: {self._display_container[0]}")
         display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
@@ -913,26 +932,14 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             self.logger.info(f"supervised_type inferred as {supervised_type}")
 
         if supervised_type == "classification":
-            metrics = (
-                pycaret.containers.metrics.classification.get_all_metric_containers(
-                    self, raise_errors=True
-                )
-            )
-            available_estimators = (
-                pycaret.containers.models.classification.get_all_model_containers(
-                    self, raise_errors=True
-                )
+            metrics = get_all_class_metric_containers(self, raise_errors=True)
+            available_estimators = get_all_class_model_containers(
+                self, raise_errors=True
             )
             ml_usecase = MLUsecase.CLASSIFICATION
         elif supervised_type == "regression":
-            metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
-                self, raise_errors=True
-            )
-            available_estimators = (
-                pycaret.containers.models.regression.get_all_model_containers(
-                    self, raise_errors=True
-                )
-            )
+            metrics = get_all_reg_metric_containers(self, raise_errors=True)
+            available_estimators = get_all_reg_model_containers(self, raise_errors=True)
             ml_usecase = MLUsecase.REGRESSION
         else:
             raise ValueError(
@@ -1168,7 +1175,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 display=display,
             )
 
-        self.display_container.append(results)
+        self._display_container.append(results)
 
         results = results.style.apply(
             highlight_max,
@@ -1215,12 +1222,14 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             fig.show()
             self.logger.info("Visual Rendered Successfully")
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(best_model))
         self.logger.info(
-            "tune_model() succesfully completed......................................"
+            "tune_model() successfully completed......................................"
         )
 
         gc.collect()
@@ -1321,7 +1330,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.logger.info(data.shape)
         self.logger.info(
-            "assign_model() succesfully completed......................................"
+            "assign_model() successfully completed......................................"
         )
 
         return data
@@ -1339,51 +1348,40 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         self.logger.info("Initializing predict_model()")
         self.logger.info(f"predict_model({function_params_str})")
 
-        if isinstance(estimator, Pipeline):
-            if not hasattr(estimator, "feature_names_in_"):
-                raise ValueError(
-                    "If estimator is a Pipeline, it must implement `feature_names_in_`."
-                )
-            pipeline = estimator
-            # Temporarily remove final estimator so it's not used for transform
-            final_step = pipeline.steps[-1]
-            estimator = final_step[-1]
-            pipeline.steps = pipeline.steps[:-1]
-        elif not self._setup_ran:
-            raise ValueError(
-                "If estimator is not a Pipeline, you must run setup() first."
-            )
-        else:
-            pipeline = self.pipeline
-            final_step = None
-
         if ml_usecase is None:
             ml_usecase = self._ml_usecase
 
-        X_columns = pipeline.feature_names_in_
         if data is None:
-            data_transformed = self.X_transformed
+            # Can be any Pipeline (pycaret, sklearn, imblearn, etc...)
+            if estimator.__class__.__name__ == "Pipeline":
+                data = self.X
+            else:
+                data = self.X_transformed
         else:
-            data = self._prepare_dataset(data)[X_columns]
-            data_transformed = pipeline.transform(data)
-            if final_step:
-                pipeline.steps.append(final_step)
+            if estimator.__class__.__name__ == "Pipeline":
+                data = self._prepare_dataset(data)
+            else:
+                data = self.pipeline.transform(data)
 
-        # exception checking for predict param
+        # Select features to use
+        if hasattr(estimator, "feature_names_in_"):
+            data = data[list(estimator.feature_names_in_)]
+
+        # exception checking for predict method
         if hasattr(estimator, "predict"):
             pass
         else:
-            raise TypeError("Model doesn't support predict parameter.")
+            raise TypeError("Model doesn't have the predict method.")
 
-        pred = estimator.predict(data_transformed)
+        output = data.copy()
+        pred = estimator.predict(data)
         if ml_usecase == MLUsecase.CLUSTERING:
-            data_transformed["Cluster"] = [f"Cluster {i}" for i in pred]
+            output["Cluster"] = [f"Cluster {i}" for i in pred]
         else:
-            pred_score = estimator.decision_function(data_transformed)
-            data_transformed["Anomaly"] = pred
-            data_transformed["Anomaly_Score"] = pred_score
+            output["Anomaly"] = pred
+            output["Anomaly_Score"] = estimator.decision_function(data)
 
-        return data_transformed
+        return output
 
     def _create_model(
         self,
@@ -1496,10 +1494,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 monitor_rows=monitor_rows,
             )
 
-        self.logger.info("Importing libraries")
-
-        # general dependencies
-
         np.random.seed(self.seed)
 
         # Storing X_train and y_train in data_X and data_y parameter
@@ -1557,17 +1551,19 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
             self.logger.warning(traceback.format_exc())
 
-        self.logger.info(f"{full_name} Imported succesfully")
+        self.logger.info(f"{full_name} Imported successfully")
 
         display.move_progress()
 
         """
         MONITOR UPDATE STARTS
         """
+
         if self._ml_usecase == MLUsecase.CLUSTERING:
             display.update_monitor(1, f"Fitting {num_clusters} Clusters")
         else:
             display.update_monitor(1, f"Fitting {fraction} Fraction")
+
         """
         MONITOR UPDATE ENDS
         """
@@ -1618,7 +1614,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.logger.info(str(model))
         self.logger.info(
-            "create_models() succesfully completed......................................"
+            "create_models() successfully completed......................................"
         )
 
         runtime = time.time() - runtime_start
@@ -1648,14 +1644,14 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         if metrics:
             model_results = pd.DataFrame(metrics, index=[0])
             model_results = model_results.round(round)
-            self.display_container.append(model_results)
+            self._display_container.append(model_results)
         else:
             model_results = None
 
         if add_to_model_list:
-            # storing results in master_model_container
+            # storing results in _master_model_container
             self.logger.info("Uploading model into container now")
-            self.master_model_container.append(
+            self._master_model_container.append(
                 {"model": model, "scores": model_results, "cv": None}
             )
 
@@ -1664,12 +1660,14 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         else:
             display.close()
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
-            "create_model() succesfully completed......................................"
+            "create_model() successfully completed......................................"
         )
         gc.collect()
 

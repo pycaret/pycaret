@@ -1,13 +1,13 @@
 
-### [Gold Prediction](https://towardsdatascience.com/tagged/gold-price-prediction)
+# [Gold Prediction](https://towardsdatascience.com/tagged/gold-price-prediction)
 
-## Predicting Gold Prices Using Machine Learning
+# Predicting Gold Prices Using Machine Learning
 
-### by Mohammad Riazuddin
+# by Mohammad Riazuddin
 
-### Part- I Importing and Preparing Data
+# Part- I Importing and Preparing Data
 
-## Introduction
+# Introduction
 
 I have been a student of financial markets for over a decade and have been studying different asset classes and their behavior in different economic conditions. It is difficult to find an asset class which has greater polarization than Gold. There are people who love it and people who hate it, and more often than not, they remain in the same camp forever. Since Gold has very little fundamentals of its own (again a source of polarization), in this multi-part series I will try to predict Gold Price returns using several Machine Learning techniques. Listed below is how I (currently) envisage the series to be:
 
@@ -22,19 +22,19 @@ I have been a student of financial markets for over a decade and have been study
 ***Part V : Evaluating integration of approaches***
 >  “Please note that Gold is a very widely traded asset in an extremely competitive market. Making money consistently from any strategy for a long time is extremely difficult, if not impossible. The article is only to share my experience and not a prescription or advocacy to invest or trade. However, to students of the field like myself, the idea can be extended and developed into trading algorithms with individual efforts.”
 
-## Background
+# Background
 
 Gold has been the original store of value and medium of exchange to mankind for centuries till paper currency took over a couple of centuries ago. However, most of the sustainable paper currencies were backed by Gold till as late as 1971, when the Bretton Woods agreement was scrapped and world currencies became a true ′𝐹𝑖𝑎𝑡′ currency.
 
 Gold, however, continues to garner interest not only as a metal of choice for jewelry, but also as a store of value and often advisable part of a diversified investment portfolio as it tends to be an effective inflation hedge and safe haven when economies are going through a rough patch.
 
-## Approach
+# Approach
 
 In the series we will take different approaches to predict returns from Gold prices using **Machine learning **as highlighted in introduction section
 
 First we will go the regression route to predict future returns of Gold over next 2 and 3 week period. We will do this by using historical returns of different instruments which I believe impact the outlook towards Gold. The fundamental reason is, that I term Gold as a *‘reactionary’ *asset. It has little fundamentals of its own and movement in prices often is a derivative of how investors view other asset classes (equities, commodities etc.).
 
-## Importing Data
+# Importing Data
 
 For this and subsequent exercises, we will need closing price of several instruments for past 10 years . There are various paid (Reuters, Bloomberg) and free resources (IEX, Quandl, Yahoofinance, Google finance) that we can use to import data. Since this project needed different type of asset classes (Equities, Commodities, Debt and precious metals) I found the **‘[*yahoofinancials](https://pypi.org/project/yahoofinancials/)*’** package to be very helpful and straight forward.
 
@@ -95,7 +95,7 @@ Once we have the date range in dataframe, we need to use ticker symbols to pull 
 
 ![Tail of values table](https://cdn-images-1.medium.com/max/2000/1*n9DrEpRxVpV2rDzJBtsDhg.png)
 
-## Preparing Data
+# Preparing Data
 
 In approach above, we highlighted that we will be using lagged returns of the listed instruments to predict future returns on Gold. Here we go on to calculate short-term historical returns of all the instruments and longer term historical returns of few selected instruments.
 
@@ -179,9 +179,9 @@ This was all about features. Now we need to create targets, i.e what we want to 
 
 Now we have the complete data set ready to start modelling. In the next part we will experiment with different algorithms using the extremely innovative and efficient PyCaret library. I will also exhibit how a pipeline can be created to continuously import new data to generate predictions using the trained models.
 
-## Predicting Gold Prices Using Machine Learning
+# Predicting Gold Prices Using Machine Learning
 
-### Part- II Regression Modelling with PyCaret
+# Part- II Regression Modelling with PyCaret
 
 In Part-I, we discussed importing data from open source free API and prepared it in a manner which is suitable for our intended Machine Learning exercise. You can refer to Part-I for the codes or import the final dataset in file name ‘Training Data’ from the [github repo](https://github.com/Riazone/Gold-Return-Prediction/blob/master/Training%20Data.csv).
 
@@ -189,7 +189,7 @@ PyCaret is an open source machine learning library in Python which can be used a
 
     !pip install pycaret
 
-### 22-Day Model
+# 22-Day Model
 
 We take up 22-Day horizon as the target. This means, given the historical data, we will try to predict return in Gold over the next three weeks.
 
@@ -424,7 +424,7 @@ The table output above shows that closing price of Gold on 17th April 2020 was $
 
 We can use the same concepts and techniques for T+14 day prediction. The codes and output can be found in the Jupyter notebook titles ***“Gold Prediction Experiment Regression — PyCaret”*** in the repo [here](https://github.com/Riazone/Gold-Return-Prediction/blob/master/Regression/Gold%20Prediction%20Experiment%20%20Regression-%20PyCaret.ipynb).
 
-## Important Links
+# Important Links
 
 ***Link to Part-III — [Predicting Crashes in Gold Prices](https://towardsdatascience.com/predicting-crashes-in-gold-prices-using-machine-learning-5769f548496)***
 

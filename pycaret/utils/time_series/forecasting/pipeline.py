@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 
 import pandas as pd
 from sktime.forecasting.base import BaseForecaster
-from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
+from sktime.forecasting.compose import ForecastingPipeline
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
 
@@ -47,14 +47,11 @@ def _add_model_to_pipeline(
 
     # Clone Tags so that the ability to get prediction intervals can be set correctly
     # based on the replacement model and not based on the pipeline model
-    # https://github.com/alan-turing-institute/sktime/blob/4d874c1c20a94d9006604a3916b6b434750b4735/sktime/forecasting/compose/_pipeline.py#L283
+    # https://github.com/sktime/sktime/blob/v0.14.0/sktime/forecasting/compose/_pipeline.py#L313-L318
     tags_to_clone = [
-        "scitype:y",  # which y are fine? univariate/multivariate/both
         "ignores-exogeneous-X",  # does estimator ignore the exogeneous X?
         "capability:pred_int",  # can the estimator produce prediction intervals?
-        "handles-missing-data",  # can estimator handle missing data?
         "requires-fh-in-fit",  # is forecasting horizon already required in fit?
-        "X-y-must-have-same-index",  # can estimator handle different X/y index?
         "enforce_index_type",  # index type that needs to be enforced in X/y
     ]
 

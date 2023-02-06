@@ -1,13 +1,13 @@
 
-## Machine Learning in Power BI using PyCaret
+# Machine Learning in Power BI using PyCaret
 
-### A step-by-step tutorial for implementing machine learning in Power BI within minutes
+# A step-by-step tutorial for implementing machine learning in Power BI within minutes
 
-### by Moez Ali
+# by Moez Ali
 
 ![Machine Learning Meets Business Intelligence](https://cdn-images-1.medium.com/max/2000/1*Q34J2tT_yGrVV0NU38iMig.jpeg)
 
-## **PyCaret 1.0.0**
+# **PyCaret 1.0.0**
 
 Last week we announced [PyCaret](https://www.pycaret.org), an open source machine learning library in Python that trains and deploys machine learning models in a **low-code **environment. In our [previous post](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) we demonstrated how to use PyCaret in Jupyter Notebook to train and deploy machine learning models in Python.
 
@@ -28,17 +28,17 @@ By the end of this article you will learn how to implement the following in Powe
 * **Regression **— Predict continuous value such as Sales, Price etc
 > # “PyCaret is democratizing machine learning and the use of advanced analytics by providing **free, open source, and low-code** machine learning solution for business analysts, domain experts, citizen data scientists, and experienced data scientists”.
 
-## Microsoft Power BI
+# Microsoft Power BI
 
 Power BI is a business analytics solution that lets you visualize your data and share insights across your organization, or embed them in your app or website. In this tutorial, we will use [Power BI Desktop](https://powerbi.microsoft.com/en-us/downloads/) for machine learning by importing the PyCaret library into Power BI.
 
-## Before we start
+# Before we start
 
 If you have used Python before, it is likely that you already have Anaconda Distribution installed on your computer. If not, [click here](https://www.anaconda.com/distribution/) to download Anaconda Distribution with Python 3.7 or greater.
 
 ![[https://www.anaconda.com/distribution/](https://www.anaconda.com/distribution/)](https://cdn-images-1.medium.com/max/2612/1*sMceDxpwFVHDtdFi528jEg.png)
 
-## Setting up the Environment
+# Setting up the Environment
 
 Before we start using PyCaret’s machine learning capabilities in Power BI we have to create a virtual environment and install pycaret. It’s a three-step process:
 
@@ -67,7 +67,7 @@ C:\Users\***username***\AppData\Local\Continuum\anaconda3\envs\myenv
 
 ![File → Options → Global → Python scripting](https://cdn-images-1.medium.com/max/2000/1*zQMKuyEk8LGrOPE-NByjrg.png)
 
-## 📘 Example 1 — Clustering in Power BI
+# 📘 Example 1 — Clustering in Power BI
 
 Clustering is a machine learning technique that groups data points with similar characteristics. These groupings are useful for exploring data, identifying patterns and analyzing a subset of data. Some common business use cases for clustering are:
 
@@ -85,7 +85,7 @@ In this tutorial we will use **‘jewellery.csv’** file that is available on P
 
 ![*Sample data points from jewellery.csv*](https://cdn-images-1.medium.com/max/2000/1*XhXJjUHpEqOc7-RQ1fWoYQ.png)
 
-### **K-Means Clustering**
+# **K-Means Clustering**
 
 To train a clustering model we will execute Python script in Power Query Editor (Power Query Editor → Transform → Run python script).
 
@@ -98,7 +98,7 @@ Run the following code as a Python script:
 
 ![Power Query Editor (Transform → Run python script)](https://cdn-images-1.medium.com/max/2000/1*nYqJWQM6NI3q3tLJXIVxtg.png)
 
-### **Output:**
+# **Output:**
 
 ![Clustering Results (after execution of code)](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -131,7 +131,7 @@ All the preprocessing tasks necessary to train a clustering model such as [missi
 
 💡 If you want to learn how to train a clustering model in Python using Jupyter Notebook, please see our [Clustering 101 Beginner’s Tutorial](https://www.pycaret.org/clu101). *(no coding background needed).*
 
-## 📘 Example 2 — Anomaly Detection in Power BI
+# 📘 Example 2 — Anomaly Detection in Power BI
 
 Anomaly Detection is a machine learning technique used for identifying **rare items**, **events,** **or observations **by checking for rows in the table that differ significantly from the majority of the rows. Typically, the anomalous items will translate to some kind of problem such as bank fraud, a structural defect, medical problem or error. Some common business use cases for anomaly detection are:
 
@@ -147,7 +147,7 @@ In this tutorial we will use **‘anomaly.csv’** file available on PyCaret’s
 
 ![*Sample data points from anomaly.csv*](https://cdn-images-1.medium.com/max/2476/1*M0uBBbcEYizdZgpeKlftlQ.png)
 
-### K-Nearest Neighbors Anomaly Detector
+# K-Nearest Neighbors Anomaly Detector
 
 Similar to clustering, we will run Python script from Power Query Editor (Transform → Run python script) to train an anomaly detection model. Run the following code as a Python script:
 
@@ -156,7 +156,7 @@ Similar to clustering, we will run Python script from Power Query Editor (Transf
 
 ![Power Query Editor (Transform → Run python script)](https://cdn-images-1.medium.com/max/2000/1*re7Oj-bPUHok7pCbmeWFuw.png)
 
-### **Output:**
+# **Output:**
 
 ![Anomaly Detection Results (after execution of code)](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -189,7 +189,7 @@ All the preprocessing tasks necessary to train an anomaly detection model such a
 
 💡 If you want to learn how to train an anomaly detector in Python using Jupyter Notebook, please see our [Anomaly Detection 101 Beginner’s Tutorial](https://www.pycaret.org/ano101). *(no coding background needed).*
 
-## 📘 Example 3 — Natural Language Processing
+# 📘 Example 3 — Natural Language Processing
 
 Several techniques are used to analyze text data among which **Topic Modeling **is a popular one. A topic model is a type of statistical model for discovering the abstract topics in a collection of documents. Topic modeling is a frequently used text-mining tool for the discovery of hidden semantic structures in a text data.
 
@@ -197,7 +197,7 @@ In this tutorial we will use ****the **‘kiva.csv’ **file available on PyCare
 
 **Link to csv file: [**https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/kiva.csv](https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/kiva.csv)
 
-### **Latent Dirichlet Allocation**
+# **Latent Dirichlet Allocation**
 
 Run the following code as a Python script in Power Query Editor:
 
@@ -208,7 +208,7 @@ Run the following code as a Python script in Power Query Editor:
 
 **‘en’** is the name of the column containing text in the table **‘kiva’**.
 
-### Output:
+# Output:
 
 ![Topic Modeling Results (after execution of code)](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -233,7 +233,7 @@ PyCaret has following ready-to-use algorithms for topic modeling:
 
 ![](https://cdn-images-1.medium.com/max/2000/1*YhRd9GgWw1kblnJezqZd5w.png)
 
-## 📘 Example 4— Association Rule Mining in Power BI
+# 📘 Example 4— Association Rule Mining in Power BI
 
 Association Rule Mining ****is a **rule-based machine learning **technique for discovering interesting relations between variables in a database. It is intended to identify strong rules using measures of interestingness. Some common business use cases for association rule mining are:
 
@@ -247,7 +247,7 @@ In this tutorial we will use the **‘france.csv’** file available on PyCaret�
 
 ![*Sample data points from france.csv*](https://cdn-images-1.medium.com/max/2484/1*2S-OwdafFh30hWTzFDC_WQ.png)
 
-### Apriori Algorithm
+# Apriori Algorithm
 
 It should be clear by now that all PyCaret functions are executed as Python script in Power Query Editor (Transform → Run python script). Run the following code to train an association rule model using the Apriori algorithm:
 
@@ -258,7 +258,7 @@ It should be clear by now that all PyCaret functions are executed as Python scri
 
 **‘InvoiceNo’** is the column containing transaction id and **‘Description’** contains the variable of interest i.e. the Product name.
 
-### **Output:**
+# **Output:**
 
 ![Association Rule Mining Results (after execution of code)](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -266,7 +266,7 @@ It should be clear by now that all PyCaret functions are executed as Python scri
 
 It returns a table with antecedents and consequents with related metrics such as support, confidence, lift etc. [Click here](https://www.pycaret.org/association-rule) to learn more about Association Rules Mining in PyCaret.
 
-## 📘 Example 5 — Classification in Power BI
+# 📘 Example 5 — Classification in Power BI
 
 Classification is a supervised machine learning technique used to predict the categorical **class labels** (also known as binary variables). Some common business use case of classification are:
 
@@ -284,7 +284,7 @@ In this tutorial we will use **‘employee.csv’ **file available on PyCaret’
 
 Unlike Clustering, Anomaly Detection, and NLP examples which fall under the umbrella of unsupervised Machine Learning, Classification is a **supervised **technique and hence it is implemented in two parts:
 
-### **Part 1: Training a Classification Model in Power BI**
+# **Part 1: Training a Classification Model in Power BI**
 
 The first step is to create a duplicate of the table **‘employee’** in Power Query Editor which will be used for training a model.
 
@@ -305,7 +305,7 @@ Run the following code in the newly created duplicate table **‘employee (model
 
 ![Power Query Editor (Transform → Run python script)](https://cdn-images-1.medium.com/max/2000/1*0qLtTngg_uI31JTSPLNSiQ.png)
 
-### Output:
+# Output:
 
 The output of this script will be a **pickle file **saved at the defined location. The pickle file contains the entire data transformation pipeline as well as trained model object.
 
@@ -317,7 +317,7 @@ There are 18 ready-to-use classification algorithms available in PyCaret:
 
 ![](https://cdn-images-1.medium.com/max/2000/1*hvcdSTqA6Qla7YlWMkBmhA.png)
 
-### Part 2: Generate Predictions using Trained Model
+# Part 2: Generate Predictions using Trained Model
 
 We can now use the trained model on the original **‘employee’ **table to predict whether the employee will leave the company or not (1 or 0) and the probability %. Run the following code as python script to generate predictions:
 
@@ -325,7 +325,7 @@ We can now use the trained model on the original **‘employee’ **table to pre
     xgboost = **load_model**('c:/users/*username*/xgboost_powerbi')
     dataset = **predict_model**(xgboost, data = dataset)
 
-### Output:
+# Output:
 
 ![Classification Predictions (after execution of code)](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -341,7 +341,7 @@ PyCaret’s **predict_model( )** function can work seamlessly with the pickle fi
 
 💡 All the preprocessing tasks necessary to train a classification model such as [missing value imputation](https://pycaret.org/missing-values/) (if table has any missing or *null *values), or [one-hot-encoding](https://pycaret.org/one-hot-encoding/), or [target encoding](https://www.pycaret.org/one-hot-encoding), they all are automatically performed before training a model. [Click here](https://www.pycaret.org/preprocessing) to learn more about PyCaret’s preprocessing capabilities.
 
-## 📘 Example 6— Regression in Power BI
+# 📘 Example 6— Regression in Power BI
 
 **Regression **is a supervised machine learning technique used to predict the a continuous outcome in the best possible way given the past data and its corresponding past outcomes. Unlike Classification which is used for predicting a binary outcome such as Yes or No (1 or 0), Regression is used for predicting continuous values such as Sales, Price, quantity etc.
 
@@ -352,7 +352,7 @@ In this tutorial we will use the **‘boston.csv’** file available on pycaret�
 
 **Objective: **The table **‘boston’** contains information on 506 houses in Boston such as average number of rooms, property tax rates, population etc. Based on these columns (also known as *features* in machine learning terminology) the objective is to predict the median value of house, represented by column **‘medv’**.
 
-### Part 1: Training a Regression Model in Power BI
+# Part 1: Training a Regression Model in Power BI
 
 The first step is to create a duplicate of the **‘boston’** table in Power Query Editor that will be used for training a model.
 
@@ -369,7 +369,7 @@ Run the following code in the new duplicate table as python script:
     final_catboost = **finalize_model**(catboost)
     **save_model**(final_catboost, 'C:/Users/*username*/catboost_powerbi')
 
-### Output:
+# Output:
 
 The output of this script will be a **pickle file **saved at the defined location. The pickle file contains the entire data transformation pipeline as well as trained model object.
 
@@ -377,7 +377,7 @@ There are over 20 ready-to-use regression algorithms available in PyCaret:
 
 ![](https://cdn-images-1.medium.com/max/2000/1*2xlKljU-TjJlr7PuUzRRyA.png)
 
-### Part 2: Generate Predictions using Trained Model
+# Part 2: Generate Predictions using Trained Model
 
 We can now use the trained model to predict the median value of houses. Run the following code in the original table **‘boston’* ***as a python script:
 
@@ -385,7 +385,7 @@ We can now use the trained model to predict the median value of houses. Run the 
     xgboost = **load_model**('c:/users/*username*/xgboost_powerbi')
     dataset = **predict_model**(xgboost, data = dataset)
 
-### Output:
+# Output:
 
 ![Regression Predictions (after execution of code)](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -397,7 +397,7 @@ In this example we have predicted on the same data that we have used for trainin
 
 💡 All the preprocessing tasks necessary to train a regression model such as [missing value imputation](https://pycaret.org/missing-values/) (if table has any missing or *null *values), or [one-hot-encoding](https://pycaret.org/one-hot-encoding/), or [target transformation](https://pycaret.org/transform-target/), they all are automatically performed before training a model. [Click here](https://www.pycaret.org/preprocessing) to learn more about PyCaret’s preprocessing capabilities.
 
-## Next Tutorial
+# Next Tutorial
 
 In the next tutorial of **Machine Learning in Power BI using PyCaret **series, we will go in more depth and explore advanced preprocessing features in PyCaret. We will also see how to productionalize a machine learning solution in Power BI and leverage the power of [PyCaret](https://www.pycaret.org) on the front-end of Power BI.
 
@@ -405,7 +405,7 @@ If you would like to learn more on this please stay connected.
 
 Follow us on our [Linkedin](https://www.linkedin.com/company/pycaret/) page and subscribe to our [Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g) channel.
 
-## Also see:
+# Also see:
 
 Beginner level Python notebooks:
 
@@ -416,11 +416,11 @@ Beginner level Python notebooks:
 [Regression](https://www.pycaret.org/reg101)
 [Classification](https://www.pycaret.org/clf101)
 
-## What’s in the development pipeline?
+# What’s in the development pipeline?
 
 We are actively working on improving PyCaret. Our future development pipeline includes a new **Time Series Forecasting **module, integration with **TensorFlow, **and major improvements on the scalability of PyCaret. If you would like to share your feedback and help us improve further, you may [fill this form](https://www.pycaret.org/feedback) on the website or leave a comment on our [Github ](https://www.github.com/pycaret/)or [LinkedIn](https://www.linkedin.com/company/pycaret/) page.
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 As of the first release 1.0.0, PyCaret has the following modules available for use. Click on the links below to see the documentation and working examples in Python.
 
@@ -431,7 +431,7 @@ As of the first release 1.0.0, PyCaret has the following modules available for u
 ](https://www.pycaret.org/anomaly-detection)[Natural Language Processing](https://www.pycaret.org/nlp)
 [Association Rule Mining](https://www.pycaret.org/association-rules)
 
-## Important Links
+# Important Links
 
 [User Guide / Documentation](https://www.pycaret.org/guide)
 [Github Repository

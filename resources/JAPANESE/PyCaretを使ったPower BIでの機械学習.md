@@ -1,13 +1,13 @@
 
-## PyCaretを使ったPower BIでの機械学習
+# PyCaretを使ったPower BIでの機械学習
 
-### Power BIに機械学習を数分で実装するためのステップバイステップのチュートリアル
+# Power BIに機械学習を数分で実装するためのステップバイステップのチュートリアル
 
-### by Moez Ali
+# by Moez Ali
 
 ![Machine Learning Meets Business Intelligence](https://cdn-images-1.medium.com/max/2000/1*Q34J2tT_yGrVV0NU38iMig.jpeg)
 
-## **PyCaret 1.0.0**のご紹介
+# **PyCaret 1.0.0**のご紹介
 
 先週、私たちは、**ローコード**環境で機械学習モデルをトレーニングし、デプロイするPythonのオープンソース機械学習ライブラリである[PyCaret](https://www.pycaret.org)を発表しました。[前回の記事](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46)では、PyCaretをJupyter Notebookで使用し、Pythonで機械学習モデルを学習・展開する方法を紹介しました。
 
@@ -29,17 +29,17 @@
   
 > "PyCaretは、ビジネスアナリスト、ドメインエキスパート、市民データサイエンティスト、経験豊富なデータサイエンティストのための**フリー、オープンソース、ローコード**の機械学習ソリューションを提供することで、機械学習と高度な分析の利用を民主化しています".
 
-## Microsoft Power BI
+# Microsoft Power BI
 
 Power BIは、データを可視化して組織全体でインサイトを共有したり、アプリやウェブサイトに埋め込んだりできるビジネス分析ソリューションです。このチュートリアルでは、[Power BI Desktop](https://powerbi.microsoft.com/en-us/downloads/)を使って、PyCaretライブラリをPower BIにインポートして機械学習を行います。
 
-## 始める前に
+# 始める前に
 
 Pythonを使ったことがある方は、すでにAnaconda Distributionがインストールされていると思います。もしそうでなければ、[ここをクリック](https://www.anaconda.com/distribution/)して、Python 3.7以上のAnaconda Distributionをダウンロードしてください。
 
 ![[https://www.anaconda.com/distribution/](https://www.anaconda.com/distribution/)](https://cdn-images-1.medium.com/max/2612/1*sMceDxpwFVHDtdFi528jEg.png)
 
-## 環境のセットアップ
+# 環境のセットアップ
 
 Power BIでPyCaretの機械学習機能を使い始める前に、仮想環境を作成し、pycaretをインストールする必要があります。これは3つのステップで行います。
 
@@ -68,7 +68,7 @@ C:Users%% **username%%** AppData%%Local%%Continuum%%anaconda3%%envs%%myenv
 
 ![File → Options → Global → Python scripting](https://cdn-images-1.medium.com/max/2000/1*zQMKuyEk8LGrOPE-NByjrg.png)
 
-## 📘 例1 - Power BIでのクラスタリング
+# 📘 例1 - Power BIでのクラスタリング
 
 クラスタリングは、類似した特徴を持つデータポイントをグループ化する機械学習の手法です。これらのグループ化は、データの探索、パターンの特定、データのサブセットの分析に役立ちます。クラスタリングの一般的なビジネスユースケースは以下の通りです。
 
@@ -86,7 +86,7 @@ COVID-19のような伝染病の発生におけるジオクラスターの特定
 
 ![*Sample data points from jewellery.csv*](https://cdn-images-1.medium.com/max/2000/1*XhXJjUHpEqOc7-RQ1fWoYQ.png)
 
-### **K-Meansクラスタリング** (K-Means Clustering)
+# **K-Meansクラスタリング** (K-Means Clustering)
 
 クラスタリングモデルを学習するために、Power Query EditorでPythonスクリプトを実行します（Power Query Editor → Transform → Run python script）。
 
@@ -99,7 +99,7 @@ COVID-19のような伝染病の発生におけるジオクラスターの特定
 
 ![Power Query Editor (Transform → Run python script)](https://cdn-images-1.medium.com/max/2000/1*nYqJWQM6NI3q3tLJXIVxtg.png)
 
-### **アウトプット:**
+# **アウトプット:**
 
 ![Clustering Results (after execution of code)](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -132,7 +132,7 @@ PyCaretには9つのすぐに使えるクラスタリングアルゴリズムが
 
 💡 Jupyter Notebookを使ってPythonでクラスタリングモデルを学習する方法を知りたい方は、[Clustering 101 Beginner's Tutorial](https://www.pycaret.org/clu101)をご覧ください。*(コーディングの知識は必要ありません).*
 
-## 📘 例2 - Power BIでの異常検知
+# 📘 例2 - Power BIでの異常検知
 
 異常検知は、テーブルの中で大部分の行と大きく異なる行をチェックすることで、**希少なアイテム**、**イベント**、**または観測**を識別するために使用される機械学習技術です。一般的に、異常な項目は、銀行詐欺、構造的欠陥、医療上の問題、エラーなど、何らかの問題につながります。異常検知の一般的なビジネスユースケースは以下の通りです。
 
@@ -148,7 +148,7 @@ PyCaretには9つのすぐに使えるクラスタリングアルゴリズムが
 
 ![*Sample data points from anomaly.csv*](https://cdn-images-1.medium.com/max/2476/1*M0uBBbcEYizdZgpeKlftlQ.png)
 
-### K-Nearest Neighbors Anomaly Detector
+# K-Nearest Neighbors Anomaly Detector
 
 クラスタリングと同様に、Power Query EditorからPythonスクリプトを実行して（Transform → Run python script）、異常検知モデルを学習させます。以下のコードをPythonスクリプトとして実行します。
 
@@ -157,7 +157,7 @@ PyCaretには9つのすぐに使えるクラスタリングアルゴリズムが
 
 ![Power Query Editor (Transform → Run python script)](https://cdn-images-1.medium.com/max/2000/1*re7Oj-bPUHok7pCbmeWFuw.png)
 
-### **アウトプット:**
+# **アウトプット:**
 
 ![異常検知結果（コード実行後）](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -190,7 +190,7 @@ PyCaretには10以上のすぐに使える異常検知アルゴリズムがあ�
 
 💡 Jupyter Notebookを使ってPythonで異常検知器を学習する方法を知りたい方は、【異常検知101初心者向けチュートリアル】(https://www.pycaret.org/ano101)をご覧ください。*(コーディングの知識は必要ありません).*
 
-## 📘 例3 - 自然言語処理
+# 📘 例3 - 自然言語処理
 
 テキストデータの分析にはいくつかの手法が用いられますが、その中でも **トピックモデル** はよく知られています。トピックモデルとは、ドキュメントのコレクションの中から抽象的なトピックを発見するための統計モデルの一種です。トピックモデリングは、テキストデータの中に隠された意味構造を発見するためのテキストマイニングツールとしてよく使われています。
 
@@ -198,7 +198,7 @@ PyCaretには10以上のすぐに使える異常検知アルゴリズムがあ�
 
 **csvファイルへのリンクです。**[https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/kiva.csv](https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/kiva.csv)
 
-### **レーテント・ディリクレ・アロケーション** （Latent Dirichlet Allocation
+# **レーテント・ディリクレ・アロケーション** （Latent Dirichlet Allocation
 
 以下のコードをPythonスクリプトとしてPower Query Editorで実行します。
 
@@ -209,7 +209,7 @@ PyCaretには10以上のすぐに使える異常検知アルゴリズムがあ�
 
 **'en'** は、テーブル **'kiva'** のテキストを含む列の名前です。
 
-### 出力
+# 出力
 
 ![Topic Modeling Results (after execution of code)](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -234,7 +234,7 @@ PyCaretには、トピックモデリングのための以下のアルゴリズ�
 
 ![a](https://cdn-images-1.medium.com/max/2000/1*YhRd9GgWw1kblnJezqZd5w.png)
 
-## 📘 例4- Power BIでのアソシエーションルールマイニング
+# 📘 例4- Power BIでのアソシエーションルールマイニング
 
 Association Rule Mining **** は、データベース内の変数間の興味深い関係を発見するための**ルールベースの機械学習**手法です。これは、面白さの尺度を使用して強力なルールを識別することを目的としています。アソシエーションルールマイニングの一般的なビジネスユースケースは以下の通りです。
 
@@ -248,7 +248,7 @@ Association Rule Mining **** は、データベース内の変数間の興味深
 
 ![*Sample data points from france.csv*](https://cdn-images-1.medium.com/max/2484/1*2S-OwdafFh30hWTzFDC_WQ.png)
 
-### Apriori アルゴリズム
+# Apriori アルゴリズム
 
 全てのPyCaret関数は、Power Query EditorでPythonスクリプトとして実行されることは、もうお分かりだと思います（Transform → Run python script）。以下のコードを実行して、Aprioriアルゴリズムを用いた連想ルールモデルを学習します。
 
@@ -259,7 +259,7 @@ Association Rule Mining **** は、データベース内の変数間の興味深
 
 **'InvoiceNo'** はトランザクションIDを含む列で、**'Description'** は対象となる変数（製品名）を含みます。
 
-### **Output:**
+# **Output:**
 
 ![Association Rule Mining Results (after execution of code)](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -267,7 +267,7 @@ Association Rule Mining **** は、データベース内の変数間の興味深
 
 先行詞と後続詞を、サポート、コンフィデンス、リフトなどの関連指標とともに表にして返します。PyCaretでのAssociation Rules Miningの詳細は[こちら](https://www.pycaret.org/association-rule)をご覧ください。
 
-## 📘 例5 - Power BIでの分類
+# 📘 例5 - Power BIでの分類
 
 分類は、カテゴライズされた**クラスラベル**（バイナリ変数としても知られる）を予測するために使用される教師付き機械学習技術です。分類の一般的なビジネスユースケースは以下の通りです。
 
@@ -285,7 +285,7 @@ Association Rule Mining **** は、データベース内の変数間の興味深
 
 分類は、クラスタリングや異常検知、NLPのような教師なし機械学習とは異なり、 **教師あり** の技術であるため、2つのパートに分けて実施します。
 
-### Part 1: Power BIで分類モデルを学習する**
+# Part 1: Power BIで分類モデルを学習する**
 
 まず、Power Query Editorで、モデルの学習に使用するテーブル **'employee'** の複製を作成します。
 
@@ -306,7 +306,7 @@ Association Rule Mining **** は、データベース内の変数間の興味深
 
 ![Power Query Editor (Transform → Run python script)](https://cdn-images-1.medium.com/max/2000/1*0qLtTngg_uI31JTSPLNSiQ.png)
 
-### 出力
+# 出力
 
 このスクリプトの出力は、定義された場所に保存された**pickleファイル**になります。このpickleファイルには、データ変換パイプライン全体と学習済みモデルオブジェクトが含まれています。
 
@@ -318,7 +318,7 @@ PyCaretには18種類の分類アルゴリズムが用意されています。
 
 ![](https://cdn-images-1.medium.com/max/2000/1*hvcdSTqA6Qla7YlWMkBmhA.png)
 
-### Part 2: 学習したモデルを使った予測の生成
+# Part 2: 学習したモデルを使った予測の生成
 
 では、元の **'employee'** table に対して学習したモデルを使って、その社員が会社を辞めるかどうか（1か0か）とその確率%を予測してみましょう。以下のコードをpythonスクリプトとして実行し、予測値を生成します。
 
@@ -326,7 +326,7 @@ PyCaretには18種類の分類アルゴリズムが用意されています。
     xgboost = **load_model**('c:/users/*username*/xgboost_powerbi')
     データセット = **predict_model**(xgboost, data = dataset)
 
-### 出力
+# 出力
 
 ![Classification Predictions (after execution of code)](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -342,7 +342,7 @@ PyCaretの **predict_model()** 関数は、PyCaretを使って作成されたpic
 
 💡 [missing value imputation](https://pycaret.org/missing-values/) (テーブルに欠損や *null *value がある場合), [one-hot-encoding](https://pycaret.org/one-hot-encoding/), [target encoding](https://www.pycaret.org/one-hot-encoding) など、分類モデルの学習に必要なすべての前処理が、モデルの学習前に自動的に実行されます。PyCaretの前処理機能については、[こちら](https://www.pycaret.org/preprocessing)をご覧ください。
 
-## 📘 Example 6- Regression in Power BI
+# 📘 Example 6- Regression in Power BI
 
 **回帰（Regression）** は、過去のデータとそれに対応する過去の結果が与えられたときに、連続的な結果を最良の方法で予測するために使用される教師付き機械学習技術です。Yes or No (1 or 0)のような2値の結果を予測する分類とは異なり、回帰は売上、価格、数量などの連続値を予測するために使用されます。
 
@@ -353,7 +353,7 @@ PyCaretの **predict_model()** 関数は、PyCaretを使って作成されたpic
 
 **目的**テーブル **'boston'** には、平均部屋数、固定資産税率、人口など、ボストンにある506軒の家の情報が含まれています。これらの列（機械学習の用語では*features*とも呼ばれる）に基づいて、**'medv'** 列で表される家の価値の中央値を予測することが目的です。
 
-### Part 1: Power BIで回帰モデルを学習する
+# Part 1: Power BIで回帰モデルを学習する
 
 最初に、Power Query Editorでモデルの学習に使用する **'boston'** テーブルの複製を作成します。
 
@@ -370,7 +370,7 @@ PyCaretの **predict_model()** 関数は、PyCaretを使って作成されたpic
     final_catboost = **finalize_model**(catboost)
     **save_model**(final_catboost, 'C:/Users/*username*/catboost_powerbi')
 
-### 出力
+# 出力
 
 このスクリプトの出力は、指定した場所に保存された**pickleファイル**になります。このpickleファイルには、データ変換パイプライン全体と、学習済みモデルオブジェクトが含まれています。
 
@@ -378,7 +378,7 @@ PyCaretには20種類以上の回帰アルゴリズムが用意されていま�
 
 ![](https://cdn-images-1.medium.com/max/2000/1*2xlKljU-TjJlr7PuUzRRyA.png)
 
-### Part 2: 学習したモデルを使って予測値を生成する
+# Part 2: 学習したモデルを使って予測値を生成する
 
 それでは、学習したモデルを使って、住宅の中央値を予測してみましょう。元のテーブル **'boston'** に以下のコードをpythonスクリプトとして実行します。
 
@@ -386,7 +386,7 @@ PyCaretには20種類以上の回帰アルゴリズムが用意されていま�
     xgboost = **load_model**('c:/users/*username*/xgboost_powerbi')
     データセット = **predict_model**(xgboost, data = dataset)
 
-### 出力
+# 出力
 
 ![回帰予測（コード実行後）](https://cdn-images-1.medium.com/max/2000/1*RCYtFO6XDGI2-qbZdYeMfQ.png)
 
@@ -398,7 +398,7 @@ PyCaretには20種類以上の回帰アルゴリズムが用意されていま�
 
 💡 回帰モデルの学習に必要な前処理として、[欠損値インピュテーション](https://pycaret.org/missing-values/)(テーブルに欠損値や*null *値がある場合)、[ワンショットエンコーディング](https://pycaret.org/one-hot-encoding/)、[ターゲット変換](https://pycaret.org/transform-target/)などの作業が、モデル学習前に自動的に行われます。[PyCaretの前処理機能についてはこちら](https://www.pycaret.org/preprocessing)を参照してください。
 
-## 次のチュートリアル
+# 次のチュートリアル
 
 次回の**Machine Learning in Power BI using PyCaret**シリーズでは、PyCaretの高度な前処理機能について、より深く掘り下げて解説します。また、Power BIで機械学習ソリューションを生産化し、Power BIのフロントエンドで[PyCaret](https://www.pycaret.org)のパワーを活用する方法を見ていきます。
 
@@ -406,7 +406,7 @@ PyCaretには20種類以上の回帰アルゴリズムが用意されていま�
 
 [Linkedin](https://www.linkedin.com/company/pycaret/)のページでフォローし、[Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g)のチャンネルを購読してください。
 
-## 合わせてご覧ください
+# 合わせてご覧ください
 
 初心者レベルのPythonノートブック。
 
@@ -417,11 +417,11 @@ PyCaretには20種類以上の回帰アルゴリズムが用意されていま�
 [回帰](https://www.pycaret.org/reg101)
 [分類](https://www.pycaret.org/clf101)
 
-## What's in the development pipeline?
+# What's in the development pipeline?
 
 私たちは、PyCaretの改良に積極的に取り組んでいます。今後の開発パイプラインには、新しい**時系列予測**モジュール、**TensorFlowとの統合、**PyCaretのスケーラビリティの大幅な改善が含まれています。ご意見やご感想をお寄せいただける場合は、ウェブサイトの [fill this form](https://www.pycaret.org/feedback)、または [Github](https://www.github.com/pycaret/)や [LinkedIn](https://www.linkedin.com/company/pycaret/)のページにコメントをお寄せください。
 
-## 特定のモジュールについて知りたいですか？
+# 特定のモジュールについて知りたいですか？
 
 最初のリリース1.0.0の時点で、PyCaretは以下のモジュールを使用することができます。以下のリンクをクリックすると、Pythonでのドキュメントと動作例を見ることができます。
 
@@ -432,7 +432,7 @@ PyCaretには20種類以上の回帰アルゴリズムが用意されていま�
 ](https://www.pycaret.org/anomaly-detection)[自然言語処理](https://www.pycaret.org/nlp)
 [アソシエーションルールマイニング](https://www.pycaret.org/association-rules)
 
-## 重要なリンク
+# 重要なリンク
 
 [ユーザーガイド/ドキュメント](https://www.pycaret.org/guide)
 [Github リポジトリ

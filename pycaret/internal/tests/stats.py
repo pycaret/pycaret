@@ -4,10 +4,10 @@ import pandas as pd
 from scipy.stats import shapiro
 
 from pycaret.internal.tests import _format_test_results
-from pycaret.utils.time_series import _get_diff_name_list, get_diffs
+from pycaret.utils.time_series import _get_diff_name_list
 
 ##########################
-#### Individual Tests ####
+# Individual Tests ####
 ##########################
 
 
@@ -42,10 +42,10 @@ def _summary_stats(
         data=data, data_name=data_name, data_kwargs=data_kwargs
     )
 
-    #### Step 2: Test all data ----
+    # Step 2: Test all data ----
     results_list = []
     for data_, name_ in zip(diff_list, name_list):
-        #### Step 2A: Get Test Results ----
+        # Step 2A: Get Test Results ----
         distinct_counts = dict(data_.value_counts(normalize=True))
         results = {
             "Length": len(data_),
@@ -59,21 +59,21 @@ def _summary_stats(
             "# Distinct Values": len(distinct_counts),
         }
 
-        #### Step 2B: Create Result DataFrame ----
+        # Step 2B: Create Result DataFrame ----
         results = pd.DataFrame(results, index=["Value"]).T.reset_index()
         results["Data"] = name_
 
-        #### Step 2C: Update list of all results ----
+        # Step 2C: Update list of all results ----
         results_list.append(results)
 
-    #### Step 3: Combine all results ----
+    # Step 3: Combine all results ----
     results = pd.concat(results_list)
     results.reset_index(inplace=True)
 
-    #### Step 4: Format Results ----
+    # Step 4: Format Results ----
     results = _format_test_results(results, test_category, "Statistics")
 
-    #### Step 5: Return values ----
+    # Step 5: Return values ----
     return results
 
 
@@ -123,20 +123,20 @@ def _is_gaussian(
         data=data, data_name=data_name, data_kwargs=data_kwargs
     )
 
-    #### Step 2: Test all data ----
+    # Step 2: Test all data ----
     results_list = []
     is_gaussian_list = []
     for data_, name_ in zip(diff_list, name_list):
-        #### Step 2A: Validate inputs and adjust as needed ----
+        # Step 2A: Validate inputs and adjust as needed ----
         if len(data_) == 0:
             # Differencing led to no remaining data, hence skip it
             continue
 
-        #### Step 2B: Get Test Results ----
+        # Step 2B: Get Test Results ----
         p_value = shapiro(data_.values.squeeze())[1]
         is_gaussian = True if p_value > alpha else False
 
-        #### Step 2C: Create Result DataFrame ----
+        # Step 2C: Create Result DataFrame ----
         results = {
             "Normality": is_gaussian,
             "p-value": p_value,
@@ -144,15 +144,15 @@ def _is_gaussian(
         results = pd.DataFrame(results, index=["Value"]).T.reset_index()
         results["Data"] = name_
 
-        #### Step 2D: Update list of all results ----
+        # Step 2D: Update list of all results ----
         results_list.append(results)
         is_gaussian_list.append(is_gaussian)
 
-    #### Step 3: Combine all results ----
+    # Step 3: Combine all results ----
     results = pd.concat(results_list)
     results.reset_index(inplace=True)
 
-    #### Step 4: Add Settings & Format Results ----
+    # Step 4: Add Settings & Format Results ----
     def add_and_format_settings(row):
         row["Setting"] = {"alpha": alpha}
         return row
@@ -160,7 +160,7 @@ def _is_gaussian(
     results = results.apply(add_and_format_settings, axis=1)
     results = _format_test_results(results, test_category, "Shapiro")
 
-    #### Step 5: Return values ----
+    # Step 5: Return values ----
     if len(is_gaussian_list) == 1:
         is_gaussian_list = is_gaussian_list[0]
     if verbose:

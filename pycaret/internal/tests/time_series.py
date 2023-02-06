@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Tuple, Union
 
+import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from pmdarima.arima.utils import ndiffs, nsdiffs
@@ -14,15 +15,6 @@ from pycaret.utils.time_series import _get_diff_name_list
 from pycaret.utils.time_series.exceptions import MissingDataError
 
 logger = get_logger()
-
-
-#############################################################
-###################### TESTS STARTS HERE ####################
-#############################################################
-
-#################
-#### Helpers ####
-#################
 
 
 def run_test(
@@ -118,7 +110,7 @@ def run_test(
 
 
 ########################
-#### Combined Tests ####
+# Combined Tests ####
 ########################
 def _test_all(
     data: pd.Series,
@@ -224,7 +216,7 @@ def _is_stationary(
 
 
 ##########################
-#### Individual Tests ####
+# Individual Tests ####
 ##########################
 
 
@@ -278,16 +270,16 @@ def _is_stationary_adf(
         data=data, data_name=data_name, data_kwargs=data_kwargs
     )
 
-    #### Step 2: Test all data ----
+    # Step 2: Test all data ----
     results_list = []
     is_stationary_list = []
     for data_, name_ in zip(diff_list, name_list):
-        #### Step 2A: Validate inputs and adjust as needed ----
+        # Step 2A: Validate inputs and adjust as needed ----
         if len(data_) == 0:
             # Differencing led to no remaining data, hence skip it
             continue
 
-        #### Step 2B: Get Test Results ----
+        # Step 2B: Get Test Results ----
         try:
             results_ = adfuller(data_, autolag="AIC", maxlag=None)
         except SmMissingDataError as exception:
@@ -302,7 +294,7 @@ def _is_stationary_adf(
         p_value = results_[1]
         is_stationary = True if p_value < alpha else False
 
-        #### Step 2C: Create Result DataFrame ----
+        # Step 2C: Create Result DataFrame ----
         results = {
             "Stationarity": is_stationary,
             "p-value": p_value,
@@ -315,15 +307,15 @@ def _is_stationary_adf(
         results = pd.DataFrame(results, index=["Value"]).T.reset_index()
         results["Data"] = name_
 
-        #### Step 2D: Update list of all results ----
+        # Step 2D: Update list of all results ----
         results_list.append(results)
         is_stationary_list.append(is_stationary)
 
-    #### Step 3: Combine all results ----
+    # Step 3: Combine all results ----
     results = pd.concat(results_list)
     results.reset_index(inplace=True)
 
-    #### Step 4: Add Settings & Format Results ----
+    # Step 4: Add Settings & Format Results ----
     def add_and_format_settings(row):
         row["Setting"] = {"alpha": alpha}
         return row
@@ -331,7 +323,7 @@ def _is_stationary_adf(
     results = results.apply(add_and_format_settings, axis=1)
     results = _format_test_results(results, test_category, "ADF")
 
-    #### Step 5: Return values ----
+    # Step 5: Return values ----
     if len(is_stationary_list) == 1:
         is_stationary_list = is_stationary_list[0]
     if verbose:
@@ -390,16 +382,16 @@ def _is_stationary_kpss(
         data=data, data_name=data_name, data_kwargs=data_kwargs
     )
 
-    #### Step 2: Test all data ----
+    # Step 2: Test all data ----
     results_list = []
     is_stationary_list = []
     for data_, name_ in zip(diff_list, name_list):
-        #### Step 2A: Validate inputs and adjust as needed ----
+        # Step 2A: Validate inputs and adjust as needed ----
         if len(data_) == 0:
             # Differencing led to no remaining data, hence skip it
             continue
 
-        #### Step 2B: Get Test Results ----
+        # Step 2B: Get Test Results ----
         try:
             results_ = kpss(data_, regression="ct", nlags="auto")
         except ValueError as exception:
@@ -416,7 +408,7 @@ def _is_stationary_kpss(
         critical_values = results_[3]
         is_stationary = False if p_value < alpha else True
 
-        #### Step 2C: Create Result DataFrame ----
+        # Step 2C: Create Result DataFrame ----
         results = {
             "Trend Stationarity": is_stationary,
             "p-value": p_value,
@@ -429,15 +421,15 @@ def _is_stationary_kpss(
         results = pd.DataFrame(results, index=["Value"]).T.reset_index()
         results["Data"] = name_
 
-        #### Step 2D: Update list of all results ----
+        # Step 2D: Update list of all results ----
         results_list.append(results)
         is_stationary_list.append(is_stationary)
 
-    #### Step 3: Combine all results ----
+    # Step 3: Combine all results ----
     results = pd.concat(results_list)
     results.reset_index(inplace=True)
 
-    #### Step 4: Add Settings & Format Results ----
+    # Step 4: Add Settings & Format Results ----
     def add_and_format_settings(row):
         row["Setting"] = {"alpha": alpha}
         return row
@@ -445,7 +437,7 @@ def _is_stationary_kpss(
     results = results.apply(add_and_format_settings, axis=1)
     results = _format_test_results(results, test_category, "KPSS")
 
-    #### Step 5: Return values ----
+    # Step 5: Return values ----
     if len(is_stationary_list) == 1:
         is_stationary_list = is_stationary_list[0]
     if verbose:
@@ -472,7 +464,7 @@ def _is_white_noise(
     data : pd.Series
         Time Series data on which the test needs to be performed
     lags : List[int], optional
-        The lags used to test the autocorelation for white noise, by default [24, 48]
+        The lags used to test the autocorrelation for white noise, by default [24, 48]
     alpha : float, optional
         Significance Level, by default 0.05
     verbose : bool, optional
@@ -505,11 +497,11 @@ def _is_white_noise(
         data=data, data_name=data_name, data_kwargs=data_kwargs
     )
 
-    #### Step 2: Test all data ----
+    # Step 2: Test all data ----
     results_list = []
     is_white_noise_list = []
     for data_, name_ in zip(diff_list, name_list):
-        #### Step 2A: Validate inputs and adjust as needed ----
+        # Step 2A: Validate inputs and adjust as needed ----
         if len(data_) == 0:
             # Differencing led to no remaining data, hence skip it
             continue
@@ -517,7 +509,7 @@ def _is_white_noise(
         lags_ = [lag for lag in lags if lag < len(data_)]
         lags_ = None if len(lags_) == 0 else lags_
 
-        #### Step 2B: Run test ----
+        # Step 2B: Run test ----
         if data_.isna().sum() == 0:
             results = sm.stats.acorr_ljungbox(data_, lags=lags_, return_df=True)
         else:
@@ -526,8 +518,11 @@ def _is_white_noise(
                 "values. Please check input data type."
             )
 
-        #### Step 2C: Cleanup results ----
-        results[test_category] = results["lb_pvalue"] > alpha
+        # Step 2C: Cleanup results ----
+        # When all values are same, results are NA, hence replace with True
+        results[test_category] = np.where(
+            ~results["lb_pvalue"].isna(), results["lb_pvalue"] > alpha, True
+        )
         is_white_noise = False if results[test_category].all() is False else True
         results.rename(
             columns={"lb_stat": "Test Statictic", "lb_pvalue": "p-value"},
@@ -542,15 +537,15 @@ def _is_white_noise(
             results, id_vars=["Setting", "Data"], var_name="index", value_name="Value"
         )
 
-        #### Step 2D: Update list of all results ----
+        # Step 2D: Update list of all results ----
         results_list.append(results)
         is_white_noise_list.append(is_white_noise)
 
-    #### Step 3: Combine all results ----
+    # Step 3: Combine all results ----
     results = pd.concat(results_list)
     results.reset_index(inplace=True)
 
-    #### Step 4: Add Settings & Format Results ----
+    # Step 4: Add Settings & Format Results ----
     def add_and_format_settings(row):
         row["Setting"] = {"alpha": alpha, "K": row["Setting"]}
         return row
@@ -558,7 +553,7 @@ def _is_white_noise(
     results = results.apply(add_and_format_settings, axis=1)
     results = _format_test_results(results, test_category, "Ljung-Box")
 
-    #### Step 5: Return values ----
+    # Step 5: Return values ----
     if len(is_white_noise_list) == 1:
         is_white_noise_list = is_white_noise_list[0]
     if verbose:
@@ -578,7 +573,7 @@ def is_seasonal():
 
 
 #########################
-#### Recommendations ####
+# Recommendations ####
 #########################
 
 

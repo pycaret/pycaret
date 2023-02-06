@@ -27,6 +27,7 @@ extras_require = {
     "mlops": required_optional.split("\n\n")[3].splitlines(),
     "nlp": required_optional.split("\n\n")[4].splitlines(),
     "parallel": required_optional.split("\n\n")[5].splitlines(),
+    "test": required_test,
 }
 
 extras_require["full"] = (
@@ -35,11 +36,12 @@ extras_require["full"] = (
     + extras_require["tuners"]
     + extras_require["mlops"]
     + extras_require["parallel"]
+    + extras_require["test"]
 )
 
 setup(
     name="pycaret",
-    version="3.0.0.rc3",
+    version="3.0.0.rc8",
     description="PyCaret - An open source, low-code machine learning library in Python.",
     long_description=readme(),
     long_description_content_type="text/markdown",
@@ -52,6 +54,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",

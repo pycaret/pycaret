@@ -5,7 +5,7 @@
 import inspect
 from typing import Any, Dict, Optional
 
-import pycaret.internal.utils
+import pycaret.utils.generic
 
 
 class BaseContainer:
@@ -61,10 +61,10 @@ class BaseContainer:
         self.active = True
 
     def get_class_name(self):
-        return pycaret.internal.utils.get_class_name(self.class_def)
+        return pycaret.utils.generic.get_class_name(self.class_def)
 
     def get_package_name(self):
-        return pycaret.internal.utils.get_package_name(self.class_def)
+        return pycaret.utils.generic.get_package_name(self.class_def)
 
     def get_dict(self, internal: bool = True) -> Dict[str, Any]:
         """
@@ -126,7 +126,7 @@ def get_all_containers(
                 instance = obj(experiment)
                 if instance.active:
                     model_containers.append(instance)
-            except:
+            except Exception:
                 pass
 
     return {container.id: container for container in model_containers}

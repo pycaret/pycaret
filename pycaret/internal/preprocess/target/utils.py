@@ -1,4 +1,4 @@
-from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
+from pycaret.utils.generic import get_all_object_vars_and_properties, is_fit_var
 
 
 class TargetTransformerMixin:
@@ -27,7 +27,7 @@ class TargetTransformerMixin:
                 try:
                     setattr(self, k, v)
                     self._fit_vars.add(k)
-                except:
+                except Exception:
                     pass
 
     def _clear_estimator_fit_vars(self, fitted_estimator, all: bool = False):
@@ -44,9 +44,9 @@ class TargetTransformerMixin:
                 try:
                     delattr(self, var)
                     self._fit_vars.remove(var)
-                except:
+                except Exception:
                     pass
-        except:
+        except Exception:
             pass
 
 
@@ -58,5 +58,5 @@ def get_estimator_from_meta_estimator(estimator):
     """
     try:
         return estimator.estimator
-    except:
+    except Exception:
         return estimator

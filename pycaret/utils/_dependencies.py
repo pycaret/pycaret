@@ -1,7 +1,6 @@
 # Adapted from
-# https://github.com/alan-turing-institute/sktime/blob/v0.11.0/sktime/utils/validation/_dependencies.py
+# https://github.com/sktime/sktime/blob/v0.11.0/sktime/utils/validation/_dependencies.py
 
-import collections
 import sys
 from distutils.version import LooseVersion
 from importlib import import_module

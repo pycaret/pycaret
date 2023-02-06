@@ -1,11 +1,11 @@
 
-## Multiple Time Series Forecasting with PyCaret
+# Multiple Time Series Forecasting with PyCaret
 
-### A step-by-step tutorial to forecast multiple time series with PyCaret
+# A step-by-step tutorial to forecast multiple time series with PyCaret
 
 ![PyCaret — An open-source, low-code machine learning library in Python](https://cdn-images-1.medium.com/max/2000/1*c8mBuCW7nP0KGhwXQC98Eg.png)
 
-## PyCaret
+# PyCaret
 
 PyCaret is an open-source, low-code machine learning library and end-to-end model management tool built-in Python for automating machine learning workflows. It is incredibly popular for its ease of use, simplicity, and ability to build and deploy end-to-end ML prototypes quickly and efficiently.
 
@@ -21,11 +21,11 @@ This tutorial assumes that you have some prior knowledge and experience with PyC
 
 * [Five things you don’t know about PyCaret](https://towardsdatascience.com/5-things-you-dont-know-about-pycaret-528db0436eec)
 
-## **RECAP**
+# **RECAP**
 
 In my [last tutorial](https://towardsdatascience.com/time-series-forecasting-with-pycaret-regression-module-237b703a0c63), I have demonstrated how you can use PyCaret to forecast time-series data using Machine Learning through [PyCaret Regression Module](https://pycaret.readthedocs.io/en/latest/api/regression.html). If you haven’t read that yet, you can read [Time Series Forecasting with PyCaret Regression Module](https://towardsdatascience.com/time-series-forecasting-with-pycaret-regression-module-237b703a0c63) tutorial before continuing with this one, as this tutorial builds upon some important concepts covered in the last tutorial.
 
-## Installing PyCaret
+# Installing PyCaret
 
 Installing PyCaret is very easy and takes only a few minutes. We strongly recommend using a virtual environment to avoid potential conflicts with other libraries.
 
@@ -39,13 +39,13 @@ PyCaret’s default installation is a slim version of pycaret which only install
 
 When you install the full version of pycaret, all the optional dependencies as [listed here](https://github.com/pycaret/pycaret/blob/master/requirements-optional.txt) are also installed.
 
-## 👉 PyCaret Regression Module
+# 👉 PyCaret Regression Module
 
 PyCaret **Regression Module** is a supervised machine learning module used for estimating the relationships between a **dependent variable** (often called the ‘outcome variable’, or ‘target’) and one or more **independent variables** (often called ‘features’, or ‘predictors’).
 
 The objective of regression is to predict continuous values such as sales amount, quantity, temperature, number of customers, etc. All modules in PyCaret provide many [pre-processing](https://www.pycaret.org/preprocessing) features to prepare the data for modeling through the [setup ](https://www.pycaret.org/setup)function. It has over 25 ready-to-use algorithms and [several plots](https://www.pycaret.org/plot-model) to analyze the performance of trained models.
 
-## 👉 Dataset
+# 👉 Dataset
 
 For this tutorial, I will show the end-to-end implementation of multiple time-series data forecasting, including both the training as well as predicting future values.
 
@@ -53,7 +53,7 @@ I have used the [Store Item Demand Forecasting Challenge](https://www.kaggle.com
 
 ![Sample Dataset](https://cdn-images-1.medium.com/max/2000/1*VY7MljIxivAiYWSMmAjN6g.png)
 
-## 👉 Load and prepare the data
+# 👉 Load and prepare the data
 
     **# read the csv file
     **import pandas as pd
@@ -80,7 +80,7 @@ I have used the [Store Item Demand Forecasting Challenge](https://www.kaggle.com
     data['time_series'].nunique()
     >>> 500
 
-## 👉 Visualize time-series
+# 👉 Visualize time-series
 
     **# plot multiple time series with moving avgs in a loop**
 
@@ -96,7 +96,7 @@ I have used the [Store Item Demand Forecasting Challenge](https://www.kaggle.com
 
 ![store_2_item_1 time series and 30-day moving average](https://cdn-images-1.medium.com/max/2616/1*Vhc8EP7IbA-_qdwyuENHaQ.png)
 
-## 👉 Start the training process
+# 👉 Start the training process
 
 Now that we have the data ready, let’s start the training loop. Notice that verbose = False in all functions to avoid printing results on the console while training.
 
@@ -113,11 +113,11 @@ We can now create a data frame from all_results list. It will display the best m
 
 ![sample_rows from concat_results](https://cdn-images-1.medium.com/max/2000/1*qgu9jP86L2gaZHi-TvM0SA.png)
 
-## Training Process 👇
+# Training Process 👇
 
 ![Training process](https://cdn-images-1.medium.com/max/2560/1*SwI6InjXRuB-TlQwsKZZRQ.gif)
 
-## 👉 Generate predictions using trained models
+# 👉 Generate predictions using trained models
 
 Now that we have trained models, let’s use them to generate predictions, but first, we need to create the dataset for scoring (X variables).
 
@@ -177,7 +177,7 @@ We can now create a loop to see all plots.
 
 I hope that you will appreciate the ease of use and simplicity in PyCaret. In less than 50 lines of code and one hour of experimentation, I have trained over 10,000 models (25 estimators x 500 time series) and productionalized 500 best models to generate predictions.
 
-## Coming Soon!
+# Coming Soon!
 
 Next week I will be writing a tutorial on unsupervised anomaly detection on time-series data using [PyCaret Anomaly Detection Module](https://pycaret.readthedocs.io/en/latest/api/anomaly.html). Please follow me on [Medium](https://medium.com/@moez-62905), [LinkedIn](https://www.linkedin.com/in/profile-moez/), and [Twitter](https://twitter.com/moezpycaretorg1) to get more updates.
 
@@ -187,7 +187,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## You may also be interested in:
+# You may also be interested in:
 
 [Build your own AutoML in Power BI using PyCaret 2.0](https://towardsdatascience.com/build-your-own-automl-in-power-bi-using-pycaret-8291b64181d)
 [Deploy Machine Learning Pipeline on Azure using Docker](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01)
@@ -198,7 +198,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 [Build and deploy machine learning web app using PyCaret and Streamlit](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104)
 [Deploy Machine Learning App built using Streamlit and PyCaret on GKE](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb)
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -208,7 +208,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

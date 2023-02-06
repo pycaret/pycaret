@@ -1,21 +1,33 @@
-import warnings
+import os
+import sys
 from typing import Any, Dict, Optional
 
-from pycaret import show_versions
+import deprecation
+import pandas as pd
+import sklearn
+from IPython.display import display
+from ipywidgets import widgets
+from ipywidgets.widgets import fixed, interact_manual
+
+from pycaret import __version__, show_versions
 from pycaret.loggers import DashboardLogger
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import get_logger
 
-warnings.warn(
-    "PyCaret NLP module is deprecated and not representative "
-    "of the current state of the library. "
-    "It may be removed and/or reworked in a future update.",
-    DeprecationWarning,
+deprecated_in = "3.0.0rc5"
+deprecation_msg = " If you want to use the `nlp` module, please install `pycaret` version 3.0.0 (preferred) or lower."
+
+
+@deprecation.deprecated(
+    deprecated_in=deprecated_in,
+    removed_in="3.1.0",
+    current_version=__version__,
+    details=deprecation_msg,
 )
-
-
 def setup(
     data,
     target=None,
@@ -111,7 +123,7 @@ def setup(
     # exception checking
     import sys
 
-    from pycaret.utils import __version__
+    from pycaret import __version__
 
     ver = __version__
 
@@ -152,7 +164,7 @@ def setup(
 
     try:
         data_shape = data.shape
-    except:
+    except Exception:
         data_shape = len(data)
 
     logger.info(
@@ -178,22 +190,22 @@ def setup(
 
     try:
         logger.info("python_version: " + str(python_version()))
-    except:
+    except Exception:
         logger.warning("cannot find platform.python_version")
 
     try:
         logger.info("python_build: " + str(python_build()))
-    except:
+    except Exception:
         logger.warning("cannot find platform.python_build")
 
     try:
         logger.info("machine: " + str(machine()))
-    except:
+    except Exception:
         logger.warning("cannot find platform.machine")
 
     try:
         logger.info("platform: " + str(platform()))
-    except:
+    except Exception:
         logger.warning("cannot find platform.platform")
 
     import psutil
@@ -257,7 +269,7 @@ def setup(
     if _check_soft_dependencies("spacy", extra="nlp", severity="warning"):
         import spacy
 
-        sp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
+        spacy.load("en_core_web_sm", disable=["parser", "ner"])
     else:
         sys.exit(
             "(Type Error): spacy english model is not yet downloaded. See the documentation of setup to see installation guide."
@@ -270,7 +282,7 @@ def setup(
     # log_experiment
     def validate_log_experiment(obj):
         return isinstance(obj, (bool, BaseLogger)) or (
-            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb"]
+            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb", "dagshub"]
         )
 
     if not (
@@ -281,7 +293,7 @@ def setup(
         or validate_log_experiment(log_experiment)
     ):
         raise TypeError(
-            "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb'; or a list of the former."
+            "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb', 'dagshub'; or a list of the former."
         )
 
     # experiment custom tags
@@ -313,7 +325,7 @@ def setup(
 
     import ipywidgets as ipw
     import pandas as pd
-    from IPython.display import HTML, clear_output, display, update_display
+    from IPython.display import clear_output, display, update_display
 
     # global html_param
     global html_param
@@ -322,7 +334,7 @@ def setup(
     html_param = html
 
     """
-    generate monitor starts 
+    generate monitor starts
     """
 
     logger.info("Preparing display monitor")
@@ -337,11 +349,6 @@ def setup(
     if verbose:
         if html_param:
             display(progress)
-
-    try:
-        max_sub = len(data[target].values.tolist())
-    except:
-        max_sub = len(data)
 
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     monitor = pd.DataFrame(
@@ -383,10 +390,6 @@ def setup(
     import gensim.corpora as corpora
 
     # setting sklearn config to print all parameters including default
-    import sklearn
-    from gensim.models import CoherenceModel
-    from gensim.utils import simple_preprocess
-
     sklearn.set_config(print_changed_only=False)
 
     logger.info("Declaring global variables")
@@ -399,7 +402,7 @@ def setup(
         experiment__.append("dummy")
         experiment__.pop()
 
-    except:
+    except Exception:
         experiment__ = []
 
     # converting to dataframe if list provided
@@ -413,7 +416,7 @@ def setup(
         text = data[target].values.tolist()
         target_ = str(target)
         logger.info("Input provided : dataframe")
-    except:
+    except Exception:
         text = data
         target_ = "en"
         logger.info("Input provided : list")
@@ -444,6 +447,8 @@ def setup(
             return MlflowLogger()
         if obj == "wandb":
             return WandbLogger()
+        if obj == "dagshub":
+            return DagshubLogger(os.getenv("MLFLOW_TRACKING_URI"))
 
     if logging_param:
         loggers_list = []
@@ -921,25 +926,16 @@ def setup(
             if html_param:
                 update_display(monitor, display_id="monitor")
 
-        import os
-        from pathlib import Path
-
-        import mlflow
-
         if experiment_name is None:
             exp_name_ = "nlp-default-name"
         else:
             exp_name_ = experiment_name
 
-        URI = secrets.token_hex(nbytes=4)
         exp_name_log = exp_name_
 
         run_name_ = "Session Initialized " + str(USI)
 
         dashboard_logger.init_loggers(exp_name_log, run_name_)
-
-        # Get active run to log as tag
-        RunID = mlflow.active_run().info.run_id
 
         k = functions.copy()
         k.set_index("Description", drop=True, inplace=True)
@@ -959,8 +955,6 @@ def setup(
             logger.log_artifact("id2word", "id2word")
             for logger in dashboard_logger.loggers
         ]
-        import os
-
         os.remove("id2word")
 
         # Log data
@@ -1018,7 +1012,7 @@ def setup(
         else:
             print(functions_.data)
 
-    logger.info("setup() succesfully completed......................................")
+    logger.info("setup() successfully completed......................................")
 
     return (
         text,
@@ -1100,32 +1094,7 @@ def create_model(
         Trained Model
 
     """
-
-    # exception checking
-    import logging
-    import sys
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing create_model()")
     logger.info(
@@ -1200,7 +1169,7 @@ def create_model(
     import ipywidgets as ipw
     import numpy as np
     import pandas as pd
-    from IPython.display import HTML, clear_output, display, update_display
+    from IPython.display import clear_output, display, update_display
 
     """
     monitor starts
@@ -1264,8 +1233,6 @@ def create_model(
     if verbose:
         if html_param:
             update_display(monitor, display_id="monitor")
-
-    model_fit_start = time.time()
 
     if model == "lda":
 
@@ -1389,9 +1356,6 @@ def create_model(
         model.fit(xtfidf_norm)
         logger.info("NMF() Trained Successfully")
 
-    model_fit_end = time.time()
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-
     progress.value += 1
 
     # end runtime
@@ -1409,9 +1373,6 @@ def create_model(
             if html_param:
                 update_display(monitor, display_id="monitor")
 
-        import os
-        from pathlib import Path
-
         dashboard_logger.init_loggers(exp_name_log)
 
         # Log model parameters
@@ -1421,7 +1382,7 @@ def create_model(
 
         try:
             params = model_copied.get_params()
-        except:
+        except Exception:
             import inspect
 
             params = inspect.getmembers(model_copied)[2][1]
@@ -1450,7 +1411,6 @@ def create_model(
                 logger.log_artifact("model.pkl", "model")
                 for logger in dashboard_logger.loggers
             ]
-            size_bytes = Path("model.pkl").stat().st_size
             os.remove("model.pkl")
 
         elif model_name_short == "lda":
@@ -1471,11 +1431,6 @@ def create_model(
                 logger.log_artifact("model.state", "model")
                 for logger in dashboard_logger.loggers
             ]
-            size_bytes = (
-                Path("model").stat().st_size
-                + Path("model.id2word").stat().st_size
-                + Path("model.state").stat().st_size
-            )
             os.remove("model")
             os.remove("model.expElogbeta.npy")
             os.remove("model.id2word")
@@ -1491,9 +1446,6 @@ def create_model(
                 logger.log_artifact("model.projection", "projection")
                 for logger in dashboard_logger.loggers
             ]
-            size_bytes = (
-                Path("model").stat().st_size + Path("model.projection").stat().st_size
-            )
             os.remove("model")
             os.remove("model.projection")
 
@@ -1503,7 +1455,6 @@ def create_model(
                 logger.log_artifact("model", "model")
                 for logger in dashboard_logger.loggers
             ]
-            size_bytes = Path("model").stat().st_size
             os.remove("model")
 
         elif model_name_short == "hdp":
@@ -1512,16 +1463,7 @@ def create_model(
                 logger.log_artifact("model", "model")
                 for logger in dashboard_logger.loggers
             ]
-            size_bytes = Path("model").stat().st_size
             os.remove("model")
-
-        size_kb = np.round(size_bytes / 1000, 2)
-        try:
-            metrics = model_results.to_dict().get("Metric")
-            metrics["TT"] = model_fit_time
-            [logger.log_metrics(metrics) for logger in dashboard_logger.loggers]
-        except:
-            pass
 
     # storing into experiment
     if verbose:
@@ -1529,7 +1471,7 @@ def create_model(
 
     logger.info(str(model))
     logger.info(
-        "create_model() succesfully completed......................................"
+        "create_model() successfully completed......................................"
     )
 
     return model
@@ -1563,32 +1505,7 @@ def assign_model(model, verbose=True):
         pandas.DataFrame
 
     """
-
-    # exception checking
-    import logging
-    import sys
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing assign_model()")
     logger.info(
@@ -1651,14 +1568,12 @@ def assign_model(model, verbose=True):
     """
 
     logger.info("Preloading libraries")
-    # pre-load libraries
     import datetime
-    import time
 
     import ipywidgets as ipw
     import numpy as np
     import pandas as pd
-    from IPython.display import HTML, clear_output, display, update_display
+    from IPython.display import clear_output, display, update_display
 
     logger.info("Preparing display monitor")
     # progress bar and monitor control
@@ -1714,8 +1629,7 @@ def assign_model(model, verbose=True):
 
         pdt = []
         for i in range(0, len(bb)):
-            l = max(bb[i]) / sum(bb[i])
-            pdt.append(round(l, 2))
+            pdt.append(round(max(bb[i]) / sum(bb[i]), 2))
 
         col_names = []
         for i in range(len(model.show_topics(num_topics=999999))):
@@ -1824,7 +1738,6 @@ def assign_model(model, verbose=True):
         this section will go away in future release through better handling
         """
 
-        from sklearn.decomposition import NMF
         from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
         from sklearn.preprocessing import normalize
 
@@ -1863,8 +1776,7 @@ def assign_model(model, verbose=True):
 
         pdt = []
         for i in range(0, len(bb)):
-            l = max(bb[i]) / sum(bb[i])
-            pdt.append(round(l, 2))
+            pdt.append(round(max(bb[i]) / sum(bb[i]), 2))
 
         progress.value += 1
 
@@ -1884,7 +1796,7 @@ def assign_model(model, verbose=True):
 
     logger.info(str(bb_.shape))
     logger.info(
-        "assign_model() succesfully completed......................................"
+        "assign_model() successfully completed......................................"
     )
 
     return bb_
@@ -1972,32 +1884,7 @@ def plot_model(
 
 
     """
-
-    # exception checking
-    import logging
-    import sys
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing plot_model()")
     logger.info(
@@ -2021,7 +1908,6 @@ def plot_model(
     """
 
     # determine model type
-
     if model is not None:
 
         mod = str(type(model))
@@ -2096,13 +1982,6 @@ def plot_model(
     """
 
     logger.info("Importing libraries")
-
-    import cufflinks as cf
-    import numpy
-    import pandas as pd
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
 
     # save parameter
 
@@ -2226,7 +2105,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}'")
                 df3.write_html(plot_filename)
 
-        except:
+        except Exception:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -2319,7 +2198,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}'")
                 b.write_html(plot_filename)
 
-        except:
+        except Exception:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -2438,7 +2317,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}'")
                 df3.write_html(plot_filename)
 
-        except:
+        except Exception:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -2557,7 +2436,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}'")
                 df3.write_html(plot_filename)
 
-        except:
+        except Exception:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -2568,10 +2447,6 @@ def plot_model(
     elif plot == "sentiment":
 
         try:
-
-            # loadies dependencies
-            import plotly.graph_objects as go
-
             _check_soft_dependencies("textblob", extra="nlp", severity="error")
             from textblob import TextBlob
 
@@ -2659,7 +2534,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}'")
                 sentiments.write_html(plot_filename)
 
-        except:
+        except Exception:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -2789,12 +2664,12 @@ def plot_model(
 
             iter1 = len(model.show_topics(999999))
 
-        except:
+        except Exception:
 
             try:
                 iter1 = model.num_topics
 
-            except:
+            except Exception:
 
                 iter1 = model.n_components_
 
@@ -2815,7 +2690,7 @@ def plot_model(
 
                 keywords.append(kw)
 
-            except:
+            except Exception:
 
                 keywords.append("NA")
                 topic_name.append("Topic " + str(i))
@@ -2842,7 +2717,6 @@ def plot_model(
 
         """
         sorting column starts
-        
         """
 
         logger.info("Sorting Dataframe")
@@ -3014,7 +2888,7 @@ def plot_model(
         logger.info("Visual Rendered Successfully")
 
     logger.info(
-        "plot_model() succesfully completed......................................"
+        "plot_model() successfully completed......................................"
     )
 
 
@@ -3157,30 +3031,7 @@ def tune_model(
 
 
     """
-
-    import logging
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing tune_model()")
     logger.info(
@@ -3336,11 +3187,10 @@ def tune_model(
 
     # pre-load libraries
     import datetime
-    import time
 
     import ipywidgets as ipw
     import pandas as pd
-    from IPython.display import HTML, clear_output, display, update_display
+    from IPython.display import display, update_display
     from ipywidgets import Output
 
     logger.info("Preparing display monitor")
@@ -3383,16 +3233,11 @@ def tune_model(
     logger.info("Importing libraries")
 
     # General Dependencies
-    # setting up cufflinks
-    import cufflinks as cf
     import numpy as np
     import plotly.express as px
     from sklearn import metrics
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import cross_val_predict
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
 
     progress.value += 1
 
@@ -3599,7 +3444,6 @@ def tune_model(
         ival = sorted_df.index[0]
 
         best_model = master[ival]
-        best_model_df = master_df[ival]
 
         logger.info("Rendering Visual")
         fig = px.line(
@@ -3879,7 +3723,6 @@ def tune_model(
         ival = sorted_df.index[0]
 
         best_model = master[ival]
-        best_model_df = master_df[ival]
         progress.value += 1
 
         logger.info("Rendering Visual")
@@ -4213,7 +4056,7 @@ def tune_model(
         ival = sorted_df.index[0]
 
         best_model = master[ival]
-        best_model_df = master_df[ival]
+        master_df[ival]
 
         logger.info("Rendering Visual")
 
@@ -4259,7 +4102,7 @@ def tune_model(
 
     logger.info(str(best_model))
     logger.info(
-        "tune_model() succesfully completed......................................"
+        "tune_model() successfully completed......................................"
     )
 
     return best_model
@@ -4289,22 +4132,12 @@ def evaluate_model(model):
         None
 
     """
-
-    import numpy as np
-    from ipywidgets import widgets
-    from ipywidgets.widgets import fixed, interact, interact_manual
-
-    """
-    generate sorted list
-    
-    """
-
     try:
         n_topic_assigned = len(model.show_topics())
-    except:
+    except Exception:
         try:
             n_topic_assigned = model.num_topics
-        except:
+        except Exception:
             n_topic_assigned = model.n_components
 
     final_list = []
@@ -4327,7 +4160,7 @@ def evaluate_model(model):
 
     b = widgets.Dropdown(options=final_list, description="Topic #:", disabled=False)
 
-    d = interact_manual(
+    interact_manual(
         plot_model,
         model=fixed(model),
         plot=a,
@@ -4374,29 +4207,7 @@ def save_model(model, model_name: str, verbose: bool = True, **kwargs):
         Tuple of the model object and the filename.
 
     """
-    import logging
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing save_model()")
     logger.info(
@@ -4414,7 +4225,7 @@ def save_model(model, model_name: str, verbose: bool = True, **kwargs):
 
     logger.info(str(model))
     logger.info(
-        "save_model() succesfully completed......................................"
+        "save_model() successfully completed......................................"
     )
 
     return (model, model_name)
@@ -4585,31 +4396,7 @@ def get_config(variable):
         Global variable
 
     """
-
-    import logging
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
+    logger = get_logger()
     logger.info("Initializing get_config()")
     logger.info("""get_config(variable={})""".format(str(variable)))
 
@@ -4648,7 +4435,7 @@ def get_config(variable):
 
     logger.info("Global variable: " + str(variable) + " returned")
     logger.info(
-        "get_config() succesfully completed......................................"
+        "get_config() successfully completed......................................"
     )
 
     return global_var
@@ -4686,30 +4473,7 @@ def set_config(variable, value):
         None
 
     """
-
-    import logging
-
-    try:
-        hasattr(logger, "name")
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing set_config()")
     logger.info(
@@ -4758,7 +4522,7 @@ def set_config(variable, value):
 
     logger.info("Global variable:  " + str(variable) + " updated")
     logger.info(
-        "set_config() succesfully completed......................................"
+        "set_config() successfully completed......................................"
     )
 
 
@@ -4771,7 +4535,7 @@ def get_topics(data, text, model=None, num_topics=4):
     if model is None:
         model = "lda"
 
-    s = setup(data=data, target=text)
+    setup(data=data, target=text)
     c = create_model(model=model, num_topics=num_topics, verbose=False)
     dataset = assign_model(c, verbose=False)
     return dataset

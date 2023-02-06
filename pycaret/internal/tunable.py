@@ -12,7 +12,7 @@ from sklearn.neural_network import MLPClassifier, MLPRegressor
 
 try:
     from collections.abc import Iterable
-except:
+except Exception:
     from collections import Iterable
 
 
@@ -370,7 +370,7 @@ class TunableMLPClassifier(MLPClassifier, TunableMixin):
                                 + [v]
                             )
                     reset_layers = True
-                except:
+                except Exception:
                     pass
         if reset_layers:
             self._hidden_layer_sizes_to_hidden_layer_size_kwargs()
@@ -788,7 +788,7 @@ class TunableMLPRegressor(MLPRegressor, TunableMixin):
                                 + [v]
                             )
                     reset_layers = True
-                except:
+                except Exception:
                     pass
         if reset_layers:
             self._hidden_layer_sizes_to_hidden_layer_size_kwargs()
@@ -1035,7 +1035,7 @@ class TunableVotingClassifier(VotingClassifier, TunableMixin):
                     weight = k.split("_")
                     weight = int(weight[1])
                     self.weights[weight] = v
-                except:
+                except Exception:
                     pass
         self._weights_to_weight_kwargs()
 
@@ -1196,7 +1196,7 @@ class TunableVotingRegressor(VotingRegressor, TunableMixin):
                     weight = k.split("_")
                     weight = int(weight[1])
                     self.weights[weight] = v
-                except:
+                except Exception:
                     pass
         self._weights_to_weight_kwargs()
 

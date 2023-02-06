@@ -105,7 +105,7 @@ def get_predictions_with_intervals(
             "support `predict_quantiles()`. Please leave `alpha` as `None`."
         )
 
-    #### Get Point predictions ----
+    # Get Point predictions ----
     if alpha is None:
         y_pred = forecaster.predict(fh=fh, X=X)
         y_pred = pd.DataFrame({"y_pred": y_pred})
@@ -113,12 +113,12 @@ def get_predictions_with_intervals(
         y_pred = forecaster.predict_quantiles(fh=fh, X=X, alpha=alpha)
         if y_pred.shape[1] != 1:
             raise ValueError(
-                "Something wrong happended during point prediction; received values "
+                "Something wrong happened during point prediction; received values "
                 "This should not have happened. Please report on GitHub."
             )
         y_pred = pd.DataFrame({"y_pred": y_pred.iloc[:, 0]})
 
-    #### Get Intervals ----
+    # Get Intervals ----
     if return_pred_int:
         pred_intervals = forecaster.predict_quantiles(fh=fh, X=X, alpha=coverage)
         lower = pd.DataFrame({"lower": pred_intervals.iloc[:, 0]})

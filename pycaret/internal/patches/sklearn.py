@@ -5,6 +5,7 @@ from sklearn.utils import check_random_state
 
 # Monkey patching sklearn.model_selection._search to avoid overflows on windows.
 
+
 # adapted from https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/utils/_random.pyx
 def _mp_sample_without_replacement(
     n_population: int, n_samples: int, method=None, random_state=None

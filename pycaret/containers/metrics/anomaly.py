@@ -10,8 +10,6 @@
 
 from typing import Any, Dict, Optional, Union
 
-import numpy as np
-from sklearn import metrics
 from sklearn.metrics._scorer import _BaseScorer
 
 import pycaret.containers.base_container
@@ -98,7 +96,7 @@ class AnomalyMetricContainer(MetricContainer):
     ) -> None:
 
         allowed_targets = ["pred"]
-        if not target in allowed_targets:
+        if target not in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")
 
         if not args:

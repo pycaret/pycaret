@@ -24,8 +24,8 @@ from pycaret.internal.distributions import (
     IntUniformDistribution,
     UniformDistribution,
 )
-from pycaret.internal.utils import get_logger, np_list_arange, param_grid_to_lists
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import get_logger, np_list_arange, param_grid_to_lists
 
 # First one in the list is the default ----
 ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
@@ -253,7 +253,7 @@ class LinearRegressionContainer(RegressorContainer):
 
         args = {}
         tune_args = {}
-        tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+        tune_grid = {"fit_intercept": [True, False]}
         tune_distributions = {}
 
         if not gpu_imported:
@@ -310,7 +310,6 @@ class LassoRegressionContainer(RegressorContainer):
         tune_grid = {
             "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
@@ -368,7 +367,6 @@ class RidgeRegressionContainer(RegressorContainer):
         tune_grid = {
             "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
@@ -427,7 +425,6 @@ class ElasticNetContainer(RegressorContainer):
             "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "l1_ratio": np_list_arange(0.01, 1, 0.001, inclusive=False),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "alpha": UniformDistribution(0, 1),
@@ -449,21 +446,21 @@ class ElasticNetContainer(RegressorContainer):
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
             shap=False,
+            eq_function=lambda x: type(x) is ElasticNet,
         )
 
 
 class LarsContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
-        from sklearn.linear_model import Lars
+        from sklearn.linear_model import Lars, LassoLars
 
         args = {"random_state": experiment.seed}
         tune_args = {}
         tune_grid = {
             "fit_intercept": [True, False],
-            "normalize": [True, False],
             "eps": [
                 0.00001,
                 0.0001,
@@ -493,12 +490,13 @@ class LarsContainer(RegressorContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap=False,
+            eq_function=lambda x: isinstance(x, Lars) and not isinstance(x, LassoLars),
         )
 
 
 class LassoLarsContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import LassoLars
@@ -507,7 +505,6 @@ class LassoLarsContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "fit_intercept": [True, False],
-            "normalize": [True, False],
             "alpha": [
                 0.0000001,
                 0.000001,
@@ -561,7 +558,7 @@ class LassoLarsContainer(RegressorContainer):
 
 class OrthogonalMatchingPursuitContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import OrthogonalMatchingPursuit
@@ -571,7 +568,6 @@ class OrthogonalMatchingPursuitContainer(RegressorContainer):
         tune_grid = {
             "n_nonzero_coefs": range(1, len(experiment.X_train.columns) + 1),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "n_nonzero_coefs": IntUniformDistribution(
@@ -595,7 +591,7 @@ class OrthogonalMatchingPursuitContainer(RegressorContainer):
 
 class BayesianRidgeContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import BayesianRidge
@@ -661,7 +657,6 @@ class BayesianRidgeContainer(RegressorContainer):
             ],
             "compute_score": [True, False],
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "alpha_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),
@@ -686,7 +681,7 @@ class BayesianRidgeContainer(RegressorContainer):
 
 class AutomaticRelevanceDeterminationContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import ARDRegression
@@ -766,7 +761,6 @@ class AutomaticRelevanceDeterminationContainer(RegressorContainer):
             ],
             "compute_score": [True, False],
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "alpha_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),
@@ -793,7 +787,7 @@ class AutomaticRelevanceDeterminationContainer(RegressorContainer):
 
 class PassiveAggressiveRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import PassiveAggressiveRegressor
@@ -828,7 +822,7 @@ class PassiveAggressiveRegressorContainer(RegressorContainer):
 
 class RANSACRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import RANSACRegressor
@@ -868,7 +862,7 @@ class RANSACRegressorContainer(RegressorContainer):
 
 class TheilSenRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import TheilSenRegressor
@@ -901,7 +895,7 @@ class TheilSenRegressorContainer(RegressorContainer):
 
 class HuberRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import HuberRegressor
@@ -951,7 +945,7 @@ class HuberRegressorContainer(RegressorContainer):
 
 class KernelRidgeContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.kernel_ridge import KernelRidge
@@ -1122,7 +1116,7 @@ class KNeighborsRegressorContainer(RegressorContainer):
 
 class DecisionTreeRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.tree import DecisionTreeRegressor
@@ -1151,7 +1145,7 @@ class DecisionTreeRegressorContainer(RegressorContainer):
                 0.4,
                 0.5,
             ],
-            "criterion": ["mse", "mae", "friedman_mse"],
+            "criterion": ["squared_error", "absolute_error", "friedman_mse"],
         }
         tune_distributions = {
             "max_depth": IntUniformDistribution(1, 16),
@@ -1247,7 +1241,7 @@ class RandomForestRegressorContainer(RegressorContainer):
         if gpu_imported:
             tune_grid["split_criterion"] = [2, 3]
         else:
-            tune_grid["criterion"] = ["mse", "mae"]
+            tune_grid["criterion"] = ["squared_error", "absolute_error"]
             tune_grid["min_samples_split"] = [2, 5, 7, 9, 10]
             tune_grid["min_samples_leaf"] = [2, 3, 4, 5, 6]
             tune_distributions["min_samples_split"] = IntUniformDistribution(2, 10)
@@ -1270,9 +1264,8 @@ class RandomForestRegressorContainer(RegressorContainer):
 
 class ExtraTreesRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
-        gpu_imported = False
 
         from sklearn.ensemble import ExtraTreesRegressor
 
@@ -1283,7 +1276,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
-            "criterion": ["mse", "mae"],
+            "criterion": ["squared_error", "absolute_error"],
             "max_depth": np_list_arange(1, 11, 1, inclusive=True),
             "min_impurity_decrease": [
                 0,
@@ -1332,7 +1325,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
 
 class AdaBoostRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import AdaBoostRegressor
 
@@ -1379,7 +1372,7 @@ class AdaBoostRegressorContainer(RegressorContainer):
 
 class GradientBoostingRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.ensemble import GradientBoostingRegressor
@@ -1454,7 +1447,7 @@ class GradientBoostingRegressorContainer(RegressorContainer):
 
 class MLPRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.neural_network import MLPRegressor
@@ -1637,7 +1630,7 @@ class XGBRegressorContainer(RegressorContainer):
 
 class LGBMRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from lightgbm import LGBMRegressor
         from lightgbm.basic import LightGBMError
@@ -1758,7 +1751,7 @@ class LGBMRegressorContainer(RegressorContainer):
                 lgb.fit(np.zeros((2, 2)), [0, 1])
                 is_gpu_enabled = "gpu"
                 del lgb
-            except:
+            except Exception:
                 try:
                     lgb = LGBMRegressor(device="cuda")
                     lgb.fit(np.zeros((2, 2)), [0, 1])
@@ -1768,7 +1761,7 @@ class LGBMRegressorContainer(RegressorContainer):
                     is_gpu_enabled = False
                     if experiment.gpu_param == "force":
                         raise RuntimeError(
-                            f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
+                            "LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
                         )
 
         if is_gpu_enabled == "gpu":
@@ -1874,7 +1867,7 @@ class CatBoostRegressorContainer(RegressorContainer):
 
 class DummyRegressorContainer(RegressorContainer):
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.dummy import DummyRegressor
 
@@ -1899,7 +1892,7 @@ class DummyRegressorContainer(RegressorContainer):
 
 class BaggingRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import BaggingRegressor
 
@@ -1907,7 +1900,7 @@ class BaggingRegressorContainer(RegressorContainer):
             "random_state": experiment.seed,
             "n_jobs": 1 if experiment.gpu_param else None,
         }
-        tune_args = {}
+        tune_args = {"strategy": ["mean", "median"]}
         tune_grid = {
             "bootstrap": [True, False],
             "bootstrap_features": [True, False],
@@ -1937,7 +1930,7 @@ class BaggingRegressorContainer(RegressorContainer):
 
 class StackingRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import StackingRegressor
 
@@ -1964,7 +1957,7 @@ class StackingRegressorContainer(RegressorContainer):
 
 class VotingRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import VotingRegressor
 

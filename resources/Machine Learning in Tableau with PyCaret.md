@@ -1,15 +1,15 @@
 
-## Machine Learning in Tableau with PyCaret
+# Machine Learning in Tableau with PyCaret
 
-### A step by step integration guide to setup ML pipelines within minutes
+# A step by step integration guide to setup ML pipelines within minutes
 
-### by Andrew Cowan-Nagora
+# by Andrew Cowan-Nagora
 
 [PyCaret](https://www.pycaret.org/) is a recently released open source machine learning library in Python that trains and deploys machine learning models in a **low-code **environment. To learn more about PyCaret, read this [announcement](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46).
 
 This article will demonstrate how PyCaret can be integrated with Tableau Desktop and Tableau Prep which opens new avenues for analysts and data scientists to add a layer of machine learning to their dashboards, reports and visualizations. By reducing the time required to code as well as the need to purchase additional software, rapid prototyping is now possible in environments that are already familiar and available to analysts throughout the organization.
 
-## Learning Goals
+# Learning Goals
 
 * Train a supervised machine learning model and create a ML pipeline in PyCaret
 
@@ -19,7 +19,7 @@ This article will demonstrate how PyCaret can be integrated with Tableau Desktop
 
 * Understand how the model can be deployed into production with Tableau
 
-## Direct Marketing Business Context
+# Direct Marketing Business Context
 
 The example here will focus on how to setup a basic direct marketing propensity model that uses a classification algorithm to predict which customers are most likely to initiate a visit after receiving an offer via text or email.
 
@@ -27,7 +27,7 @@ A dashboard will then be created that can take the trained model and predict how
 
 By using PyCaret and Tableau, the business can quickly setup reporting products that continuously generate predictive views using existing software and minimal up front development time.
 
-## Before we start
+# Before we start
 
 The software that will be required to follow along:
 
@@ -80,13 +80,13 @@ Python scripts can now be run in Tableau through calculated fields that output a
 
 Please refer to the TabPy [GitHub](https://github.com/tableau/TabPy) page for custom server options. Running TabPy on external servers and/or clouds and configuring Tableau Server will not be covered in this post but please look [here](https://help.tableau.com/current/server/en-us/config_r_tabpy.htm) for more information.
 
-## Direct Marketing Data
+# Direct Marketing Data
 
 The data set that will be used contains information on various marketing offers that were sent to customers through text and email. It contains 64000 records organized into an ID column, 10 features that relate to the customer or message sent and a binary target that indicates if a visit occurred. The data can be downloaded [here](https://github.com/andrewcowannagora/PyCaret-Tableau/blob/master/direct_marketing.csv).
 
 ![](https://cdn-images-1.medium.com/max/2000/1*nixMpbPMN5_aW0IGKOCuxw.png)
 
-## **Training a Model Beforehand**
+# **Training a Model Beforehand**
 
 While it is possible to perform the model training process inside Tableau, this is generally not the preferred approach since every time the data is refreshed or the user interacts with the view the script will re-run. This is problematic because:
 
@@ -96,7 +96,7 @@ While it is possible to perform the model training process inside Tableau, this 
 
 A more appropriate approach is to use a pre-trained model in Tableau to generate predictions on new data. Jupyter notebook will be used in this example to demonstrate how PyCaret is used to make this process straight forward.
 
-## Building a Model In PyCaret
+# Building a Model In PyCaret
 
 Running the following code in Jupyter Notebook will train a Naive Bayes classification model and create a ML pipeline that is saved as a pickle file.
 
@@ -112,7 +112,7 @@ Note that in the setup phase PyCaret performs automatic pre-processing which in 
 
 This is only scratching the surface of PyCaret’s built in functionality thus it is strongly recommended to look at the classification [module](https://pycaret.org/classification/) and [tutorials](https://pycaret.org/clf101/) on the PyCaret website. The specific details of the selected model will not be covered here.
 
-## Loading the Model into Tableau Desktop
+# Loading the Model into Tableau Desktop
 
 The unseen data will now be passed to the trained model and labelled in Tableau Desktop.
 
@@ -182,7 +182,7 @@ Viable applications would include generating scored lists that could be exported
 
 An example insight from this could be that higher spend customers are the most likely to visit which makes sense business wise but could perhaps be an indicator of unnecessary discounting.
 
-## Loading the Model into Tableau Prep
+# Loading the Model into Tableau Prep
 
 A great alternative to get around the limitations of running scripts directly in Tableau Desktop is to use Tableau Prep. New data can be connected and then passed to the model with the difference this time being that the predicted labels are appended to the output. When connected to Tableau, the new columns can be used normally rather than as table calculations.
 
@@ -216,7 +216,7 @@ Notice how the label and score columns are now appended to the original data set
 
 In a server environment it is possible to schedule when a flow runs and automate the scoring process before the data reaches the actual Tableau dashboard.
 
-## Loading the Flow Output into Tableau
+# Loading the Flow Output into Tableau
 
 The newly labelled data can now be connected to Tableau Desktop without the table calculation limitations and slow downs.
 
@@ -226,13 +226,13 @@ Aggregations and any other desired calculations can be created to design a summa
 
 Once the data and ML pipeline is established, marketers and executives would quickly be able to track how upcoming campaigns could potentially perform with minimal intervention required. The Tableau file that contains the example dashboard and earlier script can be downloaded [here](https://github.com/andrewcowannagora/PyCaret-Tableau/blob/master/DM_Dashboard.twbx).
 
-## Closing Remarks
+# Closing Remarks
 
 This article has demonstrated how PyCaret can be integrated with Tableau Desktop and Tableau Prep to quickly add a layer of machine learning into existing workflows.
 
 By using tools that are familiar to the organization and the PyCaret library, entire ML pipelines can be established in minutes which enables predictive analytics prototyping to get off the ground quickly.
 
-## Useful Links
+# Useful Links
 
 [PyCaret](https://pycaret.org/)
 

@@ -1,17 +1,17 @@
 
-### [Hands-on Tutorials](https://towardsdatascience.com/tagged/hands-on-tutorials)
+# [Hands-on Tutorials](https://towardsdatascience.com/tagged/hands-on-tutorials)
 
-## Time Series Anomaly Detection with PyCaret
+# Time Series Anomaly Detection with PyCaret
 
-### A step-by-step tutorial on unsupervised anomaly detection for time series data using PyCaret
+# A step-by-step tutorial on unsupervised anomaly detection for time series data using PyCaret
 
 ![PyCaret — An open-source, low-code machine learning library in Python](https://cdn-images-1.medium.com/max/2604/1*O-lbKPXdK7716BK8MLpTQA.png)
 
-## 👉 Introduction
+# 👉 Introduction
 
 This is a step-by-step, beginner-friendly tutorial on detecting anomalies in time series data using PyCaret’s Unsupervised Anomaly Detection Module.
 
-### Learning Goals of this Tutorial
+# Learning Goals of this Tutorial
 
 * What is Anomaly Detection? Types of Anomaly Detection.
 
@@ -21,7 +21,7 @@ This is a step-by-step, beginner-friendly tutorial on detecting anomalies in tim
 
 * Label anomalies and analyze the results.
 
-## 👉 PyCaret
+# 👉 PyCaret
 
 PyCaret is an open-source, low-code machine learning library and end-to-end model management tool built-in Python for automating machine learning workflows. It is incredibly popular for its ease of use, simplicity, and ability to build and deploy end-to-end ML prototypes quickly and efficiently.
 
@@ -31,7 +31,7 @@ PyCaret is **simple and** **easy to use**. All the operations performed in PyCar
 
 To learn more about PyCaret, check out their [GitHub](https://www.github.com/pycaret/pycaret).
 
-## 👉 Installing PyCaret
+# 👉 Installing PyCaret
 
 Installing PyCaret is very easy and takes only a few minutes. We strongly recommend using a virtual environment to avoid potential conflicts with other libraries.
 
@@ -45,7 +45,7 @@ PyCaret’s default installation is a slim version of pycaret which only install
 
 When you install the full version of pycaret, all the optional dependencies as [listed here](https://github.com/pycaret/pycaret/blob/master/requirements-optional.txt) are also installed.
 
-## 👉 What is Anomaly Detection
+# 👉 What is Anomaly Detection
 
 Anomaly Detection is a technique used for identifying **rare items, events, or observations** that raise suspicions by differing significantly from the majority of the data.
 
@@ -69,11 +69,11 @@ Anomaly detection algorithms can broadly be categorized into these groups:
 
 ![Anomaly Detection Business use-cases](https://cdn-images-1.medium.com/max/3200/0*viL5WxtnFLMCyFXo)
 
-## 👉 PyCaret Anomaly Detection Module
+# 👉 PyCaret Anomaly Detection Module
 
 PyCaret’s [**Anomaly Detection](https://pycaret.readthedocs.io/en/latest/api/anomaly.html)** Module is an unsupervised machine learning module that is used for identifying **rare items**, **events,** or **observations. **It provides over 15 algorithms and [several plots](https://www.pycaret.org/plot-model) to analyze the results of trained models.
 
-## 👉 Dataset
+# 👉 Dataset
 
 I will be using the NYC taxi passengers dataset that contains the number of taxi passengers from July 2014 to January 2015 at half-hourly intervals. You can download the dataset from [here](https://raw.githubusercontent.com/numenta/NAB/master/data/realKnownCause/nyc_taxi.csv).
 
@@ -97,7 +97,7 @@ I will be using the NYC taxi passengers dataset that contains the number of taxi
 
 ![value, moving_average(48), and moving_average(336)](https://cdn-images-1.medium.com/max/2626/1*7_u3piw7krj-g_hw98pYxA.png)
 
-## 👉 Data Preparation
+# 👉 Data Preparation
 
 Since algorithms cannot directly consume date or timestamp data, we will extract the features from the timestamp and will drop the actual timestamp column before training models.
 
@@ -122,7 +122,7 @@ Since algorithms cannot directly consume date or timestamp data, we will extract
 
 ![Sample rows from data after transformations](https://cdn-images-1.medium.com/max/2000/1*tEOAoRNWE6Djjqw4TAzDrg.png)
 
-## 👉 Experiment Setup
+# 👉 Experiment Setup
 
 Common to all modules in PyCaret, the setup function is the first and the only mandatory step to start any machine learning experiment in PyCaret. Besides performing some basic processing tasks by default, PyCaret also offers a wide array of pre-processing features. To learn more about all the preprocessing functionalities in PyCaret, you can see this [link](https://pycaret.org/preprocessing/).
 
@@ -136,7 +136,7 @@ Whenever you initialize the setup function in PyCaret, it profiles the dataset a
 
 ![Output from setup — truncated for display](https://cdn-images-1.medium.com/max/2000/1*Za0hBYrKkUCWIZOBwO6cYg.png)
 
-## 👉 Model Training
+# 👉 Model Training
 
 To check the list of all available algorithms:
 
@@ -188,7 +188,7 @@ If you google the dates around the other red points on the graph, you will proba
 
 I hope you will appreciate the ease of use and simplicity in PyCaret. In just a few lines of code and few minutes of experimentation, I have trained an unsupervised anomaly detection model and have labeled the dataset to detect anomalies on a time series data.
 
-## Coming Soon!
+# Coming Soon!
 
 Next week I will be writing a tutorial on training custom models in PyCaret using [PyCaret Regression Module](https://pycaret.readthedocs.io/en/latest/api/regression.html). You can follow me on [Medium](https://medium.com/@moez-62905), [LinkedIn](https://www.linkedin.com/in/profile-moez/), and [Twitter](https://twitter.com/moezpycaretorg1) to get instant notifications whenever a new tutorial is released.
 
@@ -198,7 +198,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## You may also be interested in:
+# You may also be interested in:
 
 [Build your own AutoML in Power BI using PyCaret 2.0](https://towardsdatascience.com/build-your-own-automl-in-power-bi-using-pycaret-8291b64181d)
 [Deploy Machine Learning Pipeline on Azure using Docker](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01)
@@ -209,7 +209,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 [Build and deploy machine learning web app using PyCaret and Streamlit](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104)
 [Deploy Machine Learning App built using Streamlit and PyCaret on GKE](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb)
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -219,7 +219,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

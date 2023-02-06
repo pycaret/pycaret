@@ -1,7 +1,7 @@
 
-## How to implement Clustering in Power BI using PyCaret
+# How to implement Clustering in Power BI using PyCaret
 
-### by Moez Ali
+# by Moez Ali
 
 ![Clustering Dashboard in Power BI](https://cdn-images-1.medium.com/max/2632/1*sUeqYcENVII1RlyYA_-Uxg.png)
 
@@ -9,7 +9,7 @@ In our [last post](https://towardsdatascience.com/build-your-first-anomaly-detec
 
 In this post, we will see how we can implement Clustering Analysis in Power BI using PyCaret. If you haven’t heard about PyCaret before, please read this [announcement](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) to learn more.
 
-## Learning Goals of this Tutorial
+# Learning Goals of this Tutorial
 
 * What is Clustering? Types of Clustering.
 
@@ -19,13 +19,13 @@ In this post, we will see how we can implement Clustering Analysis in Power BI u
 
 * How to deploy the Clustering model in Power BI production?
 
-## Before we start
+# Before we start
 
 If you have used Python before, it is likely that you already have Anaconda Distribution installed on your computer. If not, [click here](https://www.anaconda.com/distribution/) to download Anaconda Distribution with Python 3.7 or greater.
 
 ![[https://www.anaconda.com/products/individual](https://www.anaconda.com/products/individual)](https://cdn-images-1.medium.com/max/2612/1*sMceDxpwFVHDtdFi528jEg.png)
 
-## Setting up the Environment
+# Setting up the Environment
 
 Before we start using PyCaret’s machine learning capabilities in Power BI we have to create a virtual environment and install pycaret. It’s a three-step process:
 
@@ -51,7 +51,7 @@ C:\Users\***username***\AppData\Local\Continuum\anaconda3\envs\myenv
 
 ![File → Options → Global → Python scripting](https://cdn-images-1.medium.com/max/2000/1*zQMKuyEk8LGrOPE-NByjrg.png)
 
-## What is Clustering?
+# What is Clustering?
 
 Clustering is a technique that groups data points with similar characteristics. These groupings are useful for exploring data, identifying patterns and analyzing a subset of data. Organising data into clusters helps in identify underlying structures in the data and finds applications across many industries. Some common business use cases for clustering are:
 
@@ -61,7 +61,7 @@ Clustering is a technique that groups data points with similar characteristics. 
 
 ✔ Identifying geo-clusters in an epidemic outbreak such as COVID-19.
 
-## Types of Clustering
+# Types of Clustering
 
 Given the subjective nature of clustering tasks, there are various algorithms that suit different types of problems. Each algorithm has its own rules and the mathematics behind how clusters are calculated.
 
@@ -71,7 +71,7 @@ This tutorial is about implementing a clustering analysis in Power BI using a Py
 
 In this tutorial we will use a K-Means algorithm which is one of the simplest and most popular unsupervised machine learning algorithms. If you would like to learn more about K-Means, you can read [this paper](https://stanford.edu/~cpiech/cs221/handouts/kmeans.html).
 
-## Setting the Business Context
+# Setting the Business Context
 
 In this tutorial we will use the current health expenditure dataset from the World Health Organization’s*** ***Global Health Expenditure database. The dataset contains health expenditure as a % of National GDP for over 200 countries from year 2000 through 2017.
 
@@ -81,11 +81,11 @@ Our objective is to find patterns and groups in this data by using a K-Means clu
 
 ![Sample Data points](https://cdn-images-1.medium.com/max/2366/1*E1z19x_qa7rko1FZpAw61Q.png)
 
-## 👉 Let’s get started
+# 👉 Let’s get started
 
 Now that you have set up the Anaconda Environment, installed PyCaret, understand the basics of Clustering Analysis and have the business context for this tutorial, let’s get started.
 
-## 1. Get Data
+# 1. Get Data
 
 The first step is importing the dataset into Power BI Desktop. You can load the data using a web connector. (Power BI Desktop → Get Data → From Web).
 
@@ -94,7 +94,7 @@ The first step is importing the dataset into Power BI Desktop. You can load the 
 Link to csv file: 
 [https://github.com/pycaret/powerbi-clustering/blob/master/clustering.csv](https://github.com/pycaret/powerbi-clustering/blob/master/clustering.csv)
 
-## 2. Model Training
+# 2. Model Training
 
 To train a clustering model in Power BI we will have to execute a Python script in Power Query Editor (Power Query Editor → Transform → Run python script). Run the following code as a Python script:
 
@@ -134,7 +134,7 @@ Here’s how the final output looks like in Power BI.
 
 ![Results in Power BI Desktop (after applying query)](https://cdn-images-1.medium.com/max/2564/1*oy_X3VIdVPS32qQxkOeehw.png)
 
-## 3. Dashboard
+# 3. Dashboard
 
 Once you have cluster labels in Power BI, here’s an example of how you can visualize it in dashboard to generate insights:
 
@@ -144,7 +144,7 @@ Once you have cluster labels in Power BI, here’s an example of how you can vis
 
 You can download the PBIX file and the data set from our [GitHub](https://github.com/pycaret/powerbi-clustering).
 
-## 👉 Implementing Clustering in Production
+# 👉 Implementing Clustering in Production
 
 What has been demonstrated above was one simple way to implement Clustering in Power BI. However, it is important to note that the method shown above trains the clustering model every time the Power BI dataset is refreshed. This may be a problem for two reasons:
 
@@ -154,7 +154,7 @@ What has been demonstrated above was one simple way to implement Clustering in P
 
 A more productive way to implement clustering in Power BI is to use a pre-trained model for generating cluster labels instead of re-training the model every time.
 
-## Training Model before-hand
+# Training Model before-hand
 
 You can use any Integrated Development Environment (IDE)or Notebook for training machine learning models. In this example, we have used Visual Studio Code to train a clustering model.
 
@@ -168,7 +168,7 @@ If you would like to learn more about implementing Clustering Analysis in Jupyte
 
  <iframe src="https://medium.com/media/ac70d2254314877ee7e9e524e1f2b1bf" frameborder=0></iframe>
 
-## Using the pre-trained model
+# Using the pre-trained model
 
 Execute the below code as a Python script to generate labels from the pre-trained model.
 
@@ -177,7 +177,7 @@ Execute the below code as a Python script to generate labels from the pre-traine
 
 The output of this will be the same as the one we saw above. The difference is that when you use a pre-trained model, the label is generated on a new dataset using the same model instead of re-training the model.
 
-## Making it work on Power BI Service
+# Making it work on Power BI Service
 
 Once you’ve uploaded the .pbix file to the Power BI service, a couple more steps are necessary to enable seamless integration of the machine learning pipeline into your data pipeline. These include:
 
@@ -187,13 +187,13 @@ Once you’ve uploaded the .pbix file to the Power BI service, a couple more ste
 
 If you are Interested in learning more about Clustering Analysis, checkout our [Notebook Tutorial](https://www.pycaret.org/clu101).
 
-## PyCaret 1.0.1 is coming!
+# PyCaret 1.0.1 is coming!
 
 We have received overwhelming support and feedback from the community. We are actively working on improving PyCaret and preparing for our next release. **PyCaret 1.0.1 will be bigger and better**. If you would like to share your feedback and help us improve further, you may [fill this form](https://www.pycaret.org/feedback) on the website or leave a comment on our [GitHub ](https://www.github.com/pycaret/)or [LinkedIn](https://www.linkedin.com/company/pycaret/) page.
 
 Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe to our [Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g) channel to learn more about PyCaret.
 
-## Important Links
+# Important Links
 
 [User Guide / Documentation](https://www.pycaret.org/guide)
 [GitHub Repository
@@ -201,7 +201,7 @@ Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe t
 [Notebook Tutorials](https://www.pycaret.org/tutorial)
 [Contribute in PyCaret](https://www.pycaret.org/contribute)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 As of the first release 1.0.0, PyCaret has the following modules available for use. Click on the links below to see the documentation and working examples in Python.
 
@@ -212,7 +212,7 @@ As of the first release 1.0.0, PyCaret has the following modules available for u
 ](https://www.pycaret.org/anomaly-detection)[Natural Language Processing](https://www.pycaret.org/nlp)
 [Association Rule Mining](https://www.pycaret.org/association-rules)
 
-## Also see:
+# Also see:
 
 PyCaret getting started tutorials in Notebook:
 
@@ -223,7 +223,7 @@ PyCaret getting started tutorials in Notebook:
 [Regression](https://www.pycaret.org/reg101)
 [Classification](https://www.pycaret.org/clf101)
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaret is an open source project. Everybody is welcome to contribute. If you would like to contribute, please feel free to work on [open issues](https://github.com/pycaret/pycaret/issues). Pull requests are accepted with unit tests on dev-1.0.1 branch.
 

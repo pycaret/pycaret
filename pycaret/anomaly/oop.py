@@ -2,17 +2,13 @@ from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
 
-import pycaret.containers.metrics.anomaly
-import pycaret.containers.models.anomaly
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
+from pycaret.containers.metrics import get_all_anomaly_metric_containers
+from pycaret.containers.models import get_all_anomaly_model_containers
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
     _UnsupervisedExperiment,
 )
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
+from pycaret.utils.generic import MLUsecase
 
 LOGGER = get_logger()
 
@@ -31,20 +27,18 @@ class AnomalyExperiment(_UnsupervisedExperiment):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in pycaret.containers.models.anomaly.get_all_model_containers(
+            for k, v in get_all_anomaly_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = (
-            pycaret.containers.models.anomaly.get_all_model_containers(
-                self, raise_errors=raise_errors
-            )
+        all_models_internal = get_all_anomaly_model_containers(
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return pycaret.containers.metrics.anomaly.get_all_metric_containers(
+        return get_all_anomaly_metric_containers(
             self.variables, raise_errors=raise_errors
         )
 

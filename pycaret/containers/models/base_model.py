@@ -7,8 +7,7 @@ from typing import Any, Dict, List, Optional
 from pycaret.containers.base_container import BaseContainer
 from pycaret.internal.distributions import CategoricalDistribution
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
-from pycaret.internal.utils import get_logger
-from pycaret.utils import get_allowed_engines
+from pycaret.utils.generic import get_allowed_engines, get_logger
 
 
 class ModelContainer(BaseContainer):

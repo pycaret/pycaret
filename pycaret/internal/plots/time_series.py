@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -13,6 +13,7 @@ from pycaret.internal.plots.utils.time_series import (
     PlotReturnType,
     _clean_model_results_labels,
     _get_subplot_rows_cols,
+    _plot_fig_update,
     _resolve_hoverinfo,
     _update_fig_dimensions,
     corr_subplot,
@@ -23,7 +24,7 @@ from pycaret.internal.plots.utils.time_series import (
     qq_subplot,
     time_series_subplot,
 )
-from pycaret.utils import _resolve_dict_keys
+from pycaret.utils.generic import _resolve_dict_keys
 from pycaret.utils.time_series import get_diffs
 
 __author__ = ["satya-pattnaik", "ngupta23"]
@@ -270,15 +271,7 @@ def plot_series(
             hoverinfo=hoverinfo,
         )
 
-    with fig.batch_update():
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(title=title, showlegend=True, template=template)
-
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs, show_legend=True)
 
     return_data_dict = {
         "data": plot_data,
@@ -320,7 +313,7 @@ def plot_cv(
     def get_windows(y, cv):
         """
         Generate windows
-        Inspired from `https://github.com/alan-turing-institute/sktime`
+        Inspired from `https://github.com/sktime/sktime`
         """
         train_windows = []
         test_windows = []
@@ -682,17 +675,9 @@ def plot_diagnostics(
         ],
     )
 
-    fig.update_layout(showlegend=False)
-    template = _resolve_dict_keys(
-        dict_=fig_kwargs, key="template", defaults=fig_defaults
-    )
-    fig.update_layout(template=template)
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs)
 
-    fig = _update_fig_dimensions(
-        fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-    )
-
-    #### Add diagnostic plots ----
+    # Add diagnostic plots ----
 
     # ROW 1
     fig = time_series_subplot(fig=fig, data=data, row=1, col=1, hoverinfo=hoverinfo)
@@ -713,14 +698,7 @@ def plot_diagnostics(
     fig, acf_data = corr_subplot(fig=fig, data=data_series, row=3, col=1, plot="acf")
     fig, pacf_data = corr_subplot(fig=fig, data=data_series, row=3, col=2, plot="pacf")
 
-    with fig.batch_update():
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(title=title, showlegend=False, template=template)
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs)
 
     return_data_dict = {
         "data": data,
@@ -767,7 +745,7 @@ def plot_predictions_with_confidence(
         if isinstance(upper_interval.index, pd.PeriodIndex)
         else upper_interval.index
     )
-    upper_bound = go.Scattergl(
+    upper_bound = go.Scatter(
         name=f"Prediction Interval | {model_label}",  # Changed since we use only 1 legend
         x=x,
         y=upper_interval,
@@ -784,7 +762,7 @@ def plot_predictions_with_confidence(
         if isinstance(preds.index, pd.PeriodIndex)
         else preds.index
     )
-    mean = go.Scattergl(
+    mean = go.Scatter(
         name=f"Forecast | {model_label}",
         x=x,
         y=preds,
@@ -799,7 +777,7 @@ def plot_predictions_with_confidence(
         if isinstance(data.index, pd.PeriodIndex)
         else data.index
     )
-    original = go.Scattergl(
+    original = go.Scatter(
         name="Original",
         x=x,
         y=data,
@@ -813,7 +791,7 @@ def plot_predictions_with_confidence(
         if isinstance(lower_interval.index, pd.PeriodIndex)
         else lower_interval.index
     )
-    lower_bound = go.Scattergl(
+    lower_bound = go.Scatter(
         name="Lower Interval",
         x=x,
         y=lower_interval,
@@ -831,15 +809,7 @@ def plot_predictions_with_confidence(
 
     fig = go.Figure(data=data, layout=layout)
 
-    template = _resolve_dict_keys(
-        dict_=fig_kwargs, key="template", defaults=fig_defaults
-    )
-    fig.update_layout(template=template)
-    fig.update_layout(showlegend=True)
-
-    fig = _update_fig_dimensions(
-        fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-    )
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs, show_legend=True)
 
     return_data_dict = {
         "data": data,
@@ -915,7 +885,7 @@ def plot_time_series_decomposition(
     data_kwargs = data_kwargs or {}
     period = data_kwargs.get("seasonal_period", None)
 
-    #### Check period ----
+    # Check period ----
     if period is None:
         raise ValueError(
             "Decomposition plot needed seasonal period to be passed through "
@@ -968,15 +938,7 @@ def plot_time_series_decomposition(
         )
         all_plot_data.update({col_name: plot_data})
 
-    with fig.batch_update():
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(title=title, showlegend=False, template=template)
-
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs)
 
     return_data_dict = {"data": data, plot: all_plot_data}
 
@@ -1114,7 +1076,7 @@ def plot_time_series_differences(
 
     for i, subplot_data in enumerate(diff_list):
 
-        #### Add difference data ----
+        # Add difference data ----
 
         ts_to_plot = pd.DataFrame(subplot_data)
         ts_to_plot.columns = [name_list[i]]
@@ -1126,7 +1088,7 @@ def plot_time_series_differences(
             hoverinfo=hoverinfo,
         )
 
-        #### Add diagnostics if requested ----
+        # Add diagnostics if requested ----
         if plot_acf:
             fig, acf_data = corr_subplot(
                 fig=fig,
@@ -1169,15 +1131,7 @@ def plot_time_series_differences(
                 plot="fft",
             )
 
-    with fig.batch_update():
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(title=title, showlegend=False, template=template)
-
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs)
 
     return_data_dict = {
         "data": data_series,
@@ -1401,7 +1355,7 @@ def plot_ccf(
     for i, col_name in enumerate(plot_data.columns):
         row = int(i / cols) + 1
         col = i % cols + 1
-        #### Add CCF plot ----
+        # Add CCF plot ----
         fig, ccf_data = corr_subplot(
             fig=fig,
             data=[y_series, plot_data[col_name]],
@@ -1411,15 +1365,7 @@ def plot_ccf(
         )
         all_ccf_data.update({col_name: ccf_data})
 
-    with fig.batch_update():
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(title=title, showlegend=False, template=template)
-
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs)
 
     return_data_dict = {"ccf": all_ccf_data}
 

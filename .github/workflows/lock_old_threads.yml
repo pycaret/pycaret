@@ -2,7 +2,7 @@ name: 'Lock Old Threads'
 
 on:
   schedule:
-    - cron: '35 1 * * *'
+    - cron: '45 1 * * *'
 
 permissions:
   issues: write
@@ -15,7 +15,7 @@ jobs:
   action:
     runs-on: ubuntu-latest
     steps:
-      - uses: dessant/lock-threads@v3
+      - uses: dessant/lock-threads@v4
         with:
           issue-inactive-days: '30'
           pr-inactive-days: '3650'

@@ -17,7 +17,7 @@ from statsmodels.tsa.seasonal import STL, seasonal_decompose
 from statsmodels.tsa.stattools import acf, ccf, pacf
 
 from pycaret.internal.logging import get_logger
-from pycaret.utils import _resolve_dict_keys
+from pycaret.utils.generic import _resolve_dict_keys
 from pycaret.utils.time_series import TSAllowedPlotDataTypes
 
 logger = get_logger()
@@ -25,7 +25,7 @@ logger = get_logger()
 PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 
 
-#### Data Types allowed for each plot type ----
+# Data Types allowed for each plot type ----
 # First one in the list is the default (if requested is None)
 ALLOWED_PLOT_DATA_TYPES = {
     "pipeline": [
@@ -103,7 +103,7 @@ ALLOWED_PLOT_DATA_TYPES = {
     ],
 }
 
-#### Are multiple plot types allowed at once ----
+# Are multiple plot types allowed at once ----
 MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE = {
     "ts": True,
     "train_test_split": True,
@@ -280,7 +280,7 @@ def corr_subplot(
     lags = np.arange(len(corr_values))
     name = name or default_name
 
-    #### Add the correlation plot ----
+    # Add the correlation plot ----
     fig = _add_corr_stems_subplot(
         fig=fig, corr_values=corr_values, lags=lags, name=name, row=row, col=col
     )
@@ -330,7 +330,7 @@ def _add_corr_stems_subplot(
     go.Figure
         Returns back the plotly figure with stems inserted
     """
-    #### Add corr plot stem lines ----
+    # Add corr plot stem lines ----
     [
         fig.add_scattergl(
             x=(lag, lag),
@@ -344,7 +344,7 @@ def _add_corr_stems_subplot(
         for lag in lags
     ]
 
-    #### Add corr plot stem endpoints ----
+    # Add corr plot stem endpoints ----
     fig.add_scattergl(
         x=lags,
         y=corr_values,
@@ -385,7 +385,7 @@ def _add_corr_bounds_subplot(
     # For some reason scattergl does not work here. Hence switching to scatter.
     # (refer: https://github.com/pycaret/pycaret/issues/2211).
 
-    #### Add the Upper Confidence Interval ----
+    # Add the Upper Confidence Interval ----
     fig.add_scatter(
         x=np.arange(len(upper)),
         y=upper,
@@ -396,7 +396,7 @@ def _add_corr_bounds_subplot(
         name="UC",
     )
 
-    #### Add the Lower Confidence Interval ----
+    # Add the Lower Confidence Interval ----
     fig.add_scatter(
         x=np.arange(len(lower)),
         y=lower,
@@ -547,7 +547,7 @@ def decomp_subplot(
         else data.index
     )
 
-    #### Plot Original data ----
+    # Plot Original data ----
     row = 1
     fig.add_trace(
         go.Scattergl(
@@ -1021,12 +1021,6 @@ def _resolve_renderer(
             renderer = "png"
     # if renderer is not None, then use as is.
 
-    if renderer not in pio.renderers:
-        raise ValueError(
-            f"Renderer '{renderer}' is not a valid Plotly renderer. "
-            f"Valid renderers are:\n {pio.renderers}"
-        )
-
     return renderer
 
 
@@ -1059,16 +1053,16 @@ def _get_data_types_to_plot(
         If none of the requested data types are supported by the plot
     """
 
-    #### Get default if not provided ----
+    # Get default if not provided ----
     if data_types_requested is None:
         # First one is the default
         data_types_requested = [ALLOWED_PLOT_DATA_TYPES.get(plot)[0]]
 
-    #### Convert string to list ----
+    # Convert string to list ----
     if isinstance(data_types_requested, str):
         data_types_requested = [data_types_requested]
 
-    #### Is the data type allowed for the requested plot?
+    # Is the data type allowed for the requested plot?
     all_plot_data_types = [member.value for member in TSAllowedPlotDataTypes]
     data_types_allowed = [
         True
@@ -1212,3 +1206,43 @@ def _clean_model_results_labels(
     ]
 
     return model_results, model_labels
+
+
+def _plot_fig_update(
+    fig: go.Figure,
+    title: str,
+    fig_defaults: Dict[str, Any],
+    fig_kwargs: Optional[Dict] = None,
+    show_legend: bool = False,
+) -> go.Figure:
+    """Customises the template layout and dimension of plots
+
+    Parameters
+    ----------
+    fig: go.Figure
+        Plotly figure which needs to be customised
+    title: str
+        Title of the plot
+    fig_defaults : Dict[str, Any]
+        The default settings for the plotly plot. Must contain keys for "width",
+        "height", and "template".
+    fig_kwargs : Optional[Dict], optional
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
+    show_legend: bool, default=False
+        If True, displays the legend in the plot when layout is updated.
+
+    Returns
+    -------
+    go.Figure
+        The Plotly figure with updated dimnensions and template layout.
+    """
+    with fig.batch_update():
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(title=title, showlegend=show_legend, template=template)
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
+    return fig

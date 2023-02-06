@@ -1,11 +1,11 @@
 
-## Write and train your own custom machine learning models using PyCaret
+# Write and train your own custom machine learning models using PyCaret
 
-### A step-by-step, beginner-friendly tutorial on how to write and train custom machine learning models in PyCaret
+# A step-by-step, beginner-friendly tutorial on how to write and train custom machine learning models in PyCaret
 
 ![Photo by [Rob Lambert](https://unsplash.com/@roblambertjr?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)](https://cdn-images-1.medium.com/max/10368/0*dERI0tdhD_Yay4OU)
 
-## PyCaret
+# PyCaret
 
 PyCaret is an open-source, low-code machine learning library and end-to-end model management tool built-in Python for automating machine learning workflows. It is incredibly popular for its ease of use, simplicity, and ability to quickly and efficiently build and deploy end-to-end ML prototypes.
 
@@ -21,7 +21,7 @@ This tutorial assumes that you have some prior knowledge and experience with PyC
 
 * [Five things you don’t know about PyCaret](https://towardsdatascience.com/5-things-you-dont-know-about-pycaret-528db0436eec)
 
-## Installing PyCaret
+# Installing PyCaret
 
 Installing PyCaret is very easy and takes only a few minutes. We strongly recommend using a virtual environment to avoid potential conflicts with other libraries.
 
@@ -35,11 +35,11 @@ PyCaret’s default installation is a slim version of pycaret that only installs
 
 When you install the full version of pycaret, all the optional dependencies as [listed here](https://github.com/pycaret/pycaret/blob/master/requirements-optional.txt) are also installed.
 
-## 👉 Let’s get started
+# 👉 Let’s get started
 
 Before we start talking about custom model training, let’s see a quick demo of how PyCaret works with out-of-the-box models. I will be using the ‘insurance’ dataset available on [PyCaret’s Repository](https://github.com/pycaret/pycaret/tree/master/datasets). The goal of this dataset is to predict patient charges based on some attributes.
 
-## 👉 **Dataset**
+# 👉 **Dataset**
 
     **# read data from pycaret repo
     **from pycaret.datasets import get_data
@@ -47,7 +47,7 @@ Before we start talking about custom model training, let’s see a quick demo of
 
 ![Sample rows from insurance dataset](https://cdn-images-1.medium.com/max/2000/1*h4UQIEtUUmsP2ybJlsFKPA.png)
 
-## 👉 **Data Preparation**
+# 👉 **Data Preparation**
 
 Common to all modules in PyCaret, the setup is the first and the only mandatory step in any machine learning experiment performed in PyCaret. This function takes care of all the data preparation required before training models. Besides performing some basic default processing tasks, PyCaret also offers a wide array of pre-processing features. To learn more about all the preprocessing functionalities in PyCaret, you can see this [link](https://pycaret.org/preprocessing/).
 
@@ -61,7 +61,7 @@ Whenever you initialize the setup function in PyCaret, it profiles the dataset a
 
 ![Output from setup — truncated for display](https://cdn-images-1.medium.com/max/2000/1*Y9kIg0BfRfzG1WdZm6MnbQ.png)
 
-## 👉 Available Models
+# 👉 Available Models
 
 To check the list of all models available for training, you can use the function called models . It displays a table with model ID, name, and the reference of the actual estimator.
 
@@ -70,7 +70,7 @@ To check the list of all models available for training, you can use the function
 
 ![Output from models() — Output truncated for display purpose](https://cdn-images-1.medium.com/max/2000/1*JVVVA2aUyVBJ9SyQjEC13A.png)
 
-## 👉 Model Training & Selection
+# 👉 Model Training & Selection
 
 The most used function for training any model in PyCaret is create_model . It takes an ID for the estimator you want to train.
 
@@ -130,13 +130,13 @@ To generate predictions on the unseen dataset you can use the same predict_model
 
 ![Output from predict_model(best_model, data = data2)](https://cdn-images-1.medium.com/max/2000/1*jch_dJNscn_i2vNfgWpV5g.png)
 
-## 👉 Writing and Training Custom Model
+# 👉 Writing and Training Custom Model
 
 So far what we have seen is training and model selection for all the available models in PyCaret. However, the way PyCaret works for custom models is exactly the same. As long as, your estimator is compatible with sklearn API style, it will work the same way. Let’s see few examples.
 
 Before I show you how to write your own custom class, I will first demonstrate how you can work with custom non-sklearn models (models that are not available in sklearn or pycaret’s base library).
 
-### 👉 **GPLearn Models**
+# 👉 **GPLearn Models**
 
 While Genetic Programming (GP) can be used to perform a [very wide variety of tasks](http://www.genetic-programming.org/combined.php), gplearn is purposefully constrained to solving symbolic regression problems.
 
@@ -169,7 +169,7 @@ You can also check the hold-out score for this:
 
 ![Output from predict_model(sc_trained)](https://cdn-images-1.medium.com/max/2000/1*EoTHf4G1wm8Zh0xqScS_Gg.png)
 
-### 👉 NGBoost Models
+# 👉 NGBoost Models
 
 ngboost is a Python library that implements Natural Gradient Boosting, as described in [“NGBoost: Natural Gradient Boosting for Probabilistic Prediction”](https://stanfordmlgroup.github.io/projects/ngboost/). It is built on top of [Scikit-Learn](https://scikit-learn.org/stable/) and is designed to be scalable and modular with respect to the choice of proper scoring rule, distribution, and base learner. A didactic introduction to the methodology underlying NGBoost is available in this [slide deck](https://drive.google.com/file/d/183BWFAdFms81MKy6hSku8qI97OwS_JH_/view?usp=sharing).
 
@@ -193,7 +193,7 @@ Once installed, you can import the untrained estimator from the ngboost library 
 
 ![Output from print(ng_trained)](https://cdn-images-1.medium.com/max/2000/1*SSZoHUK4NnLE2Ri_Uy985Q.png)
 
-### 👉 Writing Custom Class
+# 👉 Writing Custom Class
 
 The above two examples gplearn and ngboost are custom models for pycaret as they are not available in the default library but you can use them just like you can use any other out-of-the-box models. However, there may be a use-case that involves writing your own algorithm (i.e. maths behind the algorithm), in which case you can inherit the base class from sklearn and write your own maths.
 
@@ -234,7 +234,7 @@ Notice that Label column which is essentially the prediction is the same number 
 
 I hope that you will appreciate the ease of use and simplicity in PyCaret. In just a few lines, you can perform end-to-end machine learning experiments and write your own algorithms without adjusting any native code.
 
-## Coming Soon!
+# Coming Soon!
 
 Next week I will be writing a tutorial to advance this tutorial. We will write a more complex algorithm instead of just a mean prediction. I will introduce some complex concepts in the next tutorial. Please follow me on [Medium](https://medium.com/@moez-62905), [LinkedIn](https://www.linkedin.com/in/profile-moez/), and [Twitter](https://twitter.com/moezpycaretorg1) to get more updates.
 
@@ -244,7 +244,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## You may also be interested in:
+# You may also be interested in:
 
 [Build your own AutoML in Power BI using PyCaret 2.0](https://towardsdatascience.com/build-your-own-automl-in-power-bi-using-pycaret-8291b64181d)
 [Deploy Machine Learning Pipeline on Azure using Docker](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01)
@@ -255,7 +255,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 [Build and deploy machine learning web app using PyCaret and Streamlit](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104)
 [Deploy Machine Learning App built using Streamlit and PyCaret on GKE](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb)
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -265,7 +265,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

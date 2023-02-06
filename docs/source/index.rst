@@ -13,7 +13,7 @@ The design and simplicity of PyCaret is inspired by the emerging role of citizen
 
 If you’re citing PyCaret in research or scientific paper, please cite this page as the resource. PyCaret’s first stable release 1.0.0 was made publicly available in April 2020. 
 
-pycaret.org. PyCaret, April 2020. URL https://pycaret.org/about. PyCaret version 1.0.0.
+pycaret.org. PyCaret, April 2020. URL https://pycaret.org/. PyCaret version 1.0.0.
 
 A formatted version of the citation would look like this::
 
@@ -26,7 +26,8 @@ A formatted version of the citation would look like this::
       url     = {https://www.pycaret.org}
     }
 
-We are appreciated that PyCaret has been increasingly referred and cited in scientific works. See all citations here: https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=pycaret&btnG=
+We are appreciated that PyCaret has been increasingly referred and cited in scientific works. See all citations `here <https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=pycaret&btnG=>`_.
+
 
 **Key Links and Resources**\ :
 
@@ -36,7 +37,7 @@ We are appreciated that PyCaret has been increasingly referred and cited in scie
 * `LinkedIn <https://www.linkedin.com/company/pycaret/>`_
 * `YouTube <https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g>`_
 * `Contribute <https://github.com/pycaret/pycaret/blob/master/CONTRIBUTING.md>`_
-* `More about PyCaret <https://pycaret.org/about/>`_
+* `More about PyCaret <https://pycaret.gitbook.io/docs/learn-pycaret/official-blog>`_
 
 
 .. toctree::

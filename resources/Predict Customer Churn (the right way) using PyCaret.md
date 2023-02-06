@@ -1,21 +1,21 @@
 
-## Predict Customer Churn (the right way) using PyCaret
+# Predict Customer Churn (the right way) using PyCaret
 
-### A step-by-step guide on how to predict customer churn the right way using PyCaret that actually optimizes the business objective and improves ROI
+# A step-by-step guide on how to predict customer churn the right way using PyCaret that actually optimizes the business objective and improves ROI
 
 ![Predict Customer Churn (the right way) using PyCaret — Image by Author](https://cdn-images-1.medium.com/max/2630/1*mu45A-psfPHTIM1F_nUXBw.png)
 
-## **Introduction**
+# **Introduction**
 
 Customer retention is one of the primary KPI for companies with a subscription-based business model. Competition is tough particularly in the SaaS market where customers are free to choose from plenty of providers. One bad experience and customer may just move to the competitor resulting in customer churn.
 
-## **What is Customer Churn?**
+# **What is Customer Churn?**
 
 Customer churn is the percentage of customers that stopped using your company’s product or service during a certain time frame. One of the ways to calculate a churn rate is to divide the number of customers lost during a given time interval by the number of active customers at the beginning of the period. For example, if you got 1000 customers and lost 50 last month, then your monthly churn rate is 5 percent.
 
 Predicting customer churn is a challenging but extremely important business problem especially in industries where the cost of customer acquisition (CAC) is high such as technology, telecom, finance, etc. The ability to predict that a particular customer is at a high risk of churning, while there is still time to do something about it, represents a huge additional potential revenue source for companies.
 
-## How is the Customer Churn machine learning model used in practice?
+# How is the Customer Churn machine learning model used in practice?
 
 The primary objective of the customer churn predictive model is to retain customers at the highest risk of churn by proactively engaging with them. For example: Offer a gift voucher or any promotional pricing and lock them in for an additional year or two to extend their lifetime value to the company.
 
@@ -27,7 +27,7 @@ There are two broad concepts to understand here:
 
 ![How to create customer churn dataset — Image by Author](https://cdn-images-1.medium.com/max/2000/1*yNaRKOY1ZjTF59U1LRnQ0g.png)
 
-## Customer Churn Model Workflow
+# Customer Churn Model Workflow
 
 Now that you understand how the data is sourced and churn target is created (which is one of the most challenging parts of the problem), let’s discuss how this machine learning model will be used in the business. Read the below diagram from left-to-right:
 
@@ -41,22 +41,22 @@ Now that you understand how the data is sourced and churn target is created (whi
 
 ![Customer Churn Model Workflow— Image by Author](https://cdn-images-1.medium.com/max/2598/1*V_Yiyl5iWIC6mRXEiTC0Qg.png)
 
-## Let’s get started with the practical example
+# Let’s get started with the practical example
 
 In this section, I will demonstrate the complete end-to-end workflow for machine learning model training & selection, hyperparameter tuning, analysis, and interpretation of the results. I will also discuss the metrics that you can optimize and why conventional metrics like AUC, Accuracy, Recall may not be suitable for the customer churn models. I will be using [PyCaret](https://www.pycaret.org) — an open-source, low-code machine learning library to perform this experiment. This tutorial assumes you have basic knowledge of PyCaret.
 
-## PyCaret
+# PyCaret
 
 [PyCaret](https://www.pycaret.org/) is an open-source, low-code machine learning library and end-to-end model management tool built-in Python for automating machine learning workflows. PyCaret is known for its ease of use, simplicity, and ability to quickly and efficiently build and deploy end-to-end machine learning pipelines. To learn more about PyCaret, check out their [GitHub](https://www.github.com/pycaret/pycaret).
 
 ![Features of PyCaret — Image by Author](https://cdn-images-1.medium.com/max/2084/0*KAZzGooA90037WgZ.png)
 
-## Install PyCaret
+# Install PyCaret
 
     **# install pycaret
     **pip install pycaret
 
-## 👉Dataset
+# 👉Dataset
 
 For this tutorial, I am using a [Telecom Customer Churn](https://www.kaggle.com/blastchar/telco-customer-churn) dataset from Kaggle. The dataset already contains the target column that we can use as is. You can read this dataset directly from this [GitHub](https://raw.githubusercontent.com/srees1988/predict-churn-py/main/customer_churn_data.csv) link. (*Shoutout to srees1988*)
 
@@ -69,7 +69,7 @@ For this tutorial, I am using a [Telecom Customer Churn](https://www.kaggle.com/
 
 ![Sample dataset — Image by Author](https://cdn-images-1.medium.com/max/2702/1*mN9rTN4VxjI5opbTbnSZmQ.png)
 
-## **👉 Exploratory Data Analysis**
+# **👉 Exploratory Data Analysis**
 
     **# check data types
     **data.dtypes
@@ -101,7 +101,7 @@ Notice that most churn can be seen in the contracts that are “Month-to-Month�
 
 Notice that because we replaced blank values with np.nan there are now 11 rows with missing values in TotalCharges. No problem — I will leave it with PyCaret to impute it automatically.
 
-## **👉Data Preparation**
+# **👉Data Preparation**
 
 Common to all modules in PyCaret, the setup is the first and the only mandatory step in any machine learning experiment performed in PyCaret. This function takes care of all the data preparation required prior to training models. Besides performing some basic default processing tasks, PyCaret also offers a wide array of pre-processing features. To learn more about all the preprocessing functionalities in PyCaret, you can see this [link](https://pycaret.org/preprocessing/).
 
@@ -117,7 +117,7 @@ Also, notice that I have passed ignore_features = ['customerID'] in the setup fu
 
 ![Output from setup — truncated for display — Image by Author](https://cdn-images-1.medium.com/max/2000/1*Y2N6dU1qvJFwOyTmTbgoCw.png)
 
-## 👉 Model Training & Selection
+# 👉 Model Training & Selection
 
 Now that data preparation is done, let’s start the training process by using compare_models functionality. This function trains all the algorithms available in the model library and evaluates multiple performance metrics using cross-validation.
 
@@ -133,7 +133,7 @@ The best model based on **AUC*** *is Gradient Boosting Classifier . AUC using 10
 
 ![Best Model Parameters — Image by Author](https://cdn-images-1.medium.com/max/2000/1*6TQiy5iPNmCYM0DolQ8Mjg.png)
 
-## **Hyperparameter Tuning**
+# **Hyperparameter Tuning**
 
 You can use the tune_model function from PyCaret to automatically tune the hyperparameters of the model.
 
@@ -144,7 +144,7 @@ You can use the tune_model function from PyCaret to automatically tune the hyper
 
 Notice that AUC has slightly increased from 0.8472 to 0.8478 .
 
-## Model Analysis
+# Model Analysis
 
     **# AUC Plot**
     plot_model(tuned_best_model, plot = 'auc')
@@ -181,7 +181,7 @@ Using these assumptions and the confusion matrix above, we can calculate the $ i
 
 It’s a good model but the problem is it’s not a business-smart model. It is doing a pretty good job compared to if you have no model but how can we train and select a model that maximizes the business value. In order to achieve that we have to train, select, and optimize models using business metrics instead of any conventional metric like AUC or Accuracy.
 
-## **👉 Adding Custom Metric in PyCaret**
+# **👉 Adding Custom Metric in PyCaret**
 
 Thanks to PyCaret, it is extremely easy to achieve this using add_metric function.
 
@@ -225,7 +225,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -235,7 +235,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## More PyCaret related tutorials:
+# More PyCaret related tutorials:
 [**Machine Learning in Alteryx with PyCaret**
 *A step-by-step tutorial on training and deploying machine learning models in Alteryx Designer using PyCaret*towardsdatascience.com](https://towardsdatascience.com/machine-learning-in-alteryx-with-pycaret-fafd52e2d4a)
 [**Machine Learning in KNIME with PyCaret**

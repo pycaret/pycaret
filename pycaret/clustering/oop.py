@@ -3,18 +3,18 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np  # type: ignore
 import pandas as pd  # type ignore
 
-import pycaret.containers.metrics.clustering
-import pycaret.containers.models.clustering
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
 from pycaret.containers.models.clustering import get_container_default_engines
+from pycaret.containers.metrics import get_all_clust_metric_containers
+from pycaret.containers.models import get_all_clust_model_containers
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
     _UnsupervisedExperiment,
 )
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
+from pycaret.utils.generic import MLUsecase
 
 LOGGER = get_logger()
 
@@ -37,20 +37,18 @@ class ClusteringExperiment(_UnsupervisedExperiment):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in pycaret.containers.models.clustering.get_all_model_containers(
+            for k, v in get_all_clust_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = (
-            pycaret.containers.models.clustering.get_all_model_containers(
-                self, raise_errors=raise_errors
-            )
+        all_models_internal = get_all_clust_model_containers(
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return pycaret.containers.metrics.clustering.get_all_metric_containers(
+        return get_all_clust_metric_containers(
             self.variables, raise_errors=raise_errors
         )
 
@@ -243,7 +241,7 @@ class ClusteringExperiment(_UnsupervisedExperiment):
         df.set_index("ID", inplace=True, drop=True)
 
         if not include_custom:
-            df = df[df["Custom"] == False]
+            df = df[df["Custom"] is False]
 
         return df
 
@@ -252,7 +250,6 @@ class ClusteringExperiment(_UnsupervisedExperiment):
         id: str,
         name: str,
         score_func: type,
-        target: str = "pred",
         greater_is_better: bool = True,
         needs_ground_truth: bool = False,
         **kwargs,
@@ -271,14 +268,6 @@ class ClusteringExperiment(_UnsupervisedExperiment):
 
         score_func: type
             Score function (or loss function) with signature ``score_func(y, y_pred, **kwargs)``.
-
-
-        target: str, default = 'pred'
-            The target of the score function.
-
-            - 'pred' for the prediction table
-            - 'pred_proba' for pred_proba
-            - 'threshold' for decision_function or predict_proba
 
 
         greater_is_better: bool, default = True
@@ -353,7 +342,7 @@ class ClusteringExperiment(_UnsupervisedExperiment):
         try:
             self._all_metrics.pop(name_or_id)
             return
-        except:
+        except Exception:
             pass
 
         try:
@@ -362,7 +351,7 @@ class ClusteringExperiment(_UnsupervisedExperiment):
             )
             self._all_metrics.pop(k_to_remove)
             return
-        except:
+        except Exception:
             pass
 
         raise ValueError(

@@ -26,20 +26,23 @@ import pycaret.internal.preprocess
 import pycaret.loggers
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import create_logger, get_logger, redirect_output
-from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
+from pycaret.internal.memory import get_memory
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
-from pycaret.internal.pipeline import get_memory
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
-from pycaret.internal.utils import get_label_encoder, get_model_name
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
-from pycaret.utils import get_allowed_engines
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import (
+    MLUsecase,
+    get_allowed_engines,
+    get_label_encoder,
+    get_model_name,
+)
 
 LOGGER = get_logger()
 
@@ -50,19 +53,17 @@ class _TabularExperiment(_PyCaretExperiment):
         self.all_allowed_engines = None
         self.fold_shuffle_param = False
         self.fold_groups_param = None
-        self.variable_keys = self.variable_keys.union(
+        self.exp_model_engines = {}
+        self._variable_keys = self._variable_keys.union(
             {
                 "_ml_usecase",
                 "_available_plots",
-                "variable_keys",
                 "USI",
                 "html_param",
                 "seed",
                 "pipeline",
                 "n_jobs_param",
-                "_gpu_n_jobs_param",
-                "master_model_container",
-                "display_container",
+                "gpu_n_jobs_param",
                 "exp_name_log",
                 "exp_id",
                 "logging_param",
@@ -70,9 +71,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 "data",
                 "idx",
                 "gpu_param",
-                "_all_models",
-                "_all_models_internal",
-                "_all_metrics",
                 "memory",
             }
         )
@@ -97,11 +95,11 @@ class _TabularExperiment(_PyCaretExperiment):
         data: Optional[pd.DataFrame] = None,
         fold_groups=None,
     ):
-        import pycaret.internal.utils
+        import pycaret.utils.generic
 
         data = data if data is not None else self.X_train
         fold_groups = fold_groups if fold_groups is not None else self.fold_groups_param
-        return pycaret.internal.utils.get_groups(groups, data, fold_groups)
+        return pycaret.utils.generic.get_groups(groups, data, fold_groups)
 
     def _get_cv_splitter(
         self, fold, ml_usecase: Optional[MLUsecase] = None
@@ -110,9 +108,9 @@ class _TabularExperiment(_PyCaretExperiment):
         if not ml_usecase:
             ml_usecase = self._ml_usecase
 
-        import pycaret.internal.utils
+        import pycaret.utils.generic
 
-        return pycaret.internal.utils.get_cv_splitter(
+        return pycaret.utils.generic.get_cv_splitter(
             fold,
             default=self.fold_generator,
             seed=self.seed,
@@ -132,7 +130,7 @@ class _TabularExperiment(_PyCaretExperiment):
         if models is None:
             models = self._all_models_internal
 
-        return pycaret.internal.utils.get_model_id(e, models)
+        return pycaret.utils.generic.get_model_id(e, models)
 
     def _get_metric_by_name_or_id(self, name_or_id: str, metrics: Optional[Any] = None):
         """
@@ -230,7 +228,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
     def _validate_log_experiment(self, obj: Any) -> None:
         return isinstance(obj, (bool, BaseLogger)) or (
-            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb"]
+            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb", "dagshub"]
         )
 
     def _convert_log_experiment(
@@ -244,7 +242,7 @@ class _TabularExperiment(_PyCaretExperiment):
             or self._validate_log_experiment(log_experiment)
         ):
             raise TypeError(
-                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb'; or a list of the former."
+                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb', 'dagshub'; or a list of the former."
             )
 
         def convert_logging_param(obj):
@@ -255,9 +253,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 return MlflowLogger()
             if obj == "wandb":
                 return WandbLogger()
+            if obj == "dagshub":
+                return DagshubLogger(os.getenv("MLFLOW_TRACKING_URI"))
 
         if log_experiment:
-            loggers_list = []
             if log_experiment is True:
                 loggers_list = [MlflowLogger()]
             else:
@@ -290,7 +289,7 @@ class _TabularExperiment(_PyCaretExperiment):
         target column.
 
         """
-        from pycaret.utils import __version__
+        from pycaret import __version__
 
         # Parameter attrs
         self.n_jobs_param = n_jobs
@@ -322,7 +321,7 @@ class _TabularExperiment(_PyCaretExperiment):
         self.logger.info("Initializing setup()")
         self.logger.info(f"self.USI: {self.USI}")
 
-        self.logger.info(f"self.variable_keys: {self.variable_keys}")
+        self.logger.info(f"self._variable_keys: {self._variable_keys}")
 
         self._check_environment()
 
@@ -344,13 +343,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 cuml_version = __version__
                 self.logger.info(f"cuml=={cuml_version}")
 
-                cuml_version = cuml_version.split(".")
-                cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
-
             if cuml_version is None or not version.parse(cuml_version) >= version.parse(
-                "0.15"
+                "22.10"
             ):
-                message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
+                message = f"cuML is outdated or not found. Required version is >=22.10, got {__version__}"
                 if use_gpu == "force":
                     raise ImportError(message)
                 else:
@@ -418,7 +414,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # multiclass plot exceptions:
         multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
-        if self._is_multiclass:
+        if self.is_multiclass:
             if plot in multiclass_not_available:
                 raise ValueError(
                     "Plot Not Available for multiclass problems. Please see docstring for list of available Plots."
@@ -429,12 +425,6 @@ class _TabularExperiment(_PyCaretExperiment):
         #    raise ValueError(
         #    "CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
         # )
-
-        # checking for auc plot
-        if not hasattr(estimator, "predict_proba") and plot == "auc":
-            raise TypeError(
-                "AUC plot not available for estimators with no predict_proba attribute."
-            )
 
         # checking for auc plot
         if not hasattr(estimator, "predict_proba") and plot == "auc":
@@ -529,8 +519,6 @@ class _TabularExperiment(_PyCaretExperiment):
         plot_name = self._available_plots[plot]
 
         # yellowbrick workaround start
-        import yellowbrick.utils.helpers
-        import yellowbrick.utils.types
 
         # yellowbrick workaround end
 
@@ -1068,11 +1056,10 @@ class _TabularExperiment(_PyCaretExperiment):
                             scale=scale,
                             save=save,
                             fit_kwargs=fit_kwargs,
-                            groups=groups,
                             display_format=display_format,
                         )
 
-                    except:
+                    except Exception:
                         self.logger.error("Elbow plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
                         raise TypeError("Plot Type not supported for this model.")
@@ -1095,10 +1082,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             scale=scale,
                             save=save,
                             fit_kwargs=fit_kwargs,
-                            groups=groups,
                             display_format=display_format,
                         )
-                    except:
+                    except Exception:
                         self.logger.error("Silhouette plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
                         raise TypeError("Plot Type not supported for this model.")
@@ -1119,10 +1105,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             scale=scale,
                             save=save,
                             fit_kwargs=fit_kwargs,
-                            groups=groups,
                             display_format=display_format,
                         )
-                    except:
+                    except Exception:
                         self.logger.error("Distance plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
                         raise TypeError("Plot Type not supported for this model.")
@@ -1142,7 +1127,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1161,7 +1145,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1182,7 +1165,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1203,7 +1185,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1227,7 +1208,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1257,7 +1237,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1277,7 +1256,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         handle_test="",
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1298,7 +1276,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1338,7 +1315,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         handle_test="draw",
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         features=["Feature One", "Feature Two"],
                         classes=["A", "B"],
                         display_format=display_format,
@@ -1348,7 +1324,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.model_selection import RFECV
 
-                    visualizer = RFECV(estimator, cv=cv, **plot_kwargs)
+                    visualizer = RFECV(estimator, cv=cv, groups=groups, **plot_kwargs)
                     return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
@@ -1360,7 +1336,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1373,7 +1348,8 @@ class _TabularExperiment(_PyCaretExperiment):
                         estimator,
                         cv=cv,
                         train_sizes=sizes,
-                        n_jobs=self._gpu_n_jobs_param,
+                        groups=groups,
+                        n_jobs=self.gpu_n_jobs_param,
                         random_state=self.seed,
                     )
                     return show_yellowbrick_plot(
@@ -1387,7 +1363,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1463,7 +1438,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1648,9 +1622,9 @@ class _TabularExperiment(_PyCaretExperiment):
                         try:
                             # catboost special case
                             model_params = estimator.get_all_params()
-                        except:
+                        except Exception:
                             model_params = estimator.get_params()
-                    except:
+                    except Exception:
                         # display.clear_output()
                         self.logger.error("VC plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
@@ -1791,8 +1765,9 @@ class _TabularExperiment(_PyCaretExperiment):
                         param_name=param_name,
                         param_range=param_range,
                         cv=cv,
+                        groups=groups,
                         random_state=self.seed,
-                        n_jobs=self._gpu_n_jobs_param,
+                        n_jobs=self.gpu_n_jobs_param,
                     )
                     return show_yellowbrick_plot(
                         visualizer=viz,
@@ -1806,7 +1781,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1847,7 +1821,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1868,7 +1841,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             if len(coef) > len(self.X_train_transformed.columns):
                                 coef = coef[: len(self.X_train_transformed.columns)]
                             variables = abs(coef)
-                        except:
+                        except Exception:
                             pass
                     if variables is None:
                         self.logger.warning(
@@ -1919,7 +1892,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     try:
                         params = estimator.get_all_params()
-                    except:
+                    except Exception:
                         params = estimator.get_params(deep=False)
 
                     param_df = pd.DataFrame.from_dict(
@@ -1937,7 +1910,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     predict_proba__ = estimator.predict_proba(self.X_train_transformed)
                     # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-                        fig = skplt.metrics.plot_ks_statistic(
+                        skplt.metrics.plot_ks_statistic(
                             self.y_train_transformed, predict_proba__, figsize=(10, 6)
                         )
                         plot_filename = None
@@ -1965,7 +1938,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 try:
                     plt.close()
-                except:
+                except Exception:
                     pass
 
         gc.collect()
@@ -2419,7 +2392,7 @@ class _TabularExperiment(_PyCaretExperiment):
         else:
             pipeline_to_use = self.pipeline
 
-        return pycaret.internal.persistence.save_model(
+        model_, model_filename = pycaret.internal.persistence.save_model(
             model=model,
             model_name=model_name,
             prep_pipe_=None if model_only else pipeline_to_use,
@@ -2427,6 +2400,14 @@ class _TabularExperiment(_PyCaretExperiment):
             use_case=self._ml_usecase,
             **kwargs,
         )
+        if self.logging_param:
+            [
+                logger.log_artifact(file=model_filename, type="model")
+                for logger in self.logging_param.loggers
+                if hasattr(logger, "remote")
+            ]
+
+        return model_, model_filename
 
     def load_model(
         self,
@@ -2584,7 +2565,7 @@ class _TabularExperiment(_PyCaretExperiment):
         >>> from pycaret.classification import *
         >>> exp_name = setup(data = juice,  target = 'Purchase')
         >>> lr = create_model('lr')
-        >>> create_api(lr, 'lr_api'
+        >>> create_api(lr, 'lr_api')
         >>> !python lr_api.py
 
 
@@ -2592,8 +2573,8 @@ class _TabularExperiment(_PyCaretExperiment):
             Trained model object
 
 
-        api_name: scikit-learn compatible object
-            Trained model object
+        api_name: str
+            Name of the model.
 
 
         host: str, default = '127.0.0.1'
@@ -2607,56 +2588,43 @@ class _TabularExperiment(_PyCaretExperiment):
         Returns:
             None
         """
-
         _check_soft_dependencies("fastapi", extra="mlops", severity="error")
-        import fastapi
-
         _check_soft_dependencies("uvicorn", extra="mlops", severity="error")
-        import uvicorn
-
         _check_soft_dependencies("pydantic", extra="mlops", severity="error")
-        import pydantic
-
-        MODULE = (
-            self._ml_usecase.name.lower()
-        )  ## added .name.lower() as output changed from main branch
-        API_NAME = api_name
-        HOST = host
 
         self.save_model(estimator, model_name=api_name, verbose=False)
-        targetname = f"{self.target_param}_prediction"
-        ## Removed tabs from query as that was causing the original file to have indentation errors.
-        query = """
+        target = f"{self.target_param}_prediction"
+
+        query = f"""# -*- coding: utf-8 -*-
+
 import pandas as pd
-from pycaret.{MODULE_NAME} import load_model, predict_model
+from pycaret.{self._ml_usecase.name.lower()} import load_model, predict_model
 from fastapi import FastAPI
 import uvicorn
 from pydantic import create_model
+
 # Create the app
 app = FastAPI()
+
 # Load trained Pipeline
-model = load_model("{API_NAME}")
+model = load_model("{api_name}")
+
 # Create input/output pydantic models
-pydanticinputmodel=create_model("{API_NAME}_input", **{inputDataframeschema})
-pydanticoutputmodel=create_model("{API_NAME}_output", **{outputDataframeschema})
+input_model = create_model("{api_name}_input", **{self.X.iloc[0].to_dict()})
+output_model = create_model("{api_name}_output", {target}={repr(self.y[0])})
+
+
 # Define predict function
-@app.post("/predict", response_model=pydanticoutputmodel)
-def predict(datainput:pydanticinputmodel):
-    data = pd.DataFrame([datainput.dict()])
+@app.post("/predict", response_model=output_model)
+def predict(data: input_model):
+    data = pd.DataFrame([data.dict()])
     predictions = predict_model(model, data=data)
-    return {D1}"{tarname}": predictions["prediction_label"][0]{D2}
+    return {{"{target}": predictions["prediction_label"].iloc[0]}}
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="{HOST}", port={PORT})""".format(
-            MODULE_NAME=MODULE,
-            API_NAME=API_NAME,
-            inputDataframeschema=self.X.iloc[0].to_dict(),
-            outputDataframeschema={targetname: self.y.iloc[0]},
-            D1="{",
-            tarname=targetname,
-            D2="}",
-            HOST=HOST,
-            PORT=port,
-        )
+    uvicorn.run(app, host="{host}", port={port})
+"""
 
         file_name = str(api_name) + ".py"
 
@@ -2664,14 +2632,11 @@ if __name__ == "__main__":
         f.write(query)
         f.close()
 
-        message = """
-    API sucessfully created. This function only creates a POST API, it doesn't run it automatically.
-    To run your API, please run this command --> !python {API_NAME}.py
-        """.format(
-            API_NAME=API_NAME
+        print(
+            "API successfully created. This function only creates a POST API, "
+            "it doesn't run it automatically. To run your API, please run this "
+            f"command --> !python {api_name}.py"
         )
-
-        print(message)
 
     def eda(self, display_format: str = "bokeh", **kwargs):
         """
@@ -2801,7 +2766,7 @@ CMD ["python", "{API_NAME}.py"]
         self._all_models, self._all_models_internal = self._get_models()
         return self
 
-    def get_allowed_engines(self, estimator: str) -> Optional[str]:
+    def get_allowed_engines(self, estimator: str) -> Optional[List[str]]:
         """Get all the allowed engines for the specified estimator
 
         Parameters
@@ -2812,9 +2777,9 @@ CMD ["python", "{API_NAME}.py"]
 
         Returns
         -------
-        Optional[str]
+        Optional[List[str]]
             The allowed engines for the model. If the model only supports the
-            default sktime engine, then it return `None`.
+            default engine, then it return `None`.
         """
         allowed_engines = get_allowed_engines(
             estimator=estimator, all_allowed_engines=self.all_allowed_engines
@@ -2870,6 +2835,12 @@ CMD ["python", "{API_NAME}.py"]
                 severity is set to "error"
             (2) If the value of "severity" is not one of the allowed values
         """
+        if severity not in ("error", "warning"):
+            raise ValueError(
+                "Error in calling set_engine, severity "
+                f'argument must be "error" or "warning", got "{severity}".'
+            )
+
         allowed_engines = self.get_allowed_engines(estimator=estimator)
         if allowed_engines is None:
             msg = (
@@ -2882,11 +2853,19 @@ CMD ["python", "{API_NAME}.py"]
             elif severity == "warning":
                 self.logger.warning(msg)
                 print(msg)
-            else:
-                raise ValueError(
-                    "Error in calling set_engine, severity "
-                    f'argument must be "error" or "warning", got "{severity}".'
-                )
+
+        elif engine not in allowed_engines:
+            msg = (
+                f"Engine '{engine}' for estimator '{estimator}' is not allowed."
+                f" Allowed values are: {', '.join(allowed_engines)}."
+            )
+
+            if severity == "error":
+                raise ValueError(msg)
+            elif severity == "warning":
+                self.logger.warning(msg)
+                print(msg)
+
         else:
             self.exp_model_engines[estimator] = engine
             self.logger.info(
@@ -2899,17 +2878,17 @@ CMD ["python", "{API_NAME}.py"]
     def _set_exp_model_engines(
         self,
         container_default_engines: Dict[str, str],
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
     ) -> "_TabularExperiment":
         """Set all the model engines for the experiment.
 
         container_default_model_engines : Dict[str, str]
             Default engines obtained from the model containers
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The engine to use for the models, e.g. for auto_arima, users can
             switch between "pmdarima" and "statsforecast" by specifying
-            engines={"auto_arima": "statsforecast"}
+            engine={"auto_arima": "statsforecast"}
 
             If model ID is not present in key, default value will be obtained
             from the model container (i.e. container_default_model_engines).
@@ -2923,14 +2902,12 @@ CMD ["python", "{API_NAME}.py"]
         _TabularExperiment
             The experiment object to allow chaining of methods
         """
-        self.exp_model_engines = {}
-
         # If user provides their own value, override the container defaults
-        engines = engines or {}
+        engine = engine or {}
         for key in container_default_engines:
             # If provided by user, then use that, else get from the defaults
-            engine = engines.get(key, container_default_engines.get(key))
-            self._set_engine(estimator=key, engine=engine, severity="error")
+            eng = engine.get(key, container_default_engines.get(key))
+            self._set_engine(estimator=key, engine=eng, severity="error")
 
         return self
 

@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -6,12 +7,8 @@ import numpy as np  # type: ignore
 import pandas as pd
 from joblib.memory import Memory
 
-import pycaret.containers.metrics.regression
-import pycaret.containers.models.regression
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
+from pycaret.containers.metrics import get_all_reg_metric_containers
+from pycaret.containers.models import get_all_reg_model_containers
 from pycaret.containers.models.regression import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
@@ -23,25 +20,24 @@ from pycaret.internal.parallel.parallel_backend import ParallelBackend
 # Own module
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.preprocess.preprocessor import Preprocessor
-from pycaret.internal.pycaret_experiment.supervised_experiment import (
-    _SupervisedExperiment,
+from pycaret.internal.pycaret_experiment.non_ts_supervised_experiment import (
+    _NonTSSupervisedExperiment,
 )
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE, TARGET_LIKE
+from pycaret.utils.generic import MLUsecase, highlight_setup
 
 LOGGER = get_logger()
 
 
-class RegressionExperiment(_SupervisedExperiment, Preprocessor):
+class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.REGRESSION
         self.exp_name_log = "reg-default-name"
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "transform_target_param",
-                "transform_target_method_param",
             }
         )
         self._available_plots = {
@@ -63,22 +59,18 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in pycaret.containers.models.regression.get_all_model_containers(
+            for k, v in get_all_reg_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = (
-            pycaret.containers.models.regression.get_all_model_containers(
-                self, raise_errors=raise_errors
-            )
+        all_models_internal = get_all_reg_model_containers(
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return pycaret.containers.metrics.regression.get_all_metric_containers(
-            self.variables, raise_errors=raise_errors
-        )
+        return get_all_reg_metric_containers(self.variables, raise_errors=raise_errors)
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["residuals", "error", "feature"]
@@ -102,18 +94,18 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         create_date_columns: List[str] = ["day", "month", "year"],
         imputation_type: Optional[str] = "simple",
         numeric_imputation: str = "mean",
-        categorical_imputation: str = "constant",
+        categorical_imputation: str = "mode",
         iterative_imputation_iters: int = 5,
         numeric_iterative_imputer: Union[str, Any] = "lightgbm",
         categorical_iterative_imputer: Union[str, Any] = "lightgbm",
         text_features_method: str = "tf-idf",
-        max_encoding_ohe: int = 5,
+        max_encoding_ohe: int = 25,
         encoding_method: Optional[Any] = None,
         rare_to_value: Optional[float] = None,
         rare_value: str = "rare",
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
-        low_variance_threshold: Optional[float] = 0,
+        low_variance_threshold: Optional[float] = None,
         group_features: Optional[list] = None,
         group_names: Optional[Union[str, list]] = None,
         remove_multicollinearity: bool = False,
@@ -132,7 +124,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         feature_selection: bool = False,
         feature_selection_method: str = "classic",
         feature_selection_estimator: Union[str, Any] = "lightgbm",
-        n_features_to_select: int = 10,
+        n_features_to_select: Union[int, float] = 0.2,
         transform_target: bool = False,
         transform_target_method: str = "yeo-johnson",
         custom_pipeline: Optional[Any] = None,
@@ -156,7 +148,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
@@ -187,7 +179,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         data_func: Callable[[], DATAFRAME_LIKE] = None
             The function that generate ``data`` (the dataframe-like input). This
             is useful when the dataset is large, and you need parallel operations
-            such as ``compare_models``. It can avoid boradcasting large dataset
+            such as ``compare_models``. It can avoid broadcasting large dataset
             from driver to workers. Notice one and only one of ``data`` and
             ``data_func`` must be set.
 
@@ -321,7 +313,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             text embeddings.
 
 
-        max_encoding_ohe: int, default = 5
+        max_encoding_ohe: int, default = 25
             Categorical columns with `max_encoding_ohe` or less unique values are
             encoded using OneHotEncoding. If more, the `encoding_method` estimator
             is used. Note that columns with exactly two classes are always encoded
@@ -356,11 +348,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
 
-        low_variance_threshold: float or None, default = 0
+        low_variance_threshold: float or None, default = None
             Remove features with a training-set variance lower than the provided
-            threshold. The default is to keep all features with non-zero variance,
-            i.e. remove the features that have the same value in all samples. If
-            None, skip this transformation step.
+            threshold. If 0, keep all features with non-zero variance, i.e. remove
+            the features that have the same value in all samples. If None, skip
+            this transformation step.
 
 
         group_features: list, list of lists or None, default = None
@@ -477,7 +469,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Algorithm for feature selection. Choose from:
                 - 'univariate': Uses sklearn's SelectKBest.
                 - 'classic': Uses sklearn's SelectFromModel.
-                - 'sequential': Uses sklearn's SequtnailFeatureSelector.
+                - 'sequential': Uses sklearn's SequentialFeatureSelector.
 
 
         feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
@@ -487,8 +479,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             parameter is ignored when `feature_selection_method=univariate`.
 
 
-        n_features_to_select: int, default = 10
-            The number of features to select. Note that this parameter doesn't
+        n_features_to_select: int or float, default = 0.2
+            The maximum number of features to select with feature_selection. If <1,
+            it's the fraction of starting features. Note that this parameter doesn't
             take features in ``ignore_features`` or ``keep_features`` into account
             when counting.
 
@@ -631,11 +624,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Ignored when ``log_experiment`` is False.
 
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The execution engines to use for the models in the form of a dict
             of `model_id: engine` - e.g. for Linear Regression ("lr", users can
             switch between "sklearn" and "sklearnex" by specifying
-            `engines={"lr": "sklearnex"}`
+            `engine={"lr": "sklearnex"}`
 
 
         verbose: bool, default = True
@@ -673,9 +666,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
-
-        if data_func is not None:
-            data = data_func()
 
         self.all_allowed_engines = ALL_ALLOWED_ENGINES
 
@@ -720,9 +710,14 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         # Set up data ============================================== >>
 
+        if data_func is not None:
+            data = data_func()
+
         self.data = self._prepare_dataset(data, target)
         self.target_param = self.data.columns[-1]
         self.index = index
+        self.data_split_stratify = data_split_stratify
+        self.data_split_shuffle = data_split_shuffle
 
         self._prepare_train_test(
             train_size=train_size,
@@ -730,12 +725,14 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             data_split_stratify=data_split_stratify,
             data_split_shuffle=data_split_shuffle,
         )
+
         self._prepare_folds(
             fold_strategy=fold_strategy,
             fold=fold,
             fold_shuffle=fold_shuffle,
             fold_groups=fold_groups,
         )
+
         self._prepare_column_types(
             ordinal_features=ordinal_features,
             numeric_features=numeric_features,
@@ -748,7 +745,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self._set_exp_model_engines(
             container_default_engines=get_container_default_engines(),
-            engines=engines,
+            engine=engine,
         )
 
         # Preprocessing ============================================ >>
@@ -762,9 +759,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
 
-            # Encode the target column
-            if self.y.dtype.kind not in "ifu":
-                self._encode_target_column()
+            # Remove weird characters from column names
+            if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
+                self._clean_column_names()
 
             # Power transform the target to be more Gaussian-like
             if transform_target:
@@ -856,7 +853,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self.pipeline.fit(self.X_train, self.y_train)
 
-        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
         # Final display ============================================ >>
@@ -867,9 +864,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         container.append(["Session id", self.seed])
         container.append(["Target", self.target_param])
         container.append(["Target type", "Regression"])
-        container.append(["Data shape", self.dataset_transformed.shape])
-        container.append(["Train data shape", self.train_transformed.shape])
-        container.append(["Test data shape", self.test_transformed.shape])
+        container.append(["Original data shape", self.data.shape])
+        container.append(["Transformed data shape", self.dataset_transformed.shape])
+        container.append(["Transformed train set shape", self.train_transformed.shape])
+        container.append(["Transformed test set shape", self.test_transformed.shape])
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
                 container.append([f"{fx} features", len(cols)])
@@ -882,7 +880,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             if imputation_type == "simple":
                 container.append(["Numeric imputation", numeric_imputation])
                 container.append(["Categorical imputation", categorical_imputation])
-            else:
+            elif imputation_type == "iterative":
                 if isinstance(numeric_iterative_imputer, str):
                     num_imputer = numeric_iterative_imputer
                 else:
@@ -948,17 +946,17 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [
+        self._display_container = [
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
-        self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        self.logger.info(f"Setup _display_container: {self._display_container[0]}")
         display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
@@ -998,7 +996,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ):
@@ -1084,11 +1082,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             as the column name in the dataset containing group labels.
 
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The execution engines to use for the models in the form of a dict
             of `model_id: engine` - e.g. for Linear Regression ("lr", users can
             switch between "sklearn" and "sklearnex" by specifying
-            `engines={"lr": "sklearnex"}`
+            `engine={"lr": "sklearnex"}`
 
 
         verbose: bool, default = True
@@ -1117,11 +1115,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         caller_params = dict(locals())
 
-        if engines is not None:
+        if engine is not None:
             # Save current engines, then set to user specified options
             initial_model_engines = self.exp_model_engines.copy()
-            for estimator, engine in engines.items():
-                self._set_engine(estimator=estimator, engine=engine, severity="error")
+            for estimator, eng in engine.items():
+                self._set_engine(estimator=estimator, engine=eng, severity="error")
 
         try:
             return_values = super().compare_models(
@@ -1144,11 +1142,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             )
 
         finally:
-            if engines is not None:
+            if engine is not None:
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_model_engines,
+                    engine=initial_model_engines,
                 )
 
         return return_values
@@ -1305,7 +1303,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_default_model_engines,
+                    engine=initial_default_model_engines,
                 )
 
         return return_values
@@ -2162,7 +2160,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         self,
         estimator,
         data: Optional[pd.DataFrame] = None,
-        drift_report: bool = False,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -2192,11 +2189,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             must be available in the unseen dataset.
 
 
-        drift_report: bool, default = False
-            When set to True, interactive drift report is generated on test set
-            with the evidently library.
-
-
         round: int, default = 4
             Number of decimal places to round predictions to.
 
@@ -2224,7 +2216,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             data=data,
             probability_threshold=None,
             encoded_labels=False,
-            drift_report=drift_report,
             round=round,
             verbose=verbose,
         )

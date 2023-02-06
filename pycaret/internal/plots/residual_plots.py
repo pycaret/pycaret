@@ -635,7 +635,7 @@ class InteractiveResidualsPlot:
         self.display: CommonDisplay = display or CommonDisplay()
         if isinstance(self.display._general_display, (ColabBackend, DatabricksBackend)):
             raise ValueError(
-                f"residuals_interactive plot is not supported on Google Colab or Databricks."
+                "residuals_interactive plot is not supported on Google Colab or Databricks."
             )
         self.plot = self.__create_resplots(model, x, y, x_test, y_test)
 

@@ -1,17 +1,17 @@
 
-## Deploy Machine Learning Pipeline on AWS Fargate
+# Deploy Machine Learning Pipeline on AWS Fargate
 
-### by Moez Ali
+# by Moez Ali
 
 ![A step-by-step beginner’s guide to containerize and deploy ML pipeline serverless on AWS Fargate](https://cdn-images-1.medium.com/max/2000/1*-z21vlve2ZiyclbuFfFbJg.png)
 
-## RECAP
+# RECAP
 
 In our [last post](https://towardsdatascience.com/deploy-machine-learning-model-on-google-kubernetes-engine-94daac85108b) on deploying a machine learning pipeline in the cloud, we demonstrated how to develop a machine learning pipeline in PyCaret, containerize it with Docker and serve it as a web application using Google Kubernetes Engine. If you haven’t heard about PyCaret before, please read this [announcement](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) to learn more.
 
 In this tutorial, we will use the same machine learning pipeline and Flask app that we built and deployed previously. This time we will demonstrate how to containerize and deploy a machine learning pipeline serverless using AWS Fargate.
 
-## 👉 Learning Goals of this Tutorial
+# 👉 Learning Goals of this Tutorial
 
 * What is a Container? What is Docker? What is Kubernetes?
 
@@ -35,29 +35,29 @@ In the past, we have covered deployment on other cloud platforms such as Azure a
 
 * [Build and deploy your first machine learning web app on Heroku PaaS](https://towardsdatascience.com/build-and-deploy-your-first-machine-learning-web-app-e020db344a99)
 
-## 💻 Toolbox for this tutorial
+# 💻 Toolbox for this tutorial
 
-## PyCaret
+# PyCaret
 
 [PyCaret](https://www.pycaret.org/) is an open source, low-code machine learning library in Python that is used to train and deploy machine learning pipelines and models into production. PyCaret can be installed easily using pip.
 
     pip install pycaret
 
-## Flask
+# Flask
 
 [Flask](https://flask.palletsprojects.com/en/1.1.x/) is a framework that allows you to build web applications. A web application can be a commercial website, blog, e-commerce system, or an application that generates predictions from data provided in real-time using trained models. If you don’t have Flask installed, you can use pip to install it.
 
-## Docker Toolbox for Windows 10 Home
+# Docker Toolbox for Windows 10 Home
 
 [Docker](https://www.docker.com/)** **is a tool designed to make it easier to create, deploy, and run applications by using containers. Containers are used to package up an application with all of its necessary components, such as libraries and other dependencies, and ship it all out as one package. If you haven’t used docker before, this tutorial also covers the installation of Docker Toolbox (legacy) on **Windows 10 Home**. In the [previous tutorial](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01) we covered how to install Docker Desktop on **Windows 10 Pro edition**.
 
-## Amazon Web Services (AWS)
+# Amazon Web Services (AWS)
 
 Amazon Web Services (AWS) is a comprehensive and broadly adopted cloud platform, offered by Amazon. It has over 175 fully-featured services from data centers globally. If you haven’t used AWS before, you can [sign-up](https://aws.amazon.com/) for a free account.
 
-## ✔️Let’s get started…..
+# ✔️Let’s get started…..
 
-## What is a Container?
+# What is a Container?
 
 Before we get into implementation using AWS Fargate, let’s understand what a container is and why we would need one?
 
@@ -69,7 +69,7 @@ What does an environment include? → The programing language such as Python and
 
 If we can create an environment that we can transfer to other machines (for example: your friend’s computer or a cloud service provider like Google Cloud Platform), we can reproduce the results anywhere. Hence, ***a ****container ***is a type of software that packages up an application and all its dependencies so the application runs reliably from one computing environment to another.
 
-## What is Docker?
+# What is Docker?
 
 Docker is a company that provides software (also called **Docker**) that allows users to build, run and manage containers. While Docker’s container are the most common, there are other less famous *alternatives* such as [LXD](https://linuxcontainers.org/lxd/introduction/) and [LXC](https://linuxcontainers.org/).
 
@@ -85,7 +85,7 @@ At this point, you must recognize that managing real-life applications require m
 
 This brings us to **Kubernetes**.
 
-## What is Kubernetes?
+# What is Kubernetes?
 
 Kubernetes is an open-source system developed by Google in 2014 for managing containerized applications. In simple words, Kubernetes ****is a system for running and coordinating containerized applications across a cluster of machines.
 
@@ -103,7 +103,7 @@ So far we have discussed and understood:
 
 Before introducing AWS Fargate, there is only one thing left to discuss and that is Amazon’s own container orchestration service **Amazon Elastic Container Service (ECS).**
 
-## AWS Elastic Container Service (ECS)
+# AWS Elastic Container Service (ECS)
 
 Amazon Elastic Container Service (Amazon ECS) is Amazon’s home-grown container orchestration platform. The idea behind ECS is similar to Kubernetes *(both of them are orchestration services)*.
 
@@ -119,7 +119,7 @@ Irrespective of whichever container orchestration service you are using (ECS or 
 
 ![Amazon ECS underlying infrastructure](https://cdn-images-1.medium.com/max/2798/1*k4famzZ1w2Ee5XMHRo1Ggw.png)
 
-## AWS Fargate — serverless compute for containers
+# AWS Fargate — serverless compute for containers
 
 AWS Fargate is a serverless compute engine for containers that works with both Amazon Elastic Container Service (ECS) and Amazon Elastic Kubernetes Service (EKS). Fargate makes it easy for you to focus on building your applications. Fargate removes the need to provision and manage servers, lets you specify and pay for resources per application, and improves security through application isolation by design.
 
@@ -145,7 +145,7 @@ There is no best answer as to which approach is better. The choice between going
 
 * Your application is stateless *(A stateless app is an application that does not save client data generated in one session for use in the next session with that client)*.
 
-## Setting the Business Context
+# Setting the Business Context
 
 An insurance company wants to improve its cash flow forecasting by better predicting patient charges using demographic and basic patient health risk metrics at the time of hospitalization.
 
@@ -153,11 +153,11 @@ An insurance company wants to improve its cash flow forecasting by better predic
 
 *([data source](https://www.kaggle.com/mirichoi0218/insurance#insurance.csv))*
 
-## Objective
+# Objective
 
 To build and deploy a web application where the demographic and health information of a patient is entered into a web-based form which then outputs a predicted charge amount.
 
-## Tasks
+# Tasks
 
 * Train and develop a machine learning pipeline for deployment.
 
@@ -169,7 +169,7 @@ To build and deploy a web application where the demographic and health informati
 
 Since we have already covered the first two tasks in our initial tutorial, we will quickly recap them and then focus on the remaining items in the list above. If you are interested in learning more about developing a machine learning pipeline in Python using PyCaret and building a web app using a Flask framework, please read [this tutorial](https://towardsdatascience.com/build-and-deploy-your-first-machine-learning-web-app-e020db344a99).
 
-## 👉 Develop a Machine Learning Pipeline
+# 👉 Develop a Machine Learning Pipeline
 
 We are using PyCaret in Python for training and developing a machine learning pipeline which will be used as part of our web app. The Machine Learning Pipeline can be developed in an Integrated Development Environment (IDE) or Notebook. We have used a notebook to run the below code:
 
@@ -179,7 +179,7 @@ When you save a model in PyCaret, the entire transformation pipeline based on th
 
 ![Machine Learning Pipeline created using PyCaret](https://cdn-images-1.medium.com/max/2000/1*P7EXfIxqZZGrpeLgDdk1vQ.png)
 
-## 👉 Build a Web Application
+# 👉 Build a Web Application
 
 This tutorial is not focused on building a Flask application. It is only discussed here for completeness. Now that our machine learning pipeline is ready we need a web application that can connect to our trained pipeline to generate predictions on new data points in real-time. We have created the web application using Flask framework in Python. There are two parts of this application:
 
@@ -193,9 +193,9 @@ This is how our web application looks:
 
 If you haven’t followed along so far, no problem. You can simply fork this [repository](https://www.github.com/pycaret/pycaret-deployment-aws) from GitHub. This is how your project folder should look at this point:
 
-## 10-steps to deploy a ML pipeline using AWS Fargate:
+# 10-steps to deploy a ML pipeline using AWS Fargate:
 
-### 👉 Step 1 — Install Docker Toolbox (for Windows 10 Home)
+# 👉 Step 1 — Install Docker Toolbox (for Windows 10 Home)
 
 In order to build a docker image locally, you will need Docker installed on your computer. If you are using Windows 10 64-bit: Pro, Enterprise, or Education (Build 15063 or later) you can download Docker Desktop from [DockerHub](https://hub.docker.com/editions/community/docker-ce-desktop-windows/).
 
@@ -209,7 +209,7 @@ The easiest way to check if the installation was successful is by opening the co
 
 ![Anaconda Prompt to check docker](https://cdn-images-1.medium.com/max/2198/1*f5l4Tds3EOTFSPx6CT5M7w.png)
 
-### 👉 Step 2— Create a Dockerfile
+# 👉 Step 2— Create a Dockerfile
 
 The first step for creating a Docker image is to create a Dockerfile in the project directory. A Dockerfile is just a file with a set of instructions. The Dockerfile for this project looks like this:
 
@@ -217,7 +217,7 @@ The first step for creating a Docker image is to create a Dockerfile in the proj
 
 A Dockerfile is case-sensitive and must be in the project folder with the other project files. A Dockerfile has no extension and can be created using any text editor. You can download the Dockerfile used in this project from this [GitHub Repository](https://www.github.com/pycaret/pycaret-deployment-aws).
 
-### 👉 Step 3— Create a Repository in Elastic Container Registry (ECR)
+# 👉 Step 3— Create a Repository in Elastic Container Registry (ECR)
 
 **(a) Login to your AWS console and search for Elastic Container Registry:**
 
@@ -237,7 +237,7 @@ A Dockerfile is case-sensitive and must be in the project folder with the other 
 
 ![Push commands for pycaret-deployment-aws-repository](https://cdn-images-1.medium.com/max/2032/1*lsBGf_Vb8xWVTjyJu0qhbw.png)
 
-### 👉 Step 4— Execute push commands
+# 👉 Step 4— Execute push commands
 
 Navigate to your project folder using Anaconda Prompt and execute the commands you have copied in the step above. The code below is for demonstration only and may not work as it is. To get the right code to execute, you must get a copy of code from “View push commands” inside the repository.
 
@@ -255,13 +255,13 @@ You must be in the folder where the Dockerfile and the rest of your code reside 
     **Command 4**
     docker push 212714531992.dkr.ecr.ca-central-1.amazonaws.com/pycaret-deployment-aws-repository:latest
 
-### 👉 Step 5— Check your uploaded image
+# 👉 Step 5— Check your uploaded image
 
 Click on the repository you created and you will see an image URI of the uploaded image in the step above. Copy the image URI (it would be needed in step 7 below).
 
 ![](https://cdn-images-1.medium.com/max/3834/1*Y4fqgXHg8sQd3jQt-OtHaQ.png)
 
-### 👉 Step 6 — Create and Configure a Cluster
+# 👉 Step 6 — Create and Configure a Cluster
 
 **(a) Click on “Clusters” on left-side menu:**
 
@@ -279,7 +279,7 @@ Click on the repository you created and you will see an image URI of the uploade
 
 ![Cluster Created](https://cdn-images-1.medium.com/max/3744/1*vzl93C127k64ZSrnxUk_3g.png)
 
-### 👉 Step 7— Create a new Task definition
+# 👉 Step 7— Create a new Task definition
 
 A **task** definition is required to run Docker containers in Amazon ECS. Some of the parameters you can specify in a **task** definition include: The Docker image to use with each container in your **task**. How much CPU and memory to use with each **task** or each container within a **task**.
 
@@ -305,7 +305,7 @@ A **task** definition is required to run Docker containers in Amazon ECS. Some o
 
 ![](https://cdn-images-1.medium.com/max/3750/1*X9GdaMZsZufkmVTBLy-HPQ.png)
 
-### 👉 Step 8 —Execute Task Definition
+# 👉 Step 8 —Execute Task Definition
 
 In step 7 we created a task that will start the container. Now we will execute the task by clicking **“Run Task”** under Actions.
 
@@ -323,7 +323,7 @@ In step 7 we created a task that will start the container. Now we will execute t
 
 ![Task Created Successfully](https://cdn-images-1.medium.com/max/3236/1*9CKTS_xaTYxRo6l5PDq6Aw.png)
 
-### 👉 Step 9— Allow inbound port 5000 from Network settings
+# 👉 Step 9— Allow inbound port 5000 from Network settings
 
 One last step before we can see our application in action on Public IP address is to allow port 5000 by creating a new rule. In order to do that, follow these steps:
 
@@ -347,7 +347,7 @@ One last step before we can see our application in action on Public IP address i
 
 ![](https://cdn-images-1.medium.com/max/3568/1*RTCkc1QHT7PV0epSNt3vrQ.png)
 
-### 👉 Step 10 — See the app in action
+# 👉 Step 10 — See the app in action
 
 Use public IP address with port 5000 to access the application.
 
@@ -357,13 +357,13 @@ Use public IP address with port 5000 to access the application.
 
 **Note:** By the time this story is published, the app will be removed from the public address to restrict resource consumption.
 
-## PyCaret 2.0.0 is coming!
+# PyCaret 2.0.0 is coming!
 
 We have received overwhelming support and feedback from the community. We are actively working on improving PyCaret and preparing for our next release. **PyCaret 2.0.0 will be bigger and better**. If you would like to share your feedback and help us improve further, you may [fill this form](https://www.pycaret.org/feedback) on the website or leave a comment on our [GitHub ](https://www.github.com/pycaret/)or [LinkedIn](https://www.linkedin.com/company/pycaret/) page.
 
 Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe to our [YouTube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g) channel to learn more about PyCaret.
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 As of the first release 1.0.0, PyCaret has the following modules available for use. Click on the links below to see the documentation and working examples in Python.
 
@@ -374,7 +374,7 @@ As of the first release 1.0.0, PyCaret has the following modules available for u
 ](https://www.pycaret.org/anomaly-detection)[Natural Language Processing](https://www.pycaret.org/nlp)
 [Association Rule Mining](https://www.pycaret.org/association-rules)
 
-## Also see:
+# Also see:
 
 PyCaret getting started tutorials in Notebook:
 
@@ -385,7 +385,7 @@ PyCaret getting started tutorials in Notebook:
 [Regression](https://www.pycaret.org/reg101)
 [Classification](https://www.pycaret.org/clf101)
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaret is an open source project. Everybody is welcome to contribute. If you would like contribute, please feel free to work on [open issues](https://github.com/pycaret/pycaret/issues). Pull requests are accepted with unit tests on dev-1.0.1 branch.
 

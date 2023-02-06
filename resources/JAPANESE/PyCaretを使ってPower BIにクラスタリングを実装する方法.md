@@ -1,7 +1,7 @@
 
-## PyCaretを使ってPower BIにクラスタリングを実装する方法
+# PyCaretを使ってPower BIにクラスタリングを実装する方法
 
-### by Moez Ali
+# by Moez Ali
 
 ![Clustering Dashboard in Power BI](https://cdn-images-1.medium.com/max/2632/1*sUeqYcENVII1RlyYA_-Uxg.png)
 
@@ -9,7 +9,7 @@
 
 今回の記事では、PyCaretを使ってPower BIにクラスタリング分析を実装する方法をご紹介します。まだPyCaretを知らない方は、この[お知らせ](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46)を読んで詳細を確認してください。
 
-## このチュートリアルの学習目標
+# このチュートリアルの学習目標
 
 * クラスタリングとは何か？クラスタリングの種類。
 
@@ -19,13 +19,13 @@
 
 * Clustering モデルを Power BI の本番環境に導入するには？
 
-## 始める前に
+# 始める前に
 
 Python を使ったことがある方は、すでに Anaconda Distribution がインストールされていると思います。もしそうでなければ、[ここをクリック](https://www.anaconda.com/distribution/)して、Python 3.7 以上の Anaconda Distribution をダウンロードしてください。
 
 ![[https://www.anaconda.com/products/individual](https://www.anaconda.com/products/individual)](https://cdn-images-1.medium.com/max/2612/1*sMceDxpwFVHDtdFi528jEg.png)
 
-## 環境のセットアップ
+# 環境のセットアップ
 
 Power BIでPyCaretの機械学習機能を使い始める前に、仮想環境を作成し、pycaretをインストールする必要があります。これは3つのステップで行います。
 
@@ -51,7 +51,7 @@ C:Users%%***username%%***AppData%%Local%%Continuum%%anaconda3%%envs%%myenv
 
 ![File → Options → Global → Python scripting](https://cdn-images-1.medium.com/max/2000/1*zQMKuyEk8LGrOPE-NByjrg.png)
 
-## Clusteringとは？
+# Clusteringとは？
 
 クラスタリングとは、似たような特徴を持つデータポイントをグループ化する手法です。これらのグループ化は、データの調査、パターンの特定、データのサブセットの分析に役立ちます。データをクラスターにまとめることで、データの基本的な構造を特定することができ、様々な業界で応用されています。クラスタリングの一般的なビジネスユースケースは次のとおりです。
 
@@ -61,7 +61,7 @@ C:Users%%***username%%***AppData%%Local%%Continuum%%anaconda3%%envs%%myenv
 
 COVID-19のような伝染病のジオクラスターの特定。
 
-## クラスタリングの種類
+# クラスタリングの種類
 
 クラスタリングタスクの主観的な性質を考慮すると、さまざまなタイプの問題に適したさまざまなアルゴリズムがあります。それぞれのアルゴリズムには独自のルールがあり、クラスターを計算するための数学があります。
 
@@ -71,7 +71,7 @@ COVID-19のような伝染病のジオクラスターの特定。
 
 このチュートリアルでは、最もシンプルで人気のある教師なし機械学習アルゴリズムの1つであるK-Meansアルゴリズムを使用します。K-Meansについてより詳しく知りたい方は、[この論文](https://stanford.edu/~cpiech/cs221/handouts/kmeans.html)をご覧ください。
 
-## ビジネスコンテクストの設定
+# ビジネスコンテクストの設定
 
 このチュートリアルでは、世界保健機関（WHO）の*** ***Global Health Expenditureデータベースから、現在の医療費データセットを使用します。このデータセットは、2000年から2017年までの200カ国以上の国の国内総生産に対する医療費の割合を含んでいます。
 
@@ -81,11 +81,11 @@ COVID-19のような伝染病のジオクラスターの特定。
 
 ![サンプルデータのポイント](https://cdn-images-1.medium.com/max/2366/1*E1z19x_qa7rko1FZpAw61Q.png)
 
-## 👉 始めてみよう
+# 👉 始めてみよう
 
 Anaconda 環境の設定、PyCaret のインストール、クラスタリング分析の基本の理解、そしてこのチュートリアルのビジネスコンテキストの理解ができたところで、始めましょう。
 
-## 1. データの取得
+# 1. データの取得
 
 最初のステップは、Power BI Desktopにデータセットを読み込むことです。データの読み込みには、Webコネクタを使用します。(Power BI Desktop → Get Data → From Web)を実行します。
 
@@ -94,7 +94,7 @@ Anaconda 環境の設定、PyCaret のインストール、クラスタリング
 csvファイルへのリンクです。
 [https://github.com/pycaret/powerbi-clustering/blob/master/clustering.csv](https://github.com/pycaret/powerbi-clustering/blob/master/clustering.csv)
 
-## 2. モデルの学習
+# 2. モデルの学習
 
 Power BIでクラスタリングモデルをトレーニングするには、Power Query EditorでPythonスクリプトを実行する必要があります（Power Query Editor → Transform → Run python script）。以下のコードをPythonスクリプトとして実行します。
 
@@ -134,7 +134,7 @@ PyCaretには8種類以上のすぐに使えるクラスタリングアルゴリ
 
 ![Results in Power BI Desktop (after applying query)](https://cdn-images-1.medium.com/max/2564/1*oy_X3VIdVPS32qQxkOeehw.png)
 
-## 3. ダッシュボード
+# 3. ダッシュボード
 
 Power BIでクラスタラベルを取得したら、ダッシュボードで可視化してインサイトを生成する例を紹介します。
 
@@ -144,7 +144,7 @@ Power BIでクラスタラベルを取得したら、ダッシュボードで可
 
 PBIXファイルとデータセットは、弊社の[GitHub](https://github.com/pycaret/powerbi-clustering)からダウンロードできます。
 
-## 👉 本番でのクラスタリングの実装
+# 👉 本番でのクラスタリングの実装
 
 以上、Power BIにClusteringを実装する簡単な方法をご紹介しました。ただし、上記の方法では、Power BIのデータセットが更新されるたびに、クラスタリングモデルのトレーニングが行われることに注意が必要です。これが問題になる理由は2つあります。
 
@@ -154,7 +154,7 @@ PBIXファイルとデータセットは、弊社の[GitHub](https://github.com/
 
 Power BIでクラスタリングを実装するためのより生産的な方法は、毎回モデルを再トレーニングするのではなく、事前にトレーニングされたモデルを使ってクラスタラベルを生成することです。
 
-## 事前にモデルをトレーニングする
+# 事前にモデルをトレーニングする
 
 機械学習モデルのトレーニングには、統合開発環境（IDE）やノートブックを使用することができます。この例では、Visual Studio Codeを使ってクラスタリングモデルを学習しています。
 
@@ -168,7 +168,7 @@ PyCaretを使ったJupyter notebookでのクラスタリング分析の実装に
 
  <iframe src="https://medium.com/media/ac70d2254314877ee7e9e524e1f2b1bf" frameborder=0></iframe>
 
-## Pre-trained modelの使用
+# Pre-trained modelの使用
 
 以下のコードをPythonスクリプトとして実行すると、事前に学習したモデルからラベルが生成されます。
 
@@ -177,7 +177,7 @@ PyCaretを使ったJupyter notebookでのクラスタリング分析の実装に
 
 これの出力は、上で見たものと同じになります。違いは、事前に学習したモデルを使う場合、モデルを再学習するのではなく、同じモデルを使って新しいデータセットでラベルを生成することです。
 
-## Power BI Serviceで動作させる
+# Power BI Serviceで動作させる
 
 .pbixファイルをPower BIサービスにアップロードしたら、機械学習パイプラインをデータパイプラインにシームレスに統合するために、さらにいくつかのステップが必要です。その内容は以下の通りです。
 
@@ -187,13 +187,13 @@ PyCaretを使ったJupyter notebookでのクラスタリング分析の実装に
 
 クラスタリング分析について詳しく知りたい方は、[ノートブックチュートリアル](https://www.pycaret.org/clu101)をご覧ください。
 
-## PyCaret 1.0.1 がリリースされます!
+# PyCaret 1.0.1 がリリースされます!
 
 PyCaret 1.0.1 がリリースされます！ コミュニティからの圧倒的なサポートとフィードバックを受けています。私たちは、PyCaretの改善と次のリリースに向けて積極的に取り組んでいます。**PyCaret 1.0.1 は、より大きく、より良くなります**。もし、あなたがフィードバックを共有し、私たちのさらなる改善に役立てたいとお考えでしたら、ウェブサイト上の [fill this form](https://www.pycaret.org/feedback) や、私たちの [GitHub ](https://www.github.com/pycaret/)や [LinkedIn](https://www.linkedin.com/company/pycaret/) ページにコメントを残してください。
 
 LinkedIn](https://www.linkedin.com/company/pycaret/)をフォローしたり、[Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g)のチャンネルを購読したりして、PyCaretについてもっと知ってください。
 
-## 重要なリンク
+# 重要なリンク
 
 [ユーザーガイド / ドキュメント](https://www.pycaret.org/guide)
 [GitHub リポジトリ
@@ -201,7 +201,7 @@ LinkedIn](https://www.linkedin.com/company/pycaret/)をフォローしたり、[
 [ノートブックチュートリアル](https://www.pycaret.org/tutorial)
 [PyCaretに貢献する](https://www.pycaret.org/contribute)
 
-## 特定のモジュールについて学びたい？
+# 特定のモジュールについて学びたい？
 
 最初のリリース1.0.0の時点で、PyCaretは以下のモジュールを利用することができます。以下のリンクをクリックすると、Pythonでのドキュメントや動作例を見ることができます。
 
@@ -212,7 +212,7 @@ LinkedIn](https://www.linkedin.com/company/pycaret/)をフォローしたり、[
 ](https://www.pycaret.org/anomaly-detection)[自然言語処理](https://www.pycaret.org/nlp)
 [アソシエーション・ルール・マイニング](https://www.pycaret.org/association-rules)
 
-## こちらもご覧ください。
+# こちらもご覧ください。
 
 PyCaret getting started tutorials in Notebook:
 
@@ -223,7 +223,7 @@ PyCaret getting started tutorials in Notebook:
 [回帰](https://www.pycaret.org/reg101)
 [分類](https://www.pycaret.org/clf101)
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaretはオープンソースのプロジェクトです。誰でも貢献することができます。貢献したい方は、[オープンイシュー](https://github.com/pycaret/pycaret/issues)にお気軽に取り組んでください。Pull Request は dev-1.0.1 ブランチのユニットテスト付きで受け付けています。
 

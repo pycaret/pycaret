@@ -130,17 +130,16 @@ def get_data(
             X = data[1]
             data = pd.concat([y, X], axis=1)
     else:
-        raise ValueError(f"Data could not be read. Please check your inputs...")
+        raise ValueError("Data could not be read. Please check your inputs...")
 
-    # create a copy for pandas profiler
-    data_for_profiling = data.copy()
+    data = data.infer_objects()
 
     if save_copy:
         save_name = filename
         data.to_csv(save_name, index=False)
 
     display = CommonDisplay(
-        verbose=True,
+        verbose=verbose,
         html_param=True,
     )
 
@@ -156,6 +155,9 @@ def get_data(
                 install_name="pandas-profiling",
             )
             import pandas_profiling
+
+            # create a copy for pandas profiler
+            data_for_profiling = data.copy()
 
             pf = pandas_profiling.ProfileReport(data_for_profiling)
             display.display(pf)

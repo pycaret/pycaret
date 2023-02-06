@@ -2,13 +2,14 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 import gc
+import os
 from typing import Dict, Optional
 
+import joblib
 from sklearn.pipeline import Pipeline
 
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
-from pycaret.internal.utils import get_logger
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import MLUsecase, get_logger
 from pycaret.utils.time_series.forecasting.pipeline import _add_model_to_pipeline
 
 
@@ -181,7 +182,6 @@ def deploy_model(
         _check_soft_dependencies(
             "google", extra=None, severity="error", install_name="google-cloud-storage"
         )
-        import google.cloud
 
         # initialize deployment
         filename = f"{model_name}.pkl"
@@ -202,7 +202,7 @@ def deploy_model(
         try:
             _create_bucket_gcp(project_name, bucket_name)
             _upload_blob_gcp(project_name, bucket_name, filename, key)
-        except:
+        except Exception:
             _upload_blob_gcp(project_name, bucket_name, filename, key)
         os.remove(filename)
         print("Model Successfully Deployed on GCP")
@@ -216,7 +216,6 @@ def deploy_model(
         _check_soft_dependencies(
             "azure", extra=None, severity="error", install_name="azure-storage-blob"
         )
-        import azure.storage.blob
 
         # initialize deployment
         filename = f"{model_name}.pkl"
@@ -232,10 +231,10 @@ def deploy_model(
             )
 
         try:
-            container_client = _create_container_azure(container_name)
+            _create_container_azure(container_name)
             _upload_blob_azure(container_name, filename, key)
             del container_client
-        except:
+        except Exception:
             _upload_blob_azure(container_name, filename, key)
 
         os.remove(filename)
@@ -317,9 +316,7 @@ def save_model(
             )
         else:
             model_ = deepcopy(prep_pipe_)
-            model_.steps.append(["trained_model", model])
-
-    import joblib
+            model_.steps.append(("trained_model", model))
 
     model_name = f"{model_name}.pkl"
     joblib.dump(model_, model_name, **kwargs)
@@ -390,9 +387,6 @@ def load_model(
             raise ValueError("Authentication is missing.")
 
     if not platform:
-
-        import joblib
-
         model_name = f"{model_name}.pkl"
         model = joblib.load(model_name)
         if verbose:
@@ -460,9 +454,7 @@ def load_model(
 
         filename = f"{model_name}.pkl"
 
-        model_downloaded = _download_blob_gcp(
-            project_name, bucket_name, filename, filename
-        )
+        _download_blob_gcp(project_name, bucket_name, filename, filename)
 
         model = load_model(model_name, verbose=False)
 
@@ -484,7 +476,7 @@ def load_model(
 
         filename = f"{model_name}.pkl"
 
-        model_downloaded = _download_blob_azure(container_name, filename, filename)
+        _download_blob_azure(container_name, filename, filename)
 
         model = load_model(model_name, verbose=False)
 
@@ -735,8 +727,6 @@ def _upload_blob_azure(
     """
 
     logger = get_logger()
-
-    import os
 
     from azure.storage.blob import BlobServiceClient
 

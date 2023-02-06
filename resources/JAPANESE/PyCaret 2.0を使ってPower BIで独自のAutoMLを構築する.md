@@ -1,11 +1,11 @@
 
 # PyCaret 2.0を使ってPower BIで独自のAutoMLを構築する
 
-### by Moez Ali
+# by Moez Ali
 
 ![PyCaret - An open source, low-code machine learning library in Python](https://cdn-images-1.medium.com/max/2664/1*Kx9YUt0hWPhU_a6h2vM5qA.png)
 
-## **PyCaret 2.0** (パイキャレット2.0)
+# **PyCaret 2.0** (パイキャレット2.0)
 
 先週、機械学習のワークフローを自動化するオープンソースの **ローコード** 機械学習ライブラリである [PyCaret 2.0](https://towardsdatascience.com/announcing-pycaret-2-0-39c11014540e)を発表しました。PyCaret 2.0は、機械学習の実験サイクルを高速化し、データサイエンティストがより効率的かつ生産的になるためのエンド・ツー・エンドの機械学習およびモデル管理ツールです。
 
@@ -21,17 +21,17 @@
 
 * Power BIでAutoMLソリューションを製品化/展開します。
 
-## Microsoft Power BI
+# Microsoft Power BI
 
 Power BIは、データを視覚化して組織全体でインサイトを共有したり、アプリやウェブサイトに埋め込むことができるビジネス分析ソリューションです。このチュートリアルでは、PyCaretライブラリをPower BIにインポートすることで、[Power BI Desktop](https://powerbi.microsoft.com/en-us/downloads/)を機械学習に使用します。
 
-## 自動機械学習とは？
+# 自動機械学習とは？
 
 自動機械学習(AutoML)とは、機械学習の時間のかかる反復作業を自動化するプロセスです。データサイエンティストやアナリストは、モデルの品質を維持しながら、効率的に機械学習モデルを構築することができます。AutoMLソリューションの最終的な目標は、いくつかの性能基準に基づいて最適なモデルを最終的に決定することです。
 
 従来の機械学習モデルの開発プロセスはリソース集約型であり、何十ものモデルを作成して比較するためには、かなりのドメイン知識と時間が必要でした。自動化された機械学習を使えば、生産可能なMLモデルを手に入れるまでの時間を、非常に簡単かつ効率的に加速することができます。
 
-## **PyCaret** はどのように機能しますか？
+# **PyCaret** はどのように機能しますか？
 
 PyCaretは、教師あり、教師なしの機械学習のためのワークフロー自動化ツールです。PyCaretは6つのモジュールで構成されており、各モジュールには特定の動作を行うための関数が用意されています。各関数は入力を受け取り、出力を返します。ほとんどの場合、出力は学習済みの機械学習モデルです。2回目のリリース時点で利用可能なモジュールは以下の通りです。
 
@@ -57,13 +57,13 @@ Pythonを始めたい方は、[ここをクリック](https://github.com/pycaret
 
 > "PyCaretは、ビジネスアナリスト、ドメインエキスパート、市民データサイエンティスト、経験豊富なデータサイエンティストのために、無料、オープンソース、ローコードの機械学習ソリューションを提供することで、機械学習と高度な分析の利用を民主化します".
 
-## 始める前に
+# 始める前に
 
 はじめてPythonを使う場合は、Anaconda Distributionをインストールするのがもっとも簡単な方法です。[ここをクリック](https://www.anaconda.com/distribution/)して、Python 3.7以上のAnaconda Distributionをダウンロードしてください。
 
 ![[https://www.anaconda.com/products/individual](https://www.anaconda.com/products/individual)](https://cdn-images-1.medium.com/max/2612/1*sMceDxpwFVHDtdFi528jEg.png)
 
-### 環境のセットアップ
+# 環境のセットアップ
 
 Power BIでPyCaretの機械学習機能を使い始める前に、仮想環境の作成とpycaretのインストールが必要です。これは3つのステップで行います。
 
@@ -93,9 +93,9 @@ C:Users%%**username%%** AppData%%Local%%Continuum%%anaconda3%%envs%%myenv
 
 ![File → Options → Global → Python scripting](https://cdn-images-1.medium.com/max/2000/1*zQMKuyEk8LGrOPE-NByjrg.png)
 
-## **👉 Let's get started**
+# **👉 Let's get started**
 
-## ビジネスコンテクストの設定
+# ビジネスコンテクストの設定
 
 ある保険会社は、入院時の人口統計学的指標と基本的な患者の健康リスク指標を用いて患者の料金をより良く予測することで、キャッシュフロー予測を改善したいと考えています。
 
@@ -103,11 +103,11 @@ C:Users%%**username%%** AppData%%Local%%Continuum%%anaconda3%%envs%%myenv
 
 *([データソース](https://www.kaggle.com/mirichoi0218/insurance#insurance.csv))*
 
-## 目的
+# 目的
 
 データセットに含まれる他のはじめて年齢、性別、BMI、子供、喫煙者、地域）に基づいて患者の料金を予測する、もっとも性能の良い回帰モデルを学習し、選択する。
 
-## 👉 Step 1 - データセットの読み込み
+# 👉 Step 1 - データセットの読み込み
 
 Power BI Desktop → Get Data → Webで、GitHubから直接データセットを読み込むことができます。
 
@@ -119,7 +119,7 @@ Power Queryで複製のデータセットを作成します。
 
 ![Power Query → Create a duplicate dataset](https://cdn-images-1.medium.com/max/3436/1*mU8tl4P89WKMC__k6rM-Vw.png)
 
-## 👉 Step 2- AutoMLをPythonスクリプトとして実行する
+# 👉 Step 2- AutoMLをPythonスクリプトとして実行する
 
 Power Queryで以下のコードを実行します（Transform → Run Python script）。
 
@@ -185,17 +185,17 @@ PyCaretはモジュール式の自動化という考え方で動いています�
 
 これで、もっともパフォーマンスの高い1つのモデルではなく、上位5つのモデルを返すことができました。そして、上位候補モデルのハイパーパラメーターを調整するためのリスト内包（ループ）を作成し、最後に **automl関数**で最高性能のモデルを1つ選択し、pickleファイルとして保存しています（automl関数は最終的なモデルを返すため、今回は**finalize_model**を使用していないことに注意してください）。
 
-## **サンプルダッシュボード**
+# **サンプルダッシュボード**
 
 サンプルダッシュボードを作成します。PBIXファイルは[ここにアップロード](https://github.com/pycaret/pycaret-powerbi-automl)してあります。
 
 ![PyCaret AutoMLの結果を利用して作成したダッシュボード](https://cdn-images-1.medium.com/max/2664/1*Kx9YUt0hWPhU_a6h2vM5qA.png)
 
-## 👉 Step 3 - Deploy Model to generate prediction
+# 👉 Step 3 - Deploy Model to generate prediction
 
 最終的なモデルがpickleファイルとして保存されたら、それを使って新しいデータセットの料金を予測することができます。
 
-## **新しいデータセットの読み込み**)
+# **新しいデータセットの読み込み**)
 
 デモのために、同じデータセットを再度読み込み、データセットから「charges」列を削除します。Power QueryでPythonスクリプトとして以下のコードを実行し、予測値を取得します。
 
@@ -212,7 +212,7 @@ PyCaretはモジュール式の自動化という考え方で動いています�
 
 ![Power Queryでのpredict_model関数出力](https://cdn-images-1.medium.com/max/3840/1*ZYWjwtu4njS7f7XMp90ofg.png)
 
-## **Power BI Serviceにデプロイする**。
+# **Power BI Serviceにデプロイする**。
 
 Pythonスクリプトを含むPower BIレポートをサービスに公開すると、オンプレミスのデータゲートウェイを通じてデータがリフレッシュされたときに、これらのスクリプトも実行されます。
 
@@ -228,14 +228,14 @@ PyCaret 2.0について詳しく知りたい方は、こちらの[お知らせ](
 
 PyCaretについてもっと知りたい方は、[LinkedIn](https://www.linkedin.com/company/pycaret/)や[Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g)でフォローしてみてください。
 
-## **You may be interested it:**.
+# **You may be interested it:**.
 
 [PyCaretを使ったPower BIでの機械学習](https://towardsdatascience.com/machine-learning-in-power-bi-using-pycaret-34307f09394a)
 [Build your first Anomaly Detector in Power BI using PyCaret](https://towardsdatascience.com/build-your-first-anomaly-detector-in-power-bi-using-pycaret-2b41b363244e)
 [PyCaretを使ったPower BIでのクラスタリングの実装方法](https://towardsdatascience.com/how-to-implement-clustering-in-power-bi-using-pycaret-4b5e34b1405b)
 [PyCaretを使ったPower BIでのトピックモデリング](https://towardsdatascience.com/topic-modeling-in-power-bi-using-pycaret-54422b4e36d6)
 
-## 重要なリンク
+# 重要なリンク
 
 [ブログ](https://medium.com/@moez_62905)
 [PyCaret 2.0 のリリースノート](https://github.com/pycaret/pycaret/releases/tag/2.0)
@@ -246,7 +246,7 @@ PyCaretについてもっと知りたい方は、[LinkedIn](https://www.linkedin
 [ノートブックのチュートリアル](https://www.pycaret.org/tutorial)
 [Contribute in PyCaret](https://www.pycaret.org/contribute)
 
-## 特定のモジュールについて学びたいですか？
+# 特定のモジュールについて学びたいですか？
 
 以下のリンクをクリックすると、ドキュメントや動作例を見ることができます。
 

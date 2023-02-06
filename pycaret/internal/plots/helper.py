@@ -120,7 +120,7 @@ class MatplotlibDefaultDPI(object):
         try:
             self.default_skplt_dpit = skplt.metrics.plt.rcParams["figure.dpi"]
             skplt.metrics.plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
-        except:
+        except Exception:
             pass
 
     def __enter__(self) -> None:
@@ -129,5 +129,5 @@ class MatplotlibDefaultDPI(object):
     def __exit__(self, type, value, traceback):
         try:
             skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
-        except:
+        except Exception:
             pass

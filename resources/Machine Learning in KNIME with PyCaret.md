@@ -1,11 +1,11 @@
 
-## Machine Learning in KNIME with PyCaret
+# Machine Learning in KNIME with PyCaret
 
-### A step-by-step guide on training and scoring machine learning models in KNIME using PyCaret
+# A step-by-step guide on training and scoring machine learning models in KNIME using PyCaret
 
 ![[PyCaret](https://www.pycaret.org) is an open-source Python library and [KNIME](https://www.knime.com) is an open-source data analytics platform](https://cdn-images-1.medium.com/max/2000/1*GCzo1_0f0E9HyK9jm7B2-w.png)
 
-## PyCaret
+# PyCaret
 
 [PyCaret](https://www.pycaret.org) is an open-source, low-code machine learning library and end-to-end model management tool built-in Python for automating machine learning workflows. Its ease of use, simplicity, and ability to quickly and efficiently build and deploy end-to-end machine learning pipelines will amaze you.
 
@@ -15,7 +15,7 @@ PyCaret is **simple and easy to use. **All the operations performed in PyCaret a
 
  <iframe src="https://medium.com/media/7f23b1284ac52708e0987513c1107a79" frameborder=0></iframe>
 
-## KNIME
+# KNIME
 
 [KNIME Analytics Platform](https://www.knime.com/knime-analytics-platform) is open-source software for creating data science. Intuitive, open, and continuously integrating new developments, KNIME makes understanding data and designing data science workflows and reusable components accessible to everyone.
 
@@ -23,7 +23,7 @@ KNIME Analytics platform is one of the most popular open-source platforms used i
 
 ![KNIME Analytics Platform — Creating Data Science](https://cdn-images-1.medium.com/max/2000/0*ct-Ux9jTTyDYyYHZ)
 
-## Installation
+# Installation
 
 For this tutorial, you will need two things. The first one being the KNIME Analytics Platform which is a desktop software that you can download from [here](https://www.knime.com/downloads). Second, you need Python.
 
@@ -46,7 +46,7 @@ Once installation completes, go to File → Preferences → KNIME → Python and
 
 ![Python setup in KNIME Analytics Platform](https://cdn-images-1.medium.com/max/2000/1*KmNfJY16OzVldEbgfXh8kQ.png)
 
-## 👉We are ready now
+# 👉We are ready now
 
 Click on “New KNIME Workflow” and a blank canvas will open.
 
@@ -54,7 +54,7 @@ Click on “New KNIME Workflow” and a blank canvas will open.
 
 On the left-hand side, there are tools that you can drag and drop on the canvas and execute the workflow by connecting each component to one another. All the actions in the repository on the left side are called *Nodes*.
 
-## **Dataset**
+# **Dataset**
 
 For this tutorial, I am using a regression dataset from PyCaret’s repository called ‘insurance’. You can download the data from [here](https://github.com/pycaret/pycaret/blob/master/datasets/insurance.csv).
 
@@ -62,7 +62,7 @@ For this tutorial, I am using a regression dataset from PyCaret’s repository c
 
 I will create two separate workflows. First one for model training and selection and the second one for scoring the new data using the trained pipeline.
 
-## 👉 **Model Training & Selection**
+# 👉 **Model Training & Selection**
 
 Let’s first read the CSV file from the **CSV Reader** node followed by a **Python Script. **Inside the Python script execute the following code:
 
@@ -95,7 +95,7 @@ This is what results.csv contains:
 
 These are the cross-validated metrics for all the models. The best model, in this case, is ***Gradient Boosting Regressor***.
 
-## 👉 Model Scoring
+# 👉 Model Scoring
 
 We can now use our pipeline.pkl to score on the new dataset. Since I do not have a separate dataset for ‘insurance.csv’, what I will do is drop the target column from the same file, just to demonstrate.
 
@@ -117,7 +117,7 @@ When you successfully execute this workflow, it will generate predictions.csv.
 
 I hope that you will appreciate the ease of use and simplicity in PyCaret. When used within an analytics platform like KNIME, it can save you many hours of coding and then maintaining that code in production. With less than 10 lines of code, I have trained and evaluated multiple models using PyCaret and deployed an ML Pipeline KNIME.
 
-## Coming Soon!
+# Coming Soon!
 
 Next week I will take a deep dive and focus on more advanced functionalities of PyCaret that you can use within KNIME to enhance your machine learning workflows. If you would like to be notified automatically, you can follow me on [Medium](https://medium.com/@moez-62905), [LinkedIn](https://www.linkedin.com/in/profile-moez/), and [Twitter](https://twitter.com/moezpycaretorg1).
 
@@ -131,7 +131,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## You may also be interested in:
+# You may also be interested in:
 
 [Build your own AutoML in Power BI using PyCaret 2.0](https://towardsdatascience.com/build-your-own-automl-in-power-bi-using-pycaret-8291b64181d)
 [Deploy Machine Learning Pipeline on Azure using Docker](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01)
@@ -142,7 +142,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 [Build and deploy machine learning web app using PyCaret and Streamlit](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104)
 [Deploy Machine Learning App built using Streamlit and PyCaret on GKE](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb)
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -152,7 +152,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 
@@ -163,7 +163,7 @@ Click on the links below to see the documentation and working examples.
 [Natural Language Processing
 ](https://pycaret.readthedocs.io/en/latest/api/nlp.html)[Association Rule Mining](https://pycaret.readthedocs.io/en/latest/api/arules.html)
 
-## More PyCaret related tutorials:
+# More PyCaret related tutorials:
 [**Easy MLOps with PyCaret + MLflow**
 *A beginner-friendly, step-by-step tutorial on integrating MLOps in your Machine Learning experiments using PyCaret*towardsdatascience.com](https://towardsdatascience.com/easy-mlops-with-pycaret-mlflow-7fbcbf1e38c6)
 [**Write and train your own custom machine learning models using PyCaret**

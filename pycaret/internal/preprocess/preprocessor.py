@@ -5,6 +5,7 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+from category_encoders.basen import BaseNEncoder
 from category_encoders.leave_one_out import LeaveOneOutEncoder
 from category_encoders.one_hot import OneHotEncoder
 from category_encoders.ordinal import OrdinalEncoder
@@ -60,14 +61,13 @@ from sklearn.preprocessing import (
     StandardScaler,
 )
 
-from pycaret.containers.models.classification import (
-    get_all_model_containers as get_classifiers,
-)
-from pycaret.containers.models.regression import (
-    get_all_model_containers as get_regressors,
+from pycaret.containers.models import (
+    get_all_class_model_containers,
+    get_all_reg_model_containers,
 )
 from pycaret.internal.preprocess.iterative_imputer import IterativeImputer
 from pycaret.internal.preprocess.transformers import (
+    CleanColumnNames,
     DropImputer,
     EmbedTextFeatures,
     ExtractDateTimeFeatures,
@@ -80,8 +80,9 @@ from pycaret.internal.preprocess.transformers import (
     TransformerWrapper,
     TransformerWrapperWithInverse,
 )
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
-from pycaret.internal.utils import (
+from pycaret.utils.constants import SEQUENCE
+from pycaret.utils.generic import (
+    MLUsecase,
     check_features_exist,
     df_shrink_dtypes,
     get_columns_to_stratify_by,
@@ -89,7 +90,6 @@ from pycaret.internal.utils import (
     to_df,
     to_series,
 )
-from pycaret.utils.constants import SEQUENCE
 
 
 class Preprocessor:
@@ -223,7 +223,7 @@ class Preprocessor:
             # self.data is already prepared here
             train, test = train_test_split(
                 self.data,
-                test_size=1 - train_size,
+                train_size=train_size,
                 stratify=get_columns_to_stratify_by(
                     self.X, self.y, data_split_stratify
                 ),
@@ -338,7 +338,7 @@ class Preprocessor:
         if isinstance(fold_groups, str):
             if fold_groups in self.X.columns:
                 if pd.isna(self.X[fold_groups]).any():
-                    raise ValueError(f"The 'fold_groups' column cannot contain NaNs.")
+                    raise ValueError("The 'fold_groups' column cannot contain NaNs.")
                 else:
                     self.fold_groups_param = self.X[fold_groups]
             else:
@@ -365,6 +365,13 @@ class Preprocessor:
             self.fold_generator = TimeSeriesSplit(fold)
         else:
             self.fold_generator = fold_strategy
+
+    def _clean_column_names(self):
+        """Add CleanColumnNames to the pipeline."""
+        self.logger.info("Set up column name cleaning.")
+        self.pipeline.steps.append(
+            ("clean_column_names", TransformerWrapper(CleanColumnNames()))
+        )
 
     def _encode_target_column(self):
         """Add LabelEncoder to the pipeline."""
@@ -405,7 +412,6 @@ class Preprocessor:
     def _date_feature_engineering(self, create_date_columns):
         """Convert date features to numerical values."""
         self.logger.info("Set up date feature engineering.")
-        # TODO: Could be improved allowing the user to choose which features to add
         date_estimator = TransformerWrapper(
             transformer=ExtractDateTimeFeatures(create_date_columns),
             include=self._fxs["Date"],
@@ -478,10 +484,16 @@ class Preprocessor:
         self.logger.info("Set up iterative imputation.")
 
         # Dict of all regressor models available
-        regressors = {k: v for k, v in get_regressors(self).items() if not v.is_special}
+        regressors = {
+            k: v
+            for k, v in get_all_reg_model_containers(self).items()
+            if not v.is_special
+        }
         # Dict of all classifier models available
         classifiers = {
-            k: v for k, v in get_classifiers(self).items() if not v.is_special
+            k: v
+            for k, v in get_all_class_model_containers(self).items()
+            if not v.is_special
         }
 
         if isinstance(numeric_iterative_imputer, str):
@@ -615,7 +627,7 @@ class Preprocessor:
 
         # Select columns for different encoding types
         one_hot_cols, rest_cols = [], []
-        for name, column in X_transformed.items():
+        for name, column in X_transformed[self._fxs["Categorical"]].items():
             n_unique = column.nunique()
             if n_unique == 2:
                 self._fxs["Ordinal"][name] = list(sorted(column.dropna().unique()))
@@ -631,9 +643,10 @@ class Preprocessor:
             mapping = {}
             for key, value in self._fxs["Ordinal"].items():
                 if self.X[key].nunique() != len(value):
-                    raise ValueError(
-                        "The levels passed to the ordinal_features parameter "
-                        "doesn't match with the levels in the dataset."
+                    self.logger.warning(
+                        f"The number of classes passed to feature {key} in the "
+                        f"ordinal_features parameter ({len(value)}) don't match "
+                        f"with the number of classes in the data ({self.X[key].nunique()})."
                     )
 
                 # Encoder always needs mapping of NaN value
@@ -643,6 +656,9 @@ class Preprocessor:
             ord_estimator = TransformerWrapper(
                 transformer=OrdinalEncoder(
                     mapping=[{"col": k, "mapping": val} for k, val in mapping.items()],
+                    cols=list(
+                        self._fxs["Ordinal"].keys()
+                    ),  # Specify to not skip bool columns
                     handle_missing="return_nan",
                     handle_unknown="value",
                 ),
@@ -669,11 +685,18 @@ class Preprocessor:
             # Encode the rest of the categorical columns
             if len(rest_cols) > 0:
                 if not encoding_method:
-                    encoding_method = LeaveOneOutEncoder(
-                        handle_missing="return_nan",
-                        handle_unknown="value",
-                        random_state=self.seed,
-                    )
+                    if self._ml_usecase in (MLUsecase.ANOMALY, MLUsecase.CLUSTERING):
+                        encoding_method = BaseNEncoder(
+                            base=5,
+                            handle_missing="return_nan",
+                            handle_unknown="value",
+                        )
+                    else:
+                        encoding_method = LeaveOneOutEncoder(
+                            handle_missing="return_nan",
+                            handle_unknown="value",
+                            random_state=self.seed,
+                        )
 
                 rest_estimator = TransformerWrapper(
                     transformer=encoding_method,
@@ -913,9 +936,9 @@ class Preprocessor:
         self.logger.info("Set up feature selection.")
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
-            func = get_classifiers
+            func = get_all_class_model_containers
         else:
-            func = get_regressors
+            func = get_all_reg_model_containers
 
         models = {k: v for k, v in func(self).items() if not v.is_special}
         if isinstance(feature_selection_estimator, str):
@@ -930,6 +953,14 @@ class Preprocessor:
             raise ValueError(
                 "Invalid value for the feature_selection_estimator parameter. "
                 "The provided estimator does not adhere to sklearn's API."
+            )
+
+        if 0 < n_features_to_select < 1:
+            n_features_to_select = int(n_features_to_select * self.X.shape[1])
+        elif n_features_to_select > self.X.shape[1]:
+            raise ValueError(
+                "Invalid value for the n_features_to_select parameter. The number of "
+                "feature to select should be less than the starting number of features."
             )
 
         if feature_selection_method.lower() == "univariate":

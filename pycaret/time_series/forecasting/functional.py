@@ -3,14 +3,24 @@
 
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    BinaryIO,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import pandas as pd
 
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-from pycaret.internal.utils import check_if_global_is_not_none
 from pycaret.time_series.forecasting.oop import TSForecastingExperiment
+from pycaret.utils.generic import check_if_global_is_not_none
 
 if TYPE_CHECKING:
     from sktime.forecasting.base import ForecastingHorizon
@@ -35,12 +45,20 @@ def setup(
     numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
     transform_target: Optional[str] = None,
     transform_exogenous: Optional[str] = None,
+    fe_target_rr: Optional[list] = None,
+    fe_exogenous: Optional[list] = None,
     scale_target: Optional[str] = None,
     scale_exogenous: Optional[str] = None,
     fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
     fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
+    hyperparameter_split: str = "all",
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
+    sp_detection: str = "auto",
+    max_sp_to_consider: Optional[int] = 60,
+    remove_harmonics: bool = False,
+    harmonic_order_method: str = "harmonic_max",
+    num_sps_to_use: int = 1,
     point_alpha: Optional[float] = None,
     coverage: Union[float, List[float]] = 0.9,
     enforce_exogenous: bool = True,
@@ -80,7 +98,7 @@ def setup(
     data_func: Callable[[], Union[pd.Series, pd.DataFrame]] = None
             The function that generate ``data`` (the dataframe-like input). This
             is useful when the dataset is large, and you need parallel operations
-            such as ``compare_models``. It can avoid boradcasting large dataset
+            such as ``compare_models``. It can avoid broadcasting large dataset
             from driver to workers. Notice one and only one of ``data`` and
             ``data_func`` must be set.
 
@@ -92,9 +110,12 @@ def setup(
 
 
     index: Optional[str], default = None
-        Column name to be used as the datetime index for modeling. Column is
-        internally converted to datetime using `pd.to_datetime()`. If None,
-        then the data's index is used as is for modeling.
+        Column name to be used as the datetime index for modeling. If 'index'
+        column is specified & is of type string, it is assumed to be coercible
+        to pd.DatetimeIndex using `pd.to_datetime()`. It can also be of type
+        Int (e.g. RangeIndex, Int64Index), or DatetimeIndex or PeriodIndex
+        in which case, it is processed appropriately. If None, then the
+        data's index is used as is for modeling.
 
 
     ignore_features: Optional[List], default = None
@@ -149,6 +170,91 @@ def setup(
             "zscore", "minmax", "maxabs", "robust"
 
 
+    fe_target_rr: Optional[list], default = None
+        The transformers to be applied to the target variable in order to
+        extract useful features. By default, None which means that the
+        provided target variable are used "as is".
+
+        NOTE: Most statistical and baseline models already use features (lags)
+        for target variables implicitly. The only place where target features
+        have to be created explicitly is in reduced regression models. Hence,
+        this feature extraction is only applied to reduced regression models.
+
+        Example
+        -------
+
+        >>> import numpy as np
+        >>> from pycaret.datasets import get_data
+        >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+        >>> data = get_data("airline")
+
+        >>> kwargs = {"lag_feature": {"lag": [36, 24, 13, 12, 11, 9, 6, 3, 2, 1]}}
+        >>> fe_target_rr = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
+
+        >>> # Baseline
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(data=data, fh=12, fold=3, session_id=42)
+        >>> model1 = exp.create_model("lr_cds_dt")
+
+        >>> # With Feature Engineering
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(
+        >>>     data=data, fh=12, fold=3, fe_target_rr=fe_target_rr, session_id=42
+        >>> )
+        >>> model2 = exp.create_model("lr_cds_dt")
+
+        >>> exp.plot_model([model1, model2], data_kwargs={"labels": ["Baseline", "With FE"]})
+
+    fe_exogenous : Optional[list] = None
+        The transformations to be applied to the exogenous variables. These
+        transformations are used for all models that accept exogenous variables.
+        By default, None which means that the provided exogenous variables are
+        used "as is".
+
+        Example
+        -------
+
+        >>> import numpy as np
+        >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+        >>> # Example: function num_above_thresh to count how many observations lie above
+        >>> # the threshold within a window of length 2, lagged by 0 periods.
+        >>> def num_above_thresh(x):
+        >>>     '''Count how many observations lie above threshold.'''
+        >>>     return np.sum((x > 0.7)[::-1])
+
+        >>> kwargs1 = {"lag_feature": {"lag": [0, 1], "mean": [[0, 4]]}}
+        >>> kwargs2 = {
+        >>>     "lag_feature": {
+        >>>         "lag": [0, 1], num_above_thresh: [[0, 2]],
+        >>>         "mean": [[0, 4]], "std": [[0, 4]]
+        >>>     }
+        >>> }
+
+        >>> fe_exogenous = [
+        >>>     (
+                    "a", WindowSummarizer(
+        >>>             n_jobs=1, target_cols=["Income"], truncate="bfill", **kwargs1
+        >>>         )
+        >>>     ),
+        >>>     (
+        >>>         "b", WindowSummarizer(
+        >>>             n_jobs=1, target_cols=["Unemployment", "Production"], truncate="bfill", **kwargs2
+        >>>         )
+        >>>     ),
+        >>> ]
+
+        >>> data = get_data("uschange")
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(
+        >>>     data=data, target="Consumption", fh=12,
+        >>>     fe_exogenous=fe_exogenous, session_id=42
+        >>> )
+        >>> print(f"Feature Columns: {exp.get_config('X_transformed').columns}")
+        >>> model = exp.create_model("lr_cds_dt")
+
+
     fold_strategy: str or sklearn CV generator object, default = 'expanding'
         Choice of cross validation strategy. Possible values are:
 
@@ -184,27 +290,85 @@ def setup(
             object. In this case, fh is derived from this object.
 
 
+    hyperparameter_split: str, default = "all"
+        The split of data used to determine certain hyperparameters such as
+        "seasonal_period", whether multiplicative seasonality can be used or not,
+        whether the data is white noise or not, the values of non-seasonal difference
+        "d" and seasonal difference "D" to use in certain models.
+        Allowed values are: ["all", "train"].
+        Refer for more details: https://github.com/pycaret/pycaret/issues/3202
+
+
     seasonal_period: list or int or str, default = None
-        Seasonal period in timeseries data. If not provided the frequency of the data
-        index is mapped to a seasonal period as follows:
+        Seasonal periods to check when performing seasonality checks (i.e. candidates).
+        If not provided, then candidates are detected per the sp_detection setting.
 
-        * B, C = 5
-        * D = 7
-        * W = 52
-        * M, BM, CBM, MS, BMS, CBMS = 12
-        * SM, SMS = 24
-        * Q, BQ, QS, BQS = 4
-        * A, Y, BA, BY, AS, YS, BAS, BYS = 1
-        * H = 24
-        * T, min = 60
-        * S = 60
+        Users can provide `seasonal_period` by passing it as an integer or a
+        string corresponding to the keys below (e.g. 'W' for weekly data,
+        'M' for monthly data, etc.).
+            * B, C = 5
+            * D = 7
+            * W = 52
+            * M, BM, CBM, MS, BMS, CBMS = 12
+            * SM, SMS = 24
+            * Q, BQ, QS, BQS = 4
+            * A, Y, BA, BY, AS, YS, BAS, BYS = 1
+            * H = 24
+            * T, min = 60
+            * S = 60
 
-        Alternatively you can provide a custom `seasonal_period` by passing
-        it as an integer or a string corresponding to the keys above (e.g.
-        'W' for weekly data, 'M' for monthly data, etc.). You can also provide
-        a list of such values to use in models that accept multiple seasonal values
-        (currently TBATS). For models that don't accept multiple seasonal values, the
-        first value of the list will be used as the seasonal period.
+        Users can also provide a list of such values to use in models that
+        accept multiple seasonal values (currently TBATS). For models that
+        don't accept multiple seasonal values, the first value of the list
+        will be used as the seasonal period.
+
+
+    sp_detection: str, default = "auto"
+        If seasonal_period is None, then this parameter determines the algorithm
+        to use to detect the seasonal periods to use in the models.
+
+        Allowed values are ["auto" or "index"].
+
+        If "auto", then seasonal periods are detected using statistical tests.
+        If "index", then the frequency of the data index is mapped to a seasonal
+        period as shown in seasonal_period.
+
+
+    max_sp_to_consider: Optional[int], default = 60,
+        Max period to consider when detecting seasonal periods. If None, all
+        periods up to int(("length of data"-1)/2) are considered. Length of
+        the data is determined by hyperparameter_split setting.
+
+
+    remove_harmonics: bool, default = False
+        Should harmonics be removed when considering what seasonal periods to
+        use for modeling.
+
+
+    harmonic_order_method: str, default = "harmonic_max"
+        Applicable when remove_harmonics = True. This determines how the harmonics
+        are replaced. Allowed values are "harmonic_strength", "harmonic_max" or "raw_strength.
+        - If set to  "harmonic_max", then lower seasonal period is replaced by its
+        highest harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "harmonic_strength", then lower seasonal period is replaced by its
+        highest strength harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "raw_strength", then lower seasonal periods is removed and the
+        higher harmonic seasonal periods is retained in its original position
+        based on its seasonal strength.
+
+        e.g. Assuming detected seasonal periods in strength order are [2, 3, 4, 50]
+        and remove_harmonics = True, then:
+        - If harmonic_order_method = "harmonic_max", result = [50, 3, 4]
+        - If harmonic_order_method = "harmonic_strength", result = [4, 3, 50]
+        - If harmonic_order_method = "raw_strength", result = [3, 4, 50]
+
+
+    num_sps_to_use: int, default = 1
+        It determines the maximum number of seasonal periods to use in the models.
+        Set to -1 to use all detected seasonal periods (in models that allow
+        multiple seasonalities). If a model only allows one seasonal period
+        and num_sps_to_use > 1, then the most dominant (primary) seasonal
+        that is detected is used.
 
 
     point_alpha: Optional[float], default = None
@@ -362,12 +526,12 @@ def setup(
             aggregation.
 
         resampler_kwargs: The keyword arguments that are fed to configure the
-            `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash" or
-            "plotly-widget") which downsampler will be used; how many datapoints are
-            shown in the front-end. When the plotly-resampler figure is renderd via Dash
-            (by setting the `display_format` to "plotly-dash"), one can also use the
-            "show_dash" key within this dictionary to configure the show_dash method its
-            args.
+            `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash"
+            or "plotly-widget") which down sampler will be used; how many data points
+            are shown in the front-end. When the plotly-resampler figure is rendered
+            via Dash (by setting the `display_format` to "plotly-dash"), one can
+            also use the "show_dash" key within this dictionary to configure the
+            show_dash method its args.
 
             example::
 
@@ -399,10 +563,18 @@ def setup(
         transform_exogenous=transform_exogenous,
         scale_target=scale_target,
         scale_exogenous=scale_exogenous,
+        fe_target_rr=fe_target_rr,
+        fe_exogenous=fe_exogenous,
         fold_strategy=fold_strategy,
         fold=fold,
         fh=fh,
+        hyperparameter_split=hyperparameter_split,
         seasonal_period=seasonal_period,
+        sp_detection=sp_detection,
+        max_sp_to_consider=max_sp_to_consider,
+        remove_harmonics=remove_harmonics,
+        harmonic_order_method=harmonic_order_method,
+        num_sps_to_use=num_sps_to_use,
         point_alpha=point_alpha,
         coverage=coverage,
         enforce_exogenous=enforce_exogenous,
@@ -437,7 +609,7 @@ def compare_models(
     turbo: bool = True,
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
-    engines: Optional[Dict[str, str]] = None,
+    engine: Optional[Dict[str, str]] = None,
     verbose: bool = True,
     parallel: Optional[ParallelBackend] = None,
 ):
@@ -516,10 +688,10 @@ def compare_models(
         Dictionary of arguments passed to the fit method of the model.
 
 
-    engines: Optional[Dict[str, str]] = None
+    engine: Optional[Dict[str, str]] = None
         The engine to use for the models, e.g. for auto_arima, users can
         switch between "pmdarima" and "statsforecast" by specifying
-        engines={"auto_arima": "statsforecast"}
+        engine={"auto_arima": "statsforecast"}
 
 
     verbose: bool, default = True
@@ -557,7 +729,7 @@ def compare_models(
         turbo=turbo,
         errors=errors,
         fit_kwargs=fit_kwargs,
-        engines=engines,
+        engine=engine,
         verbose=verbose,
         parallel=parallel,
     )
@@ -577,7 +749,7 @@ def get_allowed_engines(estimator: str) -> Optional[str]:
     -------
     Optional[str]
         The allowed engines for the model. If the model only supports the
-        default sktime engine, then it return `None`.
+        default engine, then it return `None`.
     """
 
     return _CURRENT_EXPERIMENT.get_allowed_engines(estimator=estimator)
@@ -1117,7 +1289,7 @@ def plot_model(
             NOTE:
             (1) If no imputation is specified, then plotting the "imputed"
                 data type will produce the same results as the "original" data type.
-            (2) If no transforations are specified, then plotting the "transformed"
+            (2) If no transformations are specified, then plotting the "transformed"
                 data type will produce the same results as the "imputed" data type.
 
             Allowed values are (if not specified, defaults to the first one in the list):
@@ -1162,6 +1334,27 @@ def plot_model(
         The setting to be used for the plot. Overrides any global setting
         passed during setup. Pass these as key-value pairs. For available
         keys, refer to the `setup` documentation.
+
+        Time-series plots support more display_formats, as a result the fig-kwargs
+        can also contain the `resampler_kwargs` key and its corresponding dict.
+        These are additional keyword arguments that are fed to the display function.
+        This is mainly used for configuring `plotly-resampler` visualizations
+        (i.e., `display_format` "plotly-dash" or "plotly-widget") which down sampler
+        will be used; how many data points are shown in the front-end.
+
+        When the plotly-resampler figure is rendered via Dash (by setting the
+        `display_format` to "plotly-dash"), one can also use the
+        "show_dash" key within this dictionary to configure the show_dash args.
+
+        example::
+
+            fig_kwargs = {
+                "width": None,
+                "resampler_kwargs":  {
+                    "default_n_shown_samples": 1000,
+                    "show_dash": {"mode": "inline", "port": 9012}
+                }
+            }
 
 
     save: string or bool, default = False
@@ -1732,7 +1925,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_config(variable: str):
+def get_config(variable: Optional[str] = None):
 
     """
     This function retrieves the global variables created when initializing the
@@ -1750,8 +1943,8 @@ def get_config(variable: str):
     - prep_pipe: Transformation pipeline
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
+    - _master_model_container: model storage container
+    - _display_container: results display container
     - exp_name_log: Name of experiment
     - logging_param: log_experiment param
     - log_plots_param: log_plots param
@@ -1771,6 +1964,11 @@ def get_config(variable: str):
     >>> from pycaret.time_series import *
     >>> exp_name = setup(data = airline,  fh = 12)
     >>> X_train = get_config('X_train')
+
+
+    variable : str, default = None
+        Name of the variable to return the value of. If None,
+        will return a list of possible names.
 
 
     Returns:
@@ -1801,8 +1999,8 @@ def set_config(variable: str, value):
     - prep_pipe: Transformation pipeline
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
+    - _master_model_container: model storage container
+    - _display_container: results display container
     - exp_name_log: Name of experiment
     - logging_param: log_experiment param
     - log_plots_param: log_plots param
@@ -1833,20 +2031,24 @@ def set_config(variable: str, value):
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_config(file_name: str):
-
+def save_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO], **cloudpickle_kwargs
+) -> None:
     """
-    This function save all global variables to a pickle file, allowing to
-    later resume without rerunning the ``setup``.
+    Saves the experiment to a pickle file.
+
+    The experiment is saved using cloudpickle to deal with lambda
+    functions. The data or test data is NOT saved with the experiment
+    and will need to be specified again when loading using
+    ``load_experiment``.
 
 
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> airline = get_data('airline')
-    >>> from pycaret.time_series import *
-    >>> exp_name = setup(data = airline,  fh = 12)
-    >>> save_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to save the experiment to.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.dump`` call.
 
 
     Returns:
@@ -1854,29 +2056,81 @@ def save_config(file_name: str):
 
     """
 
-    return _CURRENT_EXPERIMENT.save_config(file_name=file_name)
+    return _CURRENT_EXPERIMENT.save_experiment(
+        path_or_file=path_or_file, **cloudpickle_kwargs
+    )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def load_config(file_name: str):
+def load_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO],
+    data: Optional[Union[pd.Series, pd.DataFrame]] = None,
+    data_func: Optional[Callable[[], Union[pd.Series, pd.DataFrame]]] = None,
+    test_data: Optional[Union[pd.Series, pd.DataFrame]] = None,
+    preprocess_data: bool = True,
+    **cloudpickle_kwargs,
+) -> TSForecastingExperiment:
 
     """
-    This function loads global variables from a pickle file into Python
-    environment.
+    Load an experiment saved with ``save_experiment`` from path
+    or file.
+
+    The data (and test data) is NOT saved with the experiment
+    and will need to be specified again.
 
 
-    Example
-    -------
-    >>> from pycaret.time_series import load_config
-    >>> load_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to load the experiment from.
+        The pickle file must be created through ``save_experiment``.
+
+
+    data: pandas.Series or pandas.DataFrame
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
+
+
+    data_func: Callable[[], pandas.Series or pandas.DataFrame] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    test_data: pandas.Series or pandas.DataFrame or None, default = None
+        If not None, test_data is used as a hold-out set and `train_size` parameter
+        is ignored. The columns of data and test_data must match.
+
+
+    preprocess_data: bool, default = True
+        If True, the data will be preprocessed again (through running ``setup``
+        internally). If False, the data will not be preprocessed. This means
+        you can save the value of the ``data`` attribute of an experiment
+        separately, and then load it separately and pass it here with
+        ``preprocess_data`` set to False. This is an advanced feature.
+        We recommend leaving it set to True and passing the same data
+        as passed to the initial ``setup`` call.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.load`` call.
 
 
     Returns:
-        Global variables
+        loaded experiment
 
     """
-
-    return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
+    exp = _EXPERIMENT_CLASS.load_experiment(
+        path_or_file=path_or_file,
+        data=data,
+        data_func=data_func,
+        test_data=test_data,
+        preprocess_data=preprocess_data,
+        **cloudpickle_kwargs,
+    )
+    set_current_experiment(exp)
+    return exp
 
 
 def set_current_experiment(experiment: TSForecastingExperiment):
@@ -1896,6 +2150,16 @@ def set_current_experiment(experiment: TSForecastingExperiment):
             f"experiment must be a PyCaret TSForecastingExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> TSForecastingExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current TSForecastingExperiment
+    """
+    return _CURRENT_EXPERIMENT
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)

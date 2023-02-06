@@ -59,7 +59,7 @@ class _ThresholdScorerWithErrorScore(_ThresholdScorer):
                 y=y,
                 sample_weight=sample_weight,
             )
-        except:
+        except Exception:
             return self.error_score
 
     def _factory_args(self):
@@ -108,7 +108,7 @@ class _ProbaScorerWithErrorScore(_ProbaScorer):
                 y=y,
                 sample_weight=sample_weight,
             )
-        except:
+        except Exception:
             return self.error_score
 
     def _factory_args(self):
@@ -156,7 +156,7 @@ class _PredictScorerWithErrorScore(_PredictScorer):
                 y_true=y_true,
                 sample_weight=sample_weight,
             )
-        except:
+        except Exception:
             return self.error_score
 
 

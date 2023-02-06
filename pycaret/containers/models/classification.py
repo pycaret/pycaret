@@ -9,7 +9,7 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 from packaging import version
@@ -26,13 +26,13 @@ from pycaret.internal.distributions import (
     IntUniformDistribution,
     UniformDistribution,
 )
-from pycaret.internal.utils import (
+from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import (
     get_class_name,
     get_logger,
     np_list_arange,
     param_grid_to_lists,
 )
-from pycaret.utils._dependencies import _check_soft_dependencies
 
 # First one in the list is the default ----
 ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
@@ -194,7 +194,7 @@ class ClassifierContainer(ModelContainer):
             )
 
             del model_instance
-        except:
+        except Exception:
             self.is_boosting_supported = False
             self.is_soft_voting_supported = False
         finally:
@@ -373,7 +373,7 @@ class KNeighborsClassifierContainer(ClassifierContainer):
 
 class GaussianNBClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.naive_bayes import GaussianNB
 
@@ -429,7 +429,7 @@ class GaussianNBClassifierContainer(ClassifierContainer):
 
 class DecisionTreeClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.tree import DecisionTreeClassifier
 
@@ -634,7 +634,7 @@ class SVCClassifierContainer(ClassifierContainer):
 
 class GaussianProcessClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.gaussian_process import GaussianProcessClassifier
 
@@ -664,7 +664,7 @@ class GaussianProcessClassifierContainer(ClassifierContainer):
 
 class MLPClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.neural_network import MLPClassifier
 
@@ -750,10 +750,7 @@ class RidgeClassifierContainer(ClassifierContainer):
         else:
             args = {"random_state": experiment.seed}
 
-        tune_grid = {
-            "normalize": [True, False],
-        }
-
+        tune_grid = {}
         tune_grid["alpha"] = np_list_arange(0.01, 10, 0.01, inclusive=False)
         tune_grid["fit_intercept"] = [True, False]
         tune_distributions["alpha"] = UniformDistribution(0.001, 10)
@@ -811,7 +808,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
             if version.parse(cuml.__version__) >= version.parse("0.19"):
                 args = {"random_state": experiment.seed}
             else:
-                args = {"seed": experiemnt.seed}
+                args = {"seed": experiment.seed}
 
         tune_args = {}
         tune_grid = {
@@ -873,7 +870,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
 
 class QuadraticDiscriminantAnalysisContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
@@ -898,7 +895,7 @@ class QuadraticDiscriminantAnalysisContainer(ClassifierContainer):
 
 class AdaBoostClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import AdaBoostClassifier
 
@@ -945,7 +942,7 @@ class AdaBoostClassifierContainer(ClassifierContainer):
 
 class GradientBoostingClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import GradientBoostingClassifier
 
@@ -1019,7 +1016,7 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
 
 class LinearDiscriminantAnalysisContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
@@ -1068,7 +1065,7 @@ class LinearDiscriminantAnalysisContainer(ClassifierContainer):
 
 class ExtraTreesClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import ExtraTreesClassifier
 
@@ -1253,7 +1250,7 @@ class XGBClassifierContainer(ClassifierContainer):
 
 class LGBMClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from lightgbm import LGBMClassifier
         from lightgbm.basic import LightGBMError
@@ -1374,7 +1371,7 @@ class LGBMClassifierContainer(ClassifierContainer):
                 lgb.fit(np.zeros((2, 2)), [0, 1])
                 is_gpu_enabled = "gpu"
                 del lgb
-            except:
+            except Exception:
                 try:
                     lgb = LGBMClassifier(device="cuda")
                     lgb.fit(np.zeros((2, 2)), [0, 1])
@@ -1384,7 +1381,7 @@ class LGBMClassifierContainer(ClassifierContainer):
                     is_gpu_enabled = False
                     if experiment.gpu_param == "force":
                         raise RuntimeError(
-                            f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
+                            "LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
                         )
 
         if is_gpu_enabled == "gpu":
@@ -1490,13 +1487,15 @@ class CatBoostClassifierContainer(ClassifierContainer):
 
 class DummyClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.dummy import DummyClassifier
 
         args = {"strategy": "prior", "random_state": experiment.seed}
+
         tune_args = {}
-        tune_grid = {}
+        tune_grid = {"strategy": ["most_frequent", "prior", "stratified", "uniform"]}
+
         tune_distributions = {}
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -1515,7 +1514,7 @@ class DummyClassifierContainer(ClassifierContainer):
 
 class BaggingClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import BaggingClassifier
 
@@ -1553,7 +1552,7 @@ class BaggingClassifierContainer(ClassifierContainer):
 
 class StackingClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import StackingClassifier
 
@@ -1580,7 +1579,7 @@ class StackingClassifierContainer(ClassifierContainer):
 
 class VotingClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import VotingClassifier
 
@@ -1613,7 +1612,7 @@ class VotingClassifierContainer(ClassifierContainer):
 
 class CalibratedClassifierCVContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.calibration import CalibratedClassifierCV
 

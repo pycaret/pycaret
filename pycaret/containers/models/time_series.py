@@ -27,6 +27,7 @@ from sktime.transformations.series.detrend import (  # type: ignore
     ConditionalDeseasonalizer,
     Detrender,
 )
+from sktime.transformations.series.summarize import WindowSummarizer
 
 import pycaret.containers.base_container
 from pycaret.containers.models.base_model import (
@@ -39,18 +40,38 @@ from pycaret.internal.distributions import (
     IntUniformDistribution,
     UniformDistribution,
 )
-from pycaret.internal.utils import get_logger, np_list_arange, param_grid_to_lists
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.datetime import (
     coerce_datetime_to_period_index,
     coerce_period_to_datetime_index,
 )
+from pycaret.utils.generic import get_logger, np_list_arange, param_grid_to_lists
 from pycaret.utils.time_series import TSModelTypes
 from pycaret.utils.time_series.forecasting.models import _check_enforcements
 
 # First one in the list is the default ----
 ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
-    "auto_arima": ["pmdarima", "statsforecast"]
+    "auto_arima": ["pmdarima", "statsforecast"],
+    "lr_cds_dt": ["sklearn", "sklearnex"],
+    "en_cds_dt": ["sklearn", "sklearnex"],
+    "ridge_cds_dt": ["sklearn", "sklearnex"],
+    "lasso_cds_dt": ["sklearn", "sklearnex"],
+    "lar_cds_dt": ["sklearn"],
+    "llar_cds_dt": ["sklearn"],
+    "br_cds_dt": ["sklearn"],
+    "huber_cds_dt": ["sklearn"],
+    "par_cds_dt": ["sklearn"],
+    "omp_cds_dt": ["sklearn"],
+    "knn_cds_dt": ["sklearn", "sklearnex"],
+    "dt_cds_dt": ["sklearn"],
+    "rf_cds_dt": ["sklearn"],
+    "et_cds_dt": ["sklearn"],
+    "gbr_cds_dt": ["sklearn"],
+    "ada_cds_dt": ["sklearn"],
+    "xgboost_cds_dt": ["sklearn"],
+    "lightgbm_cds_dt": ["sklearn"],
+    "catboost_cds_dt": ["sklearn"],
+    # "svm_cds_dt": ["sklearn", "sklearnex"],
 }
 
 
@@ -248,7 +269,7 @@ class TimeSeriesContainer(ModelContainer):
 
 
 #########################
-#### BASELINE MODELS ####
+# BASELINE MODELS ####
 #########################
 
 
@@ -264,13 +285,13 @@ class NaiveContainer(TimeSeriesContainer):
         `sp` is hard coded to 1 irrespective of the `sp` value or whether
         seasonality is detected or not.
         """
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = NaiveForecaster()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -325,13 +346,13 @@ class GrandMeansContainer(TimeSeriesContainer):
         `sp` is hard coded to 1 irrespective of the `sp` value or whether
         seasonality is detected or not.
         """
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = NaiveForecaster()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -386,13 +407,13 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
         If sp = 1, this model is disabled.
         If sp != 1, model is enabled even when seasonality is not detected.
         """
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = NaiveForecaster()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -446,13 +467,13 @@ class PolyTrendContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = PolynomialTrendForecaster()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -490,7 +511,7 @@ class PolyTrendContainer(TimeSeriesContainer):
 
 
 ######################################
-#### CLASSICAL STATISTICAL MODELS ####
+# CLASSICAL STATISTICAL MODELS ####
 ######################################
 
 
@@ -498,14 +519,14 @@ class ArimaContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        self.logger = get_logger()
         random.seed(experiment.seed)
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.arima import ARIMA  # type: ignore
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = ARIMA()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -673,7 +694,7 @@ class AutoArimaContainer(TimeSeriesContainer):
                 StatsForecastAutoARIMA as AutoARIMA,
             )
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = AutoARIMA()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -739,7 +760,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -747,7 +768,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             ExponentialSmoothing,  # type: ignore
         )
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = ExponentialSmoothing()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -872,13 +893,13 @@ class CrostonContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.croston import Croston  # type: ignore
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = Croston()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -917,13 +938,13 @@ class ETSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.ets import AutoETS  # type: ignore
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = AutoETS()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -993,13 +1014,13 @@ class ThetaContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.theta import ThetaForecaster  # type: ignore
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = ThetaForecaster()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -1031,7 +1052,7 @@ class ThetaContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> Dict[str, Any]:
-        # https://github.com/alan-turing-institute/sktime/issues/940
+        # https://github.com/sktime/sktime/issues/940
         if self.strictly_positive:
             deseasonalize = True
         else:
@@ -1044,7 +1065,7 @@ class ThetaContainer(TimeSeriesContainer):
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
         # TODO; Update after Bug is fixed in sktime
-        # https://github.com/alan-turing-institute/sktime/issues/692
+        # https://github.com/sktime/sktime/issues/692
         # ThetaForecaster does not work with "initial_level" different from None
         if self.seasonality_present:
             tune_grid = {
@@ -1063,7 +1084,7 @@ class ThetaContainer(TimeSeriesContainer):
     @property
     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         # TODO; Update after Bug is fixed in sktime
-        # https://github.com/alan-turing-institute/sktime/issues/692
+        # https://github.com/sktime/sktime/issues/692
         # ThetaForecaster does not work with "initial_level" different from None
         if self.seasonality_present:
             tune_distributions = {
@@ -1080,19 +1101,19 @@ class TBATSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.tbats import TBATS
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = TBATS()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
             return
 
-        self.sp = experiment.all_sp_values
+        self.sp = experiment.all_sps_to_use
 
         self.seasonality_present = experiment.seasonality_present
 
@@ -1143,13 +1164,13 @@ class BATSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.bats import BATS  # type: ignore
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = BATS()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -1205,7 +1226,7 @@ class ProphetContainer(TimeSeriesContainer):
     model_type = TSModelTypes.LINEAR
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -1215,15 +1236,13 @@ class ProphetContainer(TimeSeriesContainer):
 
         from sktime.forecasting.fbprophet import Prophet
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = Prophet()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
             return
 
-        # sp = experiment.seasonal_period
-        # self.sp = sp if sp is not None else 1
-        #### Disable Prophet if Index is not of allowed type (e.g. if it is RangeIndex)
+        # Disable Prophet if Index is not of allowed type (e.g. if it is RangeIndex)
         allowed_index_types = [pd.PeriodIndex, pd.DatetimeIndex]
         index_type = experiment.index_type
         self.active = True if index_type in allowed_index_types else False
@@ -1280,7 +1299,7 @@ class ProphetContainer(TimeSeriesContainer):
 
 
 #################################
-#### REGRESSION BASED MODELS ####
+# REGRESSION BASED MODELS ####
 #################################
 
 
@@ -1295,12 +1314,17 @@ class CdsDtContainer(TimeSeriesContainer):
     def __init__(self, experiment) -> None:
         self.logger = get_logger()
         self.seed = experiment.seed
+        self.fe_target_rr = experiment.fe_target_rr
         np.random.seed(self.seed)
 
         # Import the right regressor
         self.gpu_imported = False
         self.gpu_param = experiment.gpu_param
         self.n_jobs_param = experiment.n_jobs_param
+
+        self._set_engine_related_vars(
+            id=self.id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
 
         regressor_class = self.return_regressor_class()  # e.g. LinearRegression
         regressor_args = self._set_regressor_args
@@ -1313,7 +1337,7 @@ class CdsDtContainer(TimeSeriesContainer):
             self.active = False
             return
 
-        #### Disable container if certain features are not supported but enforced ----
+        # Disable container if certain features are not supported but enforced ----
         dummy = BaseCdsDtForecaster(regressor=self.regressor)
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
@@ -1397,6 +1421,7 @@ class CdsDtContainer(TimeSeriesContainer):
             "regressor": self.regressor,
             "sp": self.sp,
             "window_length": self.sp,
+            "fe_target_rr": self.fe_target_rr,
         }
         return args
 
@@ -1413,7 +1438,12 @@ class LinearCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-        from sklearn.linear_model import LinearRegression
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import LinearRegression
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.linear_model import LinearRegression
 
         if self.gpu_param == "force":
             from cuml.linear_model import LinearRegression  # type: ignore
@@ -1437,7 +1467,6 @@ class LinearCdsDtContainer(CdsDtContainer):
             "degree": [1],
             "window_length": [10],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1465,7 +1494,12 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-        from sklearn.linear_model import ElasticNet
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import ElasticNet
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.linear_model import ElasticNet
 
         if self.gpu_param == "force":
             from cuml.linear_model import ElasticNet  # type: ignore
@@ -1491,7 +1525,6 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
             "regressor__alpha": [0.01, 0.1, 1, 10],
             "regressor__l1_ratio": [0.01, 0.1, 0.5, 1.0],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1521,7 +1554,12 @@ class RidgeCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-        from sklearn.linear_model import Ridge
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import Ridge
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.linear_model import Ridge
 
         if self.gpu_param == "force":
             from cuml.linear_model import Ridge  # type: ignore
@@ -1546,7 +1584,6 @@ class RidgeCdsDtContainer(CdsDtContainer):
             "window_length": [10],
             "regressor__alpha": [0.01, 0.1, 1, 10],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1565,7 +1602,6 @@ class RidgeCdsDtContainer(CdsDtContainer):
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__alpha": UniformDistribution(0.001, 10),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
-            "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
         return tune_distributions
 
@@ -1577,7 +1613,12 @@ class LassoCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-        from sklearn.linear_model import Lasso
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import Lasso
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.linear_model import Lasso
 
         if self.gpu_param == "force":
             from cuml.linear_model import Lasso  # type: ignore
@@ -1602,7 +1643,6 @@ class LassoCdsDtContainer(CdsDtContainer):
             "window_length": [10],
             "regressor__alpha": [0.01, 0.1, 1, 10],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1621,7 +1661,6 @@ class LassoCdsDtContainer(CdsDtContainer):
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__alpha": UniformDistribution(0.001, 10),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
-            "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
         return tune_distributions
 
@@ -1646,7 +1685,6 @@ class LarsCdsDtContainer(CdsDtContainer):
             "window_length": [10],
             "regressor__eps": [0.0001, 0.001, 0.01, 0.1],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1665,7 +1703,6 @@ class LarsCdsDtContainer(CdsDtContainer):
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__eps": UniformDistribution(0.00001, 0.1, log=True),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
-            "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
         return tune_distributions
 
@@ -1691,7 +1728,6 @@ class LassoLarsCdsDtContainer(CdsDtContainer):
             "regressor__alpha": [0.01, 0.1, 1, 10],
             "regressor__eps": [0.0001, 0.001, 0.01, 0.1],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1711,7 +1747,6 @@ class LassoLarsCdsDtContainer(CdsDtContainer):
             "regressor__alpha": UniformDistribution(0.0000001, 1, log=True),
             "regressor__eps": UniformDistribution(0.00001, 0.1, log=True),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
-            "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
         return tune_distributions
 
@@ -1740,7 +1775,6 @@ class BayesianRidgeCdsDtContainer(CdsDtContainer):
             "regressor__lambda_2": [0.01, 0.1],
             "regressor__compute_score": [True, False],
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1898,7 +1932,6 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
                 1, self.num_features + 1, 1, inclusive=True
             ),
             "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
         }
         return tune_grid
 
@@ -1938,7 +1971,11 @@ class KNeighborsCdsDtContainer(CdsDtContainer):
         super().__init__(experiment=experiment)
 
     def return_regressor_class(self):
-        from sklearn.neighbors import KNeighborsRegressor
+        if self.engine == "sklearn":
+            from sklearn.neighbors import KNeighborsRegressor
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.neighbors import KNeighborsRegressor
 
         if self.gpu_param == "force":
             from cuml.neighbors import KNeighborsRegressor  # type: ignore
@@ -2006,7 +2043,7 @@ class DecisionTreeCdsDtContainer(CdsDtContainer):
             "regressor__min_impurity_decrease": [0.1, 0.5],
             "regressor__min_samples_leaf": [2, 6],
             "regressor__min_samples_split": [2, 10],
-            "regressor__criterion": ["mse", "mae", "friedman_mse"],
+            "regressor__criterion": ["squared_error", "absolute_error", "friedman_mse"],
         }
         return tune_grid
 
@@ -2103,7 +2140,7 @@ class ExtraTreesCdsDtContainer(CdsDtContainer):
             "degree": [1],
             "window_length": [10],
             "regressor__n_estimators": np_list_arange(10, 300, 150, inclusive=True),
-            # "regressor__criterion": ["mse", "mae"],  # Too many combinations
+            # "regressor__criterion": ["squared_error", "absolute_error"],  # Too many combinations
             "regressor__max_depth": np_list_arange(1, 10, 10, inclusive=True),
             "regressor__min_impurity_decrease": [0.1, 0.5],
             "regressor__max_features": [1.0, "sqrt", "log2"],
@@ -2127,7 +2164,9 @@ class ExtraTreesCdsDtContainer(CdsDtContainer):
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
-            "regressor__criterion": CategoricalDistribution(values=["mse", "mae"]),
+            "regressor__criterion": CategoricalDistribution(
+                values=["squared_error", "absolute_error"]
+            ),
             "regressor__max_depth": IntUniformDistribution(lower=1, upper=11),
             "regressor__min_impurity_decrease": UniformDistribution(
                 0.000000001, 0.5, log=True
@@ -2340,7 +2379,7 @@ class LGBMCdsDtContainer(CdsDtContainer):
                 self.is_gpu_enabled = False
                 if self.gpu_param == "force":
                     raise RuntimeError(
-                        f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
+                        "LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
                     )
 
         return LGBMRegressor
@@ -2410,7 +2449,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
         self.use_gpu = experiment.gpu_param == "force" or (
-            experiment.gpu_param and len(experiment.X_train) >= 50000
+            experiment.gpu_param and len(experiment.y_train) >= 50000
         )
 
         super().__init__(experiment=experiment)
@@ -2497,7 +2536,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
 
 
 class BaseCdsDtForecaster(BaseForecaster):
-    # https://github.com/alan-turing-institute/sktime/blob/v0.8.0/extension_templates/forecasting.py
+    # https://github.com/sktime/sktime/blob/v0.8.0/extension_templates/forecasting.py
     model_type = None
 
     _tags = {
@@ -2513,15 +2552,21 @@ class BaseCdsDtForecaster(BaseForecaster):
     }
 
     def __init__(
-        self, regressor, sp=1, deseasonal_model="additive", degree=1, window_length=10
+        self,
+        regressor: Any,
+        sp: int = 1,
+        deseasonal_model: str = "additive",
+        degree: int = 1,
+        window_length: int = 10,
+        fe_target_rr: Optional[list] = None,
     ):
         """Base Class for time series using scikit models which includes
         Conditional Deseasonalizing and Detrending
 
         Parameters
         ----------
-        regressor : [type]
-            [description]
+        regressor : Any
+            The regressor to be used for the reduced regression model
         sp : int, optional
             Seasonality period used to deseasonalize, by default 1
         deseasonal_model : str, optional
@@ -2529,13 +2574,33 @@ class BaseCdsDtForecaster(BaseForecaster):
         degree : int, optional
             degree of detrender, by default 1
         window_length : int, optional
-            Window Length used for the Reduced Forecaster, by default 10
+            Window Length used for the Reduced Forecaster, by default 10.
+            If fe_target_rr is provided, window_length is ignored.
+        fe_target_rr : Optional[list], optional
+            Custom transformations used to extract features from the target (useful
+            for extracting lagged features), by default None which takes the lags
+            based on a window_length parameter. If provided, window_length is ignored.
         """
         self.regressor = regressor
         self.sp = sp
         self.deseasonal_model = deseasonal_model
         self.degree = degree
         self.window_length = window_length
+
+        if fe_target_rr is None:
+            # All target lags as features.
+            # NOTE: Previously, this forecaster class used the `window_length` argument
+            # in make_reduction. Now we have moved to using the `transformers` argument.
+            # The order of columns matter for some models like tree based models
+            # Hence we start with the furthest away lag and end with the most recent lag.
+            # This behavior matches the behavior of the `window_length`` argument in
+            # make_reduction which is used in this forecaster class.
+            kwargs = {
+                "lag_feature": {"lag": list(np.arange(self.window_length, 0, -1))}
+            }
+            self.fe_target_rr = [WindowSummarizer(**kwargs, n_jobs=1)]
+        else:
+            self.fe_target_rr = fe_target_rr
 
         super(BaseCdsDtForecaster, self).__init__()
 
@@ -2555,8 +2620,10 @@ class BaseCdsDtForecaster(BaseForecaster):
                     make_reduction(
                         estimator=self.regressor,
                         scitype="tabular-regressor",
-                        window_length=self.window_length,
+                        transformers=self.fe_target_rr,
+                        window_length=None,
                         strategy="recursive",
+                        pooling="global",
                     ),
                 ),
             ]
@@ -2581,7 +2648,7 @@ if _check_soft_dependencies("prophet", extra=None, severity="warning"):
 
     class ProphetPeriodPatched(Prophet):
         def fit(self, y, X=None, fh=None, **fit_params):
-            #### sktime Prophet only supports DatetimeIndex
+            # sktime Prophet only supports DatetimeIndex
             # Hence coerce the index if it is not DatetimeIndex
             y = coerce_period_to_datetime_index(y)
             X = coerce_period_to_datetime_index(X)
@@ -2589,7 +2656,7 @@ if _check_soft_dependencies("prophet", extra=None, severity="warning"):
 
         @staticmethod
         def _get_orig_freq(X):
-            #### Store original frequency setting for later ----
+            # Store original frequency setting for later ----
             orig_freq = None
             if isinstance(X, (pd.DataFrame, pd.Series)):
                 orig_freq = X.index.freq
@@ -2623,21 +2690,21 @@ if _check_soft_dependencies("prophet", extra=None, severity="warning"):
                 Point predictions
             """
 
-            #### Store original frequency setting for later ----
+            # Store original frequency setting for later ----
             orig_freq = self._get_orig_freq(X)
 
             # TODO: Disable Prophet when Index is of any type other than DatetimeIndex or PeriodIndex
-            #### In that case, pycaret will always pass PeriodIndex from outside
+            # In that case, pycaret will always pass PeriodIndex from outside
             # since Datetime index are converted to PeriodIndex in pycaret
-            # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+            # Ref: https://github.com/sktime/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
             # But sktime Prophet only supports DatetimeIndex
             # Hence coerce the index internally if it is not DatetimeIndex
             X = coerce_period_to_datetime_index(X)
 
             y = super().predict(fh=fh, X=X)
 
-            #### sktime Prophet returns back DatetimeIndex
-            #### Convert back to PeriodIndex for pycaret
+            # sktime Prophet returns back DatetimeIndex
+            # Convert back to PeriodIndex for pycaret
             y = self._coerce_datetime_to_period_index(preds=y, orig_freq=orig_freq)
 
             return y
@@ -2675,21 +2742,21 @@ if _check_soft_dependencies("prophet", extra=None, severity="warning"):
                     at quantile probability in second-level col index, for each row index.
             """
 
-            #### Store original frequency setting for later ----
+            # Store original frequency setting for later ----
             orig_freq = self._get_orig_freq(X)
 
             # TODO: Disable Prophet when Index is of any type other than DatetimeIndex or PeriodIndex
-            #### In that case, pycaret will always pass PeriodIndex from outside
+            # In that case, pycaret will always pass PeriodIndex from outside
             # since Datetime index are converted to PeriodIndex in pycaret
-            # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+            # Ref: https://github.com/sktime/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
             # But sktime Prophet only supports DatetimeIndex
             # Hence coerce the index internally if it is not DatetimeIndex
             X = coerce_period_to_datetime_index(X)
 
             preds = super().predict_quantiles(fh=fh, X=X, alpha=alpha)
 
-            #### sktime Prophet returns back DatetimeIndex
-            #### Convert back to PeriodIndex for pycaret
+            # sktime Prophet returns back DatetimeIndex
+            # Convert back to PeriodIndex for pycaret
             preds = self._coerce_datetime_to_period_index(
                 preds=preds, orig_freq=orig_freq
             )
@@ -2701,7 +2768,7 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
     model_type = "ensemble"
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 

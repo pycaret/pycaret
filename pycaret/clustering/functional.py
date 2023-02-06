@@ -1,13 +1,14 @@
 import logging
-from typing import Any, Dict, List, Optional, Union
+import os
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Union
 
 import pandas as pd
 from joblib.memory import Memory
 
 from pycaret.clustering.oop import ClusteringExperiment
-from pycaret.internal.utils import check_if_global_is_not_none
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
+from pycaret.utils.generic import check_if_global_is_not_none
 
 _EXPERIMENT_CLASS = ClusteringExperiment
 _CURRENT_EXPERIMENT: Optional[ClusteringExperiment] = None
@@ -20,7 +21,8 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data: DATAFRAME_LIKE,
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
     index: Union[bool, int, str, SEQUENCE_LIKE] = False,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
@@ -33,7 +35,7 @@ def setup(
     create_date_columns: List[str] = ["day", "month", "year"],
     imputation_type: Optional[str] = "simple",
     numeric_imputation: str = "mean",
-    categorical_imputation: str = "constant",
+    categorical_imputation: str = "mode",
     text_features_method: str = "tf-idf",
     max_encoding_ohe: int = -1,
     encoding_method: Optional[Any] = None,
@@ -41,7 +43,7 @@ def setup(
     rare_value: str = "rare",
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
-    low_variance_threshold: Optional[float] = 0,
+    low_variance_threshold: Optional[float] = None,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
@@ -94,6 +96,14 @@ def setup(
         number of samples and n_features is the number of features. If data
         is not a pandas dataframe, it's converted to one using default column
         names.
+
+
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
 
 
     index: bool, int, str or sequence, default = False
@@ -196,7 +206,7 @@ def setup(
     encoding_method: category-encoders estimator, default = None
         A `category-encoders` estimator to encode the categorical columns
         with more than `max_encoding_ohe` unique values. If None,
-        `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+        `category_encoders.basen.BaseN` is used.
 
 
     rare_to_value: float or None, default=None
@@ -221,11 +231,11 @@ def setup(
         [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
 
-    low_variance_threshold: float or None, default = 0
+    low_variance_threshold: float or None, default = None
         Remove features with a training-set variance lower than the provided
-        threshold. The default is to keep all features with non-zero variance,
-        i.e. remove the features that have the same value in all samples. If
-        None, skip this transformation step.
+        threshold. If 0, keep all features with non-zero variance, i.e. remove
+        the features that have the same value in all samples. If None, skip
+        this transformation step.
 
 
     remove_multicollinearity: bool, default = False
@@ -424,6 +434,7 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        data_func=data_func,
         index=index,
         ordinal_features=ordinal_features,
         numeric_features=numeric_features,
@@ -1228,7 +1239,6 @@ def pull(pop: bool = False) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        Equivalent to get_config('display_container')[-1]
 
     """
     return _CURRENT_EXPERIMENT.pull(pop=pop)
@@ -1437,7 +1447,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_config(variable: str):
+def get_config(variable: Optional[str] = None):
 
     """
     This function is used to access global environment variables.
@@ -1446,7 +1456,13 @@ def get_config(variable: str):
     -------
     >>> X_train = get_config('X_train')
 
-    This will return X_train transformed dataset.
+    This will return training features.
+
+
+    variable : str, default = None
+        Name of the variable to return the value of. If None,
+        will return a list of possible names.
+
 
     Returns
     -------
@@ -1474,20 +1490,24 @@ def set_config(variable: str, value):
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_config(file_name: str):
-
+def save_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO], **cloudpickle_kwargs
+) -> None:
     """
-    This function save all global variables to a pickle file, allowing to
-    later resume without rerunning the ``setup``.
+    Saves the experiment to a pickle file.
+
+    The experiment is saved using cloudpickle to deal with lambda
+    functions. The data or test data is NOT saved with the experiment
+    and will need to be specified again when loading using
+    ``load_experiment``.
 
 
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> from pycaret.clustering import *
-    >>> exp_name = setup(data = jewellery)
-    >>> save_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to save the experiment to.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.dump`` call.
 
 
     Returns:
@@ -1495,29 +1515,73 @@ def save_config(file_name: str):
 
     """
 
-    return _CURRENT_EXPERIMENT.save_config(file_name=file_name)
+    return _CURRENT_EXPERIMENT.save_experiment(
+        path_or_file=path_or_file, **cloudpickle_kwargs
+    )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def load_config(file_name: str):
-
+def load_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO],
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+    preprocess_data: bool = True,
+    **cloudpickle_kwargs,
+) -> ClusteringExperiment:
     """
-    This function loads global variables from a pickle file into Python
-    environment.
+    Load an experiment saved with ``save_experiment`` from path
+    or file.
+
+    The data (and test data) is NOT saved with the experiment
+    and will need to be specified again.
 
 
-    Example
-    -------
-    >>> from pycaret.clustering import load_config
-    >>> load_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to load the experiment from.
+        The pickle file must be created through ``save_experiment``.
+
+
+    data: dataframe-like
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
+
+
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    preprocess_data: bool, default = True
+        If True, the data will be preprocessed again (through running ``setup``
+        internally). If False, the data will not be preprocessed. This means
+        you can save the value of the ``data`` attribute of an experiment
+        separately, and then load it separately and pass it here with
+        ``preprocess_data`` set to False. This is an advanced feature.
+        We recommend leaving it set to True and passing the same data
+        as passed to the initial ``setup`` call.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.load`` call.
 
 
     Returns:
-        Global variables
+        loaded experiment
 
     """
-
-    return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
+    exp = _EXPERIMENT_CLASS.load_experiment(
+        path_or_file=path_or_file,
+        data=data,
+        data_func=data_func,
+        preprocess_data=preprocess_data,
+        **cloudpickle_kwargs,
+    )
+    set_current_experiment(exp)
+    return exp
 
 
 def set_current_experiment(experiment: ClusteringExperiment):
@@ -1537,3 +1601,13 @@ def set_current_experiment(experiment: ClusteringExperiment):
             f"experiment must be a PyCaret ClusteringExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> ClusteringExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current ClusteringExperiment
+    """
+    return _CURRENT_EXPERIMENT

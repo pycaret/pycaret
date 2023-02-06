@@ -34,12 +34,12 @@
 
 <div align="left">
   
-## Welcome to PyCaret
+# Welcome to PyCaret
 PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
 
 In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few lines only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, LightGBM, CatBoost, spaCy, Optuna, Hyperopt, Ray, and few more.
 
-The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more technical expertise.
+The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more technical expertise. PyCaret was inspired by the caret library in R programming language.
 
 | Important Links              |                                                                |
 | -------------------------- | -------------------------------------------------------------- |
@@ -63,7 +63,7 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
 [changelog]: https://pycaret.gitbook.io/docs/get-started/release-notes
 [roadmap]: https://github.com/pycaret/pycaret/issues/1756
  
-## Installation
+# Installation
 
 PyCaret's default installation only installs hard dependencies as listed in the [requirements.txt](requirements.txt) file. 
 
@@ -78,13 +78,13 @@ pip install pycaret[full]
 
 <div align="center">
 
-## Supervised Workflow
+# Supervised Workflow
   
   Classification           |  Regression
 :-------------------------:|:-------------------------:
 ![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
 
- ## Unsupervised Workflow
+ # Unsupervised Workflow
   
   Clustering               |  Anomaly Detection
 :-------------------------:|:-------------------------:
@@ -92,25 +92,35 @@ pip install pycaret[full]
   
 <div align="left">
 
-## ⚡ PyCaret Time Series Module (beta)
+# ⚡ PyCaret Time Series Module
   
-PyCaret new time series module is now available in beta. Staying true to simplicity of PyCaret, it is consistent with our existing API and fully loaded with functionalities. Statistical testing, model training and selection (30+ algorithms), model analysis, automated hyperparameter tuning, experiment logging, deployment on cloud, and more. All of this with only few lines of code (just like the other modules of pycaret). If you would like to give it a try, checkout our official [quick start](https://nbviewer.org/github/pycaret/pycaret/blob/time_series_beta/time_series_101.ipynb) notebook.
+PyCaret time series module is now available with the main pycaret installation. Staying true to simplicity of PyCaret, it is consistent with our existing API and fully loaded with functionalities. Statistical testing, model training and selection (30+ algorithms), model analysis, automated hyperparameter tuning, experiment logging, deployment on cloud, and more. All of this with only few lines of code (just like the other modules of pycaret). 
   
-:books: [Time Series Docs](https://pycaret.readthedocs.io/en/time_series/api/time_series.html)
+| Important Links              |                                                                |
+| -------------------------- | -------------------------------------------------------------- |
+| :star: **[Time Series Quickstart]**        | Get started with Time Series Analysis         |
+| :books: **[Time Series Notebooks]**        | New to Time Series? Checkout our official (detailed) notebooks!            |
+| :tv: **[Time Series Video Tutorials]**            | Our video tutorial from various events.             |
+| :question: **[Time Series FAQs]**        |   Have questions? Queck out the FAQ's     |
+| :hammer_and_wrench: **[Time Series API Interface]**        |   The detailed API interface for the Time Series Module          |
+| :deciduous_tree: **[Time Series Features and Roadmap]**          | PyCaret's software and community development plan.|
+
+[Time Series Quickstart]: https://pycaret.gitbook.io/docs/get-started/quickstart#time-series
+[Time Series Notebooks]: https://pycaret.gitbook.io/docs/get-started/tutorials
+[Time Series Video Tutorials]: https://pycaret.gitbook.io/docs/learn-pycaret/videos#pycaret-time-series-module
+[Time Series FAQs]: https://github.com/pycaret/pycaret/discussions/categories/faqs?discussions_q=category%3AFAQs+label%3Atime_series
+[Time Series API Interface]: https://pycaret.readthedocs.io/en/latest/api/time_series.html
+[Time Series Features and Roadmap]: https://github.com/pycaret/pycaret/issues/1648
   
-:question: [Time Series FAQs](https://github.com/pycaret/pycaret/discussions/categories/faqs?discussions_q=category%3AFAQs+label%3Atime_series)
-  
-:rocket: [Features and Roadmap](https://github.com/pycaret/pycaret/issues/1648)
-  
-The module is still in beta. We are adding new functionalities every day and doing weekly pip releases. Please ensure to create a separate python environment to avoid dependency conflicts with main pycaret. The final release of this module will be merged with the main pycaret in next major release.
+# Installation
   
  ```
- pip install pycaret-ts-alpha
+ pip install --pre pycaret
  ```  
 
 ![alt text](docs/images/pycaret_ts_quickdemo.gif)  
 
-## Who should use PyCaret?
+# Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
 
 - Experienced Data Scientists who want to increase productivity.
@@ -118,7 +128,7 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Data Science Professionals who want to build rapid prototypes.
 - Data Science and Machine Learning students and enthusiasts.
   
-## PyCaret GPU support
+# PyCaret GPU support
 With PyCaret >= 2.2, you can train models on GPU and speed up your workflow by 10x. To train models on GPU simply pass `use_gpu = True` in the setup function. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default version or the full version. As of the latest release, the following models can be trained on GPU:
 
 - Extreme Gradient Boosting (requires no further installation)
@@ -126,15 +136,15 @@ With PyCaret >= 2.2, you can train models on GPU and speed up your workflow by 1
 - Light Gradient Boosting Machine requires [GPU installation](https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
 - Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier, K Neighbors Regressor, Support Vector Machine, Linear Regression, Ridge Regression, Lasso Regression requires [cuML >= 0.15](https://github.com/rapidsai/cuml)
 
-## PyCaret Intel sklearnex support
+# PyCaret Intel sklearnex support
 You can apply [Intel optimizations](https://github.com/intel/scikit-learn-intelex) for machine learning algorithms and speed up your workflow. To train models with Intel optimizations use `sklearnex` engine. There is no change in the use of the API, however, installation of Intel sklearnex is required:
 
 ```pip install scikit-learn-intelex```
 
-## License
+# License
 PyCaret is completely free and open-source and licensed under the [MIT](https://github.com/pycaret/pycaret/blob/master/LICENSE) license. 
 
-## Contributors
+# Contributors
 <a href="https://github.com/pycaret/pycaret/graphs/contributors">
   <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" width = 500/>
 </a>

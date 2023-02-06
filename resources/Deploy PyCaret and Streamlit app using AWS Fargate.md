@@ -1,11 +1,11 @@
 
-## Deploy PyCaret and Streamlit app using AWS Fargate — serverless infrastructure
+# Deploy PyCaret and Streamlit app using AWS Fargate — serverless infrastructure
 
-### by Moez Ali
+# by Moez Ali
 
 ![A step-by-step beginner’s guide to containerize and deploy ML pipeline serverless on AWS Fargate](https://cdn-images-1.medium.com/max/2000/1*QznGlPsGrGQS4DadTunLXw.png)
 
-## RECAP
+# RECAP
 
 In our [last post](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb), we demonstrated how to develop a machine learning pipeline using PyCaret and serve it as a Streamlit web application deployed onto Google Kubernetes Engine. If you haven’t heard about PyCaret before, you can read this [announcement](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) to get started.
 
@@ -15,7 +15,7 @@ By the end of this tutorial, you will be able to build and host a fully function
 
 ![Web Application](https://cdn-images-1.medium.com/max/2800/1*TesAmfCyanOeMEPiYxInUg.png)
 
-## 👉 Learning Goals of this Tutorial
+# 👉 Learning Goals of this Tutorial
 
 * What is a Container? What is Docker? What is Kubernetes?
 
@@ -41,31 +41,31 @@ In the past, we have covered deployment on other cloud platforms such as Azure a
 
 * [Build and deploy your first machine learning web app on Heroku PaaS](https://towardsdatascience.com/build-and-deploy-your-first-machine-learning-web-app-e020db344a99)
 
-## 💻 Toolbox for this tutorial
+# 💻 Toolbox for this tutorial
 
-## PyCaret
+# PyCaret
 
 [PyCaret](https://www.pycaret.org/) is an open source, low-code machine learning library in Python that is used to train and deploy machine learning pipelines and models into production. PyCaret can be installed easily using pip.
 
     pip install pycaret
 
-## Streamlit
+# Streamlit
 
 [Streamlit](https://www.streamlit.io/) is an open-source Python library that makes it easy to build beautiful custom web-apps for machine learning and data science. Streamlit can be installed easily using pip.
 
     pip install streamlit
 
-## Docker Toolbox for Windows 10 Home
+# Docker Toolbox for Windows 10 Home
 
 [Docker](https://www.docker.com/)** **is a tool designed to make it easier to create, deploy, and run applications by using containers. Containers are used to package up an application with all of its necessary components, such as libraries and other dependencies, and ship it all out as one package. If you haven’t used docker before, this tutorial also covers the installation of Docker Toolbox (legacy) on **Windows 10 Home**. In the [previous tutorial](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01) we covered how to install Docker Desktop on **Windows 10 Pro edition**.
 
-## Amazon Web Services (AWS)
+# Amazon Web Services (AWS)
 
 Amazon Web Services (AWS) is a comprehensive and broadly adopted cloud platform, offered by Amazon. It has over 175 fully-featured services from data centers globally. If you haven’t used AWS before, you can [sign-up](https://aws.amazon.com/) for a free account.
 
-## ✔️Let’s get started…..
+# ✔️Let’s get started…..
 
-## What is a Container?
+# What is a Container?
 
 Before we get into implementation using AWS Fargate, let’s understand what a container is and why we would need one?
 
@@ -77,7 +77,7 @@ What does an environment include? → The programing language such as Python and
 
 If we can create an environment that we can transfer to other machines (for example: your friend’s computer or a cloud service provider like Google Cloud Platform), we can reproduce the results anywhere. Hence, ***a ****container ***is a type of software that packages up an application and all its dependencies so the application runs reliably from one computing environment to another.
 
-## What is Docker?
+# What is Docker?
 
 Docker is a company that provides software (also called **Docker**) that allows users to build, run and manage containers. While Docker’s container are the most common, there are other less famous *alternatives* such as [LXD](https://linuxcontainers.org/lxd/introduction/) and [LXC](https://linuxcontainers.org/).
 
@@ -93,7 +93,7 @@ At this point, you must recognize that managing real-life applications require m
 
 This brings us to **Kubernetes**.
 
-## What is Kubernetes?
+# What is Kubernetes?
 
 Kubernetes is an open-source system developed by Google in 2014 for managing containerized applications. In simple words, Kubernetes ****is a system for running and coordinating containerized applications across a cluster of machines.
 
@@ -111,7 +111,7 @@ So far we have discussed and understood:
 
 Before introducing AWS Fargate, there is only one thing left to discuss and that is Amazon’s own container orchestration service **Amazon Elastic Container Service (ECS).**
 
-## AWS Elastic Container Service (ECS)
+# AWS Elastic Container Service (ECS)
 
 Amazon Elastic Container Service (Amazon ECS) is Amazon’s home-grown container orchestration platform. The idea behind ECS is similar to Kubernetes *(both of them are orchestration services)*.
 
@@ -127,7 +127,7 @@ Irrespective of whichever container orchestration service you are using (ECS or 
 
 ![Amazon ECS underlying infrastructure](https://cdn-images-1.medium.com/max/2798/1*k4famzZ1w2Ee5XMHRo1Ggw.png)
 
-## AWS Fargate — serverless compute for containers
+# AWS Fargate — serverless compute for containers
 
 AWS Fargate is a serverless compute engine for containers that works with both Amazon Elastic Container Service (ECS) and Amazon Elastic Kubernetes Service (EKS). Fargate makes it easy for you to focus on building your applications. Fargate removes the need to provision and manage servers, lets you specify and pay for resources per application, and improves security through application isolation by design.
 
@@ -153,7 +153,7 @@ There is no best answer as to which approach is better. The choice between going
 
 * Your application is stateless *(A stateless app is an application that does not save client data generated in one session for use in the next session with that client)*.
 
-## Setting the Business Context
+# Setting the Business Context
 
 An insurance company wants to improve its cash flow forecasting by better predicting patient charges using demographic and basic patient health risk metrics at the time of hospitalization.
 
@@ -161,11 +161,11 @@ An insurance company wants to improve its cash flow forecasting by better predic
 
 *([data source](https://www.kaggle.com/mirichoi0218/insurance#insurance.csv))*
 
-## Objective
+# Objective
 
 To build and deploy a web application where the demographic and health information of a patient is entered into a web-based form which then outputs a predicted charge amount.
 
-## Tasks
+# Tasks
 
 * Train, validate and develop a machine learning pipeline using PyCaret.
 
@@ -177,7 +177,7 @@ To build and deploy a web application where the demographic and health informati
 
 Since we have already covered the first two tasks in our [last tutorial](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb), we will quickly recap them and then focus on the remaining items in the list above. If you are interested in learning more about developing a machine learning pipeline in Python using PyCaret and building a web app using a Streamlit framework, please read [this tutorial](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104).
 
-## 👉 Task 1 — Model Training and Validation
+# 👉 Task 1 — Model Training and Validation
 
 We are using PyCaret in Python for training and developing a machine learning pipeline which will be used as part of our web app. The Machine Learning Pipeline can be developed in an Integrated Development Environment (IDE) or Notebook. We have used a notebook to run the below code:
 
@@ -187,23 +187,23 @@ When you save a model in PyCaret, the entire transformation pipeline based on th
 
 ![Machine Learning Pipeline created using PyCaret](https://cdn-images-1.medium.com/max/2000/1*P7EXfIxqZZGrpeLgDdk1vQ.png)
 
-## 👉 Task 2 — Build a front-end web application
+# 👉 Task 2 — Build a front-end web application
 
 Now that our machine learning pipeline and model are ready to start building a front-end web application that can generate predictions on new datapoints. This application will support ‘Online’ as well as ‘Batch’ predictions through a csv file upload. Let’s breakdown the application code into three main parts:
 
-## Header / Layout
+# Header / Layout
 
 This section imports libraries, loads the trained model and creates a basic layout with a logo on top, a jpg image and a dropdown menu on the sidebar to toggle between ‘Online’ and ‘Batch’ prediction.
 
 ![app.py — code snippet part 1](https://cdn-images-1.medium.com/max/2268/1*xAnCZ1N_BNoPW7FoA-NXrA.png)
 
-### Online Predictions
+# Online Predictions
 
 This section deals with the initial app function, Online one-by-one predictions. We are using streamlit widgets such as *number input, text input, drop down menu and checkbox* to collect the datapoints used to train the model such as Age, Sex, BMI, Children, Smoker, Region.
 
 ![app.py — code snippet part 2](https://cdn-images-1.medium.com/max/2408/1*eFeq1wINsUUnvLJfuL-GOA.png)
 
-### Batch Predictions
+# Batch Predictions
 
 Predictions by batch is the second layer of the app’s functionality. The **file_uploader** widget in streamlit is used to upload a csv file and then called the native **predict_model() **function from PyCaret to generate predictions that are displayed using streamlit’s write() function.
 
@@ -216,7 +216,7 @@ Predictions by batch is the second layer of the app’s functionality. The **fil
 
 ![Streamlit application testing — Online Prediction](https://cdn-images-1.medium.com/max/2800/1*TesAmfCyanOeMEPiYxInUg.png)
 
-## 👉 Task 3 — Create a Dockerfile
+# 👉 Task 3 — Create a Dockerfile
 
 To containerize our application for deployment we need a docker image that becomes a container at runtime. A docker image is created using a Dockerfile. A Dockerfile is just a file with a set of instructions. The Dockerfile for this project looks like this:
 
@@ -224,11 +224,11 @@ To containerize our application for deployment we need a docker image that becom
 
 The last part of this Dockerfile (starting at line 23) is Streamlit specific. Dockerfile is case-sensitive and must be in the project folder with the other project files.
 
-## 👉 Task 4–Deploy on AWS Fargate:
+# 👉 Task 4–Deploy on AWS Fargate:
 
 Follow these simple 9 steps to deploy app on AWS Fargate:
 
-### 👉 Step 1 — Install Docker Toolbox (for Windows 10 Home)
+# 👉 Step 1 — Install Docker Toolbox (for Windows 10 Home)
 
 In order to build a docker image locally, you will need Docker installed on your computer. If you are using Windows 10 64-bit: Pro, Enterprise, or Education (Build 15063 or later) you can download Docker Desktop from [DockerHub](https://hub.docker.com/editions/community/docker-ce-desktop-windows/).
 
@@ -242,7 +242,7 @@ The easiest way to check if the installation was successful is by opening the co
 
 ![Anaconda Prompt to check docker](https://cdn-images-1.medium.com/max/2198/1*f5l4Tds3EOTFSPx6CT5M7w.png)
 
-### 👉 Step 2 — Create a Repository in Elastic Container Registry (ECR)
+# 👉 Step 2 — Create a Repository in Elastic Container Registry (ECR)
 
 **(a) Login to your AWS console and search for Elastic Container Registry:**
 
@@ -260,19 +260,19 @@ Click on “Create Repository”.
 
 ![Push commands for pycaret-streamlit-aws repository](https://cdn-images-1.medium.com/max/2000/1*WC-0ShGuB0MB6LgTq07B0Q.png)
 
-### 👉 Step 3— Execute push commands
+# 👉 Step 3— Execute push commands
 
 Navigate to your project folder using Anaconda Prompt and execute the commands you have copied in the step above. You must be in the folder where the Dockerfile and the rest of your code reside before executing these commands.
 
 These commands are for building docker image and then uploading it on AWS ECR.
 
-### 👉 Step 4 — Check your uploaded image
+# 👉 Step 4 — Check your uploaded image
 
 Click on the repository you created and you will see an image URI of the uploaded image in the step above. Copy the image URI (it would be needed in step 6 below).
 
 ![](https://cdn-images-1.medium.com/max/3828/1*VuYsEXDoSmmHlEFfYgOAhg.png)
 
-### 👉 Step 5 — Create and Configure a Cluster
+# 👉 Step 5 — Create and Configure a Cluster
 
 **(a) Click on “Clusters” on left-side menu:**
 
@@ -292,7 +292,7 @@ Click on “Create”.
 
 ![Cluster Created](https://cdn-images-1.medium.com/max/3824/1*1UfMJt807V92-jc6Z9ZlfQ.png)
 
-### 👉 Step 6 — Create a new Task definition
+# 👉 Step 6 — Create a new Task definition
 
 A **task** definition is required to run Docker containers in Amazon ECS. Some of the parameters you can specify in a **task** definition include: The Docker image to use with each container in your **task**. How much CPU and memory to use with each **task** or each container within a **task**.
 
@@ -318,7 +318,7 @@ Click “Create Task” on the bottom right.
 
 ![](https://cdn-images-1.medium.com/max/3828/1*DZpHXH5iy3daszNT4RYoEQ.png)
 
-### 👉 Step 7— Execute Task Definition
+# 👉 Step 7— Execute Task Definition
 
 In last step we created a task that will start the container. Now we will execute the task by clicking **“Run Task”** under Actions.
 
@@ -334,7 +334,7 @@ In last step we created a task that will start the container. Now we will execut
 
 Click on “Run Task” on bottom right.
 
-### 👉 Step 8— Allow inbound port 8501 from Network settings
+# 👉 Step 8— Allow inbound port 8501 from Network settings
 
 One last step before we can see our application in action on Public IP address is to allow port 8501 (used by streamlit) by creating a new rule. In order to do that, follow these steps:
 
@@ -358,7 +358,7 @@ One last step before we can see our application in action on Public IP address i
 
 ![](https://cdn-images-1.medium.com/max/3826/1*uqgV_Fr5NPGzWzwQ5LHAxw.png)
 
-## 👉 Congratulations! You have published your app serverless on AWS Fargate. Use public IP address with port 8501 to access the application.
+# 👉 Congratulations! You have published your app serverless on AWS Fargate. Use public IP address with port 8501 to access the application.
 
 ![App published on 99.79.189.46:8501](https://cdn-images-1.medium.com/max/3834/1*q9GXNH-YCL2vT7Q-Uj9clQ.png)
 
@@ -370,13 +370,13 @@ One last step before we can see our application in action on Public IP address i
 
 [Link to GitHub Repository for Heroku Deployment](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104)
 
-## PyCaret 2.0.0 is coming!
+# PyCaret 2.0.0 is coming!
 
 We have received overwhelming support and feedback from the community. We are actively working on improving PyCaret and preparing for our next release. **PyCaret 2.0.0 will be bigger and better**. If you would like to share your feedback and help us improve further, you may [fill this form](https://www.pycaret.org/feedback) on the website or leave a comment on our [GitHub ](https://www.github.com/pycaret/)or [LinkedIn](https://www.linkedin.com/company/pycaret/) page.
 
 Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe to our [YouTube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g) channel to learn more about PyCaret.
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 As of the first release 1.0.0, PyCaret has the following modules available for use. Click on the links below to see the documentation and working examples in Python.
 
@@ -387,7 +387,7 @@ As of the first release 1.0.0, PyCaret has the following modules available for u
 ](https://www.pycaret.org/anomaly-detection)[Natural Language Processing](https://www.pycaret.org/nlp)
 [Association Rule Mining](https://www.pycaret.org/association-rules)
 
-## Also see:
+# Also see:
 
 PyCaret getting started tutorials in Notebook:
 
@@ -398,7 +398,7 @@ PyCaret getting started tutorials in Notebook:
 [Natural Language Processing](https://www.pycaret.org/nlp101)
 [Association Rule Mining](https://www.pycaret.org/arul101)
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaret is an open source project. Everybody is welcome to contribute. If you would like to contribute, please feel free to work on [open issues](https://github.com/pycaret/pycaret/issues). Pull requests are accepted with unit tests on dev-1.0.1 branch.
 

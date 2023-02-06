@@ -1,15 +1,15 @@
 
-### [Gold Prediction](https://towardsdatascience.com/tagged/gold-price-prediction)
+# [Gold Prediction](https://towardsdatascience.com/tagged/gold-price-prediction)
 
-## Predicting Crashes in Gold Prices Using Machine Learning
+# Predicting Crashes in Gold Prices Using Machine Learning
 
-### by Mohammad Riazuddin
+# by Mohammad Riazuddin
 
-### Part — III of Gold Prediction Series. Step by step guide to predict a crash in Gold prices using Classification with PyCaret
+# Part — III of Gold Prediction Series. Step by step guide to predict a crash in Gold prices using Classification with PyCaret
 
 ![Gold Price Movement](https://cdn-images-1.medium.com/max/3666/0*etQrkJsMtNUP9EWE.png)
 
-## Approach
+# Approach
 
 In the previous two parts of the [Gold Prediction](https://towardsdatascience.com/machine-learning-to-predict-gold-price-returns-4bdb0506b132) series, we discussed how to import data from free yahoofinancials API and build a regression model to predict return from Gold over two horizons. i.e 14-Day and 22-Day.
 
@@ -23,11 +23,11 @@ In this part, we will try to predict if there would be a ‘sharp fall’ or ‘
 
  4. Train models to predict the *‘sharp fall’ *and use trained model to make prediction on new data
 
-## Preparing Data
+# Preparing Data
 
 This part is exactly the same as we did in Part I. The [notebook](https://github.com/Riazone/Gold-Return-Prediction/blob/master/Classification/Gold%20Prediction%20Experiment%20%20Classification-%20PyCaret.ipynb) contains the entire code chunk for data import and manipulation or you can directly start by loading the dataset which can be downloaded from the link [here](https://github.com/Riazone/Gold-Return-Prediction/blob/master/Training%20Data.csv).
 
-## Defining ‘Sharp Fall’
+# Defining ‘Sharp Fall’
 
 Any classification problem needs labels. Here we need to create labels by defining and quantifying *‘sharp fall’.*
 
@@ -60,7 +60,7 @@ Now, based on the above z-value and Mean and SD of returns for each window, we w
 
 So the threshold return levels are -0.0373 or -3.73% for 14-Day window and -0.0463 or -4.63% for 22-Day window. What this implies is, there is only 15% probability of 14-Day returns being lower than -3.73% and 22-Day return being lower than -4.63%. This is a concept similar to what is used in the calculation of Value At Risk (VAR).
 
-## Creating Labels
+# Creating Labels
 
 We will use the above threshold levels to create labels. Any returns in the two windows lower than the respective threshold will be labeled as 1, else as 0.
 
@@ -80,9 +80,9 @@ Once we have these labels, we do not actually need the returns columns and hence
     data = data.drop([’Gold-T+14',’Gold-T+22'],axis=1)
     data.head()
 
-## Modelling with PyCaret
+# Modelling with PyCaret
 
-### 22-Day Window
+# 22-Day Window
 
 We will start with the 22-Day window here. I will be using PyCaret’s Classification module here for experimentation.
 
@@ -127,7 +127,7 @@ So currently our top-4 models are:
 
 ![](https://cdn-images-1.medium.com/max/2000/1*ok58GJ9EY2YGkhRrhBdpVg.png)
 
-### **Evaluate Models**
+# **Evaluate Models**
 
 Before moving ahead, let us evaluate the model performance. We will exploit ***evaluate_model()*** function of PyCaret to evaluate and highlight important aspects of the winning models.
 
@@ -143,7 +143,7 @@ Since *mlp* and *catb_tuned* do not provide feature importance, we will use *lgb
 
 We can see that Return of Gold in the past 180 days is the most important factor here. This is also intuitive because if the Gold prices have increased a lot in the past, their chances of falling/correcting are higher and vice-versa. The next 3 features are returns from Silver over 250, 60 and 180 days. Again, Silver and Gold are two most widely traded and correlated precious metals, hence the relationship is very intuitive.
 
-### **Ensemble Models**
+# **Ensemble Models**
 
 After having tuned the hyper-parameters of the model, we can try Ensembling methods to improve performance. Two ensembling methods we can try is [‘Bagging’ and ‘Boosting’](https://towardsdatascience.com/ensemble-methods-bagging-boosting-and-stacking-c9214a10a205) . Models that do not provide probability estimates cannot be used for Boosting. Hence, we can use Boosting with ‘lgbm’ and ‘et’ only. For others, we tried bagging to see if there were any improvements in performance or not. Below are the code snapshots and the 10-fold results.
 
@@ -191,7 +191,7 @@ Since we have ***‘stack3’*** as the leading model, we would fit the model on
 
 The code above fits the model on entire data and using the ***save_model()*** function, I have saved the trained model and the pre-processing pipeline in a *pkl* file named [“***22D Classifier***”](https://github.com/Riazone/Gold-Return-Prediction/blob/master/Classification/22D%20Classifier.pkl) in my active directory. This saved model can and will be called on to predict on new data.
 
-### Predicting on New Data
+# Predicting on New Data
 
 For making prediction we will need to import the raw prices data just the way we did it the beginning of the exercise to extract the features and then load the model to make the predictions. The only difference would be that we would be importing data till the last trading day to make a prediction on the most recent data, just like we would do in real life. The notebook titled ***‘[Gold Prediction New Data — Classification’](https://github.com/Riazone/Gold-Return-Prediction/blob/master/Classification/Gold%20Prediction%20New%20Data%20-%20Classification.ipynb)*** in the repo exhibits the data import, preparation and prediction codes.
 
@@ -209,11 +209,11 @@ Using ***predict_model()*** we can apply the loaded model on new set of data to 
 
 Looking at the Label and Score column of the prediction, the model did not predict a significant fall on any of the days. For example, given the historical returns as of 29th April, the model predicts that a significant fall in Gold Prices over the next 22-Day period is ***not likely***, hence **Label = 0**, with a probability of a meagre 9.19%.
 
-## Conclusion
+# Conclusion
 
 So here I have walked through steps to create a classifier to predict a significant fall in prices over the next 22-Day period in Gold Prices. The notebook contains codes for 14- Day model as well. You can try to create labels and try to predict similar fall over different windows of time in a similar fashion. Till now, we have created a [regression](https://towardsdatascience.com/machine-learning-to-predict-gold-price-returns-4bdb0506b132) and a classification model. In future, we will try to use the prediction from classification models as features in the regression problem and see if it improves the performance of regression.
 
-## Important Links
+# Important Links
 
 [***Git-hub Repository](https://github.com/Riazone/Gold-Return-Prediction/tree/master/Classification)***
 

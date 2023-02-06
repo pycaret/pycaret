@@ -17,7 +17,7 @@ from sklearn.metrics._scorer import _BaseScorer
 import pycaret.containers.base_container
 import pycaret.internal.metrics
 from pycaret.containers.metrics.base_metric import MetricContainer
-from pycaret.internal.utils import get_label_encoder
+from pycaret.utils.generic import get_label_encoder
 
 
 class ClassificationMetricContainer(MetricContainer):
@@ -102,7 +102,7 @@ class ClassificationMetricContainer(MetricContainer):
     ) -> None:
 
         allowed_targets = ["pred", "pred_proba", "threshold"]
-        if not target in allowed_targets:
+        if target not in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")
 
         if not args:

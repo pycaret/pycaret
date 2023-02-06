@@ -2,6 +2,7 @@
 # License: MIT
 
 
+import re
 from collections import defaultdict
 from inspect import signature
 
@@ -13,9 +14,8 @@ from sklearn.covariance import EllipticEnvelope
 from sklearn.ensemble import IsolationForest
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.neighbors import LocalOutlierFactor
-from sklearn.utils.metaestimators import if_delegate_has_method
 
-from ..utils import to_df, to_series, variable_return
+from pycaret.utils.generic import to_df, to_series, variable_return
 
 
 class TransformerWrapper(BaseEstimator, TransformerMixin):
@@ -117,7 +117,7 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
         for col in df:
             if col in original_df and col not in self._include:
                 raise ValueError(
-                    f"Column '{col}' returned by the transformer "
+                    f"Column '{col}' returned by transformer {self.transformer} "
                     "already exists in the original dataset."
                 )
 
@@ -263,6 +263,19 @@ class TransformerWrapperWithInverse(TransformerWrapper):
         return to_series(output, index=y.index, name=y.name)
 
 
+class CleanColumnNames(BaseEstimator, TransformerMixin):
+    """Remove weird characters from column names."""
+
+    def __init__(self, match=r"[\]\[\,\{\}\"\:]+"):
+        self.match = match
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        return X.rename(columns=lambda x: re.sub(self.match, "", str(x)))
+
+
 class ExtractDateTimeFeatures(BaseEstimator, TransformerMixin):
     """Extract features from datetime columns."""
 
@@ -387,7 +400,9 @@ class GroupFeatures(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         if not self.group_names:
-            self.group_names = [f"group_{i}" for i in self.group_features]
+            self.group_names = [
+                f"group_{i}" for i in range(1, len(self.group_features) + 1)
+            ]
 
         for name, group in zip(self.group_names, self.group_features):
             # Drop columns that are not in the dataframe (can be excluded)
@@ -589,7 +604,6 @@ class TargetTransformer(BaseEstimator):
         output = self.estimator.transform(y)
         return to_series(output, index=index, name=name)
 
-    @if_delegate_has_method("estimator")
     def inverse_transform(self, y: pd.Series):
         y, index, name = self._enforce_2d_on_y(y)
         output = self.estimator.inverse_transform(y)

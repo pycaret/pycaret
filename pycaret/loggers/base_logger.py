@@ -1,5 +1,7 @@
 from abc import ABC
 
+SETUP_TAG = "Session Initialized"
+
 
 class BaseLogger(ABC):
     def init_logger():
