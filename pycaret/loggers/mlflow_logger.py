@@ -11,6 +11,7 @@ try:
     import mlflow
     import mlflow.sklearn
     from mlflow.tracking.fluent import _active_run_stack
+    from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID
 except ImportError:
     mlflow = None
     _active_run_stack = None
@@ -74,7 +75,15 @@ class MlflowLogger(BaseLogger):
 
     @property
     def active_run(self):
+        if not self.runs:
+            return None
         return self.runs[-1]
+
+    @property
+    def parent_run(self):
+        if not len(self.runs > 1):
+            return None
+        return self.runs[-2]
 
     @property
     def run_id(self):
@@ -121,6 +130,8 @@ class MlflowLogger(BaseLogger):
             mlflow.set_tag("USI", USI)
             mlflow.set_tag("Run Time", runtime)
             mlflow.set_tag("Run ID", RunID)
+            if self.parent_run:
+                mlflow.set_tag(MLFLOW_PARENT_RUN_ID, self.parent_run.info.run_id)
 
     def log_artifact(self, file, type="artifact"):
         with set_active_mlflow_run(self.active_run):
