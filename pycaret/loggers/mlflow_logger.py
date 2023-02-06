@@ -130,7 +130,7 @@ class MlflowLogger(BaseLogger):
             mlflow.set_tag("USI", USI)
             mlflow.set_tag("Run Time", runtime)
             mlflow.set_tag("Run ID", RunID)
-            if self.parent_run:
+            if self.parent_run and not source == "setup":
                 mlflow.set_tag(MLFLOW_PARENT_RUN_ID, self.parent_run.info.run_id)
 
     def log_artifact(self, file, type="artifact"):
