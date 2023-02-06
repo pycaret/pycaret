@@ -81,7 +81,7 @@ class MlflowLogger(BaseLogger):
 
     @property
     def parent_run(self):
-        if not len(self.runs) > 1:
+        if len(self.runs) < 2:
             return None
         return self.runs[-2]
 
