@@ -7,7 +7,6 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
-import plotly.graph_objects as go  # type: ignore
 from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
 from sklearn.preprocessing import LabelEncoder
@@ -580,7 +579,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self._set_exp_model_engines(
             container_default_engines=get_container_default_engines(),
-            engine=engines,
+            engines=engines,
         )
 
         # Preprocessing ============================================ >>
@@ -1795,18 +1794,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
             for x in kwargs
         )
-
-        # return self._create_model(
-        #     estimator=estimator,
-        #     num_clusters=num_clusters,
-        #     fraction=fraction,
-        #     ground_truth=ground_truth,
-        #     round=round,
-        #     fit_kwargs=fit_kwargs,
-        #     experiment_custom_tags=experiment_custom_tags,
-        #     verbose=verbose,
-        #     **kwargs,
-        # )
         if engine is not None:
             # Save current engines, then set to user specified options
             initial_default_model_engines = self.exp_model_engines.copy()
@@ -1829,7 +1816,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engine=initial_default_model_engines,
+                    engines=initial_default_model_engines,
                 )
 
         return return_values
