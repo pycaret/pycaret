@@ -26,9 +26,9 @@ class DashboardLogger:
     def __repr__(self) -> str:
         return ", ".join([str(logger) for logger in self.loggers])
 
-    def init_loggers(self, exp_name_log, full_name=None):
+    def init_loggers(self, exp_name_log, full_name=None, setup=True):
         for logger in self.loggers:
-            logger.init_experiment(exp_name_log, full_name)
+            logger.init_experiment(exp_name_log, full_name, setup=setup)
 
     def log_params(self, params):
         for logger in self.loggers:
@@ -61,7 +61,7 @@ class DashboardLogger:
 
         full_name = experiment._get_model_name(model)
         console.info(f"Model: {full_name}")
-        self.init_loggers(experiment.exp_name_log, full_name)
+        self.init_loggers(experiment.exp_name_log, full_name, setup=False)
 
         # Log model parameters
         pipeline_estimator_name = get_pipeline_estimator_label(model)
@@ -206,7 +206,7 @@ class DashboardLogger:
         params = kdict.get("Value")
         for logger in self.loggers:
             logger.init_experiment(
-                experiment.exp_name_log, f"{SETUP_TAG} {experiment.USI}"
+                experiment.exp_name_log, f"{SETUP_TAG} {experiment.USI}", setup=True
             )
             logger.log_params(params, "setup")
             logger.set_tags("setup", experiment_custom_tags, runtime)

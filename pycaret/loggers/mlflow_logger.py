@@ -1,4 +1,5 @@
 import secrets
+from contextlib import contextmanager
 from copy import deepcopy
 
 from pycaret import __version__
@@ -8,8 +9,36 @@ from pycaret.utils.generic import mlflow_remove_bad_chars
 try:
     import mlflow
     import mlflow.sklearn
+    from mlflow.tracking.fluent import _active_run_stack
+    from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID
 except ImportError:
     mlflow = None
+    _active_run_stack = None
+
+
+@contextmanager
+def set_active_mlflow_run(run):
+    """Set active MLFlow run to ``run`` and then back to what it was."""
+    global _active_run_stack
+    _active_run_stack.append(run)
+    yield
+    try:
+        _active_run_stack.remove(run)
+    except ValueError:
+        pass
+
+
+@contextmanager
+def clean_active_mlflow_run():
+    """Trick MLFLow into thinking there are no active runs."""
+    global _active_run_stack
+    old_run_stack = _active_run_stack.copy()
+    _active_run_stack.clear()
+    yield
+    active_run = _active_run_stack[-1]
+    _active_run_stack.clear()
+    _active_run_stack.extend(old_run_stack)
+    _active_run_stack.append(active_run)
 
 
 class MlflowLogger(BaseLogger):
@@ -19,47 +48,77 @@ class MlflowLogger(BaseLogger):
                 "MlflowLogger requires mlflow. Install using `pip install mlflow`"
             )
         super().__init__()
-        self.run = None
+        self.runs = []
 
-    def init_experiment(self, exp_name_log, full_name=None):
+    def init_experiment(self, exp_name_log, full_name=None, setup=True):
         full_name = full_name
         mlflow.set_experiment(exp_name_log)
-        self.run = mlflow.start_run(run_name=full_name, nested=True)
+        if setup:
+            # If we are starting a new experiment with setup,
+            # make sure we do not nest it in any other run
+            with clean_active_mlflow_run():
+                run = mlflow.start_run(run_name=full_name)
+        else:
+            run = mlflow.start_run(run_name=full_name, nested=True)
+        self.runs.append(run)
+        return self.runs
 
-        return self.run
+    @property
+    def active_run(self):
+        if not self.runs:
+            return None
+        return self.runs[-1]
+
+    @property
+    def parent_run(self):
+        if len(self.runs) < 2:
+            return None
+        return self.runs[-2]
+
+    @property
+    def run_id(self):
+        return self.active_run.info.run_id
 
     def finish_experiment(self):
         try:
-            mlflow.end_run()
+            with set_active_mlflow_run(self.active_run):
+                mlflow.end_run()
+            self.runs.pop()
         except Exception:
             pass
 
     def log_params(self, params, model_name=None):
         params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
-        mlflow.log_params(params)
+        with set_active_mlflow_run(self.active_run):
+            mlflow.log_params(params)
 
     def log_metrics(self, metrics, source=None):
-        mlflow.log_metrics(metrics)
+        with set_active_mlflow_run(self.active_run):
+            mlflow.log_metrics(metrics)
 
     def set_tags(self, source, experiment_custom_tags, runtime, USI=None):
         # Get active run to log as tag
-        RunID = mlflow.active_run().info.run_id
+        with set_active_mlflow_run(self.active_run):
+            RunID = self.active_run.info.run_id
 
-        # set tag of compare_models
-        mlflow.set_tag("Source", source)
+            # set tag of compare_models
+            mlflow.set_tag("Source", source)
 
-        # set custom tags if applicable
-        if isinstance(experiment_custom_tags, dict):
-            mlflow.set_tags(experiment_custom_tags)
+            # set custom tags if applicable
+            if isinstance(experiment_custom_tags, dict):
+                mlflow.set_tags(experiment_custom_tags)
 
-        URI = secrets.token_hex(nbytes=4)
-        mlflow.set_tag("URI", URI)
-        mlflow.set_tag("USI", USI)
-        mlflow.set_tag("Run Time", runtime)
-        mlflow.set_tag("Run ID", RunID)
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+            if self.parent_run and not source == "setup":
+                mlflow.set_tag(MLFLOW_PARENT_RUN_ID, self.parent_run.info.run_id)
 
     def log_artifact(self, file, type="artifact"):
-        mlflow.log_artifact(file)
+        with set_active_mlflow_run(self.active_run):
+            mlflow.log_artifact(file)
 
     def log_plot(self, plot, title=None):
         self.log_artifact(plot)
@@ -99,10 +158,11 @@ class MlflowLogger(BaseLogger):
         # log model as sklearn flavor
         prep_pipe_temp = deepcopy(prep_pipe)
         prep_pipe_temp.steps.append(["trained_model", model])
-        mlflow.sklearn.log_model(
-            prep_pipe_temp,
-            "model",
-            conda_env=default_conda_env,
-            # signature=signature,
-            # input_example=input_example,
-        )
+        with set_active_mlflow_run(self.active_run):
+            mlflow.sklearn.log_model(
+                prep_pipe_temp,
+                "model",
+                conda_env=default_conda_env,
+                # signature=signature,
+                # input_example=input_example,
+            )
