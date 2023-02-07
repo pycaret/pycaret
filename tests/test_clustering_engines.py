@@ -4,11 +4,12 @@ import sys
 sys.path.insert(0, os.path.abspath(".."))
 
 import daal4py
+import pytest
 import sklearn
 
 import pycaret.clustering
 import pycaret.datasets
-import pytest
+
 
 def test_engines_setup_global_args():
     """Tests the setting of engines using global arguments in setup."""
@@ -94,7 +95,6 @@ def test_create_model_engines_local_args():
 
 @pytest.mark.parametrize("algo", ("kmeans", "dbscan"))
 def test_all_sklearnex_models(algo: str):
-
     jewellery_dataframe = pycaret.datasets.get_data("jewellery")
     exp = pycaret.clustering.ClusteringExperiment()
 
@@ -109,6 +109,7 @@ def test_all_sklearnex_models(algo: str):
         session_id=123,
         n_jobs=1,
     )
+    
     model = exp.create_model(algo)
     parent_library = model.__module__
     assert parent_library.startswith("sklearn") == True

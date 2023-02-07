@@ -579,7 +579,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self._set_exp_model_engines(
             container_default_engines=get_container_default_engines(),
-            engines=engines,
+            engine=engines,
         )
 
         # Preprocessing ============================================ >>
@@ -1341,7 +1341,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_default_model_engines,
+                    engine=initial_default_model_engines,
                 )
 
         return return_values
