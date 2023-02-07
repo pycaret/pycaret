@@ -24,14 +24,17 @@ jobs:
         uses: psf/black@stable
         with:
           src: pycaret tests
+          version: 22.12.0
       - name: Check imports
         uses: jamescurtin/isort-action@master
         with:
-          sortPaths: pycaret tests
+          sort-paths: pycaret tests
+          isort-version: 5.11.4
       - name: Run flake8
         uses: py-actions/flake8@v2
         with:
           path: pycaret tests
+          flake8-version: 6.0.0
 
   # JOBS MUST START WITH test !!!!
   test_linux:
