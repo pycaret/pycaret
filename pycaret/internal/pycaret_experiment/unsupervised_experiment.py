@@ -11,14 +11,11 @@ import plotly.graph_objects as go  # type: ignore
 from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
 from sklearn.preprocessing import LabelEncoder
+
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.containers.models.clustering import (
-    ALL_ALLOWED_ENGINES,
-    get_container_default_engines,
-)
 from pycaret.containers.metrics import (
     get_all_class_metric_containers,
     get_all_clust_metric_containers,
@@ -27,6 +24,10 @@ from pycaret.containers.metrics import (
 from pycaret.containers.models import (
     get_all_class_model_containers,
     get_all_reg_model_containers,
+)
+from pycaret.containers.models.clustering import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
 )
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger, redirect_output
@@ -579,7 +580,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self._set_exp_model_engines(
             container_default_engines=get_container_default_engines(),
-            engines=engines,
+            engine=engines,
         )
 
         # Preprocessing ============================================ >>
@@ -1828,7 +1829,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_default_model_engines,
+                    engine=initial_default_model_engines,
                 )
 
         return return_values
