@@ -44,31 +44,32 @@ class DagshubLogger(MlflowLogger):
             )
         return splitted[1], splitted[0]
 
-    def init_experiment(self, *args, **kargs):
+    def init_experiment(self, *args, setup=True, **kwargs):
         # check token exist or not:
-        token = dagshub.auth.get_token()
-        os.environ["MLFLOW_TRACKING_USERNAME"] = token
-        os.environ["MLFLOW_TRACKING_PASSWORD"] = token
+        if setup:
+            token = dagshub.auth.get_token()
+            os.environ["MLFLOW_TRACKING_USERNAME"] = token
+            os.environ["MLFLOW_TRACKING_PASSWORD"] = token
 
-        # Check mlflow environment variable is set:
-        if not self.repo_name or not self.repo_owner:
-            self.repo_name, self.repo_owner = self.splitter(
-                input("Please insert your repository owner_name/repo_name:")
+            # Check mlflow environment variable is set:
+            if not self.repo_name or not self.repo_owner:
+                self.repo_name, self.repo_owner = self.splitter(
+                    input("Please insert your repository owner_name/repo_name:")
+                )
+
+            if not self.remote or "dagshub" not in os.getenv("MLFLOW_TRACKING_URI"):
+                dagshub.init(repo_name=self.repo_name, repo_owner=self.repo_owner)
+                self.remote = os.getenv("MLFLOW_TRACKING_URI")
+
+            self.repo = Repo(
+                owner=self.remote.split(os.sep)[-2],
+                name=self.remote.split(os.sep)[-1].replace(".mlflow", ""),
+                branch=os.getenv("BRANCH", "main"),
             )
+            self.dvc_folder = self.repo.directory(str(self.paths["dvc_directory"]))
 
-        if not self.remote or "dagshub" not in os.getenv("MLFLOW_TRACKING_URI"):
-            dagshub.init(repo_name=self.repo_name, repo_owner=self.repo_owner)
-            self.remote = os.getenv("MLFLOW_TRACKING_URI")
-
-        self.repo = Repo(
-            owner=self.remote.split(os.sep)[-2],
-            name=self.remote.split(os.sep)[-1].replace(".mlflow", ""),
-            branch=os.getenv("BRANCH", "main"),
-        )
-        self.dvc_folder = self.repo.directory(str(self.paths["dvc_directory"]))
-
-        mlflow.set_tracking_uri(self.remote)
-        super().init_experiment(*args, **kargs)
+            mlflow.set_tracking_uri(self.remote)
+        super().init_experiment(*args, **kwargs)
 
     def _dvc_add(self, local_path="", remote_path=""):
         if not os.path.isfile(local_path):
