@@ -20,7 +20,7 @@ class CometLogger(BaseLogger):
         super().__init__()
         self.run = None
 
-    def init_experiment(self, exp_name_log, full_name=None, **kwargs):
+    def init_experiment(self, exp_name_log, full_name=None, setup=True, **kwargs):
         self.run = comet_ml.Experiment(project_name=exp_name_log, **kwargs)
         self.run.set_name(full_name)
         self.run.log_other("Created from", "pycaret")
