@@ -9,21 +9,8 @@ import numpy as np  # type: ignore
 import pandas as pd
 from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
-from sklearn.preprocessing import LabelEncoder
 
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
-from pycaret.containers.metrics import (
-    get_all_class_metric_containers,
-    get_all_clust_metric_containers,
-    get_all_reg_metric_containers,
-)
-from pycaret.containers.models import (
-    get_all_class_model_containers,
-    get_all_reg_model_containers,
-)
+from pycaret.containers.metrics import get_all_clust_metric_containers
 from pycaret.containers.models.clustering import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
@@ -768,7 +755,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         score: bool = True,
         verbose: bool = True,
     ) -> pd.DataFrame:
-
         """
         This function assigns cluster labels to the dataset for a given model.
 
@@ -925,7 +911,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
         **kwargs,
     ) -> Any:
-
         """
         Internal version of ``create_model`` with private arguments.
         """
@@ -1122,7 +1107,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         display.move_progress()
 
         if ground_truth is not None:
-
             self.logger.info(f"ground_truth parameter set to {ground_truth}")
 
             gt = np.array(self.dataset[ground_truth])
@@ -1146,7 +1130,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         # mlflow logging
         if self.logging_param and system:
-
             metrics_log = {k: v for k, v in metrics.items()}
 
             self._log_model(
@@ -1214,7 +1197,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         verbose: bool = True,
         **kwargs,
     ) -> Any:
-
         """
         This function trains and evaluates the performance of a given model.
         Metrics evaluated can be accessed using the ``get_metrics`` function.

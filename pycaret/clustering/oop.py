@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd  # type ignore
@@ -9,7 +9,6 @@ import pycaret.internal.persistence
 import pycaret.internal.preprocess
 from pycaret.containers.metrics import get_all_clust_metric_containers
 from pycaret.containers.models import get_all_clust_model_containers
-from pycaret.containers.models.clustering import get_container_default_engines
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
     _UnsupervisedExperiment,

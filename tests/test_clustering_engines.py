@@ -1,8 +1,3 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
 import daal4py
 import pytest
 import sklearn
@@ -30,7 +25,7 @@ def test_engines_setup_global_args():
         engines={"kmeans": "sklearnex"},
     )
 
-    #### Default Model Engine ----
+    # Default Model Engine ----
     assert exp.get_engine("kmeans") == "sklearnex"
     model = exp.create_model("kmeans")
     assert isinstance(model, daal4py.sklearn.cluster.KMeans)
@@ -57,7 +52,7 @@ def test_engines_global_methods():
 
     assert exp.get_engine("kmeans") == "sklearnex"
 
-    #### Globally reset engine ----
+    # Globally reset engine ----
     exp._set_engine("kmeans", "sklearn")
     assert exp.get_engine("kmeans") == "sklearn"
     model = exp.create_model("kmeans")
@@ -82,12 +77,12 @@ def test_create_model_engines_local_args():
         n_jobs=1,
     )
 
-    #### Default Model Engine ----
+    # Default Model Engine ----
     assert exp.get_engine("kmeans") == "sklearn"
     model = exp.create_model("kmeans")
     assert isinstance(model, sklearn.cluster.KMeans)
 
-    #### Override model engine locally ----
+    # Override model engine locally ----
     model = exp.create_model("kmeans", engine="sklearnex")
     assert isinstance(model, daal4py.sklearn.cluster.KMeans)
     # Original engine should remain the same
@@ -113,8 +108,8 @@ def test_all_sklearnex_models(algo: str):
 
     model = exp.create_model(algo)
     parent_library = model.__module__
-    assert parent_library.startswith("sklearn") == True
+    assert parent_library.startswith("sklearn")
 
     model = exp.create_model(algo, engine="sklearnex")
     parent_library = model.__module__
-    assert parent_library.startswith("daal4py") == True
+    assert parent_library.startswith("daal4py")
