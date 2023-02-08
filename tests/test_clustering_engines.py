@@ -93,6 +93,7 @@ def test_create_model_engines_local_args():
     # Original engine should remain the same
     assert exp.get_engine("kmeans") == "sklearn"
 
+
 @pytest.mark.parametrize("algo", ("kmeans", "dbscan"))
 def test_all_sklearnex_models(algo: str):
     jewellery_dataframe = pycaret.datasets.get_data("jewellery")
@@ -109,12 +110,11 @@ def test_all_sklearnex_models(algo: str):
         session_id=123,
         n_jobs=1,
     )
-    
+
     model = exp.create_model(algo)
     parent_library = model.__module__
     assert parent_library.startswith("sklearn") == True
-    
+
     model = exp.create_model(algo, engine="sklearnex")
     parent_library = model.__module__
     assert parent_library.startswith("daal4py") == True
-    
