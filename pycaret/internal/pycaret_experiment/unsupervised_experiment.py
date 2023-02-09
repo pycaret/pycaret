@@ -11,6 +11,10 @@ from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
 
 from pycaret.containers.metrics import get_all_clust_metric_containers
+from pycaret.containers.models.clustering import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
+)
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
@@ -132,6 +136,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
+        engines: Optional[Dict[str, str]] = None,
     ):
         """
 
@@ -512,6 +517,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         runtime_start = time.time()
 
+        self.all_allowed_engines = ALL_ALLOWED_ENGINES
+
         self._initialize_setup(
             n_jobs=n_jobs,
             use_gpu=use_gpu,
@@ -555,6 +562,11 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             text_features=text_features,
             ignore_features=ignore_features,
             keep_features=keep_features,
+        )
+
+        self._set_exp_model_engines(
+            container_default_engines=get_container_default_engines(),
+            engine=engines,
         )
 
         # Preprocessing ============================================ >>
@@ -743,7 +755,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         score: bool = True,
         verbose: bool = True,
     ) -> pd.DataFrame:
-
         """
         This function assigns cluster labels to the dataset for a given model.
 
@@ -900,7 +911,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
         **kwargs,
     ) -> Any:
-
         """
         Internal version of ``create_model`` with private arguments.
         """
@@ -1097,7 +1107,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         display.move_progress()
 
         if ground_truth is not None:
-
             self.logger.info(f"ground_truth parameter set to {ground_truth}")
 
             gt = np.array(self.dataset[ground_truth])
@@ -1121,7 +1130,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         # mlflow logging
         if self.logging_param and system:
-
             metrics_log = {k: v for k, v in metrics.items()}
 
             self._log_model(
@@ -1185,10 +1193,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         round: int = 4,
         fit_kwargs: Optional[dict] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engine: Optional[str] = None,
         verbose: bool = True,
         **kwargs,
     ) -> Any:
-
         """
         This function trains and evaluates the performance of a given model.
         Metrics evaluated can be accessed using the ``get_metrics`` function.
@@ -1244,6 +1252,12 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             Status update is not printed when verbose is set to False.
 
 
+        engine: Optional[str] = None
+            The execution engine to use for the model, e.g. for K-Means Clustering ("kmeans"), users can
+            switch between "sklearn" and "sklearnex" by specifying
+            `engine="sklearnex"`.
+
+
         experiment_custom_tags: dict, default = None
             Dictionary of tag_name: String -> value: (String, but will be string-ified
             if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
@@ -1287,18 +1301,32 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
             for x in kwargs
         )
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_default_model_engines = self.exp_model_engines.copy()
+            self._set_engine(estimator=estimator, engine=engine, severity="error")
 
-        return self._create_model(
-            estimator=estimator,
-            num_clusters=num_clusters,
-            fraction=fraction,
-            ground_truth=ground_truth,
-            round=round,
-            fit_kwargs=fit_kwargs,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-            **kwargs,
-        )
+        try:
+            return_values = self._create_model(
+                estimator=estimator,
+                num_clusters=num_clusters,
+                fraction=fraction,
+                ground_truth=ground_truth,
+                round=round,
+                fit_kwargs=fit_kwargs,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                **kwargs,
+            )
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engine=initial_default_model_engines,
+                )
+
+        return return_values
 
     def evaluate_model(
         self,

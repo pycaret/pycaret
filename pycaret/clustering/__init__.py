@@ -4,8 +4,10 @@ from pycaret.clustering.functional import (
     create_model,
     deploy_model,
     evaluate_model,
+    get_allowed_engines,
     get_config,
     get_current_experiment,
+    get_engine,
     get_logs,
     get_metrics,
     load_experiment,
@@ -45,5 +47,7 @@ __all__ = [
     "save_experiment",
     "load_experiment",
     "set_current_experiment",
+    "get_allowed_engines",
+    "get_engine",
     "get_current_experiment",
 ]

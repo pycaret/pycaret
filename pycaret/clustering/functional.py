@@ -490,6 +490,43 @@ def setup(
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_allowed_engines(estimator: str) -> Optional[str]:
+    """Get all the allowed engines for the specified model
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engines should be retrieved,
+        e.g. "auto_arima"
+    Returns
+    -------
+    Optional[str]
+        The allowed engines for the model. If the model only supports the
+        default sktime engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_allowed_engines(estimator=estimator)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_engine(estimator: str) -> Optional[str]:
+    """Gets the model engine currently set in the experiment for the specified
+    model.
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engine should be retrieved,
+        e.g. "auto_arima"
+    Returns
+    -------
+    Optional[str]
+        The engine for the model. If the model only supports the default sktime
+        engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_engine(estimator=estimator)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_model(
     model: Union[str, Any],
     num_clusters: int = 4,
@@ -498,6 +535,7 @@ def create_model(
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    engine: Optional[str] = None,
     **kwargs,
 ):
 
@@ -561,6 +599,12 @@ def create_model(
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
+    engine: Optional[str] = None
+        The execution engine to use for the model, e.g. for K-Means Clustering ("kmeans"), users can
+        switch between "sklearn" and "sklearnex" by specifying
+        `engine="sklearnex"`.
+
+
     **kwargs:
         Additional keyword arguments to pass to the estimator.
 
@@ -595,6 +639,7 @@ def create_model(
         fit_kwargs=fit_kwargs,
         verbose=verbose,
         experiment_custom_tags=experiment_custom_tags,
+        engine=engine,
         **kwargs,
     )
 
