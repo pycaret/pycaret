@@ -49,7 +49,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pytest pytest-xdist nbmake
-          pip install -e .
+          pip install -e ".[full]"
       - name: Run notebooks
         run: pytest --nbmake -n=auto ./tutorials/
 
