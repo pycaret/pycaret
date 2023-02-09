@@ -7,7 +7,7 @@ pandas>=1.3.0, <1.6.0  # Can't >=1.6 because of sktime
 jinja2>=1.2  # Required by pycaret.internal.utils --> pandas.io.formats.style
 scipy<2.0.0  # Can't >=2.0.0 due to sktime
 joblib>=1.2.0  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution (https://github.com/advisories/GHSA-6hrg-qmvc-2xh8)
-scikit-learn>=1.0, <1.2.0 # params are deprecated from models in 1.2.0
+scikit-learn>=1.0
 pyod>=0.9.8
 imbalanced-learn>=0.8.1
 category-encoders>=2.4.0
@@ -21,6 +21,7 @@ nbformat>=4.2.0
 pickle5; python_version < "3.8"
 cloudpickle
 deprecation>=2.1.0
+xxhash  # for faster hashing
 
 # Plotting
 matplotlib>=3.3.0

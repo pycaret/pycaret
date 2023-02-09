@@ -25,9 +25,8 @@ extras_require = {
     "models": required_optional.split("\n\n")[1].splitlines(),
     "tuners": required_optional.split("\n\n")[2].splitlines(),
     "mlops": required_optional.split("\n\n")[3].splitlines(),
-    "nlp": required_optional.split("\n\n")[4].splitlines(),
-    "parallel": required_optional.split("\n\n")[5].splitlines(),
-    "test": required_test
+    "parallel": required_optional.split("\n\n")[4].splitlines(),
+    "test": required_test,
 }
 
 extras_require["full"] = (

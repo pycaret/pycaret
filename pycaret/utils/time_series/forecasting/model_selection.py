@@ -136,15 +136,15 @@ def _fit_and_score(
     test_expanded = np.arange(train[-1], test[-1]) + 1
 
     # y_train, X_train, X_test can have missing values since pipeline will impute them
-    y_train = y[train]
+    y_train = y.iloc[train]
     X_train = None if X is None else X.iloc[train]
     X_test = None if X is None else X.iloc[test_expanded]
 
     # y_test is "y_true" and used for metrics, hence it can not have missing values
     # Hence using y_imputed
     # Refer to: https://github.com/pycaret/pycaret/issues/2369
-    y_test_imputed = y_imputed[test]
-    y_train_imputed = y_imputed[train]  # Needed for MASE, RMSSE, etc.
+    y_test_imputed = y_imputed.iloc[test]
+    y_train_imputed = y_imputed.iloc[train]  # Needed for MASE, RMSSE, etc.
 
     if y_test_imputed.isna().sum() != 0:
         raise ValueError(

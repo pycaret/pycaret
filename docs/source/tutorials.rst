@@ -32,18 +32,3 @@ Anomaly Detection
 Learn how to prepare the data for modeling, create an unsupervised anomaly detector, evaluate the results of the trained model, and consume the model for predictions on unseen data.
 
 - `Anomaly Detection Tutorial - Level Beginner (ANO101) <https://github.com/pycaret/pycaret/blob/master/tutorials/Anomaly%20Detection%20Tutorial%20Level%20Beginner%20-%20ANO101.ipynb>`_
-
-Natural Language Processing
-***************************
-Learn how to perform text preprocessing, tune hyperparameters of a topic model and consume the results of a topic model in supervised experiment i.e. Classification or Regression.
-
-- `Natural Language Processing Tutorial - Level Beginner (NLP101) <https://github.com/pycaret/pycaret/blob/master/tutorials/Natural%20Language%20Processing%20Tutorial%20Level%20Beginner%20-%20NLP101.ipynb>`_
-
-- `Natural Language Processing Tutorial - Level Intermediate (NLP102) <https://github.com/pycaret/pycaret/blob/master/tutorials/Natural%20Language%20Processing%20Tutorial%20Level%20Intermediate%20-%20NLP102.ipynb>`_
-
-
-Association Rule Mining
-***********************
-Learn how to prepare data for association rule mining. Create an apriori model, examine rules, and analyze results.
-
-- `Association Rule Mining Tutorial - Level Beginner (ARUL01) <https://github.com/pycaret/pycaret/blob/master/tutorials/Association%20Rule%20Mining%20Tutorial%20-%20ARUL01.ipynb>`_
