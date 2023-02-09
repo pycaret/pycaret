@@ -2,9 +2,8 @@ import secrets
 from contextlib import contextmanager
 from copy import deepcopy
 
-import pycaret
 from pycaret import __version__
-from pycaret.loggers.base_logger import SETUP_TAG, BaseLogger
+from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.generic import mlflow_remove_bad_chars
 
 try:
@@ -52,16 +51,7 @@ class MlflowLogger(BaseLogger):
         self.runs = []
 
     def init_experiment(self, exp_name_log, full_name=None, setup=True):
-        # get USI from nlp or tabular
-        USI = None
-        try:
-            USI = pycaret.internal.tabular.USI
-        except Exception:
-            try:
-                USI = pycaret.nlp.USI
-            except Exception:
-                pass
-        full_name = full_name or f"{SETUP_TAG} {USI}"
+        full_name = full_name
         mlflow.set_experiment(exp_name_log)
         if setup:
             # If we are starting a new experiment with setup,
@@ -107,13 +97,6 @@ class MlflowLogger(BaseLogger):
             mlflow.log_metrics(metrics)
 
     def set_tags(self, source, experiment_custom_tags, runtime, USI=None):
-        # get USI from nlp or tabular
-        if not USI:
-            try:
-                USI = pycaret.nlp.USI
-            except Exception:
-                pass
-
         # Get active run to log as tag
         with set_active_mlflow_run(self.active_run):
             RunID = self.active_run.info.run_id

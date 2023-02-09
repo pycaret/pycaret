@@ -52,7 +52,6 @@ setup(
         "models": required_optional.split("\n\n")[1].splitlines(),
         "tuners": required_optional.split("\n\n")[2].splitlines(),
         "mlops": required_optional.split("\n\n")[3].splitlines(),
-        "nlp": required_optional.split("\n\n")[4].splitlines(),
         "full": required_optional.splitlines(),
     },
     tests_require=required_test,
