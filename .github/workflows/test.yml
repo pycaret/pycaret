@@ -50,8 +50,9 @@ jobs:
         run: |
           pip install -U pytest pytest-xdist nbmake
           pip install -e ".[full]"
+          python -m ipykernel install --user --name cikernel
       - name: Run notebooks
-        run: pytest --nbmake -n=auto --ignore=./tutorials/japanese/ --ignore=./tutorials/chinese/ --ignore=./tutorials/greek/ --ignore=./tutorials/portuguese/ ./tutorials/
+        run: pytest --nbmake --nbmake-kernel=cikernel -n=auto --ignore=./tutorials/japanese/ --ignore=./tutorials/chinese/ --ignore=./tutorials/greek/ --ignore=./tutorials/portuguese/ ./tutorials/
 
   test_linux:
     runs-on: ubuntu-latest
