@@ -488,6 +488,8 @@ def np_list_arange(
     return range_
 
 
+# Again we dont have ground truth in clustering, just an educated guess on what
+# clusters based on mathematical distances, what does ground truth mean here?
 def calculate_unsupervised_metrics(
     metrics: Dict[str, "pycaret.containers.metrics.MetricContainer"],
     X,
