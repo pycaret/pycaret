@@ -45,6 +45,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             ml_usecase = self._ml_usecase
 
         try:
+            # we dont have ground truth, do we need the ground truth here?
             return calculate_unsupervised_metrics(
                 metrics=self._all_metrics, X=X, labels=labels, ground_truth=ground_truth
             )
@@ -77,6 +78,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 runtime,
             )
 
+    ''' This method will be dissected, will leave for now, we'll need to reevaluate how much of this method is needed
+        for the unsupervised workflow '''
     def setup(
         self,
         data: Optional[DATAFRAME_LIKE] = None,
