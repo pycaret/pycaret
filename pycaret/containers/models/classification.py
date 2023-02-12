@@ -750,10 +750,7 @@ class RidgeClassifierContainer(ClassifierContainer):
         else:
             args = {"random_state": experiment.seed}
 
-        tune_grid = {
-            "normalize": [True, False],
-        }
-
+        tune_grid = {}
         tune_grid["alpha"] = np_list_arange(0.01, 10, 0.01, inclusive=False)
         tune_grid["fit_intercept"] = [True, False]
         tune_distributions["alpha"] = UniformDistribution(0.001, 10)

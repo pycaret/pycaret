@@ -4,6 +4,7 @@ import os
 import time
 import traceback
 import warnings
+from abc import abstractmethod
 from copy import copy, deepcopy
 from functools import partial
 from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Tuple, Union
@@ -1268,6 +1269,12 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.format(precision=round)
         return model_results
 
+    @abstractmethod
+    def _create_model_get_train_X_y(self, X_train, y_train):
+        """Return appropriate training X and y values depending on whether
+        X_train and y_train are passed or not."""
+        pass
+
     def _create_model(
         self,
         estimator,
@@ -1401,18 +1408,9 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Copying training dataset")
 
         # Storing X_train and y_train in data_X and data_y parameter
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            data_X = self.X_train if X_train_data is None else X_train_data.copy()
-            data_y = self.y_train if y_train_data is None else y_train_data.copy()
-        else:
-            if X_train_data is not None:
-                data_X = X_train_data.copy()
-            else:
-                if self.X_train is None:
-                    data_X = None
-                else:
-                    data_X = self.X_train
-            data_y = self.y_train if y_train_data is None else y_train_data.copy()
+        data_X, data_y = self._create_model_get_train_X_y(
+            X_train=X_train_data, y_train=y_train_data
+        )
 
         groups = self._get_groups(groups, data=data_X)
 
@@ -1466,17 +1464,18 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.update_monitor(2, full_name)
 
-        if (
-            probability_threshold
-            and self._ml_usecase == MLUsecase.CLASSIFICATION
-            and not self.is_multiclass
-        ):
+        if probability_threshold is not None:
+            if self._ml_usecase != MLUsecase.CLASSIFICATION or self.is_multiclass:
+                raise ValueError(
+                    "Cannot use probability_threshold with non-binary "
+                    "classification usecases."
+                )
             if not isinstance(model, CustomProbabilityThresholdClassifier):
                 model = CustomProbabilityThresholdClassifier(
                     classifier=model,
                     probability_threshold=probability_threshold,
                 )
-            elif probability_threshold is not None:
+            else:
                 model.set_params(probability_threshold=probability_threshold)
         self.logger.info(f"{full_name} Imported successfully")
 
@@ -4758,7 +4757,6 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         encoded_labels: bool = False,  # added in pycaret==2.1.0
         raw_score: bool = False,
-        drift_report: bool = False,
         round: int = 4,  # added in pycaret==2.2.0
         verbose: bool = True,
         ml_usecase: Optional[MLUsecase] = None,
@@ -4927,6 +4925,8 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 data = self._set_index(self._prepare_dataset(data))
                 target = None
+            X_test_untransformed = data
+            y_test_untransformed = target
             data = data[X_columns]  # Ignore all columns but the originals
             if preprocess:
                 X_test_ = pipeline.transform(
@@ -4943,38 +4943,6 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 X_test_ = data
                 y_test_ = target
-            X_test_untransformed = data
-            y_test_untransformed = target
-
-        # generate drift report
-        if drift_report:
-            _check_soft_dependencies("evidently", extra="mlops", severity="error")
-            from evidently.dashboard import Dashboard
-            from evidently.pipeline.column_mapping import ColumnMapping
-            from evidently.tabs import CatTargetDriftTab, DataDriftTab
-
-            column_mapping = ColumnMapping()
-            column_mapping.target = self.target_param
-            column_mapping.prediction = None
-            column_mapping.datetime = None
-            column_mapping.numerical_features = self._fxs["Numeric"]
-            column_mapping.categorical_features = self._fxs["Categorical"]
-            column_mapping.datetime_features = self._fxs["Date"]
-
-            drift_data = data if data is not None else self.test
-
-            if y_name not in drift_data.columns:
-                raise ValueError(
-                    f"The dataset must contain a label column {y_name} "
-                    "in order to create a drift report."
-                )
-
-            dashboard = Dashboard(tabs=[DataDriftTab(), CatTargetDriftTab()])
-            dashboard.calculate(self.train, drift_data, column_mapping=column_mapping)
-            report_name = f"{self._get_model_name(estimator)}_Drift_Report.html"
-            dashboard.save(report_name)
-            if verbose:
-                print(f"{report_name} saved successfully.")
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):
@@ -5561,6 +5529,132 @@ class _SupervisedExperiment(_TabularExperiment):
         suite = full_suite(**check_kwargs)
         return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)
 
+    def check_drift(
+        self,
+        reference_data: Optional[pd.DataFrame] = None,
+        current_data: Optional[pd.DataFrame] = None,
+        target: Optional[str] = None,
+        numeric_features: Optional[List[str]] = None,
+        categorical_features: Optional[List[str]] = None,
+        date_features: Optional[List[str]] = None,
+        filename: Optional[str] = None,
+    ) -> str:
+        """
+        This function generates a drift report file using the
+        evidently library.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> check_drift()
+
+
+        reference_data: Optional[pd.DataFrame] = None
+            Reference data. If not specified, will use training data.
+            Must be specified if ``setup()`` has not been run.
+
+
+        current_data: Optional[pd.DataFrame] = None
+            Current data. If not specified, will use test data.
+            Must be specified if ``setup()`` has not been run.
+
+
+        target: Optional[str] = None
+            Name of the target column. If not specified, will use
+            the column specified in ``setup()``.
+            Must be specified if ``setup()`` has not been run.
+
+
+        numeric_features: Optional[List[str]] = None
+            Names of numeric columns. If not specified, will use
+            the columns specified/inferred in ``setup()``, or
+            all non-categorical and non-date columns otherwise.
+
+
+        categorical_features: Optional[List[str]] = None
+            Names of categorical columns. If not specified, will use
+            the columns specified/inferred in ``setup()``.
+
+
+        date_features: Optional[List[str]] = None
+            Names of date columns. If not specified, will use
+            the columns specified/inferred in ``setup()``.
+
+
+        filename: Optional[str] = None
+            Path to save the generated HTML file to. If not specified,
+            will default to '[EXPERIMENT_NAME]_[TIMESTAMP]_Drift_Report.html'.
+
+
+        Returns:
+            Path the generated HTML file was saved to.
+        """
+        _check_soft_dependencies("evidently", extra="mlops", severity="error")
+
+        if self._setup_ran:
+            reference_data = self.train if reference_data is None else reference_data
+            current_data = self.test if current_data is None else current_data
+            target = self.target_param if target is None else target
+            numeric_features = numeric_features or self._fxs["Numeric"]
+            categorical_features = categorical_features or self._fxs["Categorical"]
+            date_features = date_features or self._fxs["Date"]
+        none_vars = [
+            k
+            for k, v in {
+                "reference_data": reference_data,
+                "current_data": current_data,
+                "target": target,
+            }.items()
+            if v is None
+        ]
+        if none_vars:
+            raise ValueError(
+                "The following variables couldn't have been inferred "
+                f"from the experiment state: {none_vars}."
+                "If you have not ran `setup()`, you must pass all of the arguments"
+                "above."
+            )
+
+        date_features = date_features or []
+        categorical_features = categorical_features or []
+
+        if numeric_features is None:
+            numeric_features = list(
+                set(reference_data.columns)
+                .difference(categorical_features)
+                .difference(date_features)
+            )
+
+        from evidently.dashboard import Dashboard
+        from evidently.pipeline.column_mapping import ColumnMapping
+        from evidently.tabs import CatTargetDriftTab, DataDriftTab
+
+        column_mapping = ColumnMapping()
+        column_mapping.target = target
+        column_mapping.prediction = None
+        column_mapping.datetime = None
+        column_mapping.numerical_features = numeric_features
+        column_mapping.categorical_features = categorical_features
+        column_mapping.datetime_features = date_features
+
+        if target not in reference_data.columns or target not in current_data.columns:
+            raise ValueError(
+                f"Both dataset must contain a label column {target} "
+                "in order to create a drift report."
+            )
+
+        dashboard = Dashboard(tabs=[DataDriftTab(), CatTargetDriftTab()])
+        dashboard.calculate(reference_data, current_data, column_mapping=column_mapping)
+        filename = (
+            filename or f"{self.exp_name_log}_{int(time.time())}_Drift_Report.html"
+        )
+        dashboard.save(filename)
+        return filename
+
     @classmethod
     def load_experiment(
         cls,
@@ -5633,36 +5727,34 @@ class _SupervisedExperiment(_TabularExperiment):
         )
 
     @property
+    @abstractmethod
     def X(self):
         """Feature set."""
-        return self.dataset.drop(self.target_param, axis=1)
+        pass
 
     @property
+    @abstractmethod
     def dataset_transformed(self):
         """Transformed dataset."""
-        return pd.concat([self.train_transformed, self.test_transformed])
+        pass
 
     @property
+    @abstractmethod
     def X_train_transformed(self):
         """Transformed feature set of the training set."""
-        return self.pipeline.transform(
-            X=self.X_train,
-            y=self.y_train,
-            filter_train_only=False,
-        )[0]
+        pass
 
     @property
+    @abstractmethod
     def train_transformed(self):
         """Transformed training set."""
-        return pd.concat(
-            [self.X_train_transformed, self.y_train_transformed],
-            axis=1,
-        )
+        pass
 
     @property
+    @abstractmethod
     def X_transformed(self):
         """Transformed feature set."""
-        return pd.concat([self.X_train_transformed, self.X_test_transformed])
+        pass
 
     @property
     def y(self):
@@ -5670,14 +5762,16 @@ class _SupervisedExperiment(_TabularExperiment):
         return self.dataset[self.target_param]
 
     @property
+    @abstractmethod
     def X_train(self):
         """Feature set of the training set."""
-        return self.train.drop(self.target_param, axis=1)
+        pass
 
     @property
+    @abstractmethod
     def X_test(self):
         """Feature set of the test set."""
-        return self.test.drop(self.target_param, axis=1)
+        pass
 
     @property
     def train(self):
@@ -5685,9 +5779,10 @@ class _SupervisedExperiment(_TabularExperiment):
         return self.dataset.loc[self.idx[0], :]
 
     @property
+    @abstractmethod
     def test(self):
         """Test set."""
-        return self.dataset.loc[self.idx[1], :]
+        pass
 
     @property
     def y_train(self):
@@ -5700,33 +5795,31 @@ class _SupervisedExperiment(_TabularExperiment):
         return self.test[self.target_param]
 
     @property
+    @abstractmethod
     def test_transformed(self):
         """Transformed test set."""
-        return pd.concat(
-            [self.X_test_transformed, self.y_test_transformed],
-            axis=1,
-        )
+        pass
 
     @property
+    @abstractmethod
     def y_transformed(self):
         """Transformed target column."""
-        return pd.concat([self.y_train_transformed, self.y_test_transformed])
+        pass
 
     @property
+    @abstractmethod
     def X_test_transformed(self):
         """Transformed feature set of the test set."""
-        return self.pipeline.transform(self.X_test)
+        pass
 
     @property
+    @abstractmethod
     def y_train_transformed(self):
         """Transformed target column of the training set."""
-        return self.pipeline.transform(
-            X=self.X_train,
-            y=self.y_train,
-            filter_train_only=False,
-        )[1]
+        pass
 
     @property
+    @abstractmethod
     def y_test_transformed(self):
         """Transformed target column of the test set."""
-        return self.pipeline.transform(y=self.y_test)
+        pass

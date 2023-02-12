@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 from IPython.display import display as ipython_display
+from pandas.api.types import is_string_dtype
 from plotly_resampler import FigureResampler, FigureWidgetResampler
 from sklearn.base import clone
 from sktime.forecasting.base import BaseForecaster, ForecastingHorizon
@@ -35,8 +36,6 @@ from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-
-# from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _get_plot
 from pycaret.internal.plots.utils.time_series import (
     _clean_model_results_labels,
@@ -47,8 +46,8 @@ from pycaret.internal.plots.utils.time_series import (
 from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
     TSForecastingPreprocessor,
 )
-from pycaret.internal.pycaret_experiment.supervised_experiment import (
-    _SupervisedExperiment,
+from pycaret.internal.pycaret_experiment.ts_supervised_experiment import (
+    _TSSupervisedExperiment,
 )
 from pycaret.internal.tests.time_series import (
     recommend_lowercase_d,
@@ -85,13 +84,12 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _add_model_to_pipeline,
     _get_imputed_data,
     _get_pipeline_estimator_label,
-    _pipeline_transform,
 )
 
 LOGGER = get_logger()
 
 
-class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
+class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor):
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.TIME_SERIES
@@ -361,13 +359,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 f"Data must be a pandas Series or DataFrame, got object of {type(data)} type!"
             )
 
-        # Make a local copy (to perfrom inplace operation on the original dataset)
+        # Make a local copy (to perform inplace operation on the original dataset)
         data_ = data.copy()
 
         if isinstance(data_, pd.Series):
             # Set data name is not already set
             data_.name = data_.name if data.name is not None else "Time Series"
-            data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
+            data_ = pd.DataFrame(data_)  # Force conversion to DataFrame
 
         # Clean column names ----
         data_.columns = [str(x) for x in data_.columns]
@@ -389,7 +387,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         Returns
         -------
         List[str]
-            Target names. Returns a list to suppport multivariate TS in the future.
+            Target names. Returns a list to support multivariate TS in the future.
 
         Raises
         ------
@@ -477,9 +475,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         (3) If sp_detection == "index" and the index is not one of the allowed type
         (pd.PeriodIndex, pd.DatetimeIndex), then seasonal period must be provided.
 
-        Finally, index is coerced into period index which is used in subsequent
-        steps and the appropriate class for data index is set so that it can be
-        used to disable certain models which do not support that type of index.
+        If 'index' column is specified & is of type string, it is assumed to be
+        coercible to pd.DatetimeIndex and it is coerced. If it is of type Int
+        (e.g. RangeIndex, Int64Index), or of type DatetimeIndex or or type
+        PeriodIndex, keep it as is.
+
+        Finally, if index is of type pd.DatetimeIndex, it is coerced into
+        pd.PeriodIndex which is used in subsequent steps and the appropriate
+        class for data index is set so that it can be used to disable certain
+        models which do not support that type of index.
 
         Parameters
         ----------
@@ -508,7 +512,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 unique_index_before = len(self.data[index]) == len(
                     set(self.data[index])
                 )
-                self.data[index] = pd.to_datetime(self.data[index])
+                # Only coerce the column to datetime if it is of type string.
+                # If it is of type Int (e.g. RangeIndex, Int64Index), or of type
+                # DatetimeIndex or or type PeriodIndex, keep it as is.
+                if is_string_dtype(self.data[index]):
+                    self.data[index] = pd.to_datetime(self.data[index])
+
                 unique_index_after = len(self.data[index]) == len(set(self.data[index]))
                 if unique_index_before and not unique_index_after:
                     raise ValueError(
@@ -542,7 +551,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
 
-        # Convert DateTimeIndex index to PeriodIndex ----
+        # Convert DatetimeIndex index to PeriodIndex ----
         # We use PeriodIndex in PyCaret since it seems to be more robust per `sktime``
         # Ref: https://github.com/sktime/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
         if isinstance(self.data.index, pd.DatetimeIndex):
@@ -810,7 +819,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _check_and_set_forecsting_types(self) -> "TSForecastingExperiment":
+    def _check_and_set_forecasting_types(self) -> "TSForecastingExperiment":
         """Checks & sets the the forecasting types based on the number of Targets
         and Exogenous Variables.
 
@@ -1367,7 +1376,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         hyperparameter_split: str = "all",
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
         sp_detection: str = "auto",
-        max_sp_to_consider: Optional[int] = None,
+        max_sp_to_consider: Optional[int] = 60,
         remove_harmonics: bool = False,
         harmonic_order_method: str = "harmonic_max",
         num_sps_to_use: int = 1,
@@ -1426,9 +1435,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         index: Optional[str], default = None
-            Column name to be used as the datetime index for modeling. Column is
-            internally converted to datetime using `pd.to_datetime()`. If None,
-            then the data's index is used as is for modeling.
+            Column name to be used as the datetime index for modeling. If 'index'
+            column is specified & is of type string, it is assumed to be coercible
+            to pd.DatetimeIndex using `pd.to_datetime()`. It can also be of type
+            Int (e.g. RangeIndex, Int64Index), or DatetimeIndex or PeriodIndex
+            in which case, it is processed appropriately. If None, then the
+            data's index is used as is for modeling.
 
 
         ignore_features: Optional[List], default = None
@@ -1647,9 +1659,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             period as shown in seasonal_period.
 
 
-        max_sp_to_consider: Optional[int], default = None,
+        max_sp_to_consider: Optional[int], default = 60,
             Max period to consider when detecting seasonal periods. If None, all
-            periods up to the length of the data are considered.
+            periods up to int(("length of data"-1)/2) are considered. Length of
+            the data is determined by hyperparameter_split setting.
 
 
         remove_harmonics: bool, default = False
@@ -1845,8 +1858,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
             resampler_kwargs: The keyword arguments that are fed to configure the
                 `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash"
-                or "plotly-widget") which downsampler will be used; how many datapoints
-                are shown in the front-end. When the plotly-resampler figure is renderd
+                or "plotly-widget") which down sampler will be used; how many data points
+                are shown in the front-end. When the plotly-resampler figure is rendered
                 via Dash (by setting the `display_format` to "plotly-dash"), one can
                 also use the "show_dash" key within this dictionary to configure the
                 show_dash method its args.
@@ -1962,7 +1975,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._check_and_clean_index(index=index, seasonal_period=seasonal_period)
             ._check_and_set_targets(target=target)
             ._set_exogenous_names()
-            ._check_and_set_forecsting_types()
+            ._check_and_set_forecasting_types()
             ._check_and_set_fh(fh=fh)
             ._set_point_alpha_intervals_enforce_pi(
                 point_alpha=point_alpha, coverage=coverage
@@ -3243,7 +3256,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def _plot_model_get_model_labels(
         self, estimators: List[BaseForecaster], data_kwargs: Dict
     ) -> List[str]:
-        """Returns the labels (names) to be used for the results corresponsing to
+        """Returns the labels (names) to be used for the results corresponding to
         each model in the plot
 
         Parameters
@@ -3252,7 +3265,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             List of models passed by user
         data_kwargs : Dict
             Dictionary of arguments passed to the data for plotting. Specifically,
-            if user passes key = "labels", then the corresponsding values are used
+            if user passes key = "labels", then the corresponding values are used
             as the plot labels corresponding to each model. e.g.
             >>> data_kwargs={"labels": ["Baseline", "Tuned", "Finalized"]}
 
@@ -3287,7 +3300,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
 
         # Make sure column names are unique. If not, make them unique by appending numbers ----
-        # Model names may not be unique for example when user passes basline and tuned model.
+        # Model names may not be unique for example when user passes baseline and tuned model.
         if len(set(model_names)) != len(model_names):
             name_counts = defaultdict(int)
             new_model_names = []
@@ -5315,7 +5328,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         index is not of type DatetimeIndex, then it returns the y and X values as is.
 
         Note that this estimator data is different from the data used to train the
-        pipeline. Because of transformatons in the pipeline, the estimator (y, X)
+        pipeline. Because of transformations in the pipeline, the estimator (y, X)
         values may be different from the (self.y_train, self.X_train) or
         (self.y, self.X) values passed to the pipeline.
 
@@ -5586,160 +5599,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             else self.pipeline
         )
         return pipeline_to_use
-
-    @property
-    def X(self):
-        X = self.dataset.drop(self.target_param, axis=1)
-        if X.empty and self.fe_exogenous is None:
-            return None
-        else:
-            # If X is not empty or empty but self.fe_exogenous is provided
-            # Return X instead of None, since the index can be used to
-            # generate features using self.fe_exogenous
-            return X
-
-    @property
-    def dataset_transformed(self):
-        # Use fully trained pipeline to get the requested data
-        return pd.concat(
-            [
-                *_pipeline_transform(
-                    pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-                )
-            ],
-            axis=1,
-        )
-
-    @property
-    def X_train_transformed(self):
-        # Use pipeline trained on training data only to get the requested data
-        # In time series, the order of arguments and returns may be reversed.
-        return _pipeline_transform(
-            pipeline=self.pipeline, y=self.y_train, X=self.X_train
-        )[1]
-
-    @property
-    def train_transformed(self):
-        # Use pipeline trained on training data only to get the requested data
-        # In time series, the order of arguments and returns may be reversed.
-        return pd.concat(
-            [
-                *_pipeline_transform(
-                    pipeline=self.pipeline, y=self.y_train, X=self.X_train
-                )
-            ],
-            axis=1,
-        )
-
-    @property
-    def X_transformed(self):
-        # Use fully trained pipeline to get the requested data
-        # In time series, the order of arguments and returns may be reversed.
-        return _pipeline_transform(
-            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-        )[1]
-
-    @property
-    def X_train(self):
-        X_train = self.train.drop(self.target_param, axis=1)
-
-        if X_train.empty and self.fe_exogenous is None:
-            return None
-        else:
-            # If X_train is not empty or empty but self.fe_exogenous is provided
-            # Return X_train instead of None, since the index can be used to
-            # generate features using self.fe_exogenous
-            return X_train
-
-    @property
-    def X_test(self):
-        # Use index for y_test (idx 2) to get the data
-        test = self.dataset.loc[self.idx[2], :]
-        X_test = test.drop(self.target_param, axis=1)
-
-        if X_test.empty and self.fe_exogenous is None:
-            return None
-        else:
-            # If X_test is not empty or empty but self.fe_exogenous is provided
-            # Return X_test instead of None, since the index can be used to
-            # generate features using self.fe_exogenous
-            return X_test
-
-    @property
-    def test(self):
-        # Return the y_test indices not X_test indices.
-        # X_test indices are expanded indices for handling FH with gaps.
-        # But if we return X_test indices, then we will get expanded test
-        # indices even for univariate time series without exogenous variables
-        # which would be confusing. Hence, we return y_test indices here and if
-        # we want to get X_test indices, then we use self.X_test directly.
-        # Refer:
-        # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
-        # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
-        return self.dataset.loc[self.idx[1], :]
-
-    @property
-    def test_transformed(self):
-        # When transforming the test set, we can and should use all data before that
-        # In time series, the order of arguments and returns may be reversed.
-        all_data = pd.concat(
-            [
-                *_pipeline_transform(
-                    pipeline=self.pipeline_fully_trained,
-                    y=self.y,
-                    X=self.X,
-                )
-            ],
-            axis=1,
-        )
-        # Return the y_test indices not X_test indices.
-        # X_test indices are expanded indices for handling FH with gaps.
-        # But if we return X_test indices, then we will get expanded test
-        # indices even for univariate time series without exogenous variables
-        # which would be confusing. Hence, we return y_test indices here and if
-        # we want to get X_test indices, then we use self.X_test directly.
-        # Refer:
-        # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
-        # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
-        return all_data.loc[self.idx[1]]
-
-    @property
-    def y_transformed(self):
-        # Use fully trained pipeline to get the requested data
-        # In time series, the order of arguments and returns may be reversed.
-        return _pipeline_transform(
-            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-        )[0]
-
-    @property
-    def X_test_transformed(self):
-        # In time series, the order of arguments and returns may be reversed.
-        # When transforming the test set, we can and should use all data before that
-        _, X = _pipeline_transform(
-            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-        )
-
-        if X is None:
-            return None
-        else:
-            return X.loc[self.idx[2]]
-
-    @property
-    def y_train_transformed(self):
-        # Use pipeline trained on training data only to get the requested data
-        # In time series, the order of arguments and returns may be reversed.
-        return _pipeline_transform(
-            pipeline=self.pipeline, y=self.y_train, X=self.X_train
-        )[0]
-
-    @property
-    def y_test_transformed(self):
-        # In time series, the order of arguments and returns may be reversed.
-        # When transforming the test set, we can and should use all data before that
-        y, _ = _pipeline_transform(
-            pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-        )
-        return y.loc[self.idx[1]]
 
 
 def _validate_split_requested(split: str):

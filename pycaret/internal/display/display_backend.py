@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pprint import pprint
-from typing import Any, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import pandas as pd
 
@@ -187,10 +187,6 @@ class DatabricksBackend(JupyterBackend):
         return obj
 
 
-backends = [CLIBackend, JupyterBackend, ColabBackend, DatabricksBackend, SilentBackend]
-backends = {b.id: b for b in backends}
-
-
 def detect_backend(
     backend: Optional[Union[str, DisplayBackend]] = None
 ) -> DisplayBackend:
@@ -209,6 +205,16 @@ def detect_backend(
         return JupyterBackend()
 
     if isinstance(backend, str):
+        backends: Dict[str, Any] = {
+            b.id: b
+            for b in {
+                CLIBackend,
+                JupyterBackend,
+                ColabBackend,
+                DatabricksBackend,
+                SilentBackend,
+            }
+        }
         backend_id = backend.lower()
         backend = backends.get(backend_id, None)
         if not backend:

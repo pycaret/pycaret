@@ -22,7 +22,7 @@ class WandbLogger(BaseLogger):
         super().__init__()
         self.run = None
 
-    def init_experiment(self, exp_name_log, full_name=None, **kwargs):
+    def init_experiment(self, exp_name_log, full_name=None, setup=True, **kwargs):
         self.run = (
             wandb.init(project=exp_name_log, name=full_name, **kwargs)
             if not wandb.run

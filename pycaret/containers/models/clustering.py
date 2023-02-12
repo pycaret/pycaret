@@ -8,7 +8,7 @@
 # `ClassifierContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -21,6 +21,26 @@ from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import get_logger, param_grid_to_lists
 
 _DEFAULT_N_CLUSTERS = 4
+
+# First one in the list is the default ----
+ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
+    "kmeans": ["sklearn", "sklearnex"],
+    "dbscan": ["sklearn", "sklearnex"],
+}
+
+
+def get_container_default_engines() -> Dict[str, str]:
+    """Get the default engines from all models
+    Returns
+    -------
+    Dict[str, str]
+        Default engines for all containers. If unspecified, it is not included
+        in the return dictionary.
+    """
+    default_engines = {}
+    for id, all_engines in ALL_ALLOWED_ENGINES.items():
+        default_engines[id] = all_engines[0]
+    return default_engines
 
 
 class ClusterContainer(ModelContainer):
@@ -163,7 +183,19 @@ class KMeansClusterContainer(ClusterContainer):
         logger = get_logger()
         np.random.seed(experiment.seed)
         gpu_imported = False
-        from sklearn.cluster import KMeans
+
+        id = "kmeans"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "sklearn":
+            from sklearn.cluster import KMeans
+        elif self.engine == "sklearnex":
+            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+                from sklearnex.cluster import KMeans
+            else:
+                from sklearn.cluster import KMeans
 
         if experiment.gpu_param == "force":
             from cuml.cluster import KMeans
@@ -189,7 +221,7 @@ class KMeansClusterContainer(ClusterContainer):
             KMeans = get_kmeans()
 
         super().__init__(
-            id="kmeans",
+            id=id,
             name="K-Means Clustering",
             class_def=KMeans,
             args=args,
@@ -301,7 +333,18 @@ class DBSCANClusterContainer(ClusterContainer):
         logger = get_logger()
         np.random.seed(experiment.seed)
         gpu_imported = False
-        from sklearn.cluster import DBSCAN
+        id = "dbscan"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "sklearn":
+            from sklearn.cluster import DBSCAN
+        elif self.engine == "sklearnex":
+            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+                from sklearnex.cluster import DBSCAN
+            else:
+                from sklearn.cluster import DBSCAN
 
         if experiment.gpu_param == "force":
             from cuml.cluster import DBSCAN
@@ -326,7 +369,7 @@ class DBSCANClusterContainer(ClusterContainer):
             DBSCAN = get_dbscan()
 
         super().__init__(
-            id="dbscan",
+            id=id,
             name="Density-Based Spatial Clustering",
             class_def=DBSCAN,
             args=args,

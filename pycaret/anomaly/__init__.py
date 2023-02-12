@@ -17,7 +17,6 @@ from pycaret.anomaly.functional import (
     set_config,
     set_current_experiment,
     setup,
-    tune_model,
 )
 from pycaret.anomaly.oop import AnomalyExperiment
 
@@ -26,7 +25,6 @@ __all__ = [
     "setup",
     "create_model",
     "assign_model",
-    "tune_model",
     "plot_model",
     "evaluate_model",
     "predict_model",

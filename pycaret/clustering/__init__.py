@@ -4,8 +4,10 @@ from pycaret.clustering.functional import (
     create_model,
     deploy_model,
     evaluate_model,
+    get_allowed_engines,
     get_config,
     get_current_experiment,
+    get_engine,
     get_logs,
     get_metrics,
     load_experiment,
@@ -20,7 +22,6 @@ from pycaret.clustering.functional import (
     set_config,
     set_current_experiment,
     setup,
-    tune_model,
 )
 from pycaret.clustering.oop import ClusteringExperiment
 
@@ -29,7 +30,6 @@ __all__ = [
     "setup",
     "create_model",
     "assign_model",
-    "tune_model",
     "plot_model",
     "evaluate_model",
     "predict_model",
@@ -47,5 +47,7 @@ __all__ = [
     "save_experiment",
     "load_experiment",
     "set_current_experiment",
+    "get_allowed_engines",
+    "get_engine",
     "get_current_experiment",
 ]

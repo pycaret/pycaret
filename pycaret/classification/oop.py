@@ -4,12 +4,14 @@ import logging
 import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from unittest.mock import patch
 
 import numpy as np  # type: ignore
 import pandas as pd
 import plotly.express as px
 import sklearn
 from joblib.memory import Memory
+from scipy.optimize import shgo
 
 from pycaret.containers.metrics import get_all_class_metric_containers
 from pycaret.containers.models import get_all_class_model_containers
@@ -26,8 +28,8 @@ from pycaret.internal.meta_estimators import (
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.preprocess.preprocessor import Preprocessor
-from pycaret.internal.pycaret_experiment.supervised_experiment import (
-    _SupervisedExperiment,
+from pycaret.internal.pycaret_experiment.non_ts_supervised_experiment import (
+    _NonTSSupervisedExperiment,
 )
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
@@ -42,7 +44,7 @@ from pycaret.utils.generic import (
 LOGGER = get_logger()
 
 
-class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
+class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
     _create_app_predict_kwargs = {"raw_score": True}
 
     def __init__(self) -> None:
@@ -628,7 +630,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
 
         log_experiment: bool or str or BaseLogger or list of str or BaseLogger, default = False
-            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb', 'comet_ml)
             corresponding to a logger to determine which experiment loggers to use.
             Setting to True will use just MLFlow.
 
@@ -2566,17 +2568,17 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self,
         estimator,
         optimize: str = "Accuracy",
-        grid_interval: float = 0.1,
         return_data: bool = False,
         plot_kwargs: Optional[dict] = None,
+        **shgo_kwargs,
     ):
 
         """
         This function optimizes probability threshold for a trained classifier. It
-        iterates over performance metrics at different ``probability_threshold`` with
-        a step size defined in ``grid_interval`` parameter. This function will display
-        a plot of the performance metrics at each probability threshold and returns the
-        best model based on the metric defined under ``optimize`` parameter.
+        uses the SHGO optimizer from ``scipy`` to optimize for the given metric.
+        This function will display a plot of the performance metrics at each probability
+        threshold checked by the optimizer and returns the best model based on the metric
+        defined under ``optimize`` parameter.
 
 
         Example
@@ -2598,16 +2600,16 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Metric to be used for selecting best model.
 
 
-        grid_interval : float, default = 0.0001
-            Grid interval for threshold grid search. Default 10 iterations.
-
-
         return_data :  bool, default = False
             When set to True, data used for visualization is also returned.
 
 
         plot_kwargs :  dict, default = {} (empty dict)
             Dictionary of arguments passed to the visualizer class.
+
+
+        **shgo_kwargs:
+            Kwargs to pass to ``scipy.optimize.shgo``.
 
 
         Returns
@@ -2650,19 +2652,19 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                     "Estimator doesn't support predict_proba function and cannot be used in optimize_threshold()."
                 )
 
-        allowed_types = [int, float]
+        if "func" in shgo_kwargs or "bounds" in shgo_kwargs or "args" in shgo_kwargs:
+            raise ValueError("shgo_kwargs cannot contain 'func', 'bounds' or 'args'.")
 
-        if type(grid_interval) not in allowed_types or grid_interval > 1.0:
-            raise TypeError("grid_interval should be float and less than 1.0.")
+        shgo_kwargs.setdefault("sampling_method", "sobol")
 
-        if isinstance(optimize, str):
-            # checking optimize parameter
-            optimize = self._get_metric_by_name_or_id(optimize)
-            if optimize is None:
-                raise ValueError(
-                    "Optimize method not supported. See docstring for list of available parameters."
-                )
-            optimize = optimize.display_name
+        # checking optimize parameter
+        optimize = self._get_metric_by_name_or_id(optimize)
+        if optimize is None:
+            raise ValueError(
+                "Optimize method not supported. See docstring for list of available parameters."
+            )
+        direction = -1 if optimize.greater_is_better else 1
+        optimize = optimize.display_name
 
         """
         ERROR HANDLING ENDS HERE
@@ -2672,23 +2674,19 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         # get estimator name
         model_name = self._get_model_name(estimator)
 
-        # defines grid
-        grid = np.arange(0, 1.0001, grid_interval)
-
         # defines empty list
-        models_by_threshold = []
         results_df = []
 
-        self.logger.info("starting optimization loop")
-        # loop starts here
-        for i in grid:
+        self.logger.info("starting optimization")
+
+        def objective(x, *args):
+            probability_threshold = x[0]
             model = self._create_model(
-                estimator, verbose=False, system=False, probability_threshold=i
+                estimator,
+                verbose=False,
+                system=False,
+                probability_threshold=probability_threshold,
             )
-            try:
-                models_by_threshold.append(model[0])
-            except Exception:
-                models_by_threshold.append(model)
             model_results = (
                 self.pull(pop=True)
                 .reset_index()
@@ -2702,22 +2700,38 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                     ]
                 ]
             )
-            model_results["probability_threshold"] = i
+            model_results["probability_threshold"] = probability_threshold
+            model_results["model"] = model[0]
             results_df.append(model_results)
+            return model_results[optimize] * direction
 
-        self.logger.info("optimization loop finished successfully")
+        # This is necessary to make sure the sampler has a
+        # deterministic seed.
+        class FixedRandom(np.random.RandomState):
+            def __init__(self_, seed=None) -> None:  # noqa
+                super().__init__(self.seed)
+
+        with patch("numpy.random.RandomState", FixedRandom):
+            result = shgo(objective, ((0, 1),), **shgo_kwargs)
+
+        message = (
+            "optimization loop finished successfully. "
+            f"Best threshold: {result.x[0]} with {optimize}={result.fun*direction}"
+        )
+        print(message)
+        self.logger.info(message)
 
         results_concat = pd.concat(results_df, axis=0)
-        results_concat_melted = results_concat.melt(
+        results_concat = results_concat.sort_values("probability_threshold")
+        results_concat_melted = results_concat.drop("model", axis=1).melt(
             id_vars=["probability_threshold"],
             value_vars=list(results_concat.columns[:-1]),
         )
-        optimized_metric_index = np.array(
-            results_concat_melted[results_concat_melted["variable"] == optimize][
-                "value"
-            ]
-        ).argmax()
-        best_model_by_metric = models_by_threshold[optimized_metric_index]
+        best_model_by_metric = results_concat[
+            results_concat["probability_threshold"] == result.x[0]
+        ]["model"].iloc[0]
+        assert isinstance(best_model_by_metric, CustomProbabilityThresholdClassifier)
+        assert best_model_by_metric.probability_threshold == result.x[0]
 
         self.logger.info("plotting optimization threshold using plotly")
 
@@ -2731,7 +2745,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             color="variable",
             **plot_kwargs,
         )
-        self.logger.info("Figure ready for render")
         fig.show()
 
         self.logger.info("returning model with best metric")
@@ -2754,7 +2767,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         probability_threshold: Optional[float] = None,
         encoded_labels: bool = False,
         raw_score: bool = False,
-        drift_report: bool = False,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -2800,11 +2812,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             When set to True, scores for all labels will be returned.
 
 
-        drift_report: bool, default = False
-            When set to True, interactive drift report is generated on test set
-            with the evidently library.
-
-
         round: int, default = 4
             Number of decimal places the metrics in the score grid will be rounded to.
 
@@ -2832,7 +2839,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             probability_threshold=probability_threshold,
             encoded_labels=encoded_labels,
             raw_score=raw_score,
-            drift_report=drift_report,
             round=round,
             verbose=verbose,
         )
