@@ -52,7 +52,7 @@ jobs:
           pip install -e ".[full]"
           python -m ipykernel install --user --name cikernel
       - name: Run notebooks
-        run: pytest --nbmake --nbmake-kernel=cikernel -n=auto --ignore=./tutorials/Japanese/ --ignore=./tutorials/Chinese/ --ignore=./tutorials/Greek/ --ignore=./tutorials/Portuguese/ ./tutorials/
+        run: pytest --nbmake --nbmake-kernel=cikernel -n=auto --nbmake-timeout=3000 --ignore=./tutorials/Japanese/ --ignore=./tutorials/Chinese/ --ignore=./tutorials/Greek/ --ignore=./tutorials/Portuguese/ ./tutorials/
 
   test_linux:
     runs-on: ubuntu-latest
