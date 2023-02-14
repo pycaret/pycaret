@@ -208,7 +208,6 @@ def get_sp_from_str(str_freq: str) -> int:
                 f"suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
             )
     else:
-
         if str_freq in SeasonalPeriod.__members__:
             seasonal_period = SeasonalPeriod[str_freq].value
             return seasonal_period
@@ -259,9 +258,7 @@ def auto_detect_sp(
     # lags_to_use = min(10 * np.log10(nobs), nobs - 1)
     # lags_to_use = max(lags_to_use, nobs/3)
     lags_to_use = int((nobs - 1) / 2)
-    # +1 added since SeasonalityACF uses uses upto nlags-1
-    # TODO: Remove after https://github.com/sktime/sktime/issues/4169 is fixed
-    sp_est = SeasonalityACF(nlags=lags_to_use + 1)
+    sp_est = SeasonalityACF(nlags=lags_to_use)
     sp_est.fit(yt)
 
     primary_sp = sp_est.get_fitted_params().get("sp")
