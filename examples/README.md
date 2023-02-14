@@ -1,4 +1,4 @@
-# PyCaret Official Examples
+# PyCaret Official Notebook Examples
 
 - Time-series
     - Forecasting
