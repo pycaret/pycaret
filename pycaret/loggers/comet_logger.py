@@ -5,14 +5,15 @@ import joblib
 
 from pycaret.loggers.base_logger import BaseLogger
 
-try:
-    import comet_ml
-except ImportError:
-    comet_ml = None
-
 
 class CometLogger(BaseLogger):
     def __init__(self) -> None:
+        # lazy import to avoid comet logging
+        try:
+            import comet_ml
+        except ImportError:
+            comet_ml = None
+
         if comet_ml is None:
             raise ImportError(
                 "CometLogger requires Comet. Install using `pip install comet_ml`"
@@ -21,6 +22,8 @@ class CometLogger(BaseLogger):
         self.run = None
 
     def init_experiment(self, exp_name_log, full_name=None, setup=True, **kwargs):
+        import comet_ml
+
         self.run = comet_ml.Experiment(project_name=exp_name_log, **kwargs)
         self.run.set_name(full_name)
         self.run.log_other("Created from", "pycaret")
