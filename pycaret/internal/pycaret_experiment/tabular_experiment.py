@@ -2604,7 +2604,7 @@ class _TabularExperiment(_PyCaretExperiment):
         _check_soft_dependencies("pydantic", extra="mlops", severity="error")
 
         self.save_model(estimator, model_name=api_name, verbose=False)
-        target = f"{self.target_param}_prediction"
+        target = "prediction"
 
         query = f"""# -*- coding: utf-8 -*-
 

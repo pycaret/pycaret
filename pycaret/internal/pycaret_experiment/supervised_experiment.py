@@ -5082,7 +5082,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
             model_results = model_results_tuple["scores"]
             model = model_results_tuple["model"]
-            mean_scores = model_results[-2:-1]
+            try:
+                mean_scores = model_results.loc[["Mean"]]
+            except KeyError:
+                continue
             model_name = self._get_model_name(model)
             mean_scores["Index"] = i
             mean_scores["Model Name"] = model_name
