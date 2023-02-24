@@ -47,7 +47,7 @@ def _summary_stats(
     for data_, name_ in zip(diff_list, name_list):
         # Step 2A: Get Test Results ----
         distinct_counts = dict(data_.value_counts(normalize=True))
-        results = {
+        results_dict = {
             "Length": len(data_),
             "# Missing Values": data_.isna().sum(),
             "Mean": data_.mean(),
@@ -60,7 +60,7 @@ def _summary_stats(
         }
 
         # Step 2B: Create Result DataFrame ----
-        results = pd.DataFrame(results, index=["Value"]).T.reset_index()
+        results = pd.DataFrame(results_dict, index=["Value"]).T.reset_index()
         results["Data"] = name_
 
         # Step 2C: Update list of all results ----
@@ -137,11 +137,11 @@ def _is_gaussian(
         is_gaussian = True if p_value > alpha else False
 
         # Step 2C: Create Result DataFrame ----
-        results = {
+        results_dict = {
             "Normality": is_gaussian,
             "p-value": p_value,
         }
-        results = pd.DataFrame(results, index=["Value"]).T.reset_index()
+        results = pd.DataFrame(results_dict, index=["Value"]).T.reset_index()
         results["Data"] = name_
 
         # Step 2D: Update list of all results ----
