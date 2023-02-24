@@ -4,7 +4,7 @@ SETUP_TAG = "Session Initialized"
 
 
 class BaseLogger(ABC):
-    def init_logger():
+    def init_logger(self):
         pass
 
     def __del__(self):
