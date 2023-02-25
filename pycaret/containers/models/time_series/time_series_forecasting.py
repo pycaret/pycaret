@@ -90,7 +90,7 @@ def get_container_default_engines() -> Dict[str, str]:
     return default_engines
 
 
-class TimeSeriesContainer(ModelContainer):
+class TimeSeriesForecastingContainer(ModelContainer):
     """
     Base time series model container class, for easier definition of containers.
     Ensures consistent format before being turned into a dataframe row.

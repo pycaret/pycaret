@@ -1,13 +1,11 @@
 import pandas as pd
-
-from pycaret.internal.pycaret_experiment.supervised_experiment import (
-    _SupervisedExperiment,
-)
-from pycaret.internal.pycaret_experiment.unsupervised_experiment import _UnsupervisedExperiment
+from pycaret.internal.pycaret_experiment.ts_unsupervised_experiment import _TSUnsupervisedExperiment
 from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
 
 
-class _TSClusteringExperiment(_UnsupervisedExperiment):
+class TSClusteringExperiment(_TSUnsupervisedExperiment):
+
+    """TODO: We'll need to rethink all the methods below based on the needs of timeseries clustering experiments"""
     @property
     def X(self):
         X = self.dataset.drop(self.target_param, axis=1)
