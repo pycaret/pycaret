@@ -186,6 +186,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
             ["Splits used for hyperparameters", self.hyperparameter_split],
+            ["User Defined Seasonal Period(s)", self.seasonal_period],
+            ["Ignore Seasonality Test", self.ignore_seasonality_test],
             ["Seasonality Detection Algo", self.sp_detection],
             ["Max Period to Consider", self.max_sp_to_consider],
             ["Seasonal Period(s) Tested", self.candidate_sps],
@@ -698,7 +700,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         """
         self.logger.info("Set up Seasonal Period.")
 
-        skip_autocorrelation_test = False
+        skip_autocorrelation_test = False or self.ignore_seasonality_test
 
         # We use the transformed dataset here instead of y for 2 reasons:
         # (1) Missing values in y will cause issues with this test (seasonality
@@ -1375,6 +1377,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
         hyperparameter_split: str = "all",
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
+        ignore_seasonality_test: bool = False,
         sp_detection: str = "auto",
         max_sp_to_consider: Optional[int] = 60,
         remove_harmonics: bool = False,
@@ -1625,8 +1628,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
 
         seasonal_period: list or int or str, default = None
-            Seasonal periods to check when performing seasonality checks (i.e. candidates).
-            If not provided, then candidates are detected per the sp_detection setting.
+            Seasonal periods to use when performing seasonality checks (i.e. candidates).
 
             Users can provide `seasonal_period` by passing it as an integer or a
             string corresponding to the keys below (e.g. 'W' for weekly data,
@@ -1646,6 +1648,21 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             accept multiple seasonal values (currently TBATS). For models that
             don't accept multiple seasonal values, the first value of the list
             will be used as the seasonal period.
+
+            NOTE:
+            (1) If seasonal_period is provided, whether the seasonality check is
+            performed or not depends on the ignore_seasonality_test setting.
+            (2) If seasonal_period is not provided, then the candidates are detected
+            per the sp_detection setting. If seasonal_period is provided,
+            sp_detection setting is ignored.
+
+
+        ignore_seasonality_test: bool = False
+            Whether to ignore the seasonality test or not. Applicable when seasonal_period
+            is provided. If False, then a seasonality tests is performed to determine
+            if the provided seasonal_period is valid or not. If it is found to be not
+            valid, no seasonal period is used for modeling. If True, then the the
+            provided seasonal_period is used as is.
 
 
         sp_detection: str, default = "auto"
@@ -1926,12 +1943,16 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         # Variables related to seasonal period and detection ----
         self.seasonal_period = seasonal_period
+        self.ignore_seasonality_test = ignore_seasonality_test
         if sp_detection not in ["auto", "index"]:
             raise ValueError(
                 "sp_detection must be either 'auto' or 'index'. "
                 f"You provided {sp_detection}."
             )
-        self.sp_detection = sp_detection
+        if self.seasonal_period is not None:
+            self.sp_detection = "user_defined"
+        else:
+            self.sp_detection = sp_detection
         self.max_sp_to_consider = max_sp_to_consider
         self.remove_harmonics = remove_harmonics
         if harmonic_order_method not in [
@@ -2066,7 +2087,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ):
-
         """
         This function trains and evaluates performance of all estimators available in the
         model library using cross validation. The output of this function is a score grid
@@ -2220,7 +2240,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         verbose: bool = True,
         **kwargs,
     ):
-
         """
         This function trains and evaluates the performance of a given estimator
         using cross validation. The output of this function is a score grid with
@@ -2603,7 +2622,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         tuner_verbose: Union[int, bool] = True,
         **kwargs,
     ):
-
         """
         This function tunes the hyperparameters of a given estimator. The output of
         this function is a score grid with CV scores by fold of the best selected
@@ -2951,7 +2969,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         # with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
         if True:
-
             ###############################################
             # Add the correct model to the pipeline ####
             ###############################################
@@ -3114,7 +3131,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         # mlflow logging
         if self.logging_param:
-
             avgs_dict_log = {
                 k: v
                 for k, v in model_results.loc[
@@ -3169,7 +3185,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fit_kwargs: Optional[dict] = None,
         verbose: bool = True,
     ):
-
         """
         This function trains a EnsembleForecaster for select models passed in the
         ``estimator_list`` param. The output of this function is a score grid with
@@ -3814,7 +3829,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fig_kwargs: Optional[Dict] = None,
         save: Union[str, bool] = False,
     ) -> Optional[Tuple[str, list]]:
-
         """
         This function analyzes the performance of a trained model on holdout set.
         When used without any estimator, this function generates plots on the
@@ -4354,7 +4368,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
-
         """
         This function forecast using a trained model. When ``fh`` is None,
         it forecasts using the same forecast horizon used during the
@@ -4473,7 +4486,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
-
         """
         This function trains a given estimator on the entire dataset including the
         holdout set.
@@ -4521,7 +4533,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         authentication: dict,
         platform: str = "aws",
     ):
-
         """
         This function deploys the transformation pipeline and trained model on cloud.
 
@@ -4609,7 +4620,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
     def save_model(
         self, model, model_name: str, model_only: bool = False, verbose: bool = True
     ):
-
         """
         This function saves the transformation pipeline and trained model object
         into the current working directory as a pickle file for later use.
@@ -4657,7 +4667,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
     ):
-
         """
         This function loads a previously saved pipeline/model.
 
@@ -4763,7 +4772,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         internal: bool = False,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of models available in the model library.
 
@@ -4834,7 +4842,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         include_custom: bool = True,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of available metrics used for CV.
 
@@ -4879,7 +4886,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         greater_is_better: bool = True,
         **kwargs,
     ) -> pd.Series:
-
         """
         Adds a custom metric to be used for CV.
 
@@ -4929,7 +4935,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         )
 
     def remove_metric(self, name_or_id: str):
-
         """
         Removes a metric from CV.
 
@@ -4956,7 +4961,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
     def get_logs(
         self, experiment_name: Optional[str] = None, save: bool = False
     ) -> pd.DataFrame:
-
         """
         Returns a table of experiment logs. Only works when ``log_experiment``
         is True when initializing the ``setup`` function.
@@ -4992,7 +4996,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fold: Optional[Union[int, Any]] = None,
         fold_strategy: Optional[str] = None,
     ) -> Union[ExpandingWindowSplitter, SlidingWindowSplitter]:
-
         """Returns the cv object based on number of folds and fold_strategy
 
         Parameters
