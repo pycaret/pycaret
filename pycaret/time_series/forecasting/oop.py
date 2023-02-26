@@ -2066,7 +2066,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ):
-
         """
         This function trains and evaluates performance of all estimators available in the
         model library using cross validation. The output of this function is a score grid
@@ -2220,7 +2219,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         verbose: bool = True,
         **kwargs,
     ):
-
         """
         This function trains and evaluates the performance of a given estimator
         using cross validation. The output of this function is a score grid with
@@ -2603,7 +2601,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         tuner_verbose: Union[int, bool] = True,
         **kwargs,
     ):
-
         """
         This function tunes the hyperparameters of a given estimator. The output of
         this function is a score grid with CV scores by fold of the best selected
@@ -2951,7 +2948,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         # with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
         if True:
-
             ###############################################
             # Add the correct model to the pipeline ####
             ###############################################
@@ -3114,7 +3110,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         # mlflow logging
         if self.logging_param:
-
             avgs_dict_log = {
                 k: v
                 for k, v in model_results.loc[
@@ -3169,7 +3164,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fit_kwargs: Optional[dict] = None,
         verbose: bool = True,
     ):
-
         """
         This function trains a EnsembleForecaster for select models passed in the
         ``estimator_list`` param. The output of this function is a score grid with
@@ -3814,7 +3808,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fig_kwargs: Optional[Dict] = None,
         save: Union[str, bool] = False,
     ) -> Optional[Tuple[str, list]]:
-
         """
         This function analyzes the performance of a trained model on holdout set.
         When used without any estimator, this function generates plots on the
@@ -4354,7 +4347,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
-
         """
         This function forecast using a trained model. When ``fh`` is None,
         it forecasts using the same forecast horizon used during the
@@ -4473,7 +4465,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
-
         """
         This function trains a given estimator on the entire dataset including the
         holdout set.
@@ -4521,7 +4512,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         authentication: dict,
         platform: str = "aws",
     ):
-
         """
         This function deploys the transformation pipeline and trained model on cloud.
 
@@ -4609,7 +4599,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
     def save_model(
         self, model, model_name: str, model_only: bool = False, verbose: bool = True
     ):
-
         """
         This function saves the transformation pipeline and trained model object
         into the current working directory as a pickle file for later use.
@@ -4657,7 +4646,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
     ):
-
         """
         This function loads a previously saved pipeline/model.
 
@@ -4763,7 +4751,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         internal: bool = False,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of models available in the model library.
 
@@ -4834,7 +4821,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         include_custom: bool = True,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of available metrics used for CV.
 
@@ -4879,7 +4865,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         greater_is_better: bool = True,
         **kwargs,
     ) -> pd.Series:
-
         """
         Adds a custom metric to be used for CV.
 
@@ -4929,7 +4914,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         )
 
     def remove_metric(self, name_or_id: str):
-
         """
         Removes a metric from CV.
 
@@ -4956,7 +4940,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
     def get_logs(
         self, experiment_name: Optional[str] = None, save: bool = False
     ) -> pd.DataFrame:
-
         """
         Returns a table of experiment logs. Only works when ``log_experiment``
         is True when initializing the ``setup`` function.
@@ -4992,7 +4975,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fold: Optional[Union[int, Any]] = None,
         fold_strategy: Optional[str] = None,
     ) -> Union[ExpandingWindowSplitter, SlidingWindowSplitter]:
-
         """Returns the cv object based on number of folds and fold_strategy
 
         Parameters

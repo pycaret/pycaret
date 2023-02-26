@@ -174,7 +174,6 @@ class TimeSeriesContainer(ModelContainer):
         is_gpu_enabled: Optional[bool] = None,
         tunable: Optional[type] = None,
     ) -> None:
-
         if not args:
             args = {}
 
@@ -560,7 +559,6 @@ class ArimaContainer(TimeSeriesContainer):
             sp: int,
             seasonal_max_multiplier: int,
         ) -> Tuple[List[Tuple[int, int, int]], List[Tuple[int, int, int, int]]]:
-
             random.seed(experiment.seed)
             np.random.seed(experiment.seed)
             p_values = [random.randint(p_start, p_end) for _ in range(n_samples)]
@@ -1438,7 +1436,6 @@ class LinearCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-
         if self.engine == "sklearn":
             from sklearn.linear_model import LinearRegression
         elif self.engine == "sklearnex":
@@ -1494,7 +1491,6 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-
         if self.engine == "sklearn":
             from sklearn.linear_model import ElasticNet
         elif self.engine == "sklearnex":
@@ -1554,7 +1550,6 @@ class RidgeCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-
         if self.engine == "sklearn":
             from sklearn.linear_model import Ridge
         elif self.engine == "sklearnex":
@@ -1613,7 +1608,6 @@ class LassoCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-
         if self.engine == "sklearn":
             from sklearn.linear_model import Lasso
         elif self.engine == "sklearnex":

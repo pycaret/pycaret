@@ -89,7 +89,6 @@ class AnomalyContainer(ModelContainer):
         tune_args: Dict[str, Any] = None,
         is_gpu_enabled: Optional[bool] = None,
     ) -> None:
-
         if not args:
             args = {}
 

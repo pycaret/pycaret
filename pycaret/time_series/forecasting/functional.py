@@ -613,7 +613,6 @@ def compare_models(
     verbose: bool = True,
     parallel: Optional[ParallelBackend] = None,
 ):
-
     """
     This function trains and evaluates performance of all estimators available in the
     model library using cross validation. The output of this function is a score grid
@@ -787,7 +786,6 @@ def create_model(
     verbose: bool = True,
     **kwargs,
 ):
-
     """
     This function trains and evaluates the performance of a given estimator
     using cross validation. The output of this function is a score grid with
@@ -922,7 +920,6 @@ def tune_model(
     tuner_verbose: Union[int, bool] = True,
     **kwargs,
 ):
-
     """
     This function tunes the hyperparameters of a given estimator. The output of
     this function is a score grid with CV scores by fold of the best selected
@@ -1045,7 +1042,6 @@ def blend_models(
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
 ):
-
     """
     This function trains a EnsembleForecaster for select models passed in the
     ``estimator_list`` param. The output of this function is a score grid with
@@ -1142,7 +1138,6 @@ def plot_model(
     fig_kwargs: Optional[Dict] = None,
     save: Union[str, bool] = False,
 ) -> Optional[Tuple[str, list]]:
-
     """
     This function analyzes the performance of a trained model on holdout set.
     When used without any estimator, this function generates plots on the
@@ -1390,7 +1385,6 @@ def predict_model(
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
-
     """
     This function forecast using a trained model. When ``fh`` is None,
     it forecasts using the same forecast horizon used during the
@@ -1476,7 +1470,6 @@ def predict_model(
 def finalize_model(
     estimator, fit_kwargs: Optional[dict] = None, model_only: bool = False
 ) -> Any:
-
     """
     This function trains a given estimator on the entire dataset including the
     holdout set.
@@ -1517,7 +1510,6 @@ def finalize_model(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def deploy_model(model, model_name: str, authentication: dict, platform: str = "aws"):
-
     """
     This function deploys the transformation pipeline and trained model on cloud.
 
@@ -1605,7 +1597,6 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def save_model(model, model_name: str, model_only: bool = True, verbose: bool = True):
-
     """
     This function saves the transformation pipeline and trained model object
     into the current working directory as a pickle file for later use.
@@ -1653,7 +1644,6 @@ def load_model(
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,
 ):
-
     """
     This function loads a previously saved pipeline/model.
 
@@ -1729,7 +1719,6 @@ def pull(pop: bool = False) -> pd.DataFrame:
 def models(
     type: Optional[str] = None, internal: bool = False, raise_errors: bool = True
 ) -> pd.DataFrame:
-
     """
     Returns table of models available in the model library.
 
@@ -1772,7 +1761,6 @@ def models(
 def get_metrics(
     reset: bool = False, include_custom: bool = True, raise_errors: bool = True
 ) -> pd.DataFrame:
-
     """
     Returns table of available metrics used for CV.
 
@@ -1814,7 +1802,6 @@ def get_metrics(
 def add_metric(
     id: str, name: str, score_func: type, greater_is_better: bool = True, **kwargs
 ) -> pd.Series:
-
     """
     Adds a custom metric to be used for CV.
 
@@ -1865,7 +1852,6 @@ def add_metric(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def remove_metric(name_or_id: str):
-
     """
     Removes a metric from CV.
 
@@ -1892,7 +1878,6 @@ def remove_metric(name_or_id: str):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
-
     """
     Returns a table of experiment logs. Only works when ``log_experiment``
     is True when initializing the ``setup`` function.
@@ -1926,7 +1911,6 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_config(variable: Optional[str] = None):
-
     """
     This function retrieves the global variables created when initializing the
     ``setup`` function. Following variables are accessible:
@@ -1982,7 +1966,6 @@ def get_config(variable: Optional[str] = None):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def set_config(variable: str, value):
-
     """
     This function resets the global variables. Following variables are
     accessible:
@@ -2069,7 +2052,6 @@ def load_experiment(
     preprocess_data: bool = True,
     **cloudpickle_kwargs,
 ) -> TSForecastingExperiment:
-
     """
     Load an experiment saved with ``save_experiment`` from path
     or file.

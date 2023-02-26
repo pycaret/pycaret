@@ -131,7 +131,6 @@ def deploy_model(
     logger.info("SubProcess save_model() end ==================================")
 
     if platform == "aws":
-
         logger.info("Platform : AWS S3")
 
         # checking if boto3 is available
@@ -176,7 +175,6 @@ def deploy_model(
         logger.info(str(model))
 
     elif platform == "gcp":
-
         logger.info("Platform : GCP")
 
         _check_soft_dependencies(
@@ -210,7 +208,6 @@ def deploy_model(
         logger.info(str(model))
 
     elif platform == "azure":
-
         logger.info("Platform : Azure Blob Storage")
 
         _check_soft_dependencies(
@@ -395,7 +392,6 @@ def load_model(
 
     # cloud providers
     elif platform == "aws":
-
         import os
 
         # checking if boto3 is available
@@ -438,7 +434,6 @@ def load_model(
         return model
 
     elif platform == "gcp":
-
         bucket_name = authentication.get("bucket")
         project_name = authentication.get("project")
 
@@ -463,7 +458,6 @@ def load_model(
         return model
 
     elif platform == "azure":
-
         container_name = authentication.get("container")
 
         if container_name is None:

@@ -141,7 +141,6 @@ class RegressorContainer(ModelContainer):
         is_gpu_enabled: Optional[bool] = None,
         tunable: Optional[type] = None,
     ) -> None:
-
         self.shap = shap
         if not (isinstance(shap, bool) or shap in ["type1", "type2"]):
             raise ValueError("shap must be either bool or 'type1', 'type2'.")

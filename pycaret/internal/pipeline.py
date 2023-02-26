@@ -203,7 +203,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 [y.name] if hasattr(y, "name") else []
             )
 
-        for (step_idx, name, transformer) in self._iter(False, False, False):
+        for step_idx, name, transformer in self._iter(False, False, False):
             if transformer is None or transformer == "passthrough":
                 with _print_elapsed_time("Pipeline", self._log_message(step_idx)):
                     continue

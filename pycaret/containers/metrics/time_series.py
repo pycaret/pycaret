@@ -91,7 +91,6 @@ class TimeSeriesMetricContainer(MetricContainer):
         greater_is_better: bool = True,
         is_custom: bool = False,
     ) -> None:
-
         allowed_targets = ["pred"]
         if target not in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")
@@ -270,7 +269,6 @@ class MAEMetricContainer(TimeSeriesMetricContainer):
 
 class RMSEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
-
         super().__init__(
             id="rmse",
             name="RMSE",
@@ -297,7 +295,6 @@ class SMAPEMetricContainer(TimeSeriesMetricContainer):
 
 class R2MetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
-
         super().__init__(
             id="r2",
             name="R2",
