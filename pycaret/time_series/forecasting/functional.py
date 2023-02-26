@@ -54,6 +54,7 @@ def setup(
     fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
     hyperparameter_split: str = "all",
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
+    ignore_seasonality_test: bool = False,
     sp_detection: str = "auto",
     max_sp_to_consider: Optional[int] = 60,
     remove_harmonics: bool = False,
@@ -300,8 +301,7 @@ def setup(
 
 
     seasonal_period: list or int or str, default = None
-        Seasonal periods to check when performing seasonality checks (i.e. candidates).
-        If not provided, then candidates are detected per the sp_detection setting.
+        Seasonal periods to use when performing seasonality checks (i.e. candidates).
 
         Users can provide `seasonal_period` by passing it as an integer or a
         string corresponding to the keys below (e.g. 'W' for weekly data,
@@ -321,6 +321,21 @@ def setup(
         accept multiple seasonal values (currently TBATS). For models that
         don't accept multiple seasonal values, the first value of the list
         will be used as the seasonal period.
+
+        NOTE:
+        (1) If seasonal_period is provided, whether the seasonality check is
+        performed or not depends on the ignore_seasonality_test setting.
+        (2) If seasonal_period is not provided, then the candidates are detected
+        per the sp_detection setting. If seasonal_period is provided,
+        sp_detection setting is ignored.
+
+
+    ignore_seasonality_test: bool = False
+        Whether to ignore the seasonality test or not. Applicable when seasonal_period
+        is provided. If False, then a seasonality tests is performed to determine
+        if the provided seasonal_period is valid or not. If it is found to be not
+        valid, no seasonal period is used for modeling. If True, then the the
+        provided seasonal_period is used as is.
 
 
     sp_detection: str, default = "auto"
@@ -570,6 +585,7 @@ def setup(
         fh=fh,
         hyperparameter_split=hyperparameter_split,
         seasonal_period=seasonal_period,
+        ignore_seasonality_test=ignore_seasonality_test,
         sp_detection=sp_detection,
         max_sp_to_consider=max_sp_to_consider,
         remove_harmonics=remove_harmonics,

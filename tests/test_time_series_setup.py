@@ -183,8 +183,10 @@ def test_enforce_exogenous_exo_data(load_uni_exo_data_target):
     assert num_models1 < num_models2
 
 
-def test_sp_to_use_using_index():
-    """Seasonal Period detection using Indices (used before 3.0.0rc5)."""
+def test_sp_to_use_using_index_and_user_def():
+    """Seasonal Period detection using Indices (used before 3.0.0rc5). Also
+    tests the user defined seasonal periods when used in conjunction with "index".
+    """
 
     exp = TSForecastingExperiment()
     data = get_data("airline", verbose=False)
@@ -196,6 +198,9 @@ def test_sp_to_use_using_index():
         verbose=False,
         session_id=42,
     )
+    assert exp.seasonal_period is None
+    assert exp.sp_detection == "index"
+    assert exp.ignore_seasonality_test is False
     assert exp.candidate_sps == [12]
     assert exp.significant_sps == [12]
     assert exp.significant_sps_no_harmonics == [12]
@@ -211,6 +216,10 @@ def test_sp_to_use_using_index():
         seasonal_period=["M", 6],
         num_sps_to_use=-1,
     )
+    assert exp.seasonal_period == ["M", 6]
+    # overridden to user_defined even through we pass "index"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is False
     assert exp.candidate_sps == [12, 6]
     assert exp.significant_sps == [12, 6]
     assert exp.significant_sps_no_harmonics == [12]
@@ -228,15 +237,43 @@ def test_sp_to_use_using_index():
     )
 
     # Should get 1 even though we passed 12
+    assert exp.seasonal_period == 12
+    # overridden to user_defined even through we pass "index"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is False
     assert exp.candidate_sps == [12]
     assert exp.significant_sps == [1]
     assert exp.significant_sps_no_harmonics == [1]
     assert exp.all_sps_to_use == [1]
     assert exp.primary_sp_to_use == 1
 
+    # 1.4 White noise Data with seasonality of 12 and ignore_seasonality_test = True
+    data = get_data("1", folder="time_series/white_noise", verbose=False)
+    exp.setup(
+        data=data,
+        sp_detection="index",
+        seasonal_period=12,
+        ignore_seasonality_test=True,
+        verbose=False,
+        session_id=42,
+    )
 
-def test_sp_to_use_using_auto():
-    """Seasonal Period detection using Statistical tests (used on and after 3.0.0rc5)."""
+    # Should get 1 even though we passed 12
+    assert exp.seasonal_period == 12
+    # overridden to user_defined even through we pass "index"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is True
+    assert exp.candidate_sps == [12]
+    assert exp.significant_sps == [12]
+    assert exp.significant_sps_no_harmonics == [12]
+    assert exp.all_sps_to_use == [12]
+    assert exp.primary_sp_to_use == 12
+
+
+def test_sp_to_use_using_auto_and_user_def():
+    """Seasonal Period detection using Statistical tests (used on and after 3.0.0rc5).
+    Also tests the user defined seasonal periods when used in conjunction with "auto".
+    """
 
     exp = TSForecastingExperiment()
     data = get_data("airline", verbose=False)
@@ -297,6 +334,46 @@ def test_sp_to_use_using_auto():
     exp = TSForecastingExperiment()
     exp.setup(data=data.iloc[: 2 * sp])
     assert exp.primary_sp_to_use < sp
+
+    # 3.0 Overwritten by user defined seasonal period ----
+    sp = 19
+    # 3.1 ignore_seasonality_test = False (default)
+    exp.setup(
+        data=data,
+        seasonal_period=sp,
+        # ignore_seasonality_test=False,  # default
+        sp_detection="auto",
+        verbose=False,
+        session_id=42,
+    )
+    assert exp.seasonal_period == sp
+    # overridden to user_defined even through we pass "auto"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is False
+    assert exp.candidate_sps == [sp]
+    assert exp.significant_sps == [1]
+    assert exp.significant_sps_no_harmonics == [1]
+    assert exp.all_sps_to_use == [1]
+    assert exp.primary_sp_to_use == 1
+
+    # 3.2 ignore_seasonality_test = True
+    exp.setup(
+        data=data,
+        seasonal_period=sp,
+        ignore_seasonality_test=True,
+        sp_detection="auto",
+        verbose=False,
+        session_id=42,
+    )
+    assert exp.seasonal_period == sp
+    # overridden to user_defined even through we pass "auto"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is True
+    assert exp.candidate_sps == [sp]
+    assert exp.significant_sps == [sp]
+    assert exp.significant_sps_no_harmonics == [sp]
+    assert exp.all_sps_to_use == [sp]
+    assert exp.primary_sp_to_use == sp
 
 
 def test_sp_to_use_upto_max_sp():
@@ -363,7 +440,6 @@ def test_sp_to_use_upto_max_sp():
 
 @pytest.mark.parametrize("seasonal_key, seasonal_value", _get_seasonal_values())
 def test_setup_seasonal_period_int(load_pos_and_neg_data, seasonal_key, seasonal_value):
-
     exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)

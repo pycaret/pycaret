@@ -186,6 +186,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
             ["Splits used for hyperparameters", self.hyperparameter_split],
+            ["User Defined Seasonal Period(s)", self.seasonal_period],
+            ["Ignore Seasonality Test", self.ignore_seasonality_test],
             ["Seasonality Detection Algo", self.sp_detection],
             ["Max Period to Consider", self.max_sp_to_consider],
             ["Seasonal Period(s) Tested", self.candidate_sps],
@@ -698,7 +700,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         """
         self.logger.info("Set up Seasonal Period.")
 
-        skip_autocorrelation_test = False
+        skip_autocorrelation_test = False or self.ignore_seasonality_test
 
         # We use the transformed dataset here instead of y for 2 reasons:
         # (1) Missing values in y will cause issues with this test (seasonality
@@ -1375,6 +1377,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
         hyperparameter_split: str = "all",
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
+        ignore_seasonality_test: bool = False,
         sp_detection: str = "auto",
         max_sp_to_consider: Optional[int] = 60,
         remove_harmonics: bool = False,
@@ -1625,8 +1628,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
 
         seasonal_period: list or int or str, default = None
-            Seasonal periods to check when performing seasonality checks (i.e. candidates).
-            If not provided, then candidates are detected per the sp_detection setting.
+            Seasonal periods to use when performing seasonality checks (i.e. candidates).
 
             Users can provide `seasonal_period` by passing it as an integer or a
             string corresponding to the keys below (e.g. 'W' for weekly data,
@@ -1646,6 +1648,21 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             accept multiple seasonal values (currently TBATS). For models that
             don't accept multiple seasonal values, the first value of the list
             will be used as the seasonal period.
+
+            NOTE:
+            (1) If seasonal_period is provided, whether the seasonality check is
+            performed or not depends on the ignore_seasonality_test setting.
+            (2) If seasonal_period is not provided, then the candidates are detected
+            per the sp_detection setting. If seasonal_period is provided,
+            sp_detection setting is ignored.
+
+
+        ignore_seasonality_test: bool = False
+            Whether to ignore the seasonality test or not. Applicable when seasonal_period
+            is provided. If False, then a seasonality tests is performed to determine
+            if the provided seasonal_period is valid or not. If it is found to be not
+            valid, no seasonal period is used for modeling. If True, then the the
+            provided seasonal_period is used as is.
 
 
         sp_detection: str, default = "auto"
@@ -1926,12 +1943,16 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         # Variables related to seasonal period and detection ----
         self.seasonal_period = seasonal_period
+        self.ignore_seasonality_test = ignore_seasonality_test
         if sp_detection not in ["auto", "index"]:
             raise ValueError(
                 "sp_detection must be either 'auto' or 'index'. "
                 f"You provided {sp_detection}."
             )
-        self.sp_detection = sp_detection
+        if self.seasonal_period is not None:
+            self.sp_detection = "user_defined"
+        else:
+            self.sp_detection = sp_detection
         self.max_sp_to_consider = max_sp_to_consider
         self.remove_harmonics = remove_harmonics
         if harmonic_order_method not in [
