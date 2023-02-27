@@ -78,14 +78,12 @@ pip install pycaret[full]
 
 <div align="center">
 
-## Supervised Workflow
   
   Classification           |  Regression
 :-------------------------:|:-------------------------:
 ![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
 
  
- ## Unsupervised Workflow
   
   Clustering               |  Anomaly Detection
 :-------------------------:|:-------------------------:
