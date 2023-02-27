@@ -78,19 +78,26 @@ pip install pycaret[full]
 
 <div align="center">
 
-# Supervised Workflow
+## Supervised Workflow
   
   Classification           |  Regression
 :-------------------------:|:-------------------------:
 ![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
 
- # Unsupervised Workflow
+ 
+ ## Unsupervised Workflow
   
   Clustering               |  Anomaly Detection
 :-------------------------:|:-------------------------:
 ![](docs/images/pycaret_clustering.png)  |  ![](docs/images/pycaret_anomaly.png)  
   
+
+  Time Series Forecasting|           | 
+:-------------------------:|:-------------------------:
+![](docs/images/pycaret_ts.png)  | 
+
 <div align="left">
+
 
 # ⚡ PyCaret Time Series Module
   
