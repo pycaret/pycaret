@@ -1,5 +1,4 @@
-"""Module to test setting of engines in time series
-"""
+"""Module to test setting of engines in time series."""
 
 from daal4py.sklearn.linear_model._linear import (
     LinearRegression as SklearnexLinearRegression,

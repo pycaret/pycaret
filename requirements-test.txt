@@ -1,5 +1,6 @@
-pytest>=7.0.1
-moto>=3.0.7
 codecov>=2.1.12
-fugue[dask]>=0.8.0
+daal4py==2023.0.1
 dash[testing]
+fugue[dask]>=0.8.0
+moto>=3.0.7
+pytest>=7.0.1
