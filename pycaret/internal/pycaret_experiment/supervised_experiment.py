@@ -387,6 +387,7 @@ class _SupervisedExperiment(_TabularExperiment):
         parallel: Optional[ParallelBackend] = None,
         caller_params: Optional[dict] = None,
     ) -> List[Any]:
+
         """
         This function train all the models available in the model library and scores them
         using Cross Validation. The output prints a score grid with Accuracy,
@@ -728,6 +729,7 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(f"Time budget is {budget_time} minutes")
 
         for i, model in enumerate(model_library):
+
             model_id = (
                 model
                 if (
@@ -964,6 +966,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     full_logging = True
 
                 if self.logging_param and cross_validation and model is not None:
+
                     self._log_model(
                         model=model,
                         model_results=results,
@@ -1295,6 +1298,7 @@ class _SupervisedExperiment(_TabularExperiment):
         return_train_score: bool = False,
         **kwargs,
     ) -> Any:
+
         """
         Internal version of ``create_model`` with private arguments.
         """
@@ -1610,6 +1614,7 @@ class _SupervisedExperiment(_TabularExperiment):
         return_train_score: bool = False,
         **kwargs,
     ) -> Any:
+
         """
         This function creates a model and scores it using Cross Validation.
         The output prints a score grid that shows Accuracy, AUC, Recall, Precision,
@@ -1786,6 +1791,7 @@ class _SupervisedExperiment(_TabularExperiment):
         return_train_score: bool = False,
         **kwargs,
     ) -> Any:
+
         """
         This function tunes the hyperparameters of a model and scores it using Cross Validation.
         The output prints a score grid that shows Accuracy, AUC, Recall
@@ -2457,6 +2463,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
             elif search_library == "tune-sklearn":
+
                 early_stopping_translator = {
                     "asha": "ASHAScheduler",
                     "hyperband": "HyperBandScheduler",
@@ -2503,6 +2510,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     pipeline_with_model
                 ) if do_early_stop else nullcontext():
                     if search_algorithm == "grid":
+
                         self.logger.info("Initializing tune_sklearn.TuneGridSearchCV")
                         model_grid = TuneGridSearchCV(
                             estimator=pipeline_with_model,
@@ -2676,6 +2684,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if isinstance(model, TunableMixin):
             self.logger.info("Getting base sklearn object from tunable")
+            model = clone(model)
+            model.set_params(**best_params)
             best_params = {
                 k: v
                 for k, v in model.get_params().items()
@@ -2902,6 +2912,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # check boosting conflict
         if method == "Boosting":
+
             boosting_model_definition = self._all_models_internal["ada"]
 
             check_model = estimator
@@ -3153,6 +3164,7 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool = True,
         return_train_score: bool = False,
     ) -> Any:
+
         """
         This function creates a Soft Voting / Majority Rule classifier for all the
         estimators in the model library (excluding the few when turbo is True) or
@@ -3283,6 +3295,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 if self._ml_usecase == MLUsecase.CLASSIFICATION:
                     # checking method parameter with estimator list
                     if method != "hard":
+
                         for i in estimator_list:
                             if not hasattr(i, "predict_proba"):
                                 if method != "auto":
@@ -3428,8 +3441,8 @@ class _SupervisedExperiment(_TabularExperiment):
             model = voting_model_definition.class_def(
                 estimators=estimator_list,
                 voting=method,
-                weights=weights,
                 n_jobs=self.gpu_n_jobs_param,
+                weights=weights,
             )
         elif self._ml_usecase == MLUsecase.TIME_SERIES:
             model = voting_model_definition.class_def(
@@ -3440,7 +3453,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
         else:
             model = voting_model_definition.class_def(
-                estimators=estimator_list, n_jobs=self.gpu_n_jobs_param
+                estimators=estimator_list, n_jobs=self.gpu_n_jobs_param, weights=weights
             )
 
         display.update_monitor(2, voting_model_definition.name)
@@ -3545,6 +3558,7 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool = True,
         return_train_score: bool = False,
     ) -> Any:
+
         """
         This function trains a meta model and scores it using Cross Validation.
         The predictions from the base level models as passed in the estimator_list parameter
@@ -3921,6 +3935,7 @@ class _SupervisedExperiment(_TabularExperiment):
         save: Union[str, bool] = False,
         **kwargs,  # added in pycaret==2.1
     ):
+
         """
         This function takes a trained model object and returns an interpretation plot
         based on the test / hold-out set. It only supports tree based algorithms.
@@ -4099,6 +4114,7 @@ class _SupervisedExperiment(_TabularExperiment):
         shap_plot = None
 
         def summary(show: bool = True):
+
             self.logger.info("Creating TreeExplainer")
             explainer = shap.TreeExplainer(model)
             self.logger.info("Compiling shap values")
@@ -4120,13 +4136,16 @@ class _SupervisedExperiment(_TabularExperiment):
             return shap_plot
 
         def correlation(show: bool = True):
+
             if feature is None:
+
                 self.logger.warning(
                     f"No feature passed. Default value of feature used for correlation plot: {test_X.columns[0]}"
                 )
                 dependence = test_X.columns[0]
 
             else:
+
                 self.logger.warning(
                     f"feature value passed. Feature used for correlation plot: {feature}"
                 )
@@ -4227,6 +4246,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     )
 
                 else:
+
                     row_to_show = observation
                     data_for_prediction = test_X.iloc[row_to_show]
 
@@ -4246,14 +4266,17 @@ class _SupervisedExperiment(_TabularExperiment):
             return shap_plot
 
         def pdp(show: bool = True):
+
             self.logger.info("Checking feature parameter passed")
             if feature is None:
+
                 self.logger.warning(
                     f"No feature passed. Default value of feature used for pdp : {test_X.columns[0]}"
                 )
                 pdp_feature = test_X.columns[0]
 
             else:
+
                 self.logger.warning(
                     f"feature value passed. Feature used for correlation plot: {feature}"
                 )
@@ -4338,6 +4361,7 @@ class _SupervisedExperiment(_TabularExperiment):
         internal: bool = False,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
+
         """
         Returns table of models available in model library.
 
@@ -4617,6 +4641,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:  # added in pycaret==2.2.0
+
         """
         This function fits the complete pipeline with the estimator on the
         complete dataset passed during the setup() stage. The purpose of
@@ -4742,6 +4767,7 @@ class _SupervisedExperiment(_TabularExperiment):
         ml_usecase: Optional[MLUsecase] = None,
         preprocess: Union[bool, str] = True,
     ) -> pd.DataFrame:
+
         """
         This function is used to predict label and probability score on the new dataset
         using a trained estimator. New unseen data can be passed to data parameter as pandas
@@ -5058,6 +5084,7 @@ class _SupervisedExperiment(_TabularExperiment):
             1, "Finalizing models" if finalize_models else "Collecting models"
         )
         for i, model_results_tuple in enumerate(model_container):
+
             model_results = model_results_tuple["scores"]
             model = model_results_tuple["model"]
             try:
@@ -5114,6 +5141,7 @@ class _SupervisedExperiment(_TabularExperiment):
     def check_fairness(
         self, estimator, sensitive_features: list, plot_kwargs: dict = {}
     ):
+
         """
         There are many approaches to conceptualizing fairness. This function follows
         the approach known as group fairness, which asks: Which groups of individuals
@@ -5201,6 +5229,7 @@ class _SupervisedExperiment(_TabularExperiment):
         turbo: bool = True,
         return_train_score: bool = False,
     ) -> Any:
+
         """
         This function returns the best model out of all models created in
         current active environment based on metric defined in optimize parameter.
@@ -5386,6 +5415,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 all_inputs.append(gr.inputs.Textbox(label=i))
 
         def predict(*dict_input):
+
             input_df = pd.DataFrame.from_dict([dict_input])
             input_df.columns = list(self.X.columns)
             return (
