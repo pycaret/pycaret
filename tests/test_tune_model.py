@@ -33,7 +33,7 @@ def test_tunable_voting_estimator(usecase):
         tuned_blender.get_params()["weights"]
         != blender_weighted.get_params()["weights"]
     )
-    assert tuned_blender.get_params()["weights"] != None
+    assert tuned_blender.get_params()["weights"] is not None
 
 
 @pytest.mark.parametrize("usecase", ("classification", "regression"))
@@ -58,4 +58,4 @@ def test_tunable_mlp(usecase):
         tuned_mlp.get_params()["hidden_layer_sizes"]
         != mlp.get_params()["hidden_layer_sizes"]
     )
-    assert tuned_mlp.get_params()["hidden_layer_sizes"] != None
+    assert tuned_mlp.get_params()["hidden_layer_sizes"] is not None
