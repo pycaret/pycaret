@@ -494,4 +494,7 @@ def test_custom_pipeline_positions(pos):
         custom_pipeline=[("scaler", StandardScaler())],
         custom_pipeline_position=pos,
     )
+    # The last element is always CleanColumnNames.
+    if pos < 0:
+        pos -= 1
     assert pc.pipeline.steps[pos][0] == "scaler"
