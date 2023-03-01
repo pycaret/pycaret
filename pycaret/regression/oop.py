@@ -849,7 +849,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
             self._clean_column_names()
 
-            # Remove placeholder step
+        # Remove placeholder step
         if ("placeholder", None) in self.pipeline.steps and len(self.pipeline) > 1:
             self.pipeline.steps.remove(("placeholder", None))
 
