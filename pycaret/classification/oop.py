@@ -794,10 +794,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
 
-            # Remove weird characters from column names
-            if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
-                self._clean_column_names()
-
             # Encode the target column
             y_unique = self.y.unique()
             if sorted(list(y_unique)) != list(range(len(y_unique))):
@@ -886,6 +882,12 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         # Add custom transformers to the pipeline
         if custom_pipeline:
             self._add_custom_pipeline(custom_pipeline, custom_pipeline_position)
+
+        # Remove weird characters from column names
+        # This has to be done right before the estimator, as modifying column
+        # names early messes self._fxs up
+        if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
+            self._clean_column_names()
 
         # Remove placeholder step
         if ("placeholder", None) in self.pipeline.steps and len(self.pipeline) > 1:

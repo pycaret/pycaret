@@ -759,10 +759,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
 
-            # Remove weird characters from column names
-            if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
-                self._clean_column_names()
-
             # Power transform the target to be more Gaussian-like
             if transform_target:
                 self._target_transformation(transform_target_method)
@@ -847,7 +843,13 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         if custom_pipeline:
             self._add_custom_pipeline(custom_pipeline, custom_pipeline_position)
 
-            # Remove placeholder step
+        # Remove weird characters from column names
+        # This has to be done right before the estimator, as modifying column
+        # names early messes self._fxs up
+        if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
+            self._clean_column_names()
+
+        # Remove placeholder step
         if ("placeholder", None) in self.pipeline.steps and len(self.pipeline) > 1:
             self.pipeline.steps.remove(("placeholder", None))
 
