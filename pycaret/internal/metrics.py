@@ -6,8 +6,9 @@ from sklearn.exceptions import FitFailedWarning
 from sklearn.metrics._scorer import _PredictScorer, _ProbaScorer, _ThresholdScorer
 
 _fit_failed_message_warning = (
-    "Metric {0} failed and error score {1} has been returned instead. "
-    "This usually means that the error is in the metric code. "
+    "Metric '{0}' failed and error score {1} has been returned instead. "
+    "If this is a custom metric, this usually means that the error is "
+    "in the metric code. "
     "Full exception below:\n{2}"
 )
 
