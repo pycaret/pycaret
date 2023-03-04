@@ -1,17 +1,27 @@
+from typing import Callable
+
 import numpy as np
 from sklearn.metrics._scorer import _PredictScorer, _ProbaScorer, _ThresholdScorer
 
 
 class BinaryMulticlassScoreFunc:
-    def __init__(self, score_func):
+    """Wrapper to replace call kwargs with preset values if target is binary."""
+
+    def __init__(self, score_func: Callable, kwargs_if_binary: dict):
         self.score_func = score_func
+        self.kwargs_if_binary = kwargs_if_binary
         self.__name__ = score_func.__name__
 
     def __call__(self, y_true, y_pred, **kwargs):
-        if "average" in kwargs:
-            known_values = kwargs.get("labels", np.unique(y_true))
-            if len(known_values) <= 2:
-                kwargs["average"] = "binary"
+        if self.kwargs_if_binary:
+            labels = kwargs.get("labels", None)
+            is_binary = (
+                len(labels) <= 2
+                if labels is not None
+                else ((y_true == 0) | (y_true == 1)).all()
+            )
+            if is_binary:
+                kwargs = {**kwargs, **self.kwargs_if_binary}
         return self.score_func(y_true, y_pred, **kwargs)
 
 
