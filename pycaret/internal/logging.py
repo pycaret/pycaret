@@ -9,7 +9,11 @@ import warnings
 from contextlib import redirect_stderr, redirect_stdout
 from typing import Callable, Optional, Union
 
-from wurlitzer import pipes
+try:
+    from wurlitzer import pipes
+except ImportError:
+    # Fails on windows. See https://github.com/minrk/wurlitzer/pull/63
+    pipes = None
 
 
 # From https://stackoverflow.com/a/66209331
@@ -42,18 +46,24 @@ class redirect_output:
         self.redirect_stdout = redirect_stdout(LoggerWriter(self.logger.info))
         self.redirect_stderr = redirect_stderr(LoggerWriter(self.logger.warning))
         # This redirects stdout/stderr from C libraries and child processes (joblib)
-        self.c_redirect = pipes(
-            stdout=LoggerWriter(self.logger.info),
-            stderr=LoggerWriter(self.logger.warning),
+        self.c_redirect = (
+            pipes(
+                stdout=LoggerWriter(self.logger.info),
+                stderr=LoggerWriter(self.logger.warning),
+            )
+            if pipes
+            else None
         )
 
     def __enter__(self):
         self.redirect_stdout.__enter__()
         self.redirect_stderr.__enter__()
-        self.c_redirect.__enter__()
+        if self.c_redirect:
+            self.c_redirect.__enter__()
 
     def __exit__(self, *args, **kwargs):
-        self.c_redirect.__exit__(*args, **kwargs)
+        if self.c_redirect:
+            self.c_redirect.__exit__(*args, **kwargs)
         self.redirect_stderr.__exit__(*args, **kwargs)
         self.redirect_stdout.__exit__(*args, **kwargs)
 
