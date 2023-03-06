@@ -49,9 +49,21 @@ def get_ml_task(y):
     return ml_usecase
 
 
-def highlight_setup(column):
+def highlight_setup(column, dark_mode=False):
+    """Highlight all entries in a DataFrame that are equal to "Yes" or `True`.
+
+    Example:
+    >>> df = pd.DataFrame([{"Property":"Example1","Value":True},{"Property":"Yes","Value":False}])
+    >>> df.style.apply(highlight_setup)
+    """
+
+    if dark_mode == True:
+        bg_color = "#194D33"  # Dark green
+    else:
+        bg_color = "#79d27d"  # Light green
+
     return [
-        "background-color: lightgreen" if v is True or v == "Yes" else ""
+        "background-color: " + bg_color if v is True or v == "Yes" else ""
         for v in column
     ]
 

@@ -1289,7 +1289,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self._display_container[0].style.apply(highlight_setup))
+            display.display(
+                self._display_container[0].style.apply(
+                    highlight_setup, dark_mode=self.dark_mode
+                )
+            )
             pd.reset_option("display.max_rows")  # Reset option
 
         return self
@@ -1405,6 +1409,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
         fig_kwargs: Optional[Dict[str, Any]] = None,
+        dark_mode: bool = False,
     ):
         """
         This function initializes the training environment and creates the transformation
@@ -1828,6 +1833,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             Dictionary of arguments passed to the ProfileReport method used
             to create the EDA report. Ignored if ``profile`` is False.
 
+        dark_mode: bool, default = False
+            When set to True, reports use darker colors to improve readability
+            in dark themed environments.
 
         fig_kwargs: dict, default = {} (empty dict)
             The global setting for any plots. Pass these as key-value pairs.
@@ -1919,6 +1927,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         self.fig_kwargs = fig_kwargs or {}
         self._set_default_fig_kwargs()
+
+        self.dark_mode = dark_mode
 
         self.enforce_exogenous = enforce_exogenous
         self.numeric_imputation_target = numeric_imputation_target

@@ -153,6 +153,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
+        dark_mode: bool = False,
     ):
 
         """
@@ -649,6 +650,10 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
             Dictionary of arguments passed to the ProfileReport method used
             to create the EDA report. Ignored if ``profile`` is False.
 
+        dark_mode: bool, default = False
+            When set to True, reports use darker colors to improve readability
+            in dark themed environments.
+
 
         Returns:
             Global variables that can be changed using the ``set_config`` function.
@@ -686,6 +691,8 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         )
 
         # Prepare experiment specific params ======================= >>
+
+        self.dark_mode = dark_mode
 
         self.log_plots_param = log_plots
         if self.log_plots_param is True:
@@ -958,7 +965,11 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self._display_container[0].style.apply(highlight_setup))
+            display.display(
+                self._display_container[0].style.apply(
+                    highlight_setup, dark_mode=self.dark_mode
+                )
+            )
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
