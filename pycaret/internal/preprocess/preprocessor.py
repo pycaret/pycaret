@@ -280,7 +280,11 @@ class Preprocessor:
             check_features_exist(numeric_features, self.X)
             self._fxs["Numeric"] = numeric_features
         else:
-            self._fxs["Numeric"] = list(self.X.select_dtypes(include="number").columns)
+            self._fxs["Numeric"] = [
+                col
+                for col in self.X.select_dtypes(include="number").columns
+                if col not in (categorical_features or [])
+            ]
 
         # Date features
         if date_features:
@@ -673,6 +677,7 @@ class Preprocessor:
             if len(one_hot_cols) > 0:
                 onehot_estimator = TransformerWrapper(
                     transformer=OneHotEncoder(
+                        cols=one_hot_cols,
                         use_cat_names=True,
                         handle_missing="return_nan",
                         handle_unknown="value",
