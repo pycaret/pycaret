@@ -51,6 +51,12 @@ jobs:
           pip install -U pytest pytest-xdist nbmake
           pip install -e ".[full]"
           python -m ipykernel install --user --name cikernel
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: 3.10"
+          python --version
+          which python
+          pip list
       - name: Run notebooks
         run: pytest --nbmake --nbmake-kernel=cikernel -n=auto --nbmake-timeout=3000 --ignore=./tutorials/translations ./tutorials/
 
