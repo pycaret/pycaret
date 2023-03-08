@@ -167,9 +167,7 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
         """Convert to df and set correct column names and order."""
         # Convert to pandas and assign proper column names
         if not isinstance(out, pd.DataFrame):
-            if hasattr(self.transformer, "get_feature_names"):
-                columns = self.transformer.get_feature_names()
-            elif hasattr(self.transformer, "get_feature_names_out"):
+            if hasattr(self.transformer, "get_feature_names_out"):
                 try:  # Fails for some estimators in Python 3.7
                     # TODO: Remove try after dropping support of Python 3.7
                     columns = self.transformer.get_feature_names_out()
