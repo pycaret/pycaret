@@ -173,9 +173,13 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
                     columns = self.transformer.get_feature_names_out()
                 except AttributeError:
                     columns = self._name_cols(out, X)
+            elif hasattr(self.transformer, "get_feature_names"):
+                # Some estimators have legacy method, e.g. category_encoders
+                columns = self.transformer.get_feature_names()
             else:
                 columns = self._name_cols(out, X)
 
+            print(columns)
             out = to_df(out, index=X.index, columns=columns)
 
         # Reorder columns if only a subset was used
