@@ -1,5 +1,16 @@
+import traceback
+import warnings
+
 import numpy as np
+from sklearn.exceptions import FitFailedWarning
 from sklearn.metrics._scorer import _PredictScorer, _ProbaScorer, _ThresholdScorer
+
+_fit_failed_message_warning = (
+    "Metric '{0}' failed and error score {1} has been returned instead. "
+    "If this is a custom metric, this usually means that the error is "
+    "in the metric code. "
+    "Full exception below:\n{2}"
+)
 
 
 class BinaryMulticlassScoreFunc:
@@ -60,6 +71,12 @@ class _ThresholdScorerWithErrorScore(_ThresholdScorer):
                 sample_weight=sample_weight,
             )
         except Exception:
+            warnings.warn(
+                _fit_failed_message_warning.format(
+                    repr(self), self.error_score, traceback.format_exc()
+                ),
+                FitFailedWarning,
+            )
             return self.error_score
 
     def _factory_args(self):
@@ -109,6 +126,12 @@ class _ProbaScorerWithErrorScore(_ProbaScorer):
                 sample_weight=sample_weight,
             )
         except Exception:
+            warnings.warn(
+                _fit_failed_message_warning.format(
+                    repr(self), self.error_score, traceback.format_exc()
+                ),
+                FitFailedWarning,
+            )
             return self.error_score
 
     def _factory_args(self):
@@ -157,6 +180,12 @@ class _PredictScorerWithErrorScore(_PredictScorer):
                 sample_weight=sample_weight,
             )
         except Exception:
+            warnings.warn(
+                _fit_failed_message_warning.format(
+                    repr(self), self.error_score, traceback.format_exc()
+                ),
+                FitFailedWarning,
+            )
             return self.error_score
 
 
