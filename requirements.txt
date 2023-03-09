@@ -22,6 +22,7 @@ pickle5; python_version < "3.8"
 cloudpickle
 deprecation>=2.1.0
 xxhash  # for faster hashing
+wurlitzer; platform_system != 'Windows'
 
 # Plotting
 matplotlib>=3.3.0
@@ -30,7 +31,7 @@ yellowbrick>=1.4
 plotly>=5.0.0
 kaleido>=0.2.1
 schemdraw>=0.14
-plotly-resampler>=0.7.2.2
+plotly-resampler>=0.8.3.1
 
 # Time-series
 statsmodels>=0.12.1
