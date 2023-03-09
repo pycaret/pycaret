@@ -4954,15 +4954,18 @@ class _SupervisedExperiment(_TabularExperiment):
                 probability_threshold = estimator.probability_threshold
             estimator = get_estimator_from_meta_estimator(estimator)
 
-        pred = np.nan_to_num(estimator.predict(X_test_))
+        pred = pd.Series(
+            np.nan_to_num(estimator.predict(X_test_)),
+            name=y_test_.name,
+            index=X_test_.index,
+        )
         pred = pipeline.inverse_transform(pred)
         # Need to convert labels back to numbers
         # TODO optimize
         label_encoder = get_label_encoder(pipeline)
         if label_encoder:
             pred = label_encoder.transform(pred)
-        if isinstance(pred, pd.Series):
-            pred = pred.values
+        pred = pred.values
 
         try:
             score = estimator.predict_proba(X_test_)
