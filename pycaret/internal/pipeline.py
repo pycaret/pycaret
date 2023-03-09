@@ -177,7 +177,13 @@ class Pipeline(imblearn.pipeline.Pipeline):
         else:
             return _full_transform
 
-    def _iter(self, with_final=True, filter_passthrough=True, filter_train_only=True):
+    def _iter(
+        self,
+        with_final=True,
+        filter_passthrough=True,
+        filter_train_only=True,
+        reverse=False,
+    ):
         """Generate (idx, name, trans) tuples from self.steps.
 
         When `filter_passthrough=True`, 'passthrough' and None
@@ -188,6 +194,8 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
         """
         it = super()._iter(with_final, filter_passthrough)
+        if reverse:
+            it = reversed(list(it))
         if filter_train_only:
             return filter(lambda x: not getattr(x[-1], "_train_only", False), it)
         else:
@@ -290,14 +298,19 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
         return variable_return(X, y)
 
+    def inverse_transform(self, y):
+        for _, _, transformer in self._iter(with_final=False, reverse=True):
+            # Duplicate hasattr check here so we don't cache unnecessarily
+            if hasattr(transformer, "inverse_transform"):
+                y = _inverse_transform_one(transformer, y)
+        return y
+
     @available_if(_final_estimator_has("predict"))
     def predict(self, X, **predict_params):
         X, _ = self._memory_full_transform(self, X, None, with_final=False)
 
         y = self.steps[-1][-1].predict(X, **predict_params)
-
-        for _, name, transformer in self._iter(with_final=False):
-            y = _inverse_transform_one(transformer, y)
+        y = self.inverse_transform(y)
 
         return y
 

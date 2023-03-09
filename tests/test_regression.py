@@ -1,5 +1,6 @@
 import uuid
 
+import numpy as np
 import pandas as pd
 import pytest
 from mlflow.tracking import MlflowClient
@@ -141,6 +142,24 @@ def test_regression_predict_on_unseen(boston_dataframe):
     # load model
     model = exp.load_model("best_model_23122019")
     exp.predict_model(model, boston_dataframe)
+
+
+def test_regression_target_transformation(boston_dataframe):
+    exp = pycaret.regression.RegressionExperiment()
+    # init setup
+    exp.setup(
+        boston_dataframe,
+        target="medv",
+        transform_target=True,
+        log_experiment=True,
+        html=False,
+        session_id=123,
+        n_jobs=1,
+        experiment_name=uuid.uuid4().hex,
+    )
+    model = exp.create_model("dt", cross_validation=False)
+    preds = exp.predict_model(model)
+    assert np.isclose(preds["prediction_label"].iloc[0], 49.999989)
 
 
 class TestRegressionExperimentCustomTags:
