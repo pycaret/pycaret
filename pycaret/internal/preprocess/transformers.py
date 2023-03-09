@@ -179,7 +179,6 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
             else:
                 columns = self._name_cols(out, X)
 
-            print(columns)
             out = to_df(out, index=X.index, columns=columns)
 
         # Reorder columns if only a subset was used
@@ -393,9 +392,10 @@ class GroupFeatures(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, group_features, group_names=None):
+    def __init__(self, group_features, group_names=None, drop_groups=False):
         self.group_features = group_features
         self.group_names = group_names
+        self.drop_groups = drop_groups
 
     def fit(self, X, y=None):
         return self
@@ -417,7 +417,9 @@ class GroupFeatures(BaseEstimator, TransformerMixin):
             X[f"std({name})"] = group_df.apply(np.std, axis=1)
             X[f"median({name})"] = group_df.apply(np.median, axis=1)
             X[f"mode({name})"] = stats.mode(group_df, axis=1)[0]
-            X = X.drop(group, axis=1)
+
+            if self.drop_groups:
+                X = X.drop(group, axis=1)
 
         return X
 

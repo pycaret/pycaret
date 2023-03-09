@@ -347,6 +347,7 @@ def test_feature_grouping():
         target="STORE",
         group_features=[list(data.columns[:2]), list(data.columns[3:5])],
         group_names=["gr1", "gr2"],
+        drop_groups=True,
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert "Id" not in X

@@ -742,7 +742,7 @@ class Preprocessor:
 
         self.pipeline.steps.append(("low_variance", variance_estimator))
 
-    def _group_features(self, group_features, group_names):
+    def _group_features(self, group_features, group_names, drop_groups):
         """Get statistical properties of a group of features."""
         self.logger.info("Set up feature grouping.")
 
@@ -762,7 +762,7 @@ class Preprocessor:
                 )
 
         grouping_estimator = TransformerWrapper(
-            transformer=GroupFeatures(group_features, group_names),
+            transformer=GroupFeatures(group_features, group_names, drop_groups),
             exclude=self._fxs["Keep"],
         )
 
