@@ -388,6 +388,11 @@ def test_remove_outliers(outliers_method):
         outliers_threshold=0.2,
     )
     assert pc.pipeline.steps[-1][0] == "remove_outliers"
+    # Test that we do not add rows back in when joining X and y
+    assert len(pc.train_transformed) == len(pc.X_train_transformed)
+    assert len(pc.dataset_transformed) == len(pc.train_transformed) + len(
+        pc.test_transformed
+    )
 
 
 def test_polynomial_features():
