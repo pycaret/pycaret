@@ -34,6 +34,7 @@ class _NonTSSupervisedExperiment(_SupervisedExperiment):
         return pd.concat(
             [self.X_train_transformed, self.y_train_transformed],
             axis=1,
+            join="inner",
         )
 
     @property
@@ -60,8 +61,7 @@ class _NonTSSupervisedExperiment(_SupervisedExperiment):
     def test_transformed(self):
         """Transformed test set."""
         return pd.concat(
-            [self.X_test_transformed, self.y_test_transformed],
-            axis=1,
+            [self.X_test_transformed, self.y_test_transformed], axis=1, join="inner"
         )
 
     @property
