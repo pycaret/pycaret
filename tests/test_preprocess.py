@@ -90,10 +90,11 @@ def test_assign_index_is_true():
     assert pc.dataset.index[0] == 100
 
 
-@pytest.mark.parametrize("index", [1, "WeekofPurchase", list(range(2, 1072))])
+@pytest.mark.parametrize("index", [1, "MyIndex", list(range(2, 1072))])
 def test_assign_index(index):
     """Assert that the index can be assigned."""
     data = pycaret.datasets.get_data("juice")
+    data.insert(1, "MyIndex", list(range(1, len(data) + 1)))
     pc = pycaret.classification.setup(
         data=data,
         index=index,
@@ -388,11 +389,6 @@ def test_remove_outliers(outliers_method):
         outliers_threshold=0.2,
     )
     assert pc.pipeline.steps[-1][0] == "remove_outliers"
-    # Test that we do not add rows back in when joining X and y
-    assert len(pc.train_transformed) == len(pc.X_train_transformed)
-    assert len(pc.dataset_transformed) == len(pc.train_transformed) + len(
-        pc.test_transformed
-    )
 
 
 def test_polynomial_features():

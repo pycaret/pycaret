@@ -198,6 +198,13 @@ class Preprocessor:
                 f"can not be the same as the target column, got {target}."
             )
 
+        if not df.index.unique:
+            raise ValueError(
+                "Invalid value for the index parameter. "
+                f"Selected column {self.index} cannot be used as an index as it "
+                "contains non-unique values."
+            )
+
         return df
 
     def _prepare_train_test(
@@ -808,7 +815,6 @@ class Preprocessor:
             RemoveOutliers(
                 method=outliers_method,
                 threshold=outliers_threshold,
-                random_state=self.seed,
             ),
         )
 
