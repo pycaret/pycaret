@@ -4965,7 +4965,8 @@ class _SupervisedExperiment(_TabularExperiment):
         label_encoder = get_label_encoder(pipeline)
         if label_encoder:
             pred = label_encoder.transform(pred)
-        pred = pred.values
+        if isinstance(pred, pd.Series):
+            pred = pred.values
 
         try:
             score = estimator.predict_proba(X_test_)
