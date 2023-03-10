@@ -23,7 +23,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 def setup(
     data: Optional[DATAFRAME_LIKE] = None,
     data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
-    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = True,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -46,6 +46,7 @@ def setup(
     low_variance_threshold: Optional[float] = None,
     group_features: Optional[list] = None,
     group_names: Optional[Union[str, list]] = None,
+    drop_groups: bool = False,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
@@ -107,7 +108,7 @@ def setup(
         ``data_func`` must be set.
 
 
-    index: bool, int, str or sequence, default = False
+    index: bool, int, str or sequence, default = True
         Handle indices in the `data` dataframe.
             - If False: Reset to RangeIndex.
             - If True: Keep the provided index.
@@ -236,17 +237,21 @@ def setup(
 
     group_features: list, list of lists or None, default = None
         When the dataset contains features with related characteristics,
-        replace those fetaures with the following statistical properties
-        of that group: min, max, mean, std, median and mode. The parameter
-        takes a list of feature names or a list of lists of feature names
-        to specify multiple groups.
-
+        add new fetaures with the following statistical properties of that
+        group: min, max, mean, std, median and mode. The parameter takes a
+        list of feature names or a list of lists of feature names to specify
+        multiple groups.
 
     group_names: str, list, or None, default = None
         Group names to be used when naming the new features. The length
         should match with the number of groups specified in ``group_features``.
         If None, new features are named using the default form, e.g. group_1,
         group_2, etc... Ignored when ``group_features`` is None.
+
+
+    drop_groups: bool, default=False
+        Whether to drop the original features in the group. Ignored when
+        ``group_features`` is None.
 
 
     remove_multicollinearity: bool, default = False
@@ -468,6 +473,7 @@ def setup(
         low_variance_threshold=low_variance_threshold,
         group_features=group_features,
         group_names=group_names,
+        drop_groups=drop_groups,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         bin_numeric_features=bin_numeric_features,

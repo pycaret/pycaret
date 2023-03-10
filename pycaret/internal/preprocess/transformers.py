@@ -167,14 +167,15 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
         """Convert to df and set correct column names and order."""
         # Convert to pandas and assign proper column names
         if not isinstance(out, pd.DataFrame):
-            if hasattr(self.transformer, "get_feature_names"):
-                columns = self.transformer.get_feature_names()
-            elif hasattr(self.transformer, "get_feature_names_out"):
+            if hasattr(self.transformer, "get_feature_names_out"):
                 try:  # Fails for some estimators in Python 3.7
                     # TODO: Remove try after dropping support of Python 3.7
                     columns = self.transformer.get_feature_names_out()
                 except AttributeError:
                     columns = self._name_cols(out, X)
+            elif hasattr(self.transformer, "get_feature_names"):
+                # Some estimators have legacy method, e.g. category_encoders
+                columns = self.transformer.get_feature_names()
             else:
                 columns = self._name_cols(out, X)
 
@@ -391,9 +392,10 @@ class GroupFeatures(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, group_features, group_names=None):
+    def __init__(self, group_features, group_names=None, drop_groups=False):
         self.group_features = group_features
         self.group_names = group_names
+        self.drop_groups = drop_groups
 
     def fit(self, X, y=None):
         return self
@@ -415,7 +417,9 @@ class GroupFeatures(BaseEstimator, TransformerMixin):
             X[f"std({name})"] = group_df.apply(np.std, axis=1)
             X[f"median({name})"] = group_df.apply(np.median, axis=1)
             X[f"mode({name})"] = stats.mode(group_df, axis=1)[0]
-            X = X.drop(group, axis=1)
+
+            if self.drop_groups:
+                X = X.drop(group, axis=1)
 
         return X
 
