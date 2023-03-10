@@ -172,6 +172,12 @@ class Preprocessor:
         target = df.columns[-1]
 
         if getattr(self, "index", True) is True:  # True gets caught by isinstance(int)
+            if not df.index.unique:
+                raise ValueError(
+                    "Data cannot be used as its index contains non-unique values. "
+                    "Ensure that the index contains only unique values or set "
+                    "`index=False` in `setup()`."
+                )
             return df
         elif self.index is False:
             df = df.reset_index(drop=True)
