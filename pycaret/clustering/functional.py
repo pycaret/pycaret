@@ -114,6 +114,8 @@ def setup(
             - If str: Name of the column to use as index.
             - If sequence: Array with shape=(n_samples,) to use as index.
 
+        Index must be composed of unique values.
+
 
     ordinal_features: dict, default = None
         Categorical features to be encoded ordinally. For example, a categorical

@@ -239,6 +239,8 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
                 - If str: Name of the column to use as index.
                 - If sequence: Array with shape=(n_samples,) to use as index.
 
+        Index must be composed of unique values.
+
 
         train_size: float, default = 0.7
             Proportion of the dataset to be used for training and validation. Should be
