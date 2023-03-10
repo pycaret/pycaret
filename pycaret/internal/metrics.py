@@ -1,17 +1,37 @@
+import traceback
+import warnings
+from typing import Callable
+
 import numpy as np
+from sklearn.exceptions import FitFailedWarning
 from sklearn.metrics._scorer import _PredictScorer, _ProbaScorer, _ThresholdScorer
+
+_fit_failed_message_warning = (
+    "Metric '{0}' failed and error score {1} has been returned instead. "
+    "If this is a custom metric, this usually means that the error is "
+    "in the metric code. "
+    "Full exception below:\n{2}"
+)
 
 
 class BinaryMulticlassScoreFunc:
-    def __init__(self, score_func):
+    """Wrapper to replace call kwargs with preset values if target is binary."""
+
+    def __init__(self, score_func: Callable, kwargs_if_binary: dict):
         self.score_func = score_func
+        self.kwargs_if_binary = kwargs_if_binary
         self.__name__ = score_func.__name__
 
     def __call__(self, y_true, y_pred, **kwargs):
-        if "average" in kwargs:
-            known_values = kwargs.get("labels", np.unique(y_true))
-            if len(known_values) <= 2:
-                kwargs["average"] = "binary"
+        if self.kwargs_if_binary:
+            labels = kwargs.get("labels", None)
+            is_binary = (
+                len(labels) <= 2
+                if labels is not None
+                else ((y_true == 0) | (y_true == 1)).all()
+            )
+            if is_binary:
+                kwargs = {**kwargs, **self.kwargs_if_binary}
         return self.score_func(y_true, y_pred, **kwargs)
 
 
@@ -60,6 +80,12 @@ class _ThresholdScorerWithErrorScore(_ThresholdScorer):
                 sample_weight=sample_weight,
             )
         except Exception:
+            warnings.warn(
+                _fit_failed_message_warning.format(
+                    repr(self), self.error_score, traceback.format_exc()
+                ),
+                FitFailedWarning,
+            )
             return self.error_score
 
     def _factory_args(self):
@@ -109,6 +135,12 @@ class _ProbaScorerWithErrorScore(_ProbaScorer):
                 sample_weight=sample_weight,
             )
         except Exception:
+            warnings.warn(
+                _fit_failed_message_warning.format(
+                    repr(self), self.error_score, traceback.format_exc()
+                ),
+                FitFailedWarning,
+            )
             return self.error_score
 
     def _factory_args(self):
@@ -157,6 +189,12 @@ class _PredictScorerWithErrorScore(_PredictScorer):
                 sample_weight=sample_weight,
             )
         except Exception:
+            warnings.warn(
+                _fit_failed_message_warning.format(
+                    repr(self), self.error_score, traceback.format_exc()
+                ),
+                FitFailedWarning,
+            )
             return self.error_score
 
 
