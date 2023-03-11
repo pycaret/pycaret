@@ -81,31 +81,32 @@ pip install pycaret[full]
   
   Functional API           |  OOP API
 :-------------------------:|:-------------------------:
-![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
+![](docs/images/classification_functional.png)  | ![](docs/images/classification_OOP.png)
  
 ## **Regression**
   
   Functional API           |  OOP API
 :-------------------------:|:-------------------------:
-![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
+![](docs/images/regression_functional.png)  | ![](docs/images/regression_OOP.png)
 
 ## **Time Series**
   
   Functional API           |  OOP API
 :-------------------------:|:-------------------------:
-![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
+![](docs/images/time_series_functional.png)  | ![](docs/images/time_series_OOP.png)
 
 ## **Clustering**
   
   Functional API           |  OOP API
 :-------------------------:|:-------------------------:
-![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
+![](docs/images/clustering_functional.png)  | ![](docs/images/clustering_OOP.png)
 
 ## **Anomaly Detection**
   
   Functional API           |  OOP API
 :-------------------------:|:-------------------------:
-![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
+![](docs/images/anomaly_functional.png)  | ![](docs/images/anomaly_OOP.png)
+
 <div align="left">
 
 # Who should use PyCaret?
