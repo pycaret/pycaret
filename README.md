@@ -14,7 +14,6 @@
   <a href="https://pycaret.gitbook.io/docs/learn-pycaret/cheat-sheet">Cheat sheet</a> •
   <a href="https://github.com/pycaret/pycaret/discussions">Discussions</a> •
   <a href="https://pycaret.readthedocs.io/en/latest/contribute.html">Contribute</a> •
-  <a href="https://github.com/pycaret/pycaret/tree/master/resources">Resources</a> •
   <a href="https://pycaret.gitbook.io/docs/learn-pycaret/official-blog">Blog</a> •
   <a href="https://www.linkedin.com/company/pycaret/">LinkedIn</a> • 
   <a href="https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g">YouTube</a> • 
@@ -78,52 +77,36 @@ pip install pycaret[full]
 
 <div align="center">
 
+## **Classification**
   
-  Classification           |  Regression
+  Functional API           |  OOP API
+:-------------------------:|:-------------------------:
+![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
+ 
+## **Regression**
+  
+  Functional API           |  OOP API
 :-------------------------:|:-------------------------:
 ![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
 
- 
+## **Time Series**
   
-  Clustering               |  Anomaly Detection
+  Functional API           |  OOP API
 :-------------------------:|:-------------------------:
-![](docs/images/pycaret_clustering.png)  |  ![](docs/images/pycaret_anomaly.png)  
+![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
+
+## **Clustering**
   
-
-  Time Series Forecasting|           | 
+  Functional API           |  OOP API
 :-------------------------:|:-------------------------:
-![](docs/images/pycaret_ts.png)  | 
+![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
 
+## **Anomaly Detection**
+  
+  Functional API           |  OOP API
+:-------------------------:|:-------------------------:
+![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
 <div align="left">
-
-
-# ⚡ PyCaret Time Series Module
-  
-PyCaret time series module is now available with the main pycaret installation. Staying true to simplicity of PyCaret, it is consistent with our existing API and fully loaded with functionalities. Statistical testing, model training and selection (30+ algorithms), model analysis, automated hyperparameter tuning, experiment logging, deployment on cloud, and more. All of this with only few lines of code (just like the other modules of pycaret). 
-  
-| Important Links              |                                                                |
-| -------------------------- | -------------------------------------------------------------- |
-| :star: **[Time Series Quickstart]**        | Get started with Time Series Analysis         |
-| :books: **[Time Series Notebooks]**        | New to Time Series? Checkout our official (detailed) notebooks!            |
-| :tv: **[Time Series Video Tutorials]**            | Our video tutorial from various events.             |
-| :question: **[Time Series FAQs]**        |   Have questions? Queck out the FAQ's     |
-| :hammer_and_wrench: **[Time Series API Interface]**        |   The detailed API interface for the Time Series Module          |
-| :deciduous_tree: **[Time Series Features and Roadmap]**          | PyCaret's software and community development plan.|
-
-[Time Series Quickstart]: https://pycaret.gitbook.io/docs/get-started/quickstart#time-series
-[Time Series Notebooks]: https://pycaret.gitbook.io/docs/get-started/tutorials
-[Time Series Video Tutorials]: https://pycaret.gitbook.io/docs/learn-pycaret/videos#pycaret-time-series-module
-[Time Series FAQs]: https://github.com/pycaret/pycaret/discussions/categories/faqs?discussions_q=category%3AFAQs+label%3Atime_series
-[Time Series API Interface]: https://pycaret.readthedocs.io/en/latest/api/time_series.html
-[Time Series Features and Roadmap]: https://github.com/pycaret/pycaret/issues/1648
-  
-# Installation
-  
- ```
- pip install --pre pycaret
- ```  
-
-![alt text](docs/images/pycaret_ts_quickdemo.gif)  
 
 # Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
