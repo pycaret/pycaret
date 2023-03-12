@@ -63,7 +63,6 @@ from pycaret.utils.generic import (
     get_ml_task,
     id_or_display_name,
     nullcontext,
-    to_series,
     true_warm_start,
 )
 
