@@ -63,6 +63,7 @@ from pycaret.utils.generic import (
     get_ml_task,
     id_or_display_name,
     nullcontext,
+    to_series,
     true_warm_start,
 )
 
@@ -4954,11 +4955,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 probability_threshold = estimator.probability_threshold
             estimator = get_estimator_from_meta_estimator(estimator)
 
-        pred = pd.Series(
-            np.nan_to_num(estimator.predict(X_test_)),
-            name=y_test_.name,
-            index=X_test_.index,
-        )
+        pred = np.nan_to_num(estimator.predict(X_test_))
         pred = pipeline.inverse_transform(pred)
         # Need to convert labels back to numbers
         # TODO optimize

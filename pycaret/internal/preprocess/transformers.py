@@ -188,11 +188,13 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
 
     def fit(self, X=None, y=None, **fit_params):
         # Save the incoming feature names
+        self.target_name_ = None
         feature_names_in = []
         if hasattr(X, "columns"):
             feature_names_in += list(X.columns)
         if hasattr(y, "name"):
             feature_names_in += [y.name]
+            self.target_name_ = y.name
         if feature_names_in:
             self._feature_names_in = feature_names_in
 
@@ -218,7 +220,7 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
 
     def transform(self, X=None, y=None):
         X = to_df(X, index=getattr(y, "index", None))
-        y = to_series(y, index=getattr(X, "index", None))
+        y = to_series(y, index=getattr(X, "index", None), name=self.target_name_)
 
         args = []
         transform_params = signature(self.transformer.transform).parameters
@@ -258,7 +260,7 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
 
 class TransformerWrapperWithInverse(TransformerWrapper):
     def inverse_transform(self, y):
-        y = to_series(y, index=getattr(y, "index", None))
+        y = to_series(y, index=getattr(y, "index", None), name=self.target_name_)
         output = self.transformer.inverse_transform(y)
         return to_series(output, index=y.index, name=y.name)
 
