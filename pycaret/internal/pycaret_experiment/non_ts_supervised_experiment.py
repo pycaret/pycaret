@@ -74,22 +74,22 @@ class _NonTSSupervisedExperiment(_SupervisedExperiment):
     @property
     def X_train_transformed(self):
         """Transformed feature set of the training set."""
-        return self.train.drop(self.target_param, axis=1)
+        return self.train_transformed.drop(self.target_param, axis=1)
 
     @property
     def y_train_transformed(self):
         """Transformed target column of the training set."""
-        return self.train[self.target_param]
+        return self.train_transformed[self.target_param]
 
     @property
     def X_test_transformed(self):
         """Transformed feature set of the test set."""
-        return self.test.drop(self.target_param, axis=1)
+        return self.test_transformed.drop(self.target_param, axis=1)
 
     @property
     def y_test_transformed(self):
         """Transformed target column of the test set."""
-        return self.test[self.target_param]
+        return self.test_transformed[self.target_param]
 
     def _create_model_get_train_X_y(self, X_train, y_train):
         """Return appropriate training X and y values depending on whether
