@@ -2,8 +2,8 @@
   
 <img src="docs/images/logo.png" alt="drawing" width="200"/>
 
-**An open-source, low-code machine learning library in Python** </br>
-:rocket: **PyCaret 3.0-rc is now out. `pip install --pre pycaret`**
+## **An open-source, low-code machine learning library in Python** </br>
+### :rocket: **PyCaret 3.0-rc is now available. `pip install --pre pycaret`**
   
 <p align="center">
   <a href="https://www.pycaret.org">Official</a> •
@@ -52,7 +52,7 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
 | :deciduous_tree: **[Roadmap]**          | PyCaret's software and community development plan.|
   
 [tutorials]: https://pycaret.gitbook.io/docs/get-started/tutorials
-[Example notebooks]: https://github.com/pycaret/pycaret/tree/master/examples
+[Example notebooks]: https://github.com/pycaret/examples
 [Official Blog]: https://pycaret.gitbook.io/docs/learn-pycaret/official-blog
 [Documentation]: https://pycaret.gitbook.io
 [video tutorials]: https://pycaret.gitbook.io/docs/learn-pycaret/videos
