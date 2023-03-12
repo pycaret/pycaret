@@ -13,6 +13,7 @@ Changes include:
 
 import hashlib
 import pickle
+import struct
 import sys
 import tempfile
 import time
@@ -98,6 +99,32 @@ class FastHasher(Hasher):
         if return_digest:
             # Read the resulting hash
             return self._hash.hexdigest()
+
+    def save_global(self, obj, name=None, pack=struct.pack):
+        # Fixes joblib issue. In the except block,
+        # Pickler.save_global has been moved to bottom so it
+        # can actually work.
+        kwargs = dict(name=name, pack=pack)
+        del kwargs["pack"]
+        try:
+            Pickler.save_global(self, obj, **kwargs)
+        except pickle.PicklingError:
+            module = getattr(obj, "__module__", None)
+            if module == "__main__":
+                my_name = name
+                if my_name is None:
+                    my_name = obj.__name__
+                mod = sys.modules[module]
+                if not hasattr(mod, my_name):
+                    # IPython doesn't inject the variables define
+                    # interactively in __main__
+                    setattr(mod, my_name, obj)
+            Pickler.save_global(self, obj, **kwargs)
+
+    dispatch = Hasher.dispatch.copy()
+    for key in dispatch:
+        if dispatch[key] == Hasher.save_global:
+            dispatch[key] = save_global
 
 
 # Based on joblib.hashing.NumpyHasher
