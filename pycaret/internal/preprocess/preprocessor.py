@@ -813,6 +813,7 @@ class Preprocessor:
             RemoveOutliers(
                 method=outliers_method,
                 threshold=outliers_threshold,
+                random_state=self.seed,
             ),
         )
 

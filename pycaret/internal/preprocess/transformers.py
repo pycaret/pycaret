@@ -325,29 +325,31 @@ class DropImputer(BaseEstimator, TransformerMixin):
 class EmbedTextFeatures(BaseEstimator, TransformerMixin):
     """Embed text features to an array representation."""
 
-    def __init__(self, method="tf-idf", **kwargs):
+    def __init__(self, method="tf-idf", kwargs=None):
         self.method = method
         self.kwargs = kwargs
-        self._estimators = {}
 
     def fit(self, X, y=None):
+        self.estimators_ = {}
+
+        kwargs = self.kwargs or {}
         if self.method.lower() == "bow":
-            estimator = CountVectorizer(**self.kwargs)
+            estimator = CountVectorizer(**kwargs)
         else:
-            estimator = TfidfVectorizer(**self.kwargs)
+            estimator = TfidfVectorizer(**kwargs)
 
         # Fit every text column in a separate estimator
         for col in X:
-            self._estimators[col] = clone(estimator).fit(X[col])
+            self.estimators_[col] = clone(estimator).fit(X[col])
 
         return self
 
     def transform(self, X, y=None):
         for col in X:
-            data = self._estimators[col].transform(X[col]).toarray()
+            data = self.estimators_[col].transform(X[col]).toarray()
             columns = [
                 f"{col}_{word}"
-                for word in self._estimators[col].get_feature_names_out()
+                for word in self.estimators_[col].get_feature_names_out()
             ]
 
             # Merge the new columns with the dataset
@@ -368,20 +370,20 @@ class RareCategoryGrouping(BaseEstimator, TransformerMixin):
     def __init__(self, rare_to_value, value="rare"):
         self.rare_to_value = rare_to_value
         self.value = value
-        self._to_other = defaultdict(list)
 
     def fit(self, X, y=None):
+        self.to_other_ = defaultdict(list)
         for name, column in X.items():
             for category, count in column.value_counts().items():
                 if count < self.rare_to_value * len(X):
-                    self._to_other[name].append(category)
+                    self.to_other_[name].append(category)
 
         return self
 
     def transform(self, X, y=None):
         for name, column in X.items():
-            if self._to_other[name]:
-                X[name] = column.replace(self._to_other[name], self.value)
+            if self.to_other_[name]:
+                X[name] = column.replace(self.to_other_[name], self.value)
 
         return X
 
@@ -431,7 +433,6 @@ class RemoveMulticollinearity(BaseEstimator, TransformerMixin):
 
     def __init__(self, threshold=1):
         self.threshold = threshold
-        self._drop = None
 
     def fit(self, X, y=None):
         # Get the Pearson correlation coefficient matrix
@@ -442,7 +443,7 @@ class RemoveMulticollinearity(BaseEstimator, TransformerMixin):
             corr_matrix = data.corr()
             corr_X, corr_y = corr_matrix.iloc[:-1, :-1], corr_matrix.iloc[:-1, -1]
 
-        self._drop = []
+        self.drop_ = []
         for col in corr_X:
             # Select columns that are corr
             corr = corr_X[col][corr_X[col] >= self.threshold]
@@ -451,16 +452,16 @@ class RemoveMulticollinearity(BaseEstimator, TransformerMixin):
             if len(corr) > 1:
                 if y is None:
                     # Drop all but the first one
-                    self._drop.extend(list(corr[1:].index))
+                    self.drop_.extend(list(corr[1:].index))
                 else:
                     # Keep feature with the highest correlation with y
                     keep = corr_y[corr.index].idxmax()
-                    self._drop.extend(list(corr.index.drop(keep)))
+                    self.drop_.extend(list(corr.index.drop(keep)))
 
         return self
 
     def transform(self, X):
-        return X.drop(set(self._drop), axis=1)
+        return X.drop(set(self.drop_), axis=1)
 
 
 class RemoveOutliers(BaseEstimator, TransformerMixin):
