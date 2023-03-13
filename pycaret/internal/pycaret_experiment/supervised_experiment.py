@@ -4831,12 +4831,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        def replace_labels_in_column(pipeline, labels: pd.Series) -> pd.Series:
+        def replace_labels_in_column(label_encoder, labels: pd.Series) -> pd.Series:
             # Check if there is a LabelEncoder in the pipeline
-            le = get_label_encoder(pipeline)
-            if le:
+            if label_encoder:
                 return pd.Series(
-                    data=le.inverse_transform(labels),
+                    data=label_encoder.inverse_transform(labels),
                     name=labels.name,
                     index=labels.index,
                 )
@@ -4956,6 +4955,14 @@ class _SupervisedExperiment(_TabularExperiment):
             estimator = get_estimator_from_meta_estimator(estimator)
 
         pred = np.nan_to_num(estimator.predict(X_test_))
+        pred = pipeline.inverse_transform(pred)
+        # Need to convert labels back to numbers
+        # TODO optimize
+        label_encoder = get_label_encoder(pipeline)
+        if label_encoder:
+            pred = label_encoder.transform(pred)
+        if isinstance(pred, pd.Series):
+            pred = pred.values
 
         try:
             score = estimator.predict_proba(X_test_)
@@ -4999,7 +5006,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not encoded_labels:
             label[LABEL_COLUMN] = replace_labels_in_column(
-                pipeline, label[LABEL_COLUMN]
+                label_encoder, label[LABEL_COLUMN]
             )
         else:
             y_test_untransformed = y_test_
@@ -5018,9 +5025,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
             else:
                 if not encoded_labels:
-                    le = get_label_encoder(pipeline)
-                    if le:
-                        columns = le.classes_
+                    if label_encoder:
+                        columns = label_encoder.classes_
                     else:
                         columns = range(score.shape[1])
                 else:

@@ -110,7 +110,7 @@ def to_df(data, index=None, columns=None, dtypes=None):
     return data
 
 
-def to_series(data, index=None, name="target"):
+def to_series(data, index=None, name=None):
     """Convert a column to pd.Series.
 
     Parameters
@@ -121,8 +121,8 @@ def to_series(data, index=None, name="target"):
     index: sequence or Index, optional (default=None)
         Values for the indices.
 
-    name: string, optional (default="target")
-        Name of the target column.
+    name: string, optional (default=None)
+        Name of the target column. If None, defaults to "target".
 
     Returns
     -------
@@ -130,6 +130,7 @@ def to_series(data, index=None, name="target"):
         Transformed series.
 
     """
+    name = name or "target"
     if data is not None and not isinstance(data, pd.Series):
         if isinstance(data, pd.DataFrame):
             try:
