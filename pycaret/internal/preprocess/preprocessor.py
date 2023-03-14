@@ -280,7 +280,11 @@ class Preprocessor:
             check_features_exist(numeric_features, self.X)
             self._fxs["Numeric"] = numeric_features
         else:
-            self._fxs["Numeric"] = list(self.X.select_dtypes(include="number").columns)
+            self._fxs["Numeric"] = [
+                col
+                for col in self.X.select_dtypes(include="number").columns
+                if col not in (categorical_features or [])
+            ]
 
         # Date features
         if date_features:
@@ -673,6 +677,7 @@ class Preprocessor:
             if len(one_hot_cols) > 0:
                 onehot_estimator = TransformerWrapper(
                     transformer=OneHotEncoder(
+                        cols=one_hot_cols,
                         use_cat_names=True,
                         handle_missing="return_nan",
                         handle_unknown="value",
@@ -737,7 +742,7 @@ class Preprocessor:
 
         self.pipeline.steps.append(("low_variance", variance_estimator))
 
-    def _group_features(self, group_features, group_names):
+    def _group_features(self, group_features, group_names, drop_groups):
         """Get statistical properties of a group of features."""
         self.logger.info("Set up feature grouping.")
 
@@ -757,7 +762,7 @@ class Preprocessor:
                 )
 
         grouping_estimator = TransformerWrapper(
-            transformer=GroupFeatures(group_features, group_names),
+            transformer=GroupFeatures(group_features, group_names, drop_groups),
             exclude=self._fxs["Keep"],
         )
 
@@ -808,6 +813,7 @@ class Preprocessor:
             RemoveOutliers(
                 method=outliers_method,
                 threshold=outliers_threshold,
+                random_state=self.seed,
             ),
         )
 

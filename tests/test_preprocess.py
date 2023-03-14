@@ -6,6 +6,7 @@ Author: Mavs
 Description: Unit tests for pipeline.py
 
 """
+import io
 
 import numpy as np
 import pandas as pd
@@ -127,6 +128,31 @@ def test_weird_chars_in_column_names():
 
     pc = pycaret.regression.setup(data)
     assert pc.dataset_transformed.columns[0] == "col"
+
+
+def test_weird_chars_in_column_names_no_impact_on_other_preprocessors():
+    """Assert that CleanColumnNames doesn't impact other preprocessors
+    and that it meets the goal of making LightGBM work in all cases."""
+    # https://github.com/pycaret/pycaret/issues/3324
+
+    # Dataset snippet from https://www.kaggle.com/datasets/shivamb/machine-predictive-maintenance-classification
+    dataset = """UDI,Product ID,Type,Air temperature [K],Process temperature [K],Rotational speed [rpm],Torque [Nm],Tool wear [min],Target,Failure Type
+    1,M14860,M,298.1,308.6,1551,42.8,0,0,No Failure
+    2,L47181,L,298.2,308.7,1408,46.3,3,0,No Failure
+    3,L47182,L,298.1,308.5,1498,49.4,5,0,No Failure
+    4,L47183,L,298.2,308.6,1433,39.5,7,0,No Failure
+    5,L47184,L,298.2,308.7,1408,40,9,0,No Failure
+    6,M14865,M,298.1,308.6,1425,41.9,11,0,No Failure
+    7,L47186,L,298.1,308.6,1558,42.4,14,0,No Failure
+    8,L47187,L,298.1,308.6,1527,40.2,16,0,No Failure
+    9,M14868,M,298.3,308.7,1667,28.6,18,0,No Failure
+    10,M14869,M,298.5,309,1741,28,21,0,No Failure
+    """
+    buffer = io.StringIO(dataset)
+    data = pd.read_csv(buffer)
+    exp = pycaret.classification.ClassificationExperiment()
+    exp.setup(data=data, target="Target", index="UDI", fold=2)
+    exp.create_model("lightgbm")
 
 
 def test_encode_target():
@@ -313,18 +339,24 @@ def test_low_variance_threshold():
     assert "feature" not in X
 
 
-def test_feature_grouping():
+@pytest.mark.parametrize("drop_groups", (True, False))
+def test_feature_grouping(drop_groups):
     """Assert that feature groups are replaced for stats."""
     data = pycaret.datasets.get_data("juice")
+    group_features = [list(data.columns[:2]), list(data.columns[3:5])]
     pc = pycaret.classification.setup(
         data=data,
         target="STORE",
-        group_features=[list(data.columns[:2]), list(data.columns[3:5])],
+        group_features=group_features,
         group_names=["gr1", "gr2"],
+        drop_groups=drop_groups,
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)
-    assert "Id" not in X
     assert "mean(gr1)" in X and "median(gr2)" in X
+    if drop_groups:
+        assert all(all(column not in X for column in group) for group in group_features)
+    else:
+        assert all(all(column in X for column in group) for group in group_features)
 
 
 def test_remove_multicollinearity():
@@ -468,4 +500,7 @@ def test_custom_pipeline_positions(pos):
         custom_pipeline=[("scaler", StandardScaler())],
         custom_pipeline_position=pos,
     )
+    # The last element is always CleanColumnNames.
+    if pos < 0:
+        pos -= 1
     assert pc.pipeline.steps[pos][0] == "scaler"

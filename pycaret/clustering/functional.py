@@ -23,7 +23,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 def setup(
     data: Optional[DATAFRAME_LIKE] = None,
     data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
-    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = True,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -106,7 +106,7 @@ def setup(
         ``data_func`` must be set.
 
 
-    index: bool, int, str or sequence, default = False
+    index: bool, int, str or sequence, default = True
         Handle indices in the `data` dataframe.
             - If False: Reset to RangeIndex.
             - If True: Keep the provided index.
