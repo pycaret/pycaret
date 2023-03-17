@@ -38,28 +38,6 @@ PyCaret is an open-source, low-code machine learning library in Python that auto
 In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few lines only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, LightGBM, CatBoost, Optuna, Hyperopt, Ray, and few more.
 
 The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more technical expertise. PyCaret was inspired by the caret library in R programming language.
-
-| Important Links              |                                                                |
-| -------------------------- | -------------------------------------------------------------- |
-| :star: **[Tutorials]**        | New to PyCaret? Checkout our official notebooks!            |
-| :clipboard: **[Example Notebooks]** | Example notebooks created by community.               |
-| :orange_book: **[Official Blog]** | Tutorials and articles by contributors.                      |
-| :books: **[Documentation]**      | The detailed API docs of PyCaret                         |
-| :tv: **[Video Tutorials]**            | Our video tutorial from various events.             |
-| ✈️ **[Cheat sheet]**            | Cheat sheet for all functions across modules.             |
-| :loudspeaker: **[Discussions]**        | Have questions? Engage with community and contributors.|
-| :hammer_and_wrench: **[Changelog]**          | Changes and version history.                 |
-| :deciduous_tree: **[Roadmap]**          | PyCaret's software and community development plan.|
-  
-[tutorials]: https://pycaret.gitbook.io/docs/get-started/tutorials
-[Example notebooks]: https://github.com/pycaret/examples
-[Official Blog]: https://pycaret.gitbook.io/docs/learn-pycaret/official-blog
-[Documentation]: https://pycaret.gitbook.io
-[video tutorials]: https://pycaret.gitbook.io/docs/learn-pycaret/videos
-[Cheat sheet]: https://pycaret.gitbook.io/docs/learn-pycaret/cheat-sheet
-[Discussions]: https://github.com/pycaret/pycaret/discussions
-[changelog]: https://pycaret.gitbook.io/docs/get-started/release-notes
-[roadmap]: https://github.com/pycaret/pycaret/issues/1756
  
 # 🚀 Installation
 
@@ -169,23 +147,49 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Data Science Professionals who want to build rapid prototypes.
 - Data Science and Machine Learning students and enthusiasts.
   
-# PyCaret GPU support
-With PyCaret >= 2.2, you can train models on GPU and speed up your workflow by 10x. To train models on GPU simply pass `use_gpu = True` in the setup function. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default version or the full version. As of the latest release, the following models can be trained on GPU:
+# Training on GPUs
+To train models on the GPU, simply pass use_gpu = True in the setup function. There is no change in the use of the API; however, in some cases, additional libraries have to be installed. The following models can be trained on GPUs:
 
-- Extreme Gradient Boosting (requires no further installation)
-- CatBoost (requires no further installation)
+- Extreme Gradient Boosting
+- CatBoost
 - Light Gradient Boosting Machine requires [GPU installation](https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
 - Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier, K Neighbors Regressor, Support Vector Machine, Linear Regression, Ridge Regression, Lasso Regression requires [cuML >= 0.15](https://github.com/rapidsai/cuml)
 
 # PyCaret Intel sklearnex support
 You can apply [Intel optimizations](https://github.com/intel/scikit-learn-intelex) for machine learning algorithms and speed up your workflow. To train models with Intel optimizations use `sklearnex` engine. There is no change in the use of the API, however, installation of Intel sklearnex is required:
 
-```pip install scikit-learn-intelex```
-
-# License
-PyCaret is completely free and open-source and licensed under the [MIT](https://github.com/pycaret/pycaret/blob/master/LICENSE) license. 
+```python
+pip install scikit-learn-intelex
+```
 
 # Contributors
 <a href="https://github.com/pycaret/pycaret/graphs/contributors">
   <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" width = 500/>
 </a>
+
+# License
+PyCaret is completely free and open-source and licensed under the [MIT](https://github.com/pycaret/pycaret/blob/master/LICENSE) license. 
+
+# More Information
+
+| Important Links              |                                                                |
+| -------------------------- | -------------------------------------------------------------- |
+| :star: **[Tutorials]**        | New to PyCaret? Checkout our official notebooks!            |
+| :clipboard: **[Example Notebooks]** | Example notebooks created by community.               |
+| :orange_book: **[Official Blog]** | Tutorials and articles by contributors.                      |
+| :books: **[Documentation]**      | The detailed API docs of PyCaret                         |
+| :tv: **[Video Tutorials]**            | Our video tutorial from various events.             |
+| ✈️ **[Cheat sheet]**            | Cheat sheet for all functions across modules.             |
+| :loudspeaker: **[Discussions]**        | Have questions? Engage with community and contributors.|
+| :hammer_and_wrench: **[Changelog]**          | Changes and version history.                 |
+| :deciduous_tree: **[Roadmap]**          | PyCaret's software and community development plan.|
+
+[tutorials]: https://pycaret.gitbook.io/docs/get-started/tutorials
+[Example notebooks]: https://github.com/pycaret/examples
+[Official Blog]: https://pycaret.gitbook.io/docs/learn-pycaret/official-blog
+[Documentation]: https://pycaret.gitbook.io
+[video tutorials]: https://pycaret.gitbook.io/docs/learn-pycaret/videos
+[Cheat sheet]: https://pycaret.gitbook.io/docs/learn-pycaret/cheat-sheet
+[Discussions]: https://github.com/pycaret/pycaret/discussions
+[changelog]: https://pycaret.gitbook.io/docs/get-started/release-notes
+[roadmap]: https://github.com/pycaret/pycaret/issues/1756
