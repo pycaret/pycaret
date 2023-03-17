@@ -50,6 +50,7 @@ PyCaret is tested and supported on 64-bit systems with:
 You can install PyCaret with Python's pip package manager:
 
 ```python
+# install pycaret
 pip install pycaret
 ```
 
@@ -77,7 +78,7 @@ pip install pycaret[test]
 ## 
 
 # install multiple extras together
-pip install pre pycaret[analysis,models]
+pip install pycaret[analysis,models]
 ```
 
 Check out all [optional dependencies](https://github.com/pycaret/pycaret/blob/master/requirements-optional.txt). If you want to install everything including all the optional dependencies:
