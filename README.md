@@ -61,19 +61,72 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
 [changelog]: https://pycaret.gitbook.io/docs/get-started/release-notes
 [roadmap]: https://github.com/pycaret/pycaret/issues/1756
  
-# Installation
+# 🚀 Installation
 
-PyCaret's default installation only installs hard dependencies as listed in the [requirements.txt](requirements.txt) file. 
+## 🌐 Option 1: Install via PyPi
+PyCaret is tested and supported on 64-bit systems with:
+- Python 3.7, 3.8, 3.9, and 3.10
+- Ubuntu 16.04 or later
+- Windows 7 or later
+
+You can install PyCaret with Python's pip package manager:
 
 ```python
 pip install pycaret
 ```
-To install the full version:
 
+PyCaret's default installation will not install all the optional dependencies automatically. Depending on the use case, you may be interested in one or more extras:
+    
 ```python
-pip install pycaret[full]
+# install analysis extras
+pip install pycaret[analysis]
+
+# models extras
+pip install pycaret[models]
+
+# install tuner extras
+pip install pycaret[tuner]
+
+# install mlops extras
+pip install pycaret[mlops]
+
+# install parallel extras
+pip install pycaret[parallel]
+
+# install test extras
+pip install pycaret[test]
+
+## 
+
+# install multiple extras together
+pip install pre pycaret[analysis,models]
 ```
 
+Check out all [optional dependencies](https://github.com/pycaret/pycaret/blob/master/requirements-optional.txt). If you want to install everything including all the optional dependencies:
+
+```python
+# install full version
+pip install pycaret[full]
+```
+## 📄 Option 2: Build from Source
+Install the development version of the library directly from the source. The API may be unstable. It is not recommended for production use. 
+
+```python
+pip install git+https://github.com/pycaret/pycaret.git@master --upgrade
+```
+
+## 📦 Option 3: Docker
+Docker creates virtual environments with containers that keep a PyCaret installation separate from the rest of the system. PyCaret docker comes pre-installed with a Jupyter notebook. It can share resources with its host machine (access directories, use the GPU, connect to the Internet, etc.). The PyCaret Docker images are always tested for the latest major releases.
+
+```python
+# default version
+docker run -p 8888:8888 pycaret/slim
+
+# full version
+docker run -p 8888:8888 pycaret/full
+```
+
+## 💡 Example Workflows
 <div align="center">
 
 ## **Classification**
