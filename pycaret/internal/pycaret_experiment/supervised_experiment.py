@@ -4287,7 +4287,7 @@ class _SupervisedExperiment(_TabularExperiment):
             try:
                 # interpret>=0.3.1
                 pdp = PartialDependence(model=model, data=test_X)
-            except AttributeError:
+            except TypeError:
                 try:
                     pdp = PartialDependence(
                         predict_fn=model.predict_proba, data=test_X
