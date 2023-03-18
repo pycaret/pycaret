@@ -35,15 +35,15 @@ PyCaret's default installation is a slim version of pycaret which only installs 
 Installing the nightly build
 ****************************
 
-PyCaret is a fast-evolving machine learning library. Often, you want to have access to the latest features but want to avoid compiling PyCaret from source or waiting for the next release. Fortunately, you can now install pycaret-nightly using pip.
+PyCaret is a fast-evolving machine learning library. Often, you want to have access to the latest features but want to avoid waiting for the next release. In order to do that, you can install the nightly version of PyCaret directly from GitHub.
 
 .. code-block:: python
 
     # install the nightly build 
-    pip install pycaret-nightly
+    pip install "https://github.com/pycaret/pycaret.git#egg=pycaret"
 
     # or install the full version of the nightly build
-    pip install pycaret-nightly[full]
+    pip install "https://github.com/pycaret/pycaret.git#egg=pycaret[full]"
 
 PyCaret on GPU
 ***************
