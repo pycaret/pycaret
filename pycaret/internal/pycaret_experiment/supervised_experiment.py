@@ -4313,13 +4313,17 @@ class _SupervisedExperiment(_TabularExperiment):
             from interpret.blackbox import MorrisSensitivity
 
             try:
-                msa = MorrisSensitivity(
-                    predict_fn=model.predict_proba, data=test_X
-                )  # classification
-            except AttributeError:
-                msa = MorrisSensitivity(
-                    predict_fn=model.predict, data=test_X
-                )  # regression
+                # interpret>=0.3.1
+                msa = MorrisSensitivity(model=model, data=test_X)
+            except TypeError:
+                try:
+                    msa = MorrisSensitivity(
+                        predict_fn=model.predict_proba, data=test_X
+                    )  # classification
+                except AttributeError:
+                    msa = MorrisSensitivity(
+                        predict_fn=model.predict, data=test_X
+                    )  # regression
             msa_global = msa.explain_global()
             msa_plot = msa_global.visualize()
             if save:
