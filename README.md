@@ -113,7 +113,6 @@ data = get_data('juice')
 
 # init setup
 from pycaret.classification import *
-
 s = setup(data, target = 'Purchase', session_id = 123)
 
 # model training and selection
@@ -126,7 +125,6 @@ evaluate_model(best)
 pred_holdout = predict_model(best)
 
 # predict on new data
-
 new_data = data.copy().drop('Purchase', axis = 1)
 predictions = predict_model(best, data = new_data)
 
@@ -144,10 +142,8 @@ from pycaret.datasets import get_data
 data = get_data('juice')
 
 # init setup
-
 from pycaret.classification import ClassificationExperiment
 s = ClassificationExperiment()
-
 s.setup(data, target = 'Purchase', session_id = 123)
 
 # model training and selection
