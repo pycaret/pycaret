@@ -2,9 +2,9 @@
   
 <img src="docs/images/logo.png" alt="drawing" width="200"/>
 
-## **An open-source, low-code machine learning library in Python** </br>
+## **An open-source, low-code machine learning library in Python** 
 ## 🎉🎉🎉 **PyCaret 3.0 is now available. 🎉🎉🎉**
-## `pip install --upgrade pycaret`
+## `pip install --upgrade pycaret` </br>
   
 <p align="center">
 <h3>
@@ -232,16 +232,16 @@ PyCaret is completely free and open-source and licensed under the [MIT](https://
 
 # ℹ️ More Information
 
-| Important Links              |                                                                |
+| Important Links              |            Description                                       |
 | -------------------------- | -------------------------------------------------------------- |
-| :star: **[Tutorials]**        | New to PyCaret? Checkout our official notebooks!            |
-| :clipboard: **[Example Notebooks]** | Example notebooks created by community.               |
-| :orange_book: **[Blog]** | Tutorials and articles by contributors.                      |
-| :books: **[Documentation]**      | The detailed API docs of PyCaret                         |
-| :tv: **[Videos]**            | Our video tutorial from various events.             |
-| ✈️ **[Cheat sheet]**            | Cheat sheet for all functions across modules.             |
-| :loudspeaker: **[Discussions]**        | Have questions? Engage with community and contributors.|
-| :hammer_and_wrench: **[Release Notes]**          | Changes and version history.                 |
+| :star: **[Tutorials]**        | Tutorials developed and maintained by core developers       |
+| :clipboard: **[Example Notebooks]** | Example notebooks created by community               |
+| :orange_book: **[Blog]** | Official blog by creator of PyCaret                      |
+| :books: **[Documentation]**      | API docs                              |
+| :tv: **[Videos]**            | Video resources             |
+| ✈️ **[Cheat sheet]**            | Community Cheat sheet            |
+| :loudspeaker: **[Discussions]**        | Community Discussion board on GitHub|
+| :hammer_and_wrench: **[Release Notes]**          | Release Notes          |
 
 [tutorials]: https://pycaret.gitbook.io/docs/get-started/tutorials
 [Example notebooks]: https://github.com/pycaret/examples
