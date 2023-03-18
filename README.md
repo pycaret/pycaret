@@ -3,7 +3,8 @@
 <img src="docs/images/logo.png" alt="drawing" width="200"/>
 
 ## **An open-source, low-code machine learning library in Python** </br>
-## :rocket: **PyCaret 3.0 is now available. `pip install --upgrade pycaret`**
+## :rocket: **PyCaret 3.0 is now available.**
+## `pip install --upgrade pycaret`
   
 <p align="center">
 <h3>
