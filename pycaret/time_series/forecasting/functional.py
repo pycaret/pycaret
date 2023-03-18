@@ -1612,7 +1612,7 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_model(model, model_name: str, model_only: bool = True, verbose: bool = True):
+def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
     """
     This function saves the transformation pipeline and trained model object
     into the current working directory as a pickle file for later use.
@@ -1635,8 +1635,9 @@ def save_model(model, model_name: str, model_only: bool = True, verbose: bool = 
         Name of the model.
 
 
-    model_only: bool, default = True
-        Parameter not in use for now. Behavior may change in future.
+    model_only: bool, default = False
+        When set to True, only trained model object is saved instead of the
+        entire pipeline.
 
 
     verbose: bool, default = True
