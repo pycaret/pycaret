@@ -3,22 +3,17 @@
 <img src="docs/images/logo.png" alt="drawing" width="200"/>
 
 ## **An open-source, low-code machine learning library in Python** </br>
-### :rocket: **PyCaret 3.0-rc is now available. `pip install --pre pycaret`**
+## :rocket: **PyCaret 3.0 is now available. `pip install --upgrade pycaret`**
   
 <p align="center">
-  <a href="https://www.pycaret.org">Official</a> •
+<h3>
+  <a href="https://www.pycaret.org">Official Website</a> •
   <a href="https://pycaret.gitbook.io/">Docs</a> •
-  <a href="https://pycaret.gitbook.io/docs/get-started/installation">Install</a> •
-  <a href="https://pycaret.gitbook.io/docs/get-started/tutorials">Tutorials</a> •
-  <a href="https://pycaret.gitbook.io/docs/learn-pycaret/faqs">FAQs</a> •
-  <a href="https://pycaret.gitbook.io/docs/learn-pycaret/cheat-sheet">Cheat sheet</a> •
-  <a href="https://github.com/pycaret/pycaret/discussions">Discussions</a> •
-  <a href="https://pycaret.readthedocs.io/en/latest/contribute.html">Contribute</a> •
   <a href="https://pycaret.gitbook.io/docs/learn-pycaret/official-blog">Blog</a> •
   <a href="https://www.linkedin.com/company/pycaret/">LinkedIn</a> • 
   <a href="https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g">YouTube</a> • 
   <a href="https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w">Slack</a>
-
+</h3>
 </p>
 
 [![Python](https://img.shields.io/badge/Python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)](https://badge.fury.io/py/pycaret) 
@@ -105,7 +100,74 @@ docker run -p 8888:8888 pycaret/slim
 docker run -p 8888:8888 pycaret/full
 ```
 
-## 💡 Example Workflows
+## 💡 Quickstart
+
+### Functional API
+```python
+# Classification Functional API Example
+
+# loading sample dataset
+from pycaret.datasets import get_data
+data = get_data('juice')
+
+# init setup
+from pycaret.classification import *
+
+s = setup(data, target = 'Purchase', session_id = 123)
+
+# model training and selection
+best = compare_models()
+
+# evaluate trained model
+evaluate_model(best)
+
+# predict on hold-out/test set
+pred_holdout = predict_model(best)
+
+# predict on new data
+
+new_data = data.copy().drop('Purchase', axis = 1)
+predictions = predict_model(best, data = new_data)
+
+# save model
+save_model(best, 'best_pipeline')
+```
+
+### OOP API
+
+```python
+# Classification OOP API Example
+
+# loading sample dataset
+from pycaret.datasets import get_data
+data = get_data('juice')
+
+# init setup
+
+from pycaret.classification import ClassificationExperiment
+s = ClassificationExperiment()
+
+s.setup(data, target = 'Purchase', session_id = 123)
+
+# model training and selection
+best = s.compare_models()
+
+# evaluate trained model
+s.evaluate_model(best)
+
+# predict on hold-out/test set
+pred_holdout = s.predict_model(best)
+
+# predict on new data
+new_data = data.copy().drop('Purchase', axis = 1)
+predictions = s.predict_model(best, data = new_data)
+
+# save model
+s.save_model(best, 'best_pipeline')
+```
+
+
+## 💡 Modules
 <div align="center">
 
 ## **Classification**
