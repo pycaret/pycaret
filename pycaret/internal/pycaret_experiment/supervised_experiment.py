@@ -4286,7 +4286,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
             try:
                 # interpret>=0.3.1
-                pdp = PartialDependence(model=model, data=test_X)
+                pdp = PartialDependence(
+                    model=model,
+                    data=test_X.to_numpy(),
+                    feature_names=list(test_X.columns),
+                )
             except TypeError:
                 try:
                     pdp = PartialDependence(
@@ -4314,7 +4318,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
             try:
                 # interpret>=0.3.1
-                msa = MorrisSensitivity(model=model, data=test_X)
+                msa = MorrisSensitivity(
+                    model=model,
+                    data=test_X.to_numpy(),
+                    feature_names=list(test_X.columns),
+                )
             except TypeError:
                 try:
                     msa = MorrisSensitivity(
