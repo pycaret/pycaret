@@ -1802,9 +1802,7 @@ class CatBoostRegressorContainer(RegressorContainer):
         # suppress output
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
-        use_gpu = experiment.gpu_param == "force" or (
-            experiment.gpu_param and len(experiment.X_train) >= 50000
-        )
+        use_gpu = experiment.gpu_param
 
         args = {
             "random_state": experiment.seed,
