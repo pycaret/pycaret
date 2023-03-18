@@ -4285,13 +4285,17 @@ class _SupervisedExperiment(_TabularExperiment):
             from interpret.blackbox import PartialDependence
 
             try:
-                pdp = PartialDependence(
-                    predict_fn=model.predict_proba, data=test_X
-                )  # classification
+                # interpret>=0.3.1
+                pdp = PartialDependence(model=model, data=test_X)
             except AttributeError:
-                pdp = PartialDependence(
-                    predict_fn=model.predict, data=test_X
-                )  # regression
+                try:
+                    pdp = PartialDependence(
+                        predict_fn=model.predict_proba, data=test_X
+                    )  # classification
+                except AttributeError:
+                    pdp = PartialDependence(
+                        predict_fn=model.predict, data=test_X
+                    )  # regression
 
             pdp_global = pdp.explain_global()
             pdp_plot = pdp_global.visualize(list(test_X.columns).index(pdp_feature))
