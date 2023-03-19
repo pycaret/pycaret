@@ -1,40 +1,44 @@
 <div align="center">
-  
+
 <img src="docs/images/logo.png" alt="drawing" width="200"/>
 
-## **An open-source, low-code machine learning library in Python** 
+## **An open-source, low-code machine learning library in Python**
 ## 🎉🎉🎉 **PyCaret 3.0 is now available. 🎉🎉🎉**
 ## `pip install --upgrade pycaret` </br>
-  
+
 <p align="center">
 <h3>
   <a href="https://pycaret.gitbook.io/">Docs</a> •
   <a href="https://pycaret.gitbook.io/docs/get-started/tutorials">Tutorials</a> •
   <a href="https://pycaret.gitbook.io/docs/learn-pycaret/official-blog">Blog</a> •
-  <a href="https://www.linkedin.com/company/pycaret/">LinkedIn</a> • 
-  <a href="https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g">YouTube</a> • 
+  <a href="https://www.linkedin.com/company/pycaret/">LinkedIn</a> •
+  <a href="https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g">YouTube</a> •
+  <a href="https://pepy.tech/project/pycaret">Downloads</a> •
   <a href="https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w">Slack</a>
 </h3>
 </p>
 
-[![Python](https://img.shields.io/badge/Python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)](https://badge.fury.io/py/pycaret) 
-![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) 
-[![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) 
-[![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) 
-[![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) 
+[![Python](https://img.shields.io/badge/Python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)](https://badge.fury.io/py/pycaret)
+![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg)
+[![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable)
+[![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret)
+[![Downloads](https://static.pepy.tech/badge/pycaret)](https://pepy.tech/project/pycaret)
+[![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg)
 [![Slack](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w)
+
+
 
 ![alt text](docs/images/quick_start.gif)
 
 <div align="left">
-  
+
 # Welcome to PyCaret
 PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
 
 In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few lines only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, LightGBM, CatBoost, Optuna, Hyperopt, Ray, and few more.
 
 The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more technical expertise. PyCaret was inspired by the caret library in R programming language.
- 
+
 # 🚀 Installation
 
 ## 🌐 Option 1: Install via PyPi
@@ -51,7 +55,7 @@ pip install pycaret
 ```
 
 PyCaret's default installation will not install all the optional dependencies automatically. Depending on the use case, you may be interested in one or more extras:
-    
+
 ```python
 # install analysis extras
 pip install pycaret[analysis]
@@ -71,7 +75,7 @@ pip install pycaret[parallel]
 # install test extras
 pip install pycaret[test]
 
-## 
+##
 
 # install multiple extras together
 pip install pycaret[analysis,models]
@@ -84,7 +88,7 @@ Check out all [optional dependencies](https://github.com/pycaret/pycaret/blob/ma
 pip install pycaret[full]
 ```
 ## 📄 Option 2: Build from Source
-Install the development version of the library directly from the source. The API may be unstable. It is not recommended for production use. 
+Install the development version of the library directly from the source. The API may be unstable. It is not recommended for production use.
 
 ```python
 pip install git+https://github.com/pycaret/pycaret.git@master --upgrade
@@ -168,31 +172,31 @@ s.save_model(best, 'best_pipeline')
 <div align="center">
 
 ## **Classification**
-  
+
   Functional API           |  OOP API
 :-------------------------:|:-------------------------:
 ![](docs/images/classification_functional.png)  | ![](docs/images/classification_OOP.png)
- 
+
 ## **Regression**
-  
+
   Functional API           |  OOP API
 :-------------------------:|:-------------------------:
 ![](docs/images/regression_functional.png)  | ![](docs/images/regression_OOP.png)
 
 ## **Time Series**
-  
+
   Functional API           |  OOP API
 :-------------------------:|:-------------------------:
 ![](docs/images/time_series_functional.png)  | ![](docs/images/time_series_OOP.png)
 
 ## **Clustering**
-  
+
   Functional API           |  OOP API
 :-------------------------:|:-------------------------:
 ![](docs/images/clustering_functional.png)  | ![](docs/images/clustering_OOP.png)
 
 ## **Anomaly Detection**
-  
+
   Functional API           |  OOP API
 :-------------------------:|:-------------------------:
 ![](docs/images/anomaly_functional.png)  | ![](docs/images/anomaly_OOP.png)
@@ -206,7 +210,7 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Citizen Data Scientists who prefer a low code machine learning solution.
 - Data Science Professionals who want to build rapid prototypes.
 - Data Science and Machine Learning students and enthusiasts.
-  
+
 # 🎮 Training on GPUs
 To train models on the GPU, simply pass use_gpu = True in the setup function. There is no change in the use of the API; however, in some cases, additional libraries have to be installed. The following models can be trained on GPUs:
 
@@ -228,7 +232,7 @@ pip install scikit-learn-intelex
 </a>
 
 # 📝 License
-PyCaret is completely free and open-source and licensed under the [MIT](https://github.com/pycaret/pycaret/blob/master/LICENSE) license. 
+PyCaret is completely free and open-source and licensed under the [MIT](https://github.com/pycaret/pycaret/blob/master/LICENSE) license.
 
 # ℹ️ More Information
 
