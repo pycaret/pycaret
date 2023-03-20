@@ -1,0 +1,7 @@
+pycaret
+streamlit
+pandas
+numpy
+streamlit_lottie
+streamlit-aggrid
+catboost
