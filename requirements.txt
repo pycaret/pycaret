@@ -2,7 +2,7 @@
 ipython>=5.5.0
 ipywidgets>=7.6.5  # required by pycaret.internal.display
 tqdm>=4.62.0  # required by pycaret.internal.display
-numpy>=1.21, <1.25  # Can't >=1.25 because of sktime/numba
+numpy>=1.21, <1.24  # Can't >=1.24 because of np.float deprecation
 pandas>=1.3.0, <1.6.0  # Can't >=1.6 because of sktime
 jinja2>=1.2  # Required by pycaret.internal.utils --> pandas.io.formats.style
 scipy<2.0.0  # Can't >=2.0.0 due to sktime
