@@ -357,7 +357,8 @@ class _TabularExperiment(_PyCaretExperiment):
             if cuml_version is None or not version.parse(cuml_version) >= version.parse(
                 "22.10"
             ):
-                message = f"cuML is outdated or not found. Required version is >=22.10, got {__version__}"
+                message = """cuML is outdated or not found. Required version is >=22.10.
+                Please visit https://rapids.ai/ for installation instructions."""
                 if use_gpu == "force":
                     raise ImportError(message)
                 else:
