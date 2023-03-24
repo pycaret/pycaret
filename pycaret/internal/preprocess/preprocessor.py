@@ -172,7 +172,7 @@ class Preprocessor:
         target = df.columns[-1]
 
         if getattr(self, "index", True) is True:  # True gets caught by isinstance(int)
-            return df
+            pass
         elif self.index is False:
             df = df.reset_index(drop=True)
         elif isinstance(self.index, int):
@@ -196,6 +196,12 @@ class Preprocessor:
             raise ValueError(
                 "Invalid value for the index parameter. The index column "
                 f"can not be the same as the target column, got {target}."
+            )
+
+        if df.index.duplicated().any():
+            raise ValueError(
+                "Invalid value for the index parameter. There are duplicate indices "
+                "in the dataset. Use index=False to reset the index to RangeIndex."
             )
 
         return df

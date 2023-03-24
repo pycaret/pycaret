@@ -104,6 +104,17 @@ def test_assign_index(index):
     assert pc.dataset.index[0] != 0
 
 
+def test_duplicate_indices():
+    """Assert that an error is raised when there are duplicate indices."""
+    data = pycaret.datasets.get_data("juice")
+    with pytest.raises(ValueError, match=".*duplicate indices.*"):
+        pycaret.classification.setup(
+            data=data,
+            test_data=data,
+            index=True,
+        )
+
+
 def test_preprocess_is_False():
     """Assert that preprocessing is skipped when preprocess=False."""
     data = pycaret.datasets.get_data("juice")
