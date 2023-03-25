@@ -90,7 +90,7 @@ def test_assign_index_is_true():
     assert pc.dataset.index[0] == 100
 
 
-@pytest.mark.parametrize("index", [1, "WeekofPurchase", list(range(2, 1072))])
+@pytest.mark.parametrize("index", [0, "Id", list(range(2, 1072))])
 def test_assign_index(index):
     """Assert that the index can be assigned."""
     data = pycaret.datasets.get_data("juice")
