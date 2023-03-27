@@ -92,7 +92,7 @@ LOGGER = get_logger()
 class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor):
     def __init__(self) -> None:
         super().__init__()
-        self._ml_usecase = MLUsecase.TIME_SERIES
+        self._ml_usecase = MLUsecase.TIME_SERIES_FORECASTING
         self.exp_name_log = "ts-default-name"
 
         # Values in _variable_keys are accessible in globals

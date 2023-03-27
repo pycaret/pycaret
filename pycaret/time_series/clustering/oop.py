@@ -93,176 +93,19 @@ class TSClusteringExperiment(_TSClusteringExperiment, TSClusteringPreprocessor):
     """TODO: Figure out whether we need this file at all , seems like we already have a file called
     time_series_clustering.py in the models """
 
-
     def __init__(self) -> None:
         super().__init__()
-        self._ml_usecase = MLUsecase.TIME_SERIES
-        self.exp_name_log = "ts-default-name"
-
-        # Values in _variable_keys are accessible in globals
-        self._variable_keys = self._variable_keys.difference(
-            {
-                "target_param",
-                "fold_shuffle_param",
-                "fold_groups_param",
-            }
-        )
-        self._variable_keys = self._variable_keys.union(
-            {
-                "fh",
-                "seasonality_present",
-                "candidate_sps",
-                "significant_sps",
-                "significant_sps_no_harmonics",
-                "all_sps_to_use",
-                "primary_sp_to_use",
-                "strictly_positive",
-                "enforce_pi",
-                "enforce_exogenous",
-                "approach_type",
-                "exogenous_present",
-                "index_type",
-                "y_transformed",
-                "X_transformed",
-                "y_train_transformed",
-                "X_train_transformed",
-                "y_test_transformed",
-                "X_test_transformed",
-                "model_engines",
-                "fold_param",
-            }
-        )
+        self._ml_usecase = MLUsecase.TIME_SERIES_CLUSTERING
+        self.exp_name_log = "cluster-default-name"
         self._available_plots = {
             "pipeline": "Pipeline Plot",
-            "ts": "Time Series Plot",
-            "train_test_split": "Train Test Split",
-            "cv": "Cross Validation",
-            "acf": "Auto Correlation (ACF)",
-            "pacf": "Partial Auto Correlation (PACF)",
-            "decomp": "Classical Decomposition",
-            "decomp_stl": "STL Decomposition",
-            "diagnostics": "Diagnostics Plot",
-            "diff": "Difference Plot",
-            "forecast": "Out-of-Sample Forecast Plot",
-            "insample": "In-Sample Forecast Plot",
-            "residuals": "Residuals Plot",
-            "periodogram": "Frequency Components (Periodogram)",
-            "fft": "Frequency Components (FFT)",
-            "ccf": "Cross Correlation (CCF)",
+            "cluster": "t-SNE (3d) Dimension Plot",
+            "tsne": "Cluster t-SNE (3d)",
+            "elbow": "Elbow Plot",
+            "silhouette": "Silhouette Plot",
+            "distance": "Distance Plot",
+            "distribution": "Distribution Plot",
         }
-
-        available_plots_common_keys = [
-            "ts",
-            "train_test_split",
-            "cv",
-            "acf",
-            "pacf",
-            "diagnostics",
-            "decomp",
-            "decomp_stl",
-            "diff",
-            "periodogram",
-            "fft",
-            "ccf",
-        ]
-        self._available_plots_data_keys = available_plots_common_keys
-        self._available_plots_estimator_keys = available_plots_common_keys + [
-            "forecast",
-            "insample",
-            "residuals",
-        ]
-
-    def _get_setup_display(self, **kwargs) -> pd.DataFrame:
-        """Returns the dataframe to be displayed at the end of setup"""
-        n_nans = 100 * self.data.isna().any(axis=1).sum() / len(self.data)
-
-        _display_container = [
-            ["session_id", self.seed],
-            ["Target", self.target_param],
-            ["Approach", self.approach_type.value],
-            ["Exogenous Variables", self.exogenous_present.value],
-            ["Original data shape", self.dataset.shape],
-            ["Transformed data shape", self.dataset_transformed.shape],
-            ["Transformed train set shape", self.train_transformed.shape],
-            ["Transformed test set shape", self.test_transformed.shape],
-            ["Rows with missing values", f"{round(n_nans, 1)}%"],
-            ["Fold Generator", type(self.fold_generator).__name__],
-            ["Fold Number", self.fold_param],
-            ["Enforce Prediction Interval", self.enforce_pi],
-            ["Splits used for hyperparameters", self.hyperparameter_split],
-            ["Seasonality Detection Algo", self.sp_detection],
-            ["Max Period to Consider", self.max_sp_to_consider],
-            ["Seasonal Period(s) Tested", self.candidate_sps],
-            ["Significant Seasonal Period(s)", self.significant_sps],
-            [
-                "Significant Seasonal Period(s) without Harmonics",
-                self.significant_sps_no_harmonics,
-            ],
-            ["Remove Harmonics", self.remove_harmonics],
-            ["Harmonics Order Method", self.harmonic_order_method],
-            ["Num Seasonalities to Use", self.num_sps_to_use],
-            ["All Seasonalities to Use", self.all_sps_to_use],
-            ["Primary Seasonality", self.primary_sp_to_use],
-            ["Seasonality Present", self.seasonality_present],
-            ["Target Strictly Positive", self.strictly_positive],
-            ["Target White Noise", self.white_noise],
-            ["Recommended d", self.lowercase_d],
-            ["Recommended Seasonal D", self.uppercase_d],
-            ["Preprocess", self.preprocess],
-        ]
-
-        if self.preprocess:
-            _display_container.extend(
-                [
-                    ["Numerical Imputation (Target)", self.numeric_imputation_target],
-                    ["Transformation (Target)", self.transform_target],
-                    ["Scaling (Target)", self.scale_target],
-                    [
-                        "Feature Engineering (Target) - Reduced Regression",
-                        True if self.fe_target_rr else False,
-                    ],
-                ]
-            )
-
-            if self.exogenous_present == TSExogenousPresent.YES:
-                _display_container.extend(
-                    [
-                        [
-                            "Numerical Imputation (Exogenous)",
-                            self.numeric_imputation_exogenous,
-                        ],
-                        ["Transformation (Exogenous)", self.transform_exogenous],
-                        ["Scaling (Exogenous)", self.scale_exogenous],
-                    ]
-                )
-            if self.fe_exogenous:
-                # This is added even if there are no explicit exogenous variables
-                # since exogenous variables can be created from the Index (e.g.
-                # DateTimeFeatures) using self.fe_exogenous
-                _display_container.extend(
-                    [
-                        [
-                            "Feature Engineering (Exogenous)",
-                            True if self.fe_exogenous else False,
-                        ]
-                    ]
-                )
-
-        _display_container.extend(
-            [
-                ["CPU Jobs", self.n_jobs_param],
-                ["Use GPU", self.gpu_param],
-                ["Log Experiment", self.logging_param],
-                ["Experiment Name", self.exp_name_log],
-                ["USI", self.USI],
-            ]
-        )
-
-        _display_container = pd.DataFrame(
-            _display_container, columns=["Description", "Value"]
-        )
-
-        return _display_container
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
@@ -293,7 +136,7 @@ class TSClusteringExperiment(_TSClusteringExperiment, TSClusteringPreprocessor):
         return get_all_ts_metric_containers(self.variables, raise_errors=raise_errors)
 
     def _get_default_plots_to_log(self) -> List[str]:
-        return ["forecast", "residuals", "diagnostics"]
+        return ["cluster", "distribution", "elbow"]
 
     def _check_fh(self, fh: PyCaretForecastingHorizonTypes) -> ForecastingHorizon:
         """
@@ -3792,273 +3635,94 @@ class TSClusteringExperiment(_TSClusteringExperiment, TSClusteringPreprocessor):
         return return_obj
 
     def plot_model(
-        self,
-        estimator: Optional[Any] = None,
-        plot: Optional[str] = None,
-        return_fig: bool = False,
-        return_data: bool = False,
-        verbose: bool = False,
-        display_format: Optional[str] = None,
-        data_kwargs: Optional[Dict] = None,
-        fig_kwargs: Optional[Dict] = None,
-        save: Union[str, bool] = False,
-    ) -> Optional[Tuple[str, list]]:
-
+            self,
+            estimator,
+            plot: str = "auc",
+            scale: float = 1,
+            save: Union[str, bool] = False,
+            fold: Optional[Union[int, Any]] = None,
+            fit_kwargs: Optional[dict] = None,
+            plot_kwargs: Optional[dict] = None,
+            groups: Optional[Union[str, Any]] = None,
+            feature_name: Optional[str] = None,
+            label: bool = False,
+            use_train_data: bool = False,
+            verbose: bool = True,
+            display_format: Optional[str] = None,
+    ) -> Optional[str]:
         """
-        This function analyzes the performance of a trained model on holdout set.
-        When used without any estimator, this function generates plots on the
-        original data set. When used with an estimator, it will generate plots on
-        the model residuals.
+        This function analyzes the performance of a trained model.
 
 
         Example
-        --------
+        -------
         >>> from pycaret.datasets import get_data
-        >>> airline = get_data('airline')
-        >>> from pycaret.time_series import *
-        >>> exp_name = setup(data = airline,  fh = 12)
-        >>> plot_model(plot="diff", data_kwargs={"order_list": [1, 2], "acf": True, "pacf": True})
-        >>> plot_model(plot="diff", data_kwargs={"lags_list": [[1], [1, 12]], "acf": True, "pacf": True})
-        >>> arima = create_model('arima')
-        >>> plot_model(plot = 'ts')
-        >>> plot_model(plot = 'decomp', data_kwargs = {'type' : 'multiplicative'})
-        >>> plot_model(plot = 'decomp', data_kwargs = {'seasonal_period': 24})
-        >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
-        >>> tuned_arima = tune_model(arima)
-        >>> plot_model([arima, tuned_arima], data_kwargs={"labels": ["Baseline", "Tuned"]})
+        >>> jewellery = get_data('jewellery')
+        >>> from pycaret.clustering import *
+        >>> exp_name = setup(data = jewellery)
+        >>> kmeans = create_model('kmeans')
+        >>> plot_model(kmeans, plot = 'cluster')
 
 
-        estimator: sktime compatible object, default = None
-            Trained model object
+        model: scikit-learn compatible object
+            Trained Model Object
 
 
-        plot: str, default = None
-            Default is 'ts' when estimator is None, When estimator is not None,
-            default is changed to 'forecast'. List of available plots (ID - Name):
+        plot: str, default = 'cluster'
+            List of available plots (ID - Name):
 
-            * 'ts' - Time Series Plot
-            * 'train_test_split' - Train Test Split
-            * 'cv' - Cross Validation
-            * 'acf' - Auto Correlation (ACF)
-            * 'pacf' - Partial Auto Correlation (PACF)
-            * 'decomp' - Classical Decomposition
-            * 'decomp_stl' - STL Decomposition
-            * 'diagnostics' - Diagnostics Plot
-            * 'diff' - Difference Plot
-            * 'periodogram' - Frequency Components (Periodogram)
-            * 'fft' - Frequency Components (FFT)
-            * 'ccf' - Cross Correlation (CCF)
-            * 'forecast' - "Out-of-Sample" Forecast Plot
-            * 'insample' - "In-Sample" Forecast Plot
-            * 'residuals' - Residuals Plot
+            * 'cluster' - Cluster PCA Plot (2d)
+            * 'tsne' - Cluster t-SNE (3d)
+            * 'elbow' - Elbow Plot
+            * 'silhouette' - Silhouette Plot
+            * 'distance' - Distance Plot
+            * 'distribution' - Distribution Plot
 
 
-        return_fig: : bool, default = False
-            When set to True, it returns the figure used for plotting.
+        feature: str, default = None
+            Feature to be evaluated when plot = 'distribution'. When ``plot`` type is
+            'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or
+            label when the ``label`` param is set to True. When the ``plot`` type is
+            'cluster' or 'tsne' and feature is None, first column of the dataset is
+            used.
 
 
-        return_data: bool, default = False
-            When set to True, it returns the data for plotting.
-            If both return_fig and return_data is set to True, order of return
-            is figure then data.
+        label: bool, default = False
+            Name of column to be used as data labels. Ignored when ``plot`` is not
+            'cluster' or 'tsne'.
 
 
-        verbose: bool, default = True
-            Unused for now
+        scale: float, default = 1
+            The resolution scale of the figure.
+
+
+        save: bool, default = False
+            When set to True, plot is saved in the current working directory.
 
 
         display_format: str, default = None
-            Display format of the plot. Must be one of  [None, 'streamlit',
-            'plotly-dash', 'plotly-widget'], if None, it will render the plot as a plain
-            plotly figure.
-
-            The 'plotly-dash' and 'plotly-widget' formats will render the figure via
-            plotly-resampler (https://github.com/predict-idlab/plotly-resampler)
-            figures. These plots perform dynamic aggregation of the data based on the
-            front-end graph view. This approach is especially useful when dealing with
-            large data, as it will retain snappy, interactive performance.
-            * 'plotly-dash' uses a dash-app to realize this dynamic aggregation. The
-               dash app requires a network port, and can be configured with various
-               modes more information can be found at the show_dash documentation.
-               (https://predict-idlab.github.io/plotly-resampler/figure_resampler.html#plotly_resampler.figure_resampler.FigureResampler.show_dash)
-            * 'plotly-widget' uses a plotly FigureWidget to realize this dynamic
-              aggregation, and should work in IPython based environments (given that the
-              external widgets are supported and the jupyterlab-plotly extension is
-              installed).
-
-            To display plots in Streamlit (https://www.streamlit.io/), set this to
-            'streamlit'.
-
-        data_kwargs: dict, default = None
-            Dictionary of arguments passed to the data for plotting.
-
-            Available keys are:
-
-            nlags: The number of lags to use when plotting correlation plots, e.g.
-                ACF, PACF, CCF. If not provided, default internally calculated
-                values are used.
-
-            seasonal_period: The seasonal period to use for decomposition plots.
-                If not provided, the default internally detected seasonal period
-                is used.
-
-            type: The type of seasonal decomposition to perform. Options are:
-                ["additive", "multiplicative"]
-
-            order_list: The differencing orders to use for difference plots. e.g.
-                [1, 2] will plot first and second order differences (corresponding
-                to d = 1 and 2 in ARIMA models).
-
-            lags_list: An alternate and more explicit alternate to "order_list"
-                allowing users to specify the exact lags to plot. e.g.
-                [1, [1, 12]] will plot first difference and a second plot with
-                first difference (d = 1 in ARIMA) and seasonal 12th difference
-                (D=1, s=12 in ARIMA models). Also note that "order_list" = [2]
-                can be alternately specified as lags_list = [[1, 1]] i.e. successive
-                differencing twice.
-
-            acf: True/False
-                When specified in difference plots and set to True, this will plot
-                the ACF of the differenced data as well.
-
-            pacf: True/False
-                When specified in difference plots and set to True, this will plot
-                the PACF of the differenced data as well.
-
-            periodogram: True/False
-                When specified in difference plots and set to True, this will plot
-                the Periodogram of the differenced data as well.
-
-            fft: True/False
-                When specified in difference plots and set to True, this will plot
-                the FFT of the differenced data as well.
-
-            labels: When estimator(s) are provided, the corresponding labels to
-                use for the plots. If not provided, the model class is used to
-                derive the labels.
-
-            include: When data contains exogenous variables, then only specific
-                exogenous variables can be plotted using this key.
-                e.g. include = ["col1", "col2"]
-
-            exclude: When data contains exogenous variables, specific exogenous
-                variables can be excluded from the plots using this key.
-                e.g. exclude = ["col1", "col2"]
-
-            alpha: The quantile value to use for point prediction. If not provided,
-                then the value specified during setup is used.
-
-            coverage: The coverage value to use for prediction intervals.  If not
-                provided, then the value specified during setup is used.
-
-            fh: The forecast horizon to use for forecasting. If not provided, then
-                the one used during model training is used.
-
-            X: When a model trained with exogenous variables has been finalized,
-                user can provide the future values of the exogenous variables to
-                make future target time series predictions using this key.
-
-            plot_data_type: When plotting the data used for modeling, user may
-                wish to see plots with the original data set provided, the imputed
-                dataset (if imputation is set) or the transformed dataset (which
-                includes any imputation and transformation set by the user). This
-                keyword can be used to specify which data type to use.
-
-                NOTE:
-                (1) If no imputation is specified, then plotting the "imputed"
-                    data type will produce the same results as the "original" data type.
-                (2) If no transformations are specified, then plotting the "transformed"
-                    data type will produce the same results as the "imputed" data type.
-
-                Allowed values are (if not specified, defaults to the first one in the list):
-
-                "ts": ["original", "imputed", "transformed"]
-                "train_test_split": ["original", "imputed", "transformed"]
-                "cv": ["original"]
-                "acf": ["transformed", "imputed", "original"]
-                "pacf": ["transformed", "imputed", "original"]
-                "decomp": ["transformed", "imputed", "original"]
-                "decomp_stl": ["transformed", "imputed", "original"]
-                "diagnostics": ["transformed", "imputed", "original"]
-                "diff": ["transformed", "imputed", "original"]
-                "forecast": ["original", "imputed"]
-                "insample": ["original", "imputed"]
-                "residuals": ["original", "imputed"]
-                "periodogram": ["transformed", "imputed", "original"]
-                "fft": ["transformed", "imputed", "original"]
-                "ccf": ["transformed", "imputed", "original"]
-
-                Some plots (marked as True below) will also allow specifying
-                multiple of data types at once.
-
-                "ts": True
-                "train_test_split": True
-                "cv": False
-                "acf": True
-                "pacf": True
-                "decomp": True
-                "decomp_stl": True
-                "diagnostics": True
-                "diff": False
-                "forecast": False
-                "insample": False
-                "residuals": False
-                "periodogram": True
-                "fft": True
-                "ccf": False
-
-
-        fig_kwargs: dict, default = {} (empty dict)
-            The setting to be used for the plot. Overrides any global setting
-            passed during setup. Pass these as key-value pairs. For available
-            keys, refer to the `setup` documentation.
-
-            Time-series plots support more display_formats, as a result the fig-kwargs
-            can also contain the `resampler_kwargs` key and its corresponding dict.
-            These are additional keyword arguments that are fed to the display function.
-            This is mainly used for configuring `plotly-resampler` visualizations
-            (i.e., `display_format` "plotly-dash" or "plotly-widget") which down sampler
-            will be used; how many data points are shown in the front-end.
-
-            When the plotly-resampler figure is rendered via Dash (by setting the
-            `display_format` to "plotly-dash"), one can also use the
-            "show_dash" key within this dictionary to configure the show_dash args.
-
-            example::
-
-                fig_kwargs = {
-                    "width": None,
-                    "resampler_kwargs":  {
-                        "default_n_shown_samples": 1000,
-                        "show_dash": {"mode": "inline", "port": 9012}
-                    }
-                }
-
-
-        save: string or bool, default = False
-            When set to True, Plot is saved as a 'png' file in current working directory.
-            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
+            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
+            Currently, not all plots are supported.
 
 
         Returns:
-            Path to saved file and list containing figure and data, if any.
+            Path to saved file, if any.
 
         """
-
-        system = os.environ.get("PYCARET_TESTING", "0")
-        system = system == "0"
-
-        return self._plot_model(
-            estimator=estimator,
-            plot=plot,
-            return_fig=return_fig,
-            return_data=return_data,
-            verbose=verbose,
-            display_format=display_format,
-            data_kwargs=data_kwargs,
-            fig_kwargs=fig_kwargs,
-            save=save,
-            system=system,
+        return super().plot_model(
+            estimator,
+            plot,
+            scale,
+            save,
+            fold,
+            fit_kwargs,
+            plot_kwargs,
+            groups,
+            feature_name,
+            label,
+            use_train_data,
+            verbose,
+            display_format,
         )
 
     def _predict_model_reconcile_pipe_estimator(
@@ -4332,128 +3996,53 @@ class TSClusteringExperiment(_TSClusteringExperiment, TSClusteringPreprocessor):
 
         return metrics
 
+    def load_model(self,model_name:str):
+        """The function to load the model"""
+        pass
+
+
     def predict_model(
-        self,
-        estimator,
-        fh=None,
-        X: Optional[pd.DataFrame] = None,
-        return_pred_int: bool = False,
-        alpha: Optional[float] = None,
-        coverage: Union[float, List[float]] = 0.9,
-        round: int = 4,
-        verbose: bool = True,
+            self, estimator, data: pd.DataFrame, ml_usecase: Optional[MLUsecase] = None
     ) -> pd.DataFrame:
-
         """
-        This function forecast using a trained model. When ``fh`` is None,
-        it forecasts using the same forecast horizon used during the
-        training.
-
+        This function generates cluster labels using a trained model.
 
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> airline = get_data('airline')
-        >>> from pycaret.time_series import *
-        >>> exp_name = setup(data = airline,  fh = 12)
-        >>> arima = create_model('arima')
-        >>> pred_holdout = predict_model(arima)
-        >>> pred_unseen = predict_model(finalize_model(arima), fh = 24)
+        >>> jewellery = get_data('jewellery')
+        >>> from pycaret.clustering import *
+        >>> exp_name = setup(data = jewellery)
+        >>> kmeans = create_model('kmeans')
+        >>> kmeans_predictions = predict_model(model = kmeans, data = unseen_data)
 
 
-        estimator: sktime compatible object
-            Trained model object
+        model: scikit-learn compatible object
+            Trained Model Object.
 
 
-        fh: Optional[Union[List[int], int, np.array, ForecastingHorizon]], default = None
-            Number of points from the last date of training to forecast.
-            When fh is None, it forecasts using the same forecast horizon
-            used during the training.
-
-
-        X: pd.DataFrame, default = None
-            Exogenous Variables to be used for prediction.
-            Before finalizing the estimator, X need not be passed even when the
-            estimator is built using exogenous variables (since this is taken
-            care of internally by using the exogenous variables from test split).
-            When estimator has been finalized and estimator used exogenous
-            variables, then X must be passed.
-
-
-        return_pred_int: bool, default = False
-            When set to True, it returns lower bound and upper bound
-            prediction interval, in addition to the point prediction.
-
-
-        alpha: Optional[float], default = None
-            The alpha (quantile) value to use for the point predictions. Refer to
-            the "point_alpha" description in the setup docstring for details.
-
-
-        coverage: Union[float, List[float]], default = 0.9
-            The coverage to be used for prediction intervals. Refer to the "coverage"
-            description in the setup docstring for details.
-
-
-        round: int, default = 4
-            Number of decimal places to round predictions to.
-
-
-        verbose: bool, default = True
-            When set to False, holdout score grid is not printed.
+        data : pandas.DataFrame
+            Shape (n_samples, n_features) where n_samples is the number of samples and
+            n_features is the number of features.
 
 
         Returns:
             pandas.DataFrame
 
 
+        Warnings
+        --------
+        - Models that do not support 'predict' method cannot be used in the ``predict_model``.
+
+        - The behavior of the predict_model is changed in version 2.1 without backward compatibility.
+        As such, the pipelines trained using the version (<= 2.0), may not work for inference
+        with version >= 2.1. You can either retrain your models with a newer version or downgrade
+        the version for inference.
+
+
         """
 
-        estimator.check_is_fitted()
-
-        pipeline_with_model, estimator_ = self._predict_model_reconcile_pipe_estimator(
-            estimator=estimator
-        )
-
-        fh = self._predict_model_reconcile_fh(estimator=estimator_, fh=fh)
-        X = self._predict_model_reconcile_X(estimator=estimator_, X=X)
-
-        result = get_predictions_with_intervals(
-            forecaster=pipeline_with_model,
-            alpha=alpha,
-            coverage=coverage,
-            X=X,
-            fh=fh,
-            merge=True,
-            round=round,
-        )
-        y_pred = pd.DataFrame(result["y_pred"])
-
-        #################
-        # Metrics ####
-        #################
-        if self._setup_ran:
-            # Get Metrics ----
-            metrics = self._predict_model_get_test_metrics(
-                pipeline=pipeline_with_model, estimator=estimator_, result=result
-            )
-
-            # Display metrics ----
-            full_name = self._get_model_name(estimator_)
-            df_score = pd.DataFrame(metrics, index=[0])
-            df_score.insert(0, "Model", full_name)
-            df_score = df_score.round(round)
-            display = self._predict_model_resolve_display(
-                verbose=verbose, y_pred=y_pred
-            )
-            display.display(df_score.style.format(precision=round), clear=False)
-            self._display_container.append(df_score)
-
-        gc.collect()
-
-        if not return_pred_int:
-            result = y_pred
-        return result
+        return super().predict_model(estimator, data, ml_usecase)
 
     def finalize_model(
         self,
@@ -4594,6 +4183,10 @@ class TSClusteringExperiment(_TSClusteringExperiment, TSClusteringPreprocessor):
             authentication=authentication,
             platform=platform,
         )
+
+    def assign_model(self):
+        """Assign cluster labels to indivdual time series"""
+        pass
 
     def save_model(
         self, model, model_name: str, model_only: bool = False, verbose: bool = True

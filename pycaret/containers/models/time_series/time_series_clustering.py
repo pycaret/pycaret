@@ -90,7 +90,7 @@ def get_container_default_engines() -> Dict[str, str]:
     return default_engines
 
 
-class TimeSeriesKMeansContainer(ModelContainer):
+class TimeSeriesClusteringContainer(ModelContainer):
     """
     Tiem series clustering model container class.
 
@@ -271,8 +271,68 @@ class TimeSeriesKMeansContainer(ModelContainer):
 # BASELINE MODELS ####
 #########################
 
+class TimeSeriesKMeansContainer(TimeSeriesClusteringContainer):
+    model_type = TSModelTypes.BASELINE
 
-class TimeSeriesKMeansDBAContainer(TimeSeriesKMeansContainer):
+    def __init__(self, experiment) -> None:
+        """
+        For Naive Forecaster,
+          - `sp` must always be 1
+          - `strategy` can be either 'last' or 'drift' but not 'mean'
+             'mean' is reserved for Grand Means Model
+        `sp` is hard coded to 1 irrespective of the `sp` value or whether
+        seasonality is detected or not.
+        """
+        self.logger = get_logger()
+        np.random.seed(experiment.seed)
+        self.gpu_imported = False
+
+        from sktime.forecasting.naive import NaiveForecaster  # type: ignore
+
+        # Disable container if certain features are not supported but enforced ----
+        dummy = NaiveForecaster()
+        self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
+        if not self.active:
+            return
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = (
+            lambda x: type(x) is NaiveForecaster
+            and x.sp == 1
+            and (x.strategy == "last" or x.strategy == "drift")
+        )
+
+        super().__init__(
+            id="naive",
+            name="Naive Forecaster",
+            class_def=NaiveForecaster,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=self.gpu_imported,
+            eq_function=eq_function,
+        )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args = {"strategy": "last", "sp": 1}
+        return args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        tune_grid = {
+            "strategy": ["last", "drift"],
+            "sp": [1],
+        }
+        return tune_grid
+
+class TimeSeriesKMeansDBAContainer(TimeSeriesClusteringContainer):
     model_type = TSModelTypes.BASELINE
 
     def __init__(self, experiment) -> None:
@@ -334,7 +394,7 @@ class TimeSeriesKMeansDBAContainer(TimeSeriesKMeansContainer):
         return tune_grid
 
 
-class TimeSeriesKMedoidsContainer(TimeSeriesKMeansContainer):
+class TimeSeriesKMedoidsContainer(TimeSeriesClusteringContainer):
     model_type = TSModelTypes.BASELINE
 
     def __init__(self, experiment) -> None:
@@ -395,7 +455,7 @@ class TimeSeriesKMedoidsContainer(TimeSeriesKMeansContainer):
         return tune_grid
 
 
-class TimeSeriesKShapesContainer(TimeSeriesKMeansContainer):
+class TimeSeriesKShapesContainer(TimeSeriesClusteringContainer):
     model_type = TSModelTypes.BASELINE
 
     def __init__(self, experiment) -> None:
@@ -462,7 +522,7 @@ class TimeSeriesKShapesContainer(TimeSeriesKMeansContainer):
         return tune_grid
 
 
-class TimeSeriesKernelKMeansContainer(TimeSeriesKMeansContainer):
+class TimeSeriesKernelKMeansContainer(TimeSeriesClusteringContainer):
     model_type = TSModelTypes.BASELINE
 
     def __init__(self, experiment) -> None:
@@ -514,7 +574,7 @@ class TimeSeriesKernelKMeansContainer(TimeSeriesKMeansContainer):
 ######################################
 
 
-class TimeSeriesLloydsContainer(TimeSeriesKMeansContainer):
+class TimeSeriesLloydsContainer(TimeSeriesClusteringContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:

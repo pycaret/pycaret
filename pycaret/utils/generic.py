@@ -35,7 +35,8 @@ class MLUsecase(Enum):
     REGRESSION = auto()
     CLUSTERING = auto()
     ANOMALY = auto()
-    TIME_SERIES = auto()
+    TIME_SERIES_CLUSTERING = auto()
+    TIME_SERIES_FORECASTING = auto()
 
 
 def get_ml_task(y):
