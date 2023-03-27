@@ -90,7 +90,7 @@ def test_assign_index_is_true():
     assert pc.dataset.index[0] == 100
 
 
-@pytest.mark.parametrize("index", [1, "WeekofPurchase", list(range(2, 1072))])
+@pytest.mark.parametrize("index", [0, "Id", list(range(2, 1072))])
 def test_assign_index(index):
     """Assert that the index can be assigned."""
     data = pycaret.datasets.get_data("juice")
@@ -102,6 +102,17 @@ def test_assign_index(index):
         preprocess=False,
     )
     assert pc.dataset.index[0] != 0
+
+
+def test_duplicate_indices():
+    """Assert that an error is raised when there are duplicate indices."""
+    data = pycaret.datasets.get_data("juice")
+    with pytest.raises(ValueError, match=".*duplicate indices.*"):
+        pycaret.classification.setup(
+            data=data,
+            test_data=data,
+            index=True,
+        )
 
 
 def test_preprocess_is_False():
