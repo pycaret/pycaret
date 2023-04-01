@@ -1,4 +1,12 @@
-from pycaret.utils.time_series import remove_harmonics_from_sp
+import numpy as np
+import pandas as pd
+import pytest
+
+from pycaret.utils.time_series import (
+    SeasonalPeriod,
+    clean_time_index,
+    remove_harmonics_from_sp,
+)
 
 
 def test_harmonic_removal():
@@ -79,3 +87,240 @@ def test_harmonic_removal():
     # 5.3
     results = remove_harmonics_from_sp([50, 16, 15, 17, 34, 2, 33, 49, 18, 100, 32])
     assert results == [15, 34, 33, 49, 18, 100, 32]
+
+
+def _get_seasonal_keys():
+    return [freq for freq, _ in SeasonalPeriod.__members__.items()]
+
+
+@pytest.mark.parametrize("freq", _get_seasonal_keys())
+@pytest.mark.parametrize("index", [True, False])
+def test_clean_time_index_datetime(freq, index):
+    """Test clean_time_index utility when index/column is of type DateTime"""
+    dates = pd.date_range("2019-01-01", "2022-01-30", freq=freq)
+
+    # At least 3 data points to allow test to insert a missing index in the middle
+    # but not so many data points that the code slows down too much.
+    if len(dates) > 100:
+        dates = dates[:100]
+    assert len(dates) >= 3
+
+    data = pd.DataFrame(
+        {
+            "date": dates,
+            "value": np.random.rand(len(dates)),
+        }
+    )
+    if index:
+        data.set_index("date", inplace=True)
+        index_col = None
+    else:
+        index_col = "date"
+
+    # -------------------------------------------------------------------------#
+    # Test 1: Cleaning without any missing time index
+    # -------------------------------------------------------------------------#
+    try:
+        cleaned = clean_time_index(data=data, index_col=index_col, freq=freq)
+    except AttributeError:
+        # Unsupported freq conversion from DatetimeIndex to PeriodIndex
+        return
+    assert len(cleaned) == len(data)
+
+    # -------------------------------------------------------------------------#
+    # Test 2: Cleaning with any missing time index
+    # -------------------------------------------------------------------------#
+    # Drop 2nd row
+    data_missing = data.copy()
+    data_missing = data_missing.drop(data_missing.index[1])
+    cleaned = clean_time_index(data=data_missing, index_col=index_col, freq=freq)
+    # Datetime Index missing values are filled in  by clean_time_index
+    assert len(cleaned) == len(data)
+
+
+@pytest.mark.parametrize("freq", _get_seasonal_keys())
+@pytest.mark.parametrize("index", [False])
+def test_clean_time_index_str_datetime(freq, index):
+    """Test clean_time_index utility when index/column is of type str in format
+    acceptable to DatetimeIndex
+
+    NOTE: Index can not be string (only column). Code unchanges, just parameter
+    restricted to False
+    """
+    dates = pd.date_range("2019-01-01", "2022-01-30", freq=freq)
+
+    # At least 3 data points to allow test to insert a missing index in the middle
+    # but not so many data points that the code slows down too much.
+    if len(dates) > 100:
+        dates = dates[:100]
+    assert len(dates) >= 3
+    dates = dates.strftime("%Y-%m-%d %H:%m:%s")
+
+    data = pd.DataFrame(
+        {
+            "date": dates,
+            "value": np.random.rand(len(dates)),
+        }
+    )
+    if index:
+        data.set_index("date", inplace=True)
+        index_col = None
+    else:
+        index_col = "date"
+
+    # -------------------------------------------------------------------------#
+    # Test 1: Cleaning without any missing time index
+    # -------------------------------------------------------------------------#
+    try:
+        cleaned = clean_time_index(data=data, index_col=index_col, freq=freq)
+    except AttributeError:
+        # Unsupported freq conversion from DatetimeIndex to PeriodIndex
+        return
+    assert len(cleaned) == len(data)
+
+    # -------------------------------------------------------------------------#
+    # Test 2: Cleaning with any missing time index
+    # -------------------------------------------------------------------------#
+    # Drop 2nd row
+    data_missing = data.copy()
+    data_missing = data_missing.drop(data_missing.index[1])
+    cleaned = clean_time_index(data=data_missing, index_col=index_col, freq=freq)
+    # Datetime Index missing values are filled in  by clean_time_index
+    assert len(cleaned) == len(data)
+
+
+@pytest.mark.parametrize("freq", _get_seasonal_keys())
+@pytest.mark.parametrize("index", [True, False])
+def test_clean_time_index_period(freq, index):
+    """Test clean_time_index utility when index/column is of type Period"""
+    try:
+        dates = pd.period_range("2019-01-01", "2022-01-30", freq=freq)
+    except ValueError:
+        # Unsupported freq for PeriodIndex
+        return
+
+    # At least 3 data points to allow test to insert a missing index in the middle
+    # but not so many data points that the code slows down too much.
+    if len(dates) > 100:
+        dates = dates[:100]
+    assert len(dates) >= 3
+
+    data = pd.DataFrame(
+        {
+            "date": dates,
+            "value": np.random.rand(len(dates)),
+        }
+    )
+    if index:
+        data.set_index("date", inplace=True)
+        index_col = None
+    else:
+        index_col = "date"
+
+    # -------------------------------------------------------------------------#
+    # Test 1: Cleaning without any missing time index
+    # -------------------------------------------------------------------------#
+    cleaned = clean_time_index(data=data, index_col=index_col, freq=freq)
+    assert len(cleaned) == len(data)
+
+    # -------------------------------------------------------------------------#
+    # Test 2: Cleaning with any missing time index
+    # -------------------------------------------------------------------------#
+    # Drop 2nd row
+    data_missing = data.copy()
+    data_missing = data_missing.drop(data_missing.index[1])
+    cleaned = clean_time_index(data=data_missing, index_col=index_col, freq=freq)
+    # Period Index missing values are filled in  by clean_time_index
+    assert len(cleaned) == len(data)
+
+
+@pytest.mark.parametrize("freq", _get_seasonal_keys())
+@pytest.mark.parametrize("index", [False])
+def test_clean_time_index_str_period(freq, index):
+    """Test clean_time_index utility when index/column is of type str in format
+    acceptable to PeriodIndex
+
+    NOTE: Index can not be string (only column). Code unchanges, just parameter
+    restricted to False
+    """
+    try:
+        dates = pd.period_range("2019-01-01", "2022-01-30", freq=freq)
+    except ValueError:
+        # Unsupported freq for PeriodIndex
+        return
+
+    # At least 3 data points to allow test to insert a missing index in the middle
+    # but not so many data points that the code slows down too much.
+    if len(dates) > 100:
+        dates = dates[:100]
+    assert len(dates) >= 3
+    dates = dates.astype(str)
+
+    data = pd.DataFrame(
+        {
+            "date": dates,
+            "value": np.random.rand(len(dates)),
+        }
+    )
+    if index:
+        data.set_index("date", inplace=True)
+        index_col = None
+    else:
+        index_col = "date"
+
+    # -------------------------------------------------------------------------#
+    # Test 1: Cleaning without any missing time index
+    # -------------------------------------------------------------------------#
+    cleaned = clean_time_index(data=data, index_col=index_col, freq=freq)
+    assert len(cleaned) == len(data)
+
+    # -------------------------------------------------------------------------#
+    # Test 2: Cleaning with any missing time index
+    # -------------------------------------------------------------------------#
+    # Drop 2nd row
+    data_missing = data.copy()
+    data_missing = data_missing.drop(data_missing.index[1])
+    cleaned = clean_time_index(data=data_missing, index_col=index_col, freq=freq)
+    # Period Index missing values are filled in  by clean_time_index
+    assert len(cleaned) == len(data)
+
+
+@pytest.mark.parametrize("freq", _get_seasonal_keys())
+@pytest.mark.parametrize("index", [True, False])
+def test_clean_time_index_int(freq, index):
+    """Test clean_time_index utility when index/column is of type Int"""
+    dates = np.arange(100)
+
+    # At least 3 data points to allow test to insert a missing index in the middle
+    # but not so many data points that the code slows down too much.
+    if len(dates) > 100:
+        dates = dates[:100]
+    assert len(dates) >= 3
+
+    data = pd.DataFrame(
+        {
+            "date": dates,
+            "value": np.random.rand(len(dates)),
+        }
+    )
+    if index:
+        data.set_index("date", inplace=True)
+        index_col = None
+    else:
+        index_col = "date"
+
+    # -------------------------------------------------------------------------#
+    # Test 1: Cleaning without any missing time index
+    # -------------------------------------------------------------------------#
+    cleaned = clean_time_index(data=data, index_col=index_col, freq=freq)
+    assert len(cleaned) == len(data)
+
+    # -------------------------------------------------------------------------#
+    # Test 2: Cleaning with any missing time index
+    # -------------------------------------------------------------------------#
+    # Drop 2nd row
+    data_missing = data.copy()
+    data_missing = data_missing.drop(data_missing.index[1])
+    cleaned = clean_time_index(data=data_missing, index_col=index_col, freq=freq)
+    # Int Index is untouched by clean_time_index
+    assert len(cleaned) == len(data) - 1
