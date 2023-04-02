@@ -147,14 +147,14 @@ def test_clean_time_index_str_datetime(freq, index):
     NOTE: Index can not be string (only column). Code unchanges, just parameter
     restricted to False
     """
-    dates = pd.date_range("2019-01-01", "2022-01-30", freq=freq)
+    dates = pd.date_range("2019-01-01 00:00:00", "2022-01-30 00:00:00", freq=freq)
 
     # At least 3 data points to allow test to insert a missing index in the middle
     # but not so many data points that the code slows down too much.
     if len(dates) > 100:
         dates = dates[:100]
     assert len(dates) >= 3
-    dates = dates.strftime("%Y-%m-%d %H:%m:%s")
+    dates = dates.strftime("%Y-%m-%d %H:%M:%S")
 
     data = pd.DataFrame(
         {
