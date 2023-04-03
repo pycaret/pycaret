@@ -579,6 +579,10 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                     "\n>>> import numpy as np"
                     "\n>>> idx = pd.period_range(min(data.index), max(data.index))"
                     "\n>>> data = data.reindex(idx, fill_value=np.nan)"
+                    "\n\nAlternately, you can use this utility function:"
+                    "\n>>> from pycaret.utils.time_series import clean_time_index"
+                    ">>> # Provide the right frequency argument and index column name if necessary"
+                    ">>> cleaned = clean_time_index(data=data, index_col=index_col, freq=freq)"
                 )
 
         # Save index type so that we can disable certain models ----
