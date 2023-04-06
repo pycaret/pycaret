@@ -13,6 +13,7 @@ Changes include:
 
 import hashlib
 import pickle
+import struct
 import sys
 import tempfile
 import time
@@ -49,6 +50,8 @@ if TYPE_CHECKING:
     import numpy as np
 
 DEFAULT_MIN_TIME_TO_CACHE = 0.1
+DEFAULT_BYTES_LIMIT = 1024 * 1024 * 1024 * 10  # 10 GB
+DEFAULT_CALLS_BETWEEN_REDUCE = 20
 
 
 # From https://github.com/joblib/joblib/pull/1011
@@ -98,6 +101,32 @@ class FastHasher(Hasher):
         if return_digest:
             # Read the resulting hash
             return self._hash.hexdigest()
+
+    def save_global(self, obj, name=None, pack=struct.pack):
+        # Fixes joblib issue. In the except block,
+        # Pickler.save_global has been moved to bottom so it
+        # can actually work.
+        kwargs = dict(name=name, pack=pack)
+        del kwargs["pack"]
+        try:
+            Pickler.save_global(self, obj, **kwargs)
+        except pickle.PicklingError:
+            module = getattr(obj, "__module__", None)
+            if module == "__main__":
+                my_name = name
+                if my_name is None:
+                    my_name = obj.__name__
+                mod = sys.modules[module]
+                if not hasattr(mod, my_name):
+                    # IPython doesn't inject the variables define
+                    # interactively in __main__
+                    setattr(mod, my_name, obj)
+            Pickler.save_global(self, obj, **kwargs)
+
+    dispatch = Hasher.dispatch.copy()
+    for key in dispatch:
+        if dispatch[key] == Hasher.save_global:
+            dispatch[key] = save_global
 
 
 # Based on joblib.hashing.NumpyHasher
@@ -398,9 +427,21 @@ class FastMemorizedFunc(MemorizedFunc):
 
 
 class FastMemory(Memory):
-    def __init__(self, *args, min_time_to_cache=DEFAULT_MIN_TIME_TO_CACHE, **kwargs):
+    def __init__(
+        self,
+        *args,
+        min_time_to_cache=DEFAULT_MIN_TIME_TO_CACHE,
+        caches_between_reduce=DEFAULT_CALLS_BETWEEN_REDUCE,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.min_time_to_cache = min_time_to_cache
+        self.caches_between_reduce = caches_between_reduce
+        self.reduce_size()
+
+    def reduce_size(self):
+        self._cache_counter = 0
+        return super().reduce_size()
 
     def cache(self, func=None, ignore=None, verbose=None, mmap_mode=False):
         ret = super().cache(func, ignore, verbose, mmap_mode)
@@ -408,7 +449,13 @@ class FastMemory(Memory):
             ret.__class__ = FastMemorizedFunc
             ret.min_time_to_cache = self.min_time_to_cache
             ret._cached_output_identifiers = None
+            self._cache_counter += 1
+            if self._cache_counter >= self.caches_between_reduce:
+                self.reduce_size()
         return ret
+
+    def __del__(self):
+        self.reduce_size()
 
 
 def get_memory(memory: Union[bool, str, Path, Memory]) -> Memory:
@@ -419,7 +466,7 @@ def get_memory(memory: Union[bool, str, Path, Memory]) -> Memory:
             return None
         if memory:
             tmpdir = tempfile.gettempdir() if isinstance(memory, bool) else str(memory)
-            return FastMemory(tmpdir, verbose=0)
+            return FastMemory(tmpdir, verbose=0, bytes_limit=DEFAULT_BYTES_LIMIT)
     raise TypeError(
         f"memory must be a bool, str or joblib.Memory object, got {type(memory)}"
     )

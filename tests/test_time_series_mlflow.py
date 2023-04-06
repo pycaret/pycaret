@@ -31,8 +31,8 @@ def test_mlflow_logging(load_pos_and_neg_data):
     # When running locally, there can be multiple experiments with the same name
     # Just get he last one so that the asserts work (otherwise, the count of the
     # various function calls will not match)
-    last_start = mlflow_logs["start_time"].max()
-    last_experiment_usi = mlflow_logs.query("start_time == @last_start")[
+    last_start = mlflow_logs["start_time"].max()  # noqa: F841
+    last_experiment_usi = mlflow_logs.query("start_time == @last_start")[  # noqa: F841
         "tags.USI"
     ].unique()[0]
 

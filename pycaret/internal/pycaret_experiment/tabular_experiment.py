@@ -347,10 +347,18 @@ class _TabularExperiment(_PyCaretExperiment):
                 cuml_version = __version__
                 self.logger.info(f"cuml=={cuml_version}")
 
+                try:
+                    import cuml.common.memory_utils
+
+                    cuml.common.memory_utils.set_global_output_type("numpy")
+                except Exception:
+                    self.logger.exception("Couldn't set cuML global output type")
+
             if cuml_version is None or not version.parse(cuml_version) >= version.parse(
                 "22.10"
             ):
-                message = f"cuML is outdated or not found. Required version is >=22.10, got {__version__}"
+                message = """cuML is outdated or not found. Required version is >=22.10.
+                Please visit https://rapids.ai/ for installation instructions."""
                 if use_gpu == "force":
                     raise ImportError(message)
                 else:
@@ -2597,7 +2605,7 @@ class _TabularExperiment(_PyCaretExperiment):
         _check_soft_dependencies("pydantic", extra="mlops", severity="error")
 
         self.save_model(estimator, model_name=api_name, verbose=False)
-        target = f"{self.target_param}_prediction"
+        target = "prediction"
 
         query = f"""# -*- coding: utf-8 -*-
 

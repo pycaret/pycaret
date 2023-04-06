@@ -2684,6 +2684,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if isinstance(model, TunableMixin):
             self.logger.info("Getting base sklearn object from tunable")
+            model = clone(model)
+            model.set_params(**best_params)
             best_params = {
                 k: v
                 for k, v in model.get_params().items()
@@ -3437,7 +3439,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             model = voting_model_definition.class_def(
-                estimators=estimator_list, voting=method, n_jobs=self.gpu_n_jobs_param
+                estimators=estimator_list,
+                voting=method,
+                n_jobs=self.gpu_n_jobs_param,
+                weights=weights,
             )
         elif self._ml_usecase == MLUsecase.TIME_SERIES:
             model = voting_model_definition.class_def(
@@ -3448,7 +3453,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
         else:
             model = voting_model_definition.class_def(
-                estimators=estimator_list, n_jobs=self.gpu_n_jobs_param
+                estimators=estimator_list, n_jobs=self.gpu_n_jobs_param, weights=weights
             )
 
         display.update_monitor(2, voting_model_definition.name)
@@ -4280,13 +4285,21 @@ class _SupervisedExperiment(_TabularExperiment):
             from interpret.blackbox import PartialDependence
 
             try:
+                # interpret>=0.3.1
                 pdp = PartialDependence(
-                    predict_fn=model.predict_proba, data=test_X
-                )  # classification
-            except AttributeError:
-                pdp = PartialDependence(
-                    predict_fn=model.predict, data=test_X
-                )  # regression
+                    model=model,
+                    data=test_X.to_numpy(),
+                    feature_names=list(test_X.columns),
+                )
+            except TypeError:
+                try:
+                    pdp = PartialDependence(
+                        predict_fn=model.predict_proba, data=test_X
+                    )  # classification
+                except AttributeError:
+                    pdp = PartialDependence(
+                        predict_fn=model.predict, data=test_X
+                    )  # regression
 
             pdp_global = pdp.explain_global()
             pdp_plot = pdp_global.visualize(list(test_X.columns).index(pdp_feature))
@@ -4304,13 +4317,21 @@ class _SupervisedExperiment(_TabularExperiment):
             from interpret.blackbox import MorrisSensitivity
 
             try:
+                # interpret>=0.3.1
                 msa = MorrisSensitivity(
-                    predict_fn=model.predict_proba, data=test_X
-                )  # classification
-            except AttributeError:
-                msa = MorrisSensitivity(
-                    predict_fn=model.predict, data=test_X
-                )  # regression
+                    model=model,
+                    data=test_X.to_numpy(),
+                    feature_names=list(test_X.columns),
+                )
+            except TypeError:
+                try:
+                    msa = MorrisSensitivity(
+                        predict_fn=model.predict_proba, data=test_X
+                    )  # classification
+                except AttributeError:
+                    msa = MorrisSensitivity(
+                        predict_fn=model.predict, data=test_X
+                    )  # regression
             msa_global = msa.explain_global()
             msa_plot = msa_global.visualize()
             if save:
@@ -4826,12 +4847,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        def replace_labels_in_column(pipeline, labels: pd.Series) -> pd.Series:
+        def replace_labels_in_column(label_encoder, labels: pd.Series) -> pd.Series:
             # Check if there is a LabelEncoder in the pipeline
-            le = get_label_encoder(pipeline)
-            if le:
+            if label_encoder:
                 return pd.Series(
-                    data=le.inverse_transform(labels),
+                    data=label_encoder.inverse_transform(labels),
                     name=labels.name,
                     index=labels.index,
                 )
@@ -4951,6 +4971,14 @@ class _SupervisedExperiment(_TabularExperiment):
             estimator = get_estimator_from_meta_estimator(estimator)
 
         pred = np.nan_to_num(estimator.predict(X_test_))
+        pred = pipeline.inverse_transform(pred)
+        # Need to convert labels back to numbers
+        # TODO optimize
+        label_encoder = get_label_encoder(pipeline)
+        if label_encoder:
+            pred = label_encoder.transform(pred)
+        if isinstance(pred, pd.Series):
+            pred = pred.values
 
         try:
             score = estimator.predict_proba(X_test_)
@@ -4994,7 +5022,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not encoded_labels:
             label[LABEL_COLUMN] = replace_labels_in_column(
-                pipeline, label[LABEL_COLUMN]
+                label_encoder, label[LABEL_COLUMN]
             )
         else:
             y_test_untransformed = y_test_
@@ -5013,9 +5041,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
             else:
                 if not encoded_labels:
-                    le = get_label_encoder(pipeline)
-                    if le:
-                        columns = le.classes_
+                    if label_encoder:
+                        columns = label_encoder.classes_
                     else:
                         columns = range(score.shape[1])
                 else:
@@ -5082,7 +5109,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
             model_results = model_results_tuple["scores"]
             model = model_results_tuple["model"]
-            mean_scores = model_results[-2:-1]
+            try:
+                mean_scores = model_results.loc[["Mean"]]
+            except KeyError:
+                continue
             model_name = self._get_model_name(model)
             mean_scores["Index"] = i
             mean_scores["Model Name"] = model_name

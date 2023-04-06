@@ -19,7 +19,7 @@ Follow [installation instructions](https://pycaret.readthedocs.io/en/latest/inst
 pip install -e .[test]
 ```
 
-We use [black](https://github.com/psf/black) and [isort](https://github.com/PyCQA/isort)
+We use [black](https://github.com/psf/black) (version `22.12.0`) and [isort](https://github.com/PyCQA/isort) (latest version)
 for code formatting. Make sure to run `isort pycaret` and `black pycaret`
 from the home directory before creating the PR. Failing to do so can result
 in a failed build, which would prevent the adoption of your code.
@@ -29,7 +29,6 @@ in a failed build, which would prevent the adoption of your code.
 Install development version of the package with additional extra dependencies required for unit testing:
 ```shell
 pip install -e .[test]
-python -m spacy download en_core_web_sm
 ```
 We use [`pytest`](https://docs.pytest.org/en/latest/) for unit testing.
 

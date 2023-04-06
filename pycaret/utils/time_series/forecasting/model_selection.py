@@ -169,7 +169,7 @@ def _fit_and_score(
 
     # Determine Cutoff ----
     # NOTE: Cutoff is available irrespective of whether fit passed or failed
-    cutoff = pipeline.cutoff
+    cutoff = pipeline.cutoff[0]
 
     # Score the model ----
     lower = pd.Series(dtype="float64")

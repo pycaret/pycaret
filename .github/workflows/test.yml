@@ -37,6 +37,29 @@ jobs:
           flake8-version: 6.0.0
 
   # JOBS MUST START WITH test !!!!
+  test_notebooks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v3
+      - name: Set up Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          pip install -U pytest pytest-xdist nbmake
+          pip install -e ".[full]"
+          python -m ipykernel install --user --name cikernel
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: 3.10"
+          python --version
+          which python
+          pip list
+      - name: Run notebooks
+        run: pytest --nbmake --nbmake-kernel=cikernel -n=auto --nbmake-timeout=3000 --ignore=./tutorials/translations ./tutorials/
+
   test_linux:
     runs-on: ubuntu-latest
     strategy:
@@ -57,9 +80,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp, test]"
+          pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -100,9 +122,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp, test]"
+          pip install -e ".[full, test]"
           pip install -r requirements-prophet.txt
-          python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -135,8 +156,7 @@ jobs:
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install --upgrade pip
           python -m pip install -U pytest codecov numpy
-          pip install -e ".[full, nlp, test]"
-          python -m spacy download en_core_web_sm
+          pip install -e ".[full, test]"
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -169,10 +189,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp, test]"
+          pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-
-          python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -205,10 +223,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp, test]"
+          pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-
-          python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -241,10 +257,8 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest codecov numpy
 
-          pip install -e ".[full, nlp, test]"
+          pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-
-          python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -269,9 +283,8 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full, nlp]"
+  #       pip install -e ".[full]"
   #       python -m pip install hpbandster ConfigSpace
-  #       python -m spacy download en
   #   - name: Remove tests
   #     run: |
   #       find tests -type f -not -name '__init__.py' -not -name 'test_classification_tuning.py' -not -name 'test_regression_tuning.py' -delete
@@ -293,8 +306,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full, nlp]"
-  #       python -m spacy download en
+  #       pip install -e ".[full]"
   #   - name: Remove tests
   #     run: |
   #       remove-item tests/* -Exclude @('__init__.py','test_classification_tuning.py')
@@ -316,8 +328,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full, nlp]"
-  #       python -m spacy download en
+  #       pip install -e ".[full]"
   #   - name: Remove tests
   #     run: |
   #       remove-item tests/* -Exclude @('__init__.py','test_regression_tuning.py')

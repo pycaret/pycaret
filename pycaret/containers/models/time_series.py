@@ -2448,9 +2448,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
         # suppress output
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
-        self.use_gpu = experiment.gpu_param == "force" or (
-            experiment.gpu_param and len(experiment.y_train) >= 50000
-        )
+        self.use_gpu = experiment.gpu_param
 
         super().__init__(experiment=experiment)
 

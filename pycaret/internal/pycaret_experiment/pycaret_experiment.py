@@ -354,8 +354,13 @@ class _PyCaretExperiment:
             raise ValueError(
                 "variable parameter cannot be used together with keyword arguments."
             )
-
-        variables = kwargs if kwargs else {variable: value}
+        else:
+            if kwargs:
+                variables = kwargs
+            elif variable:
+                variables = {variable: value}
+            else:
+                variables = {}
 
         for k, v in variables.items():
             if k.startswith("_"):

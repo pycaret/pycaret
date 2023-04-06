@@ -295,7 +295,7 @@ def _is_stationary_adf(
         is_stationary = True if p_value < alpha else False
 
         # Step 2C: Create Result DataFrame ----
-        results = {
+        results_dict = {
             "Stationarity": is_stationary,
             "p-value": p_value,
             "Test Statistic": test_statistic,
@@ -303,8 +303,8 @@ def _is_stationary_adf(
         critical_values = {
             f"Critical Value {key}": value for key, value in critical_values.items()
         }
-        results.update(critical_values)
-        results = pd.DataFrame(results, index=["Value"]).T.reset_index()
+        results_dict.update(critical_values)
+        results = pd.DataFrame(results_dict, index=["Value"]).T.reset_index()
         results["Data"] = name_
 
         # Step 2D: Update list of all results ----
@@ -409,7 +409,7 @@ def _is_stationary_kpss(
         is_stationary = False if p_value < alpha else True
 
         # Step 2C: Create Result DataFrame ----
-        results = {
+        results_dict = {
             "Trend Stationarity": is_stationary,
             "p-value": p_value,
             "Test Statistic": test_statistic,
@@ -417,8 +417,8 @@ def _is_stationary_kpss(
         critical_values = {
             f"Critical Value {key}": value for key, value in critical_values.items()
         }
-        results.update(critical_values)
-        results = pd.DataFrame(results, index=["Value"]).T.reset_index()
+        results_dict.update(critical_values)
+        results = pd.DataFrame(results_dict, index=["Value"]).T.reset_index()
         results["Data"] = name_
 
         # Step 2D: Update list of all results ----

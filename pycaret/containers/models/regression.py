@@ -1238,9 +1238,7 @@ class RandomForestRegressorContainer(RegressorContainer):
             "max_features": UniformDistribution(0.4, 1),
         }
 
-        if gpu_imported:
-            tune_grid["split_criterion"] = [2, 3]
-        else:
+        if not gpu_imported:
             tune_grid["criterion"] = ["squared_error", "absolute_error"]
             tune_grid["min_samples_split"] = [2, 5, 7, 9, 10]
             tune_grid["min_samples_leaf"] = [2, 3, 4, 5, 6]
@@ -1804,9 +1802,7 @@ class CatBoostRegressorContainer(RegressorContainer):
         # suppress output
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
-        use_gpu = experiment.gpu_param == "force" or (
-            experiment.gpu_param and len(experiment.X_train) >= 50000
-        )
+        use_gpu = experiment.gpu_param
 
         args = {
             "random_state": experiment.seed,
@@ -1848,7 +1844,7 @@ class CatBoostRegressorContainer(RegressorContainer):
 
         if use_gpu:
             tune_grid["depth"] = list(range(1, 9))
-            tune_distributions["depth"] = (IntUniformDistribution(1, 8),)
+            tune_distributions["depth"] = IntUniformDistribution(1, 8)
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 

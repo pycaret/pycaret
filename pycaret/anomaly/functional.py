@@ -23,7 +23,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 def setup(
     data: Optional[DATAFRAME_LIKE] = None,
     data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
-    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = True,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -46,6 +46,7 @@ def setup(
     low_variance_threshold: Optional[float] = None,
     group_features: Optional[list] = None,
     group_names: Optional[Union[str, list]] = None,
+    drop_groups: bool = False,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
@@ -107,7 +108,7 @@ def setup(
         ``data_func`` must be set.
 
 
-    index: bool, int, str or sequence, default = False
+    index: bool, int, str or sequence, default = True
         Handle indices in the `data` dataframe.
             - If False: Reset to RangeIndex.
             - If True: Keep the provided index.
@@ -236,17 +237,21 @@ def setup(
 
     group_features: list, list of lists or None, default = None
         When the dataset contains features with related characteristics,
-        replace those fetaures with the following statistical properties
-        of that group: min, max, mean, std, median and mode. The parameter
-        takes a list of feature names or a list of lists of feature names
-        to specify multiple groups.
-
+        add new fetaures with the following statistical properties of that
+        group: min, max, mean, std, median and mode. The parameter takes a
+        list of feature names or a list of lists of feature names to specify
+        multiple groups.
 
     group_names: str, list, or None, default = None
         Group names to be used when naming the new features. The length
         should match with the number of groups specified in ``group_features``.
         If None, new features are named using the default form, e.g. group_1,
         group_2, etc... Ignored when ``group_features`` is None.
+
+
+    drop_groups: bool, default=False
+        Whether to drop the original features in the group. Ignored when
+        ``group_features`` is None.
 
 
     remove_multicollinearity: bool, default = False
@@ -468,6 +473,7 @@ def setup(
         low_variance_threshold=low_variance_threshold,
         group_features=group_features,
         group_names=group_names,
+        drop_groups=drop_groups,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         bin_numeric_features=bin_numeric_features,
@@ -748,160 +754,6 @@ def evaluate_model(
 
     return _CURRENT_EXPERIMENT.evaluate_model(
         estimator=model, feature_name=feature, fit_kwargs=fit_kwargs
-    )
-
-
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def tune_model(
-    model,
-    supervised_target: str,
-    supervised_type: Optional[str] = None,
-    supervised_estimator: Union[str, Any] = "lr",
-    method: str = "drop",
-    optimize: Optional[str] = None,
-    custom_grid: Optional[List[int]] = None,
-    fold: int = 10,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    round: int = 4,
-    verbose: bool = True,
-):
-
-    """
-    This function tunes the ``fraction`` parameter of a given model.
-
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.anomaly import *
-    >>> exp_name = setup(data = juice)
-    >>> tuned_knn = tune_model(model = 'knn', supervised_target = 'Purchase')
-
-
-    model: str
-        ID of an model available in the model library. Models that can be
-        tuned in this function (ID - Model):
-
-        * 'abod' - Angle-base Outlier Detection
-        * 'cluster' - Clustering-Based Local Outlier
-        * 'cof' - Connectivity-Based Outlier Factor
-        * 'histogram' - Histogram-based Outlier Detection
-        * 'iforest' - Isolation Forest
-        * 'knn' - k-Nearest Neighbors Detector
-        * 'lof' - Local Outlier Factor
-        * 'svm' - One-class SVM detector
-        * 'pca' - Principal Component Analysis
-        * 'mcd' - Minimum Covariance Determinant
-        * 'sod' - Subspace Outlier Detection
-        * 'sos' - Stochastic Outlier Selection
-
-
-    supervised_target: str
-        Name of the target column containing labels.
-
-
-    supervised_type: str, default = None
-        Type of task. 'classification' or 'regression'. Automatically inferred
-        when None.
-
-
-    supervised_estimator: str, default = None
-        Classification (ID - Name):
-            * 'lr' - Logistic Regression (Default)
-            * 'knn' - K Nearest Neighbour
-            * 'nb' - Naive Bayes
-            * 'dt' - Decision Tree Classifier
-            * 'svm' - SVM - Linear Kernel
-            * 'rbfsvm' - SVM - Radial Kernel
-            * 'gpc' - Gaussian Process Classifier
-            * 'mlp' - Multi Level Perceptron
-            * 'ridge' - Ridge Classifier
-            * 'rf' - Random Forest Classifier
-            * 'qda' - Quadratic Discriminant Analysis
-            * 'ada' - Ada Boost Classifier
-            * 'gbc' - Gradient Boosting Classifier
-            * 'lda' - Linear Discriminant Analysis
-            * 'et' - Extra Trees Classifier
-            * 'xgboost' - Extreme Gradient Boosting
-            * 'lightgbm' - Light Gradient Boosting
-            * 'catboost' - CatBoost Classifier
-
-        Regression (ID - Name):
-            * 'lr' - Linear Regression (Default)
-            * 'lasso' - Lasso Regression
-            * 'ridge' - Ridge Regression
-            * 'en' - Elastic Net
-            * 'lar' - Least Angle Regression
-            * 'llar' - Lasso Least Angle Regression
-            * 'omp' - Orthogonal Matching Pursuit
-            * 'br' - Bayesian Ridge
-            * 'ard' - Automatic Relevance Determ.
-            * 'par' - Passive Aggressive Regressor
-            * 'ransac' - Random Sample Consensus
-            * 'tr' - TheilSen Regressor
-            * 'huber' - Huber Regressor
-            * 'kr' - Kernel Ridge
-            * 'svm' - Support Vector Machine
-            * 'knn' - K Neighbors Regressor
-            * 'dt' - Decision Tree
-            * 'rf' - Random Forest
-            * 'et' - Extra Trees Regressor
-            * 'ada' - AdaBoost Regressor
-            * 'gbr' - Gradient Boosting
-            * 'mlp' - Multi Level Perceptron
-            * 'xgboost' - Extreme Gradient Boosting
-            * 'lightgbm' - Light Gradient Boosting
-            * 'catboost' - CatBoost Regressor
-
-
-    method: str, default = 'drop'
-        When method set to drop, it will drop the outliers from training dataset.
-        When 'surrogate', it uses decision function and label as a feature during
-        training.
-
-
-    optimize: str, default = None
-        For Classification tasks:
-            Accuracy, AUC, Recall, Precision, F1, Kappa (default = 'Accuracy')
-
-        For Regression tasks:
-            MAE, MSE, RMSE, R2, RMSLE, MAPE (default = 'R2')
-
-
-    custom_grid: list, default = None
-        By default, a pre-defined list of fraction values is iterated over to
-        optimize the supervised objective. To overwrite default iteration,
-        pass a list of fraction value to iterate over in custom_grid param.
-
-
-    fold: int, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2.
-
-
-    verbose: bool, default = True
-        Status update is not printed when verbose is set to False.
-
-
-    Returns:
-        Trained Model with optimized ``fraction`` parameter.
-
-    """
-
-    return _CURRENT_EXPERIMENT.tune_model(
-        model=model,
-        supervised_target=supervised_target,
-        supervised_type=supervised_type,
-        supervised_estimator=supervised_estimator,
-        method=method,
-        optimize=optimize,
-        custom_grid=custom_grid,
-        fold=fold,
-        fit_kwargs=fit_kwargs,
-        groups=groups,
-        round=round,
-        verbose=verbose,
     )
 
 

@@ -23,7 +23,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 def setup(
     data: Optional[DATAFRAME_LIKE] = None,
     data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
-    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = True,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -106,7 +106,7 @@ def setup(
         ``data_func`` must be set.
 
 
-    index: bool, int, str or sequence, default = False
+    index: bool, int, str or sequence, default = True
         Handle indices in the `data` dataframe.
             - If False: Reset to RangeIndex.
             - If True: Keep the provided index.
@@ -490,6 +490,43 @@ def setup(
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_allowed_engines(estimator: str) -> Optional[str]:
+    """Get all the allowed engines for the specified model
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engines should be retrieved,
+        e.g. "auto_arima"
+    Returns
+    -------
+    Optional[str]
+        The allowed engines for the model. If the model only supports the
+        default sktime engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_allowed_engines(estimator=estimator)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_engine(estimator: str) -> Optional[str]:
+    """Gets the model engine currently set in the experiment for the specified
+    model.
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engine should be retrieved,
+        e.g. "auto_arima"
+    Returns
+    -------
+    Optional[str]
+        The engine for the model. If the model only supports the default sktime
+        engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_engine(estimator=estimator)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_model(
     model: Union[str, Any],
     num_clusters: int = 4,
@@ -498,6 +535,7 @@ def create_model(
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    engine: Optional[str] = None,
     **kwargs,
 ):
 
@@ -561,6 +599,12 @@ def create_model(
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
+    engine: Optional[str] = None
+        The execution engine to use for the model, e.g. for K-Means Clustering ("kmeans"), users can
+        switch between "sklearn" and "sklearnex" by specifying
+        `engine="sklearnex"`.
+
+
     **kwargs:
         Additional keyword arguments to pass to the estimator.
 
@@ -595,6 +639,7 @@ def create_model(
         fit_kwargs=fit_kwargs,
         verbose=verbose,
         experiment_custom_tags=experiment_custom_tags,
+        engine=engine,
         **kwargs,
     )
 
@@ -771,152 +816,6 @@ def evaluate_model(
 
     return _CURRENT_EXPERIMENT.evaluate_model(
         estimator=model, feature_name=feature, fit_kwargs=fit_kwargs
-    )
-
-
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def tune_model(
-    model,
-    supervised_target: str,
-    supervised_type: Optional[str] = None,
-    supervised_estimator: Union[str, Any] = "lr",
-    optimize: Optional[str] = None,
-    custom_grid: Optional[List[int]] = None,
-    fold: int = 10,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    round: int = 4,
-    verbose: bool = True,
-):
-
-    """
-    This function tunes the ``num_clusters`` parameter of a given model.
-
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.clustering import *
-    >>> exp_name = setup(data = juice)
-    >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'Purchase')
-
-
-    model: str
-        ID of an model available in the model library. Models that can be
-        tuned in this function (ID - Model):
-
-        * 'kmeans' - K-Means Clustering
-        * 'sc' - Spectral Clustering
-        * 'hclust' - Agglomerative Clustering
-        * 'birch' - Birch Clustering
-        * 'kmodes' - K-Modes Clustering
-
-
-    supervised_target: str
-        Name of the target column containing labels.
-
-
-    supervised_type: str, default = None
-        Type of task. 'classification' or 'regression'. Automatically inferred
-        when None.
-
-
-    supervised_estimator: str, default = None
-        Classification (ID - Name):
-            * 'lr' - Logistic Regression (Default)
-            * 'knn' - K Nearest Neighbour
-            * 'nb' - Naive Bayes
-            * 'dt' - Decision Tree Classifier
-            * 'svm' - SVM - Linear Kernel
-            * 'rbfsvm' - SVM - Radial Kernel
-            * 'gpc' - Gaussian Process Classifier
-            * 'mlp' - Multi Level Perceptron
-            * 'ridge' - Ridge Classifier
-            * 'rf' - Random Forest Classifier
-            * 'qda' - Quadratic Discriminant Analysis
-            * 'ada' - Ada Boost Classifier
-            * 'gbc' - Gradient Boosting Classifier
-            * 'lda' - Linear Discriminant Analysis
-            * 'et' - Extra Trees Classifier
-            * 'xgboost' - Extreme Gradient Boosting
-            * 'lightgbm' - Light Gradient Boosting
-            * 'catboost' - CatBoost Classifier
-
-        Regression (ID - Name):
-            * 'lr' - Linear Regression (Default)
-            * 'lasso' - Lasso Regression
-            * 'ridge' - Ridge Regression
-            * 'en' - Elastic Net
-            * 'lar' - Least Angle Regression
-            * 'llar' - Lasso Least Angle Regression
-            * 'omp' - Orthogonal Matching Pursuit
-            * 'br' - Bayesian Ridge
-            * 'ard' - Automatic Relevance Determ.
-            * 'par' - Passive Aggressive Regressor
-            * 'ransac' - Random Sample Consensus
-            * 'tr' - TheilSen Regressor
-            * 'huber' - Huber Regressor
-            * 'kr' - Kernel Ridge
-            * 'svm' - Support Vector Machine
-            * 'knn' - K Neighbors Regressor
-            * 'dt' - Decision Tree
-            * 'rf' - Random Forest
-            * 'et' - Extra Trees Regressor
-            * 'ada' - AdaBoost Regressor
-            * 'gbr' - Gradient Boosting
-            * 'mlp' - Multi Level Perceptron
-            * 'xgboost' - Extreme Gradient Boosting
-            * 'lightgbm' - Light Gradient Boosting
-            * 'catboost' - CatBoost Regressor
-
-
-    optimize: str, default = None
-        For Classification tasks:
-            Accuracy, AUC, Recall, Precision, F1, Kappa (default = 'Accuracy')
-
-        For Regression tasks:
-            MAE, MSE, RMSE, R2, RMSLE, MAPE (default = 'R2')
-
-
-    custom_grid: list, default = None
-        By default, a pre-defined number of clusters is iterated over to
-        optimize the supervised objective. To overwrite default iteration,
-        pass a list of num_clusters to iterate over in custom_grid param.
-
-
-    fold: int, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2.
-
-
-    verbose: bool, default = True
-        Status update is not printed when verbose is set to False.
-
-
-    Returns:
-        Trained Model with optimized ``num_clusters`` parameter.
-
-
-    Warnings
-    --------
-    - Affinity Propagation, Mean shift, Density-Based Spatial Clustering
-      and OPTICS Clustering cannot be used in this function since they donot
-      support the ``num_clusters`` param.
-
-
-    """
-    return _CURRENT_EXPERIMENT.tune_model(
-        model=model,
-        supervised_target=supervised_target,
-        supervised_type=supervised_type,
-        supervised_estimator=supervised_estimator,
-        optimize=optimize,
-        custom_grid=custom_grid,
-        fold=fold,
-        fit_kwargs=fit_kwargs,
-        groups=groups,
-        round=round,
-        verbose=verbose,
     )
 
 

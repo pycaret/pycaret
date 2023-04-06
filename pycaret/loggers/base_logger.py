@@ -4,7 +4,7 @@ SETUP_TAG = "Session Initialized"
 
 
 class BaseLogger(ABC):
-    def init_logger():
+    def init_logger(self):
         pass
 
     def __del__(self):
@@ -19,7 +19,7 @@ class BaseLogger(ABC):
     def log_params(self, params, model_name=None):
         pass
 
-    def init_experiment(self, exp_name_log, full_name=None, **kwargs):
+    def init_experiment(self, exp_name_log, full_name=None, setup=True, **kwargs):
         pass
 
     def set_tags(self, source, experiment_custom_tags, runtime):

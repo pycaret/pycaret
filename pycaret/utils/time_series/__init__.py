@@ -208,7 +208,6 @@ def get_sp_from_str(str_freq: str) -> int:
                 f"suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
             )
     else:
-
         if str_freq in SeasonalPeriod.__members__:
             seasonal_period = SeasonalPeriod[str_freq].value
             return seasonal_period
@@ -259,9 +258,7 @@ def auto_detect_sp(
     # lags_to_use = min(10 * np.log10(nobs), nobs - 1)
     # lags_to_use = max(lags_to_use, nobs/3)
     lags_to_use = int((nobs - 1) / 2)
-    # +1 added since SeasonalityACF uses uses upto nlags-1
-    # TODO: Remove after https://github.com/sktime/sktime/issues/4169 is fixed
-    sp_est = SeasonalityACF(nlags=lags_to_use + 1)
+    sp_est = SeasonalityACF(nlags=lags_to_use)
     sp_est.fit(yt)
 
     primary_sp = sp_est.get_fitted_params().get("sp")
@@ -360,6 +357,71 @@ def remove_harmonics_from_sp(
         final_filtered_sps = list(dict.fromkeys(final_filtered_sps))
 
     return final_filtered_sps
+
+
+def clean_time_index(
+    data: pd.DataFrame, freq: str, index_col: Optional[str] = None
+) -> pd.DataFrame:
+    """Cleans and sets the index of the dataframe in a pycaret compliant format.
+
+    Allowed index in pycaret can be of type Int64Index, DatetimeIndex, or PeriodIndex.
+    Steps followed by this function (in order) are as follows:
+    1. If column is provided and is of type string, it is converted to PerodIndex.
+    2. If column is provided, it is set as index
+    3. If Index is DataTimeIndex, it is converted to PeriodIndex (IntIndex is left as is)
+    2. If Index is PeriodIndex, then missing index values are added and filled with np.nan.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data that needs to have its index cleaned
+    freq : str
+        The frequency of the data. Valid values are the ones that can be provided
+        to pd.period_range, pd.PeriodIndex, pd.to_period. Examples: "H", "D", "M".
+    index_col : Optional[str], optional
+        If index values are in a column, then this argument is the column name,
+        by default None which assumes that the index has already been set.
+
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned data with index = PeriodIndex or IntIndex and with missing index
+        values filled with np.nan (if PeriodIndex only).
+    """
+    data_ = data.copy()
+
+    # Step 1: Set the index if not already set
+    if index_col is not None:
+        # If column has string values, convert to PeriodIndex since pycaret
+        # works best with PeriodIndex. For all other index types (DatetimeIndex,
+        # PeriodIndex, Int64Index), leave as is.
+        if isinstance(data_[index_col][0], str):
+            data_[index_col] = pd.PeriodIndex(data_[index_col], freq=freq)
+        data_.set_index(index_col, inplace=True)
+
+    # Step 2: Convert DateTimeIndex to PeriodIndex (IntIndex is left as is)
+    if isinstance(data_.index, pd.DatetimeIndex):
+        try:
+            data_.index = data_.index.to_period(freq=freq)
+        except AttributeError:
+            raise AttributeError(
+                f"You are using a frequency of '{freq}' along with a DatetimeIndex. "
+                "PyCaret internally converts DateTimeIndex to PeriodIndex and this "
+                "frequency is not supported by PeriodIndex.\nAs an alternative, you "
+                "can convert the index to Int64Index by using the following code "
+                "and pass to pycaret:\n"
+                ">>> data.index = data.index.astype('int64') "
+                "\nLater, when you get the results back from "
+                "pycaret, you can convert them back to DatetimeIndex by using:\n"
+                ">>> data.index = pd.to_datetime(data.index)"
+            )
+
+    # Step 3: Fill missing index values (only if index is PeriodIndex, not for IntIndex)
+    if isinstance(data_.index, pd.PeriodIndex):
+        idx = pd.period_range(min(data_.index), max(data_.index), freq=freq)
+        data_ = data_.reindex(idx, fill_value=np.nan)
+
+    return data_
 
 
 class SeasonalPeriod(IntEnum):

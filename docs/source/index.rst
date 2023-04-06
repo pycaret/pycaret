@@ -5,7 +5,7 @@ PyCaret
 
 PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
 
-In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few words only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as `scikit-learn <https://scikit-learn.org/stable/>`_, `XGBoost <https://xgboost.readthedocs.io/en/latest/>`_, `LightGBM <https://github.com/microsoft/LightGBM>`_, `CatBoost <https://catboost.ai/>`_, `spaCy <https://spacy.io/>`_, `Optuna <https://github.com/optuna/optuna>`_, `Hyperopt <https://github.com/hyperopt/hyperopt>`_, `Ray <https://github.com/ray-project/ray/tree/master/python/ray/tune>`_, and many more. 
+In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few words only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as `scikit-learn <https://scikit-learn.org/stable/>`_, `XGBoost <https://xgboost.readthedocs.io/en/latest/>`_, `LightGBM <https://github.com/microsoft/LightGBM>`_, `CatBoost <https://catboost.ai/>`_, `Optuna <https://github.com/optuna/optuna>`_, `Hyperopt <https://github.com/hyperopt/hyperopt>`_, `Ray <https://github.com/ray-project/ray/tree/master/python/ray/tune>`_, and many more. 
 
 The design and simplicity of PyCaret is inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data-related challenges in the business setting.
 
@@ -61,6 +61,4 @@ We are appreciated that PyCaret has been increasingly referred and cited in scie
    api/time_series
    api/clustering
    api/anomaly
-   api/nlp
-   api/arules
    api/datasets
