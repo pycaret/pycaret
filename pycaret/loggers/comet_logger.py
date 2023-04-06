@@ -50,7 +50,7 @@ class CometLogger(BaseLogger):
             result_copy["Object"] = result_copy["Object"].apply(
                 lambda obj: str(type(obj).__name__)
             )
-        self.run.log_metrics({source: result_copy})
+        self.run.log_table("compare.csv", result_copy)
 
     def log_metrics(self, metrics, source=None):
         self.run.log_metrics(metrics)
