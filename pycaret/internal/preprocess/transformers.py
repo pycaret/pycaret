@@ -8,6 +8,7 @@ from inspect import signature
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 from scipy import stats
 from sklearn.base import BaseEstimator, TransformerMixin, clone
 from sklearn.covariance import EllipticEnvelope
@@ -81,7 +82,15 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
         # If columns were added or removed
         temp_cols = []
         for i, col in enumerate(array.T, start=2):
-            mask = df.apply(lambda c: np.array_equal(c, col, equal_nan=True))
+            # equal_nan=True fails for non-numeric arrays
+            mask = df.apply(
+                lambda c: np.array_equal(
+                    c,
+                    col,
+                    equal_nan=is_numeric_dtype(c)
+                    and np.issubdtype(col.dtype, np.number),
+                )
+            )
             if any(mask) and mask[mask].index.values[0] not in temp_cols:
                 temp_cols.append(mask[mask].index.values[0])
             else:
