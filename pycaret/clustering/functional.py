@@ -980,7 +980,7 @@ def save_model(
     >>> from pycaret.clustering import *
     >>> exp_name = setup(data = jewellery)
     >>> kmeans = create_model('kmeans')
-    >>> save_model(lr, 'saved_kmeans_model')
+    >>> save_model(kmeans, 'saved_kmeans_model')
 
 
     model: scikit-learn compatible object
