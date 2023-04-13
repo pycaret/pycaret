@@ -78,7 +78,7 @@ jobs:
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
+          python -m pip install -U pytest numpy
 
           pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
@@ -120,7 +120,7 @@ jobs:
         run: |
           $env:SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL = 'True'
           python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
+          python -m pip install -U pytest numpy
 
           pip install -e ".[full, test]"
           pip install -r requirements-prophet.txt
@@ -155,7 +155,7 @@ jobs:
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install --upgrade pip
-          python -m pip install -U pytest codecov numpy
+          python -m pip install -U pytest numpy
           pip install -e ".[full, test]"
       - name: Python version and dependency list
         run: |
@@ -187,7 +187,7 @@ jobs:
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
+          python -m pip install -U pytest numpy
 
           pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
@@ -221,7 +221,7 @@ jobs:
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
+          python -m pip install -U pytest numpy
 
           pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
@@ -255,7 +255,7 @@ jobs:
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
+          python -m pip install -U pytest numpy
 
           pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
