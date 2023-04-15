@@ -971,7 +971,6 @@ class ETSContainer(TimeSeriesContainer):
             is_gpu_enabled=self.gpu_imported,
         )
 
-
     @property
     def _set_args(self) -> Dict[str, Any]:
         # TODO: Check if there is a formal test for type of seasonality
