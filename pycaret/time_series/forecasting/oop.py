@@ -1205,14 +1205,19 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 data_label="sth",
             )
 
-            key = list(data_mult.get("decomp").keys())[0]
-            std_add = np.std(data_add.get("decomp")[key].resid)
-            std_mul = np.std(data_mult.get("decomp")[key].resid)
-
-            if std_mul < std_add:
-                seasonality_type = "mul"
-            else:
+            if data_add is None or data_mult is None:
+                # None is retuirned when decomposition fails
+                # Default to "add" since mul can give issues
                 seasonality_type = "add"
+            else:
+                key = list(data_mult.get("decomp").keys())[0]
+                std_add = np.std(data_add.get("decomp")[key].resid)
+                std_mul = np.std(data_mult.get("decomp")[key].resid)
+
+                if std_mul < std_add:
+                    seasonality_type = "mul"
+                else:
+                    seasonality_type = "add"
         elif self.seasonality_present and not self.strictly_positive:
             seasonality_type = "add"
         else:
