@@ -36,7 +36,7 @@ from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-from pycaret.internal.plots.time_series import _get_plot
+from pycaret.internal.plots.time_series import _get_plot, plot_time_series_decomposition
 from pycaret.internal.plots.utils.time_series import (
     _clean_model_results_labels,
     _get_data_types_to_plot,
@@ -202,6 +202,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             ["All Seasonalities to Use", self.all_sps_to_use],
             ["Primary Seasonality", self.primary_sp_to_use],
             ["Seasonality Present", self.seasonality_present],
+            ["Seasonality Type", self.seasonality_type],
             ["Target Strictly Positive", self.strictly_positive],
             ["Target White Noise", self.white_noise],
             ["Recommended d", self.lowercase_d],
@@ -1162,6 +1163,64 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         self.strictly_positive = np.all(self.y_transformed > 0)
         return self
 
+    def _set_seasonal_type(self) -> "TSForecastingExperiment":
+        """Sets the seasonal type to be used in the models.
+
+        Decomposes data using additive and multiplicative seasonal decomposition
+        Then selects the seasonality type that has the least amount of variance
+        in the residuals.
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        if self.seasonality_present and self.strictly_positive:
+            # Try out additive and multiplicative seasonal decompostion
+            # Check residuals and select the one with the least amount of variance
+            data_to_use = pd.DataFrame(
+                self._get_y_data(
+                    split=self.hyperparameter_split, data_type="transformed"
+                )
+            )
+
+            _, data_add = plot_time_series_decomposition(
+                data=data_to_use,
+                plot="decomp",
+                data_kwargs={
+                    "seasonal_period": self.primary_sp_to_use,
+                    "type": "additive",
+                },
+                fig_defaults={"template": "plotly_dark", "width": 1000, "height": 600},
+                data_label="sth",
+            )
+            _, data_mult = plot_time_series_decomposition(
+                data=data_to_use,
+                plot="decomp",
+                data_kwargs={
+                    "seasonal_period": self.primary_sp_to_use,
+                    "type": "multiplicative",
+                },
+                fig_defaults={"template": "plotly_dark", "width": 1000, "height": 600},
+                data_label="sth",
+            )
+
+            key = list(data_mult.get("decomp").keys())[0]
+            std_add = np.std(data_add.get("decomp")[key].resid)
+            std_mul = np.std(data_mult.get("decomp")[key].resid)
+
+            if std_mul < std_add:
+                seasonality_type = "mul"
+            else:
+                seasonality_type = "add"
+        elif self.seasonality_present and not self.strictly_positive:
+            seasonality_type = "add"
+        else:
+            seasonality_type = None
+
+        self.seasonality_type = seasonality_type
+        return self
+
     def _set_is_white_noise(self) -> "TSForecastingExperiment":
         """Is the data being modeled white noise?
 
@@ -1271,6 +1330,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
+        self._set_seasonal_type()
         self._set_is_white_noise()
         self._set_lowercase_d()
         self._set_uppercase_d()
