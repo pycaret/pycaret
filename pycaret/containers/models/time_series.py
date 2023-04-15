@@ -1647,46 +1647,46 @@ class LassoCdsDtContainer(CdsDtContainer):
         return tune_distributions
 
 
-class LarsCdsDtContainer(CdsDtContainer):
-    id = "lar_cds_dt"
-    name = "Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
-    active = True  # set back to True as the parent has False
-    model_type = TSModelTypes.LINEAR
+# class LarsCdsDtContainer(CdsDtContainer):
+#     id = "lar_cds_dt"
+#     name = "Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
+#     active = True  # set back to True as the parent has False
+#     model_type = TSModelTypes.LINEAR
 
-    def return_regressor_class(self):
-        from sklearn.linear_model import Lars
+#     def return_regressor_class(self):
+#         from sklearn.linear_model import Lars
 
-        return Lars
+#         return Lars
 
-    @property
-    def _set_tune_grid(self) -> Dict[str, List[Any]]:
-        tune_grid = {
-            "sp": [self.sp],
-            "deseasonal_model": ["additive"],
-            "degree": [1],
-            "window_length": [10],
-            "regressor__eps": [0.0001, 0.001, 0.01, 0.1],
-            "regressor__fit_intercept": [True, False],
-        }
-        return tune_grid
+#     @property
+#     def _set_tune_grid(self) -> Dict[str, List[Any]]:
+#         tune_grid = {
+#             "sp": [self.sp],
+#             "deseasonal_model": ["additive"],
+#             "degree": [1],
+#             "window_length": [10],
+#             "regressor__eps": [0.0001, 0.001, 0.01, 0.1],
+#             "regressor__fit_intercept": [True, False],
+#         }
+#         return tune_grid
 
-    @property
-    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-        tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[self.sp, 2 * self.sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
-            ),
-            "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
-            "regressor__eps": UniformDistribution(0.00001, 0.1, log=True),
-            "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
-        }
-        return tune_distributions
+#     @property
+#     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+#         tune_distributions = {
+#             "sp": CategoricalDistribution(
+#                 values=[self.sp, 2 * self.sp]
+#             ),  # TODO: 'None' errors out here
+#             "deseasonal_model": CategoricalDistribution(
+#                 values=["additive", "multiplicative"]
+#                 if self.strictly_positive
+#                 else ["additive"]
+#             ),
+#             "degree": IntUniformDistribution(lower=1, upper=10),
+#             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
+#             "regressor__eps": UniformDistribution(0.00001, 0.1, log=True),
+#             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
+#         }
+#         return tune_distributions
 
 
 class LassoLarsCdsDtContainer(CdsDtContainer):
@@ -1840,49 +1840,49 @@ class HuberCdsDtContainer(CdsDtContainer):
         return tune_distributions
 
 
-class PassiveAggressiveCdsDtContainer(CdsDtContainer):
-    id = "par_cds_dt"
-    name = "Passive Aggressive w/ Cond. Deseasonalize & Detrending"
-    active = True  # set back to True as the parent has False
-    model_type = TSModelTypes.LINEAR
+# class PassiveAggressiveCdsDtContainer(CdsDtContainer):
+#     id = "par_cds_dt"
+#     name = "Passive Aggressive w/ Cond. Deseasonalize & Detrending"
+#     active = True  # set back to True as the parent has False
+#     model_type = TSModelTypes.LINEAR
 
-    def return_regressor_class(self):
-        from sklearn.linear_model import PassiveAggressiveRegressor
+#     def return_regressor_class(self):
+#         from sklearn.linear_model import PassiveAggressiveRegressor
 
-        return PassiveAggressiveRegressor
+#         return PassiveAggressiveRegressor
 
-    @property
-    def _set_tune_grid(self) -> Dict[str, List[Any]]:
-        tune_grid = {
-            "sp": [self.sp],
-            "deseasonal_model": ["additive"],
-            "degree": [1],
-            "window_length": [10],
-            "regressor__epsilon": [0.1, 0.5, 0.9],
-            "regressor__C": [0, 5, 10],
-            "regressor__fit_intercept": [True, False],
-            "regressor__loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
-            "regressor__shuffle": [True, False],
-        }
-        return tune_grid
+#     @property
+#     def _set_tune_grid(self) -> Dict[str, List[Any]]:
+#         tune_grid = {
+#             "sp": [self.sp],
+#             "deseasonal_model": ["additive"],
+#             "degree": [1],
+#             "window_length": [10],
+#             "regressor__epsilon": [0.1, 0.5, 0.9],
+#             "regressor__C": [0, 5, 10],
+#             "regressor__fit_intercept": [True, False],
+#             "regressor__loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
+#             "regressor__shuffle": [True, False],
+#         }
+#         return tune_grid
 
-    @property
-    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-        tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[self.sp, 2 * self.sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
-            ),
-            "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
-            "regressor__C": UniformDistribution(0, 10),
-            "regressor__epsilon": UniformDistribution(0.0000000001, 0.9999999999),
-        }
-        return tune_distributions
+#     @property
+#     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+#         tune_distributions = {
+#             "sp": CategoricalDistribution(
+#                 values=[self.sp, 2 * self.sp]
+#             ),  # TODO: 'None' errors out here
+#             "deseasonal_model": CategoricalDistribution(
+#                 values=["additive", "multiplicative"]
+#                 if self.strictly_positive
+#                 else ["additive"]
+#             ),
+#             "degree": IntUniformDistribution(lower=1, upper=10),
+#             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
+#             "regressor__C": UniformDistribution(0, 10),
+#             "regressor__epsilon": UniformDistribution(0.0000000001, 0.9999999999),
+#         }
+#         return tune_distributions
 
 
 class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
