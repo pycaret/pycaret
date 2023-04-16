@@ -2,4 +2,6 @@ pytest>=7.0.1
 moto>=3.0.7
 # codecov>=2.1.12  # https://github.com/home-assistant/core/issues/91283
 fugue[dask]>=0.8.0
+dask<2023.4.0
+distributed<2023.4.0
 dash[testing]
