@@ -297,39 +297,41 @@ def save_model(
     logger.info("Adding model into prep_pipe")
 
     if use_case == MLUsecase.TIME_SERIES:
-        model_ = deepcopy(model)
         if prep_pipe_:
             pipeline = deepcopy(prep_pipe_)
-            model_ = _add_model_to_pipeline(pipeline=pipeline, model=model_)
+            model = _add_model_to_pipeline(pipeline=pipeline, model=model)
         else:
             logger.warning(
                 "Only Model saved. Transformations in prep_pipe are ignored."
             )
     else:
         if isinstance(model, Pipeline):
-            model_ = deepcopy(model)
             logger.warning("Only Model saved as it was a pipeline.")
         elif not prep_pipe_:
-            model_ = deepcopy(model)
             logger.warning(
                 "Only Model saved. Transformations in prep_pipe are ignored."
             )
         else:
             model_ = deepcopy(prep_pipe_)
             model_.steps.append(("trained_model", model))
+            model = model_
 
     model_name = f"{model_name}.pkl"
-    joblib.dump(model_, model_name, **kwargs)
+    joblib.dump(model, model_name, **kwargs)
     if verbose:
-        print("Transformation Pipeline and Model Successfully Saved")
+        if prep_pipe_:
+            pipe_msg = "Transformation Pipeline and "
+        else:
+            pipe_msg = ""
+        print(f"{pipe_msg}Model Successfully Saved")
 
     logger.info(f"{model_name} saved in current working directory")
-    logger.info(str(model_))
+    logger.info(str(model))
     logger.info(
         "save_model() successfully completed......................................"
     )
     gc.collect()
-    return model_, model_name
+    return model, model_name
 
 
 def load_model(
