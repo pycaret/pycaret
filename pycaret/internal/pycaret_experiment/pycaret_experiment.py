@@ -10,7 +10,6 @@ import pandas as pd
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
-from pycaret import show_versions
 from pycaret.internal.logging import get_logger
 from pycaret.utils.constants import DATAFRAME_LIKE
 from pycaret.utils.generic import LazyExperimentMapping
@@ -115,6 +114,8 @@ class _PyCaretExperiment:
         self.logger.info(f"Memory: {psutil.virtual_memory()}")
         self.logger.info(f"Physical Core: {psutil.cpu_count(logical=False)}")
         self.logger.info(f"Logical Core: {psutil.cpu_count(logical=True)}")
+
+        from pycaret.utils._show_versions import show_versions
 
         self.logger.info("Checking libraries")
         self.logger.info(show_versions(logger=self.logger))
