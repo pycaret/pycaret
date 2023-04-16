@@ -1097,69 +1097,6 @@ class ThetaContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class TBATSContainer(TimeSeriesContainer):
-    model_type = TSModelTypes.CLASSICAL
-
-    def __init__(self, experiment) -> None:
-        self.logger = get_logger()
-        np.random.seed(experiment.seed)
-        self.gpu_imported = False
-
-        from sktime.forecasting.tbats import TBATS
-
-        # Disable container if certain features are not supported but enforced ----
-        dummy = TBATS()
-        self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
-        if not self.active:
-            return
-
-        self.sp = experiment.all_sps_to_use
-
-        self.seasonality_present = experiment.seasonality_present
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        super().__init__(
-            id="tbats",
-            name="TBATS",
-            class_def=TBATS,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            is_turbo=False,
-        )
-
-    @property
-    def _set_args(self) -> dict:
-        args = (
-            {
-                "sp": self.sp,
-                "use_box_cox": True,
-                "use_arma_errors": True,
-                "show_warnings": False,
-            }
-            if self.seasonality_present
-            else {}
-        )
-        return args
-
-    @property
-    def _set_tune_grid(self) -> dict:
-        tune_grid = {
-            "use_damped_trend": [True, False],
-            "use_trend": [True, False],
-            "sp": [self.sp],
-        }
-        return tune_grid
-
-
 class BATSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
@@ -1178,6 +1115,7 @@ class BATSContainer(TimeSeriesContainer):
 
         self.sp = experiment.primary_sp_to_use
         self.seasonality_present = experiment.seasonality_present
+        self.n_jobs_param = experiment.n_jobs_param
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -1203,9 +1141,10 @@ class BATSContainer(TimeSeriesContainer):
         args = (
             {
                 "sp": self.sp,
-                "use_box_cox": True,
+                "use_box_cox": False,  # None or True leads to many errors in M3 dataset
                 "use_arma_errors": True,
                 "show_warnings": False,
+                "n_jobs": self.n_jobs_param,
             }
             if self.seasonality_present
             else {}
@@ -1214,10 +1153,80 @@ class BATSContainer(TimeSeriesContainer):
 
     @property
     def _set_tune_grid(self) -> dict:
+        # None considers both True and False and selects the best one.
         tune_grid = {
-            "use_damped_trend": [True, False],
-            "use_trend": [True, False],
             "sp": [self.sp],
+            "use_box_cox": [None],
+            "use_trend": [None],
+            "use_damped_trend": [None],
+            "n_jobs": [self.n_jobs_param],
+        }
+        return tune_grid
+
+
+class TBATSContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.CLASSICAL
+
+    def __init__(self, experiment) -> None:
+        self.logger = get_logger()
+        np.random.seed(experiment.seed)
+        self.gpu_imported = False
+
+        from sktime.forecasting.tbats import TBATS
+
+        # Disable container if certain features are not supported but enforced ----
+        dummy = TBATS()
+        self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
+        if not self.active:
+            return
+
+        self.sp = experiment.all_sps_to_use
+        self.seasonality_present = experiment.seasonality_present
+        self.n_jobs_param = experiment.n_jobs_param
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="tbats",
+            name="TBATS",
+            class_def=TBATS,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=self.gpu_imported,
+            is_turbo=False,
+        )
+
+    @property
+    def _set_args(self) -> dict:
+        args = (
+            {
+                "sp": self.sp,
+                "use_box_cox": False,  # None or True leads to many errors in M3 dataset
+                "use_arma_errors": True,
+                "show_warnings": False,
+                "n_jobs": self.n_jobs_param,
+            }
+            if self.seasonality_present
+            else {}
+        )
+        return args
+
+    @property
+    def _set_tune_grid(self) -> dict:
+        # None considers both True and False and selects the best one.
+        tune_grid = {
+            "sp": [self.sp],
+            "use_box_cox": [None],
+            "use_trend": [None],
+            "use_damped_trend": [None],
+            "n_jobs": [self.n_jobs_param],
         }
         return tune_grid
 
