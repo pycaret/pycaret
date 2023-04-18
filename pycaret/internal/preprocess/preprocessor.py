@@ -159,6 +159,13 @@ class Preprocessor:
                 f"{y.name}. To proceed, remove the respective rows from the data. "
             )
 
+        # Check if dataset have columns with same name (https://github.com/pycaret/pycaret/issues/3482)
+        duplicated_cols = data.columns[data.columns.duplicated()]
+        if len(duplicated_cols) > 0:
+            raise ValueError(
+                f"The dataset contains the following duplicate columns: {duplicated_cols}"
+            )
+
         return df_shrink_dtypes(
             X.merge(y.to_frame(), left_index=True, right_index=True)
         )
