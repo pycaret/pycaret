@@ -1,16 +1,12 @@
-from sklearn.metrics._scorer import _PredictScorer, get_scorer  # type: ignore
-
-from pycaret.utils.generic import check_metric
-
-version_ = "3.0.0.rc5"
-nightly_version_ = "3.0.0"
-
-__version__ = version_
-
-
 def version():
+    from pycaret import version_
+
     return version_
 
 
-def nightly_version():
-    return nightly_version_
+# Hack to lazy import __version__ from `pycaret`.
+# Needed to avoid a circular dependency.
+def __getattr__(name):
+    if name in ("__version__", "version_"):
+        return version()
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

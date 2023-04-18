@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 from IPython.display import display as ipython_display
+from pandas.api.types import is_string_dtype
 from plotly_resampler import FigureResampler, FigureWidgetResampler
 from sklearn.base import clone
 from sktime.forecasting.base import BaseForecaster, ForecastingHorizon
@@ -35,8 +36,6 @@ from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-
-# from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _get_plot
 from pycaret.internal.plots.utils.time_series import (
     _clean_model_results_labels,
@@ -47,8 +46,8 @@ from pycaret.internal.plots.utils.time_series import (
 from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
     TSForecastingPreprocessor,
 )
-from pycaret.internal.pycaret_experiment.supervised_experiment import (
-    _SupervisedExperiment,
+from pycaret.internal.pycaret_experiment.ts_supervised_experiment import (
+    _TSSupervisedExperiment,
 )
 from pycaret.internal.tests.time_series import (
     recommend_lowercase_d,
@@ -67,6 +66,7 @@ from pycaret.utils.time_series import (
     TSModelTypes,
     auto_detect_sp,
     get_sp_from_str,
+    remove_harmonics_from_sp,
 )
 from pycaret.utils.time_series.forecasting import (
     PyCaretForecastingHorizonTypes,
@@ -89,27 +89,29 @@ from pycaret.utils.time_series.forecasting.pipeline import (
 LOGGER = get_logger()
 
 
-class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
+class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor):
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.TIME_SERIES
         self.exp_name_log = "ts-default-name"
 
-        # Values in variable_keys are accessible in globals
-        self.variable_keys = self.variable_keys.difference(
+        # Values in _variable_keys are accessible in globals
+        self._variable_keys = self._variable_keys.difference(
             {
                 "target_param",
                 "fold_shuffle_param",
                 "fold_groups_param",
             }
         )
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "fh",
-                "seasonal_period",
                 "seasonality_present",
+                "candidate_sps",
+                "significant_sps",
+                "significant_sps_no_harmonics",
+                "all_sps_to_use",
                 "primary_sp_to_use",
-                "all_sp_values",
                 "strictly_positive",
                 "enforce_pi",
                 "enforce_exogenous",
@@ -170,7 +172,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """Returns the dataframe to be displayed at the end of setup"""
         n_nans = 100 * self.data.isna().any(axis=1).sum() / len(self.data)
 
-        display_container = [
+        _display_container = [
             ["session_id", self.seed],
             ["Target", self.target_param],
             ["Approach", self.approach_type.value],
@@ -183,12 +185,23 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ["Fold Generator", type(self.fold_generator).__name__],
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
+            ["Splits used for hyperparameters", self.hyperparameter_split],
+            ["User Defined Seasonal Period(s)", self.seasonal_period],
+            ["Ignore Seasonality Test", self.ignore_seasonality_test],
             ["Seasonality Detection Algo", self.sp_detection],
-            ["Num Seasonalities to Use", self.multiple_sp_to_use],
-            ["Seasonal Period(s) Tested", self.seasonal_period],
-            ["Seasonality Present", self.seasonality_present],
-            ["Seasonalities Detected", self.all_sp_values],
+            ["Max Period to Consider", self.max_sp_to_consider],
+            ["Seasonal Period(s) Tested", self.candidate_sps],
+            ["Significant Seasonal Period(s)", self.significant_sps],
+            [
+                "Significant Seasonal Period(s) without Harmonics",
+                self.significant_sps_no_harmonics,
+            ],
+            ["Remove Harmonics", self.remove_harmonics],
+            ["Harmonics Order Method", self.harmonic_order_method],
+            ["Num Seasonalities to Use", self.num_sps_to_use],
+            ["All Seasonalities to Use", self.all_sps_to_use],
             ["Primary Seasonality", self.primary_sp_to_use],
+            ["Seasonality Present", self.seasonality_present],
             ["Target Strictly Positive", self.strictly_positive],
             ["Target White Noise", self.white_noise],
             ["Recommended d", self.lowercase_d],
@@ -197,7 +210,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ]
 
         if self.preprocess:
-            display_container.extend(
+            _display_container.extend(
                 [
                     ["Numerical Imputation (Target)", self.numeric_imputation_target],
                     ["Transformation (Target)", self.transform_target],
@@ -210,7 +223,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
 
             if self.exogenous_present == TSExogenousPresent.YES:
-                display_container.extend(
+                _display_container.extend(
                     [
                         [
                             "Numerical Imputation (Exogenous)",
@@ -224,7 +237,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 # This is added even if there are no explicit exogenous variables
                 # since exogenous variables can be created from the Index (e.g.
                 # DateTimeFeatures) using self.fe_exogenous
-                display_container.extend(
+                _display_container.extend(
                     [
                         [
                             "Feature Engineering (Exogenous)",
@@ -233,7 +246,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     ]
                 )
 
-        display_container.extend(
+        _display_container.extend(
             [
                 ["CPU Jobs", self.n_jobs_param],
                 ["Use GPU", self.gpu_param],
@@ -243,11 +256,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ]
         )
 
-        display_container = pd.DataFrame(
-            display_container, columns=["Description", "Value"]
+        _display_container = pd.DataFrame(
+            _display_container, columns=["Description", "Value"]
         )
 
-        return display_container
+        return _display_container
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
@@ -348,13 +361,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 f"Data must be a pandas Series or DataFrame, got object of {type(data)} type!"
             )
 
-        # Make a local copy (to perfrom inplace operation on the original dataset)
+        # Make a local copy (to perform inplace operation on the original dataset)
         data_ = data.copy()
 
         if isinstance(data_, pd.Series):
             # Set data name is not already set
             data_.name = data_.name if data.name is not None else "Time Series"
-            data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
+            data_ = pd.DataFrame(data_)  # Force conversion to DataFrame
 
         # Clean column names ----
         data_.columns = [str(x) for x in data_.columns]
@@ -376,7 +389,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         Returns
         -------
         List[str]
-            Target names. Returns a list to suppport multivariate TS in the future.
+            Target names. Returns a list to support multivariate TS in the future.
 
         Raises
         ------
@@ -464,9 +477,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         (3) If sp_detection == "index" and the index is not one of the allowed type
         (pd.PeriodIndex, pd.DatetimeIndex), then seasonal period must be provided.
 
-        Finally, index is coerced into period index which is used in subsequent
-        steps and the appropriate class for data index is set so that it can be
-        used to disable certain models which do not support that type of index.
+        If 'index' column is specified & is of type string, it is assumed to be
+        coercible to pd.DatetimeIndex and it is coerced. If it is of type Int
+        (e.g. RangeIndex, Int64Index), or of type DatetimeIndex or or type
+        PeriodIndex, keep it as is.
+
+        Finally, if index is of type pd.DatetimeIndex, it is coerced into
+        pd.PeriodIndex which is used in subsequent steps and the appropriate
+        class for data index is set so that it can be used to disable certain
+        models which do not support that type of index.
 
         Parameters
         ----------
@@ -495,7 +514,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 unique_index_before = len(self.data[index]) == len(
                     set(self.data[index])
                 )
-                self.data[index] = pd.to_datetime(self.data[index])
+                # Only coerce the column to datetime if it is of type string.
+                # If it is of type Int (e.g. RangeIndex, Int64Index), or of type
+                # DatetimeIndex or or type PeriodIndex, keep it as is.
+                if is_string_dtype(self.data[index]):
+                    self.data[index] = pd.to_datetime(self.data[index])
+
                 unique_index_after = len(self.data[index]) == len(set(self.data[index]))
                 if unique_index_before and not unique_index_after:
                     raise ValueError(
@@ -529,7 +553,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
 
-        # Convert DateTimeIndex index to PeriodIndex ----
+        # Convert DatetimeIndex index to PeriodIndex ----
         # We use PeriodIndex in PyCaret since it seems to be more robust per `sktime``
         # Ref: https://github.com/sktime/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
         if isinstance(self.data.index, pd.DatetimeIndex):
@@ -555,6 +579,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     "\n>>> import numpy as np"
                     "\n>>> idx = pd.period_range(min(data.index), max(data.index))"
                     "\n>>> data = data.reindex(idx, fill_value=np.nan)"
+                    "\n\nAlternately, you can use this utility function:"
+                    "\n>>> from pycaret.utils.time_series import clean_time_index"
+                    ">>> # Provide the right frequency argument and index column name if necessary"
+                    ">>> cleaned = clean_time_index(data=data, index_col=index_col, freq=freq)"
                 )
 
         # Save index type so that we can disable certain models ----
@@ -647,25 +675,22 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _check_and_set_seasonal_period(
-        self,
-        seasonal_period: Optional[Union[List[Union[int, str]], int, str]],
-    ) -> "TSForecastingExperiment":
-        """Derived the seasonal periods by either
-        (1) Extracting it from data's index (if seasonal period is not provided), or
-        for each value of seasonal_period:
-            (2) Extracting it from the value if it is of type string, or
-            (3) Using the value as is if it is of type int.
+    def _check_and_set_seasonal_period(self) -> "TSForecastingExperiment":
+        """
+        Derive the seasonal periods to use per teh following algorithm
+        (1) Get the candidate seasonal periods
+        (2) Perform seasonal checks to remove periods that do not indicate seasonality
+        (3) Remove harmonics based on user settings
+        (4) Limit max number of seasonal periods to use based on user settings
+        (5) Set the primary seasonal period & other seasonality related class attributes
 
-        After deriving the seasonal periods, a seasonality test is performed for each
-        value of seasonal_period. Final seasonal period class attribute value is set equal to
-        (1) 1 if seasonality is not detected at any of the derived seasonal periods, or
-        (2) the derived seasonal periods for which seasonality is detected.
+        Getting candidate seasonal periods is performed in the following order
+            (1) Use seasonal_period provided by user (str or int)
+            (2) Based on sp_detection
+                (A) If sp_detection = "auto", extracting it using ACF
+                (B) If sp_detection = "index", extracting it from data's index
 
-        Parameters
-        ----------
-        seasonal_period : Optional[Union[List[Union[int, str]], int, str]]
-            Seasonal Period specified by user
+        NOTE: If no seasonality is detected, seasonal period is set to 1
 
         Returns
         -------
@@ -679,54 +704,75 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         self.logger.info("Set up Seasonal Period.")
 
-        skip_autocorrelation_test = False
+        skip_autocorrelation_test = False or self.ignore_seasonality_test
 
-        # Set the seasonal periods if not provided ----
-        if seasonal_period is None:
-            if self.sp_detection == "auto":
-                _, seasonal_period, _ = auto_detect_sp(y=self.y_transformed)
-                # Test is already done in detection process so we should skip further tests
-                skip_autocorrelation_test = True
-            elif self.sp_detection == "index":
-                seasonal_period = self.data.index.freqstr
-
-        if not isinstance(seasonal_period, list):
-            seasonal_period = [seasonal_period]
-        seasonal_period = [self._convert_sp_to_int(sp) for sp in seasonal_period]
-
-        # check valid seasonal parameter
-        # We use y_transformed here instead of y for 2 reasons:
+        # We use the transformed dataset here instead of y for 2 reasons:
         # (1) Missing values in y will cause issues with this test (seasonality
         #     will not be detected properly).
         # (2) The actual forecaster will see transformed values of y for training.
         #     Hence, these transformed values should be used to determine seasonality.
+        data_to_use = self._get_y_data(
+            split=self.hyperparameter_split, data_type="transformed"
+        )
+
+        # 1.0 Set the candidate seasonal periods based on inputs and settings ----
+        candidate_sps = self.seasonal_period
+        if candidate_sps is None:
+            if self.sp_detection == "auto":
+                _, candidate_sps, _ = auto_detect_sp(y=data_to_use)
+                # Test is already done in detection process so we should skip further tests
+                skip_autocorrelation_test = True
+            elif self.sp_detection == "index":
+                candidate_sps = self.data.index.freqstr
+
+        if not isinstance(candidate_sps, list):
+            candidate_sps = [candidate_sps]
+        candidate_sps = [self._convert_sp_to_int(sp) for sp in candidate_sps]
+
+        # Limit to max seasonal periods to consider
+        if self.max_sp_to_consider:
+            candidate_sps = [
+                sp for sp in candidate_sps if sp <= self.max_sp_to_consider
+            ]
+
+        # 2.0 Filter candidates based on seasonality check if needed (find significant sp values) ----
         if skip_autocorrelation_test:
-            seasonality_test_results = [True for sp in seasonal_period]
+            seasonality_test_results = [True for sp in candidate_sps]
         else:
             seasonality_test_results = [
-                autocorrelation_seasonality_test(self.y_transformed, sp)
-                for sp in seasonal_period
+                autocorrelation_seasonality_test(data_to_use, sp)
+                for sp in candidate_sps
             ]
         self.seasonality_present = any(seasonality_test_results)
-        sp_values_and_test_result = zip(seasonal_period, seasonality_test_results)
+        sp_values_and_test_result = zip(candidate_sps, seasonality_test_results)
 
-        # What seasonal period should be used for modeling?
-        self.all_sp_values = [
+        significant_sps = [
             sp
             for sp, seasonality_present in sp_values_and_test_result
             if seasonality_present
         ] or [1]
 
-        if self.sp_detection == "auto":
+        # 3.0 Remove harmonics based on settings ----
+        significant_sps_no_harmonics = remove_harmonics_from_sp(
+            significant_sps, harmonic_order_method=self.harmonic_order_method
+        )
+
+        # 4.0 Limit seasonal periods to use based on settings ----
+        if self.remove_harmonics:
+            all_sps_to_use = significant_sps_no_harmonics.copy()
+        else:
+            all_sps_to_use = significant_sps.copy()
+        if self.num_sps_to_use > 0:
             # If the number of seasonalities detected is > the number of
             # seasonalities allowed by user, then limit it.
-            if len(self.all_sp_values) > self.multiple_sp_to_use:
-                self.all_sp_values = self.all_sp_values[0 : self.multiple_sp_to_use]
+            if len(all_sps_to_use) > self.num_sps_to_use:
+                all_sps_to_use = all_sps_to_use[0 : self.num_sps_to_use]
 
-        self.primary_sp_to_use = self.all_sp_values[0]
-        self.seasonal_period = (
-            seasonal_period[0] if len(seasonal_period) == 1 else seasonal_period
-        )
+        self.candidate_sps = candidate_sps
+        self.significant_sps = significant_sps
+        self.significant_sps_no_harmonics = significant_sps_no_harmonics
+        self.all_sps_to_use = all_sps_to_use
+        self.primary_sp_to_use = self.all_sps_to_use[0]
 
         return self
 
@@ -779,7 +825,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _check_and_set_forecsting_types(self) -> "TSForecastingExperiment":
+    def _check_and_set_forecasting_types(self) -> "TSForecastingExperiment":
         """Checks & sets the the forecasting types based on the number of Targets
         and Exogenous Variables.
 
@@ -1109,6 +1155,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         self.logger.info("Set up whether Multiplicative components allowed.")
         # Should multiplicative components be allowed in models that support it
+        # NOTE: This can still use all the data to determine if multiplicative
+        # components should be potentially allowed, but when eventually deciding
+        # they type of seasonality (multiplicative or additive), we should respect
+        # the users choice in hyperparameter_split.
         self.strictly_positive = np.all(self.y_transformed > 0)
         return self
 
@@ -1121,7 +1171,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The experiment object to allow chaining of methods
         """
         self.white_noise = None
-        wn_results = self.check_stats(test="white_noise", data_type="transformed")
+
+        # We use the transformed dataset here instead of y for 2 reasons:
+        # (1) Missing values in y will cause issues with this test
+        # (2) The actual forecaster will see transformed values of y for training.
+        #     Hence, these transformed values should be used to determine seasonality.
+        wn_results = self.check_stats(
+            test="white_noise",
+            split=self.hyperparameter_split,
+            data_type="transformed",
+        )
         wn_values = wn_results.query("Property == 'White Noise'")["Value"]
 
         # There can be multiple lags values tested.
@@ -1149,7 +1208,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
-        self.lowercase_d = recommend_lowercase_d(data=self.y_transformed)
+        # We use the transformed dataset here instead of y for 2 reasons:
+        # (1) Missing values in y will cause issues with this test (seasonality
+        #     will not be detected properly).
+        # (2) The actual forecaster will see transformed values of y for training.
+        #     Hence, these transformed values should be used to determine seasonality.
+        data_to_use = self._get_y_data(
+            split=self.hyperparameter_split, data_type="transformed"
+        )
+        self.lowercase_d = recommend_lowercase_d(data=data_to_use)
         return self
 
     def _set_uppercase_d(self) -> "TSForecastingExperiment":
@@ -1165,18 +1232,26 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
+        # We use the transformed dataset here instead of y for 2 reasons:
+        # (1) Missing values in y will cause issues with this test (seasonality
+        #     will not be detected properly).
+        # (2) The actual forecaster will see transformed values of y for training.
+        #     Hence, these transformed values should be used to determine seasonality.
+        data_to_use = self._get_y_data(
+            split=self.hyperparameter_split, data_type="transformed"
+        )
         if self.primary_sp_to_use > 1:
             try:
                 max_D = 2
                 uppercase_d = recommend_uppercase_d(
-                    data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
+                    data=data_to_use, sp=self.primary_sp_to_use, max_D=max_D
                 )
             except ValueError:
                 self.logger.info("Test for computing 'D' failed at max_D = 2.")
                 try:
                     max_D = 1
                     uppercase_d = recommend_uppercase_d(
-                        data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
+                        data=data_to_use, sp=self.primary_sp_to_use, max_D=max_D
                     )
                 except ValueError:
                     self.logger.info("Test for computing 'D' failed at max_D = 1.")
@@ -1210,15 +1285,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The experiment object to allow chaining of methods
         """
         self.logger.info("Creating final display dataframe.")
-        self.display_container = [self._get_setup_display()]
-        self.logger.info(f"Setup Display Container: {self.display_container[0]}")
+        self._display_container = [self._get_setup_display()]
+        self.logger.info(f"Setup Display Container: {self._display_container[0]}")
         display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         return self
@@ -1304,9 +1379,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
+        hyperparameter_split: str = "all",
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
+        ignore_seasonality_test: bool = False,
         sp_detection: str = "auto",
-        multiple_sp_to_use: int = 1,
+        max_sp_to_consider: Optional[int] = 60,
+        remove_harmonics: bool = False,
+        harmonic_order_method: str = "harmonic_max",
+        num_sps_to_use: int = 1,
         point_alpha: Optional[float] = None,
         coverage: Union[float, List[float]] = 0.9,
         enforce_exogenous: bool = True,
@@ -1350,7 +1430,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         data_func: Callable[[], Union[pd.Series, pd.DataFrame]] = None
             The function that generate ``data`` (the dataframe-like input). This
             is useful when the dataset is large, and you need parallel operations
-            such as ``compare_models``. It can avoid boradcasting large dataset
+            such as ``compare_models``. It can avoid broadcasting large dataset
             from driver to workers. Notice one and only one of ``data`` and
             ``data_func`` must be set.
 
@@ -1362,9 +1442,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         index: Optional[str], default = None
-            Column name to be used as the datetime index for modeling. Column is
-            internally converted to datetime using `pd.to_datetime()`. If None,
-            then the data's index is used as is for modeling.
+            Column name to be used as the datetime index for modeling. If 'index'
+            column is specified & is of type string, it is assumed to be coercible
+            to pd.DatetimeIndex using `pd.to_datetime()`. It can also be of type
+            Int (e.g. RangeIndex, Int64Index), or DatetimeIndex or PeriodIndex
+            in which case, it is processed appropriately. If None, then the
+            data's index is used as is for modeling.
 
 
         ignore_features: Optional[List], default = None
@@ -1539,9 +1622,17 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 object. In this case, fh is derived from this object.
 
 
+        hyperparameter_split: str, default = "all"
+            The split of data used to determine certain hyperparameters such as
+            "seasonal_period", whether multiplicative seasonality can be used or not,
+            whether the data is white noise or not, the values of non-seasonal difference
+            "d" and seasonal difference "D" to use in certain models.
+            Allowed values are: ["all", "train"].
+            Refer for more details: https://github.com/pycaret/pycaret/issues/3202
+
+
         seasonal_period: list or int or str, default = None
-            Periods to check when performing seasonality checks. If not provided,
-            then seasonal periods are detected per the sp_detection setting.
+            Seasonal periods to use when performing seasonality checks (i.e. candidates).
 
             Users can provide `seasonal_period` by passing it as an integer or a
             string corresponding to the keys below (e.g. 'W' for weekly data,
@@ -1562,8 +1653,23 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             don't accept multiple seasonal values, the first value of the list
             will be used as the seasonal period.
 
+            NOTE:
+            (1) If seasonal_period is provided, whether the seasonality check is
+            performed or not depends on the ignore_seasonality_test setting.
+            (2) If seasonal_period is not provided, then the candidates are detected
+            per the sp_detection setting. If seasonal_period is provided,
+            sp_detection setting is ignored.
 
-        sp_detection: str = "auto"
+
+        ignore_seasonality_test: bool = False
+            Whether to ignore the seasonality test or not. Applicable when seasonal_period
+            is provided. If False, then a seasonality tests is performed to determine
+            if the provided seasonal_period is valid or not. If it is found to be not
+            valid, no seasonal period is used for modeling. If True, then the the
+            provided seasonal_period is used as is.
+
+
+        sp_detection: str, default = "auto"
             If seasonal_period is None, then this parameter determines the algorithm
             to use to detect the seasonal periods to use in the models.
 
@@ -1574,11 +1680,41 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             period as shown in seasonal_period.
 
 
-        multiple_sp_to_use: int = 1
-            Applicable only when sp_detection is set to "auto". It determines how
-            many seasonal periods to use in the models. If a model only allows one
-            seasonal period and multiple_sp_to_use > 1, then the most dominant
-            (primary) seasonal that is detected is used.
+        max_sp_to_consider: Optional[int], default = 60,
+            Max period to consider when detecting seasonal periods. If None, all
+            periods up to int(("length of data"-1)/2) are considered. Length of
+            the data is determined by hyperparameter_split setting.
+
+
+        remove_harmonics: bool, default = False
+            Should harmonics be removed when considering what seasonal periods to
+            use for modeling.
+
+
+        harmonic_order_method: str, default = "harmonic_max"
+            Applicable when remove_harmonics = True. This determines how the harmonics
+            are replaced. Allowed values are "harmonic_strength", "harmonic_max" or "raw_strength.
+            - If set to  "harmonic_max", then lower seasonal period is replaced by its
+            highest harmonic seasonal period in same position as the lower seasonal period.
+            - If set to  "harmonic_strength", then lower seasonal period is replaced by its
+            highest strength harmonic seasonal period in same position as the lower seasonal period.
+            - If set to  "raw_strength", then lower seasonal periods is removed and the
+            higher harmonic seasonal periods is retained in its original position
+            based on its seasonal strength.
+
+            e.g. Assuming detected seasonal periods in strength order are [2, 3, 4, 50]
+            and remove_harmonics = True, then:
+            - If harmonic_order_method = "harmonic_max", result = [50, 3, 4]
+            - If harmonic_order_method = "harmonic_strength", result = [4, 3, 50]
+            - If harmonic_order_method = "raw_strength", result = [3, 4, 50]
+
+
+        num_sps_to_use: int, default = 1
+            It determines the maximum number of seasonal periods to use in the models.
+            Set to -1 to use all detected seasonal periods (in models that allow
+            multiple seasonalities). If a model only allows one seasonal period
+            and num_sps_to_use > 1, then the most dominant (primary) seasonal
+            that is detected is used.
 
 
         point_alpha: Optional[float], default = None
@@ -1743,8 +1879,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
             resampler_kwargs: The keyword arguments that are fed to configure the
                 `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash"
-                or "plotly-widget") which downsampler will be used; how many datapoints
-                are shown in the front-end. When the plotly-resampler figure is renderd
+                or "plotly-widget") which down sampler will be used; how many data points
+                are shown in the front-end. When the plotly-resampler figure is rendered
                 via Dash (by setting the `display_format` to "plotly-dash"), one can
                 also use the "show_dash" key within this dictionary to configure the
                 show_dash method its args.
@@ -1801,13 +1937,39 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.fold_strategy = fold_strategy
         self.fold = fold
 
+        allowed_hyperparameter_splits = ["all", "train"]
+        if hyperparameter_split not in allowed_hyperparameter_splits:
+            raise ValueError(
+                f"hyperparameters_using must be one of '{', '.join(allowed_hyperparameter_splits)}'. "
+                f"You provided {hyperparameter_split}."
+            )
+        self.hyperparameter_split = hyperparameter_split
+
+        # Variables related to seasonal period and detection ----
+        self.seasonal_period = seasonal_period
+        self.ignore_seasonality_test = ignore_seasonality_test
         if sp_detection not in ["auto", "index"]:
             raise ValueError(
                 "sp_detection must be either 'auto' or 'index'. "
                 f"You provided {sp_detection}."
             )
-        self.sp_detection = sp_detection
-        self.multiple_sp_to_use = multiple_sp_to_use
+        if self.seasonal_period is not None:
+            self.sp_detection = "user_defined"
+        else:
+            self.sp_detection = sp_detection
+        self.max_sp_to_consider = max_sp_to_consider
+        self.remove_harmonics = remove_harmonics
+        if harmonic_order_method not in [
+            "harmonic_strength",
+            "harmonic_max",
+            "raw_strength",
+        ]:
+            raise ValueError(
+                "harmonic_order_method must be either 'harmonic_strength', 'harmonic_max' "
+                f"or 'raw_strength'. You provided {harmonic_order_method}."
+            )
+        self.harmonic_order_method = harmonic_order_method
+        self.num_sps_to_use = num_sps_to_use
 
         self.log_plots_param = log_plots
         if self.log_plots_param is True:
@@ -1838,7 +2000,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._check_and_clean_index(index=index, seasonal_period=seasonal_period)
             ._check_and_set_targets(target=target)
             ._set_exogenous_names()
-            ._check_and_set_forecsting_types()
+            ._check_and_set_forecasting_types()
             ._check_and_set_fh(fh=fh)
             ._set_point_alpha_intervals_enforce_pi(
                 point_alpha=point_alpha, coverage=coverage
@@ -1853,7 +2015,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             # Since the model will see transformed data, these parameters
             # should also be derived from the transformed data.
             ##################################################################
-            ._check_and_set_seasonal_period(seasonal_period=seasonal_period)
+            ._check_and_set_seasonal_period()
             ._set_multiplicative_components()
             ._perform_setup_eda()
             ._setup_display_container()
@@ -1929,7 +2091,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ):
-
         """
         This function trains and evaluates performance of all estimators available in the
         model library using cross validation. The output of this function is a score grid
@@ -2083,7 +2244,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         verbose: bool = True,
         **kwargs,
     ):
-
         """
         This function trains and evaluates the performance of a given estimator
         using cross validation. The output of this function is a score grid with
@@ -2307,14 +2467,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             model_results = self.pull(pop=True).drop("Model", axis=1)
             model_results.index = ["Test"]
 
-            self.display_container.append(model_results)
+            self._display_container.append(model_results)
 
             if system:
                 display.display(
                     model_results.style.format(precision=round),
                 )
 
-            self.logger.info(f"display_container: {len(self.display_container)}")
+            self.logger.info(f"_display_container: {len(self._display_container)}")
 
         # Return the final model only. Rest of the pipeline will be added during finalize.
         final_model = self._get_final_model_from_pipeline(
@@ -2353,7 +2513,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.logger.info("Starting cross validation")
 
-        n_jobs = self._gpu_n_jobs_param
+        n_jobs = self.gpu_n_jobs_param
 
         self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
@@ -2466,7 +2626,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         tuner_verbose: Union[int, bool] = True,
         **kwargs,
     ):
-
         """
         This function tunes the hyperparameters of a given estimator. The output of
         this function is a score grid with CV scores by fold of the best selected
@@ -2814,7 +2973,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         # with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
         if True:
-
             ###############################################
             # Add the correct model to the pipeline ####
             ###############################################
@@ -2841,7 +2999,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             if estimator_definition is not None:
                 search_kwargs = {**estimator_definition.tune_args, **kwargs}
                 n_jobs = (
-                    self._gpu_n_jobs_param
+                    self.gpu_n_jobs_param
                     if estimator_definition.is_gpu_enabled
                     else self.n_jobs_param
                 )
@@ -2977,7 +3135,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         # mlflow logging
         if self.logging_param:
-
             avgs_dict_log = {
                 k: v
                 for k, v in model_results.loc[
@@ -3005,8 +3162,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
         display.display(model_results, clear=True)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(best_model))
         self.logger.info(
@@ -3030,7 +3189,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fit_kwargs: Optional[dict] = None,
         verbose: bool = True,
     ):
-
         """
         This function trains a EnsembleForecaster for select models passed in the
         ``estimator_list`` param. The output of this function is a score grid with
@@ -3117,7 +3275,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def _plot_model_get_model_labels(
         self, estimators: List[BaseForecaster], data_kwargs: Dict
     ) -> List[str]:
-        """Returns the labels (names) to be used for the results corresponsing to
+        """Returns the labels (names) to be used for the results corresponding to
         each model in the plot
 
         Parameters
@@ -3126,7 +3284,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             List of models passed by user
         data_kwargs : Dict
             Dictionary of arguments passed to the data for plotting. Specifically,
-            if user passes key = "labels", then the corresponsding values are used
+            if user passes key = "labels", then the corresponding values are used
             as the plot labels corresponding to each model. e.g.
             >>> data_kwargs={"labels": ["Baseline", "Tuned", "Finalized"]}
 
@@ -3161,7 +3319,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
 
         # Make sure column names are unique. If not, make them unique by appending numbers ----
-        # Model names may not be unique for example when user passes basline and tuned model.
+        # Model names may not be unique for example when user passes baseline and tuned model.
         if len(set(model_names)) != len(model_names):
             name_counts = defaultdict(int)
             new_model_names = []
@@ -3675,7 +3833,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fig_kwargs: Optional[Dict] = None,
         save: Union[str, bool] = False,
     ) -> Optional[Tuple[str, list]]:
-
         """
         This function analyzes the performance of a trained model on holdout set.
         When used without any estimator, this function generates plots on the
@@ -4215,7 +4372,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
-
         """
         This function forecast using a trained model. When ``fh`` is None,
         it forecasts using the same forecast horizon used during the
@@ -4319,7 +4475,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 verbose=verbose, y_pred=y_pred
             )
             display.display(df_score.style.format(precision=round), clear=False)
-            self.display_container.append(df_score)
+            self._display_container.append(df_score)
 
         gc.collect()
 
@@ -4334,7 +4490,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
-
         """
         This function trains a given estimator on the entire dataset including the
         holdout set.
@@ -4382,7 +4537,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         authentication: dict,
         platform: str = "aws",
     ):
-
         """
         This function deploys the transformation pipeline and trained model on cloud.
 
@@ -4470,7 +4624,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def save_model(
         self, model, model_name: str, model_only: bool = False, verbose: bool = True
     ):
-
         """
         This function saves the transformation pipeline and trained model object
         into the current working directory as a pickle file for later use.
@@ -4518,7 +4671,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
     ):
-
         """
         This function loads a previously saved pipeline/model.
 
@@ -4624,7 +4776,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         internal: bool = False,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of models available in the model library.
 
@@ -4695,7 +4846,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         include_custom: bool = True,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of available metrics used for CV.
 
@@ -4740,7 +4890,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         greater_is_better: bool = True,
         **kwargs,
     ) -> pd.Series:
-
         """
         Adds a custom metric to be used for CV.
 
@@ -4790,7 +4939,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
 
     def remove_metric(self, name_or_id: str):
-
         """
         Removes a metric from CV.
 
@@ -4817,7 +4965,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def get_logs(
         self, experiment_name: Optional[str] = None, save: bool = False
     ) -> pd.DataFrame:
-
         """
         Returns a table of experiment logs. Only works when ``log_experiment``
         is True when initializing the ``setup`` function.
@@ -4853,7 +5000,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: Optional[Union[int, Any]] = None,
         fold_strategy: Optional[str] = None,
     ) -> Union[ExpandingWindowSplitter, SlidingWindowSplitter]:
-
         """Returns the cv object based on number of folds and fold_strategy
 
         Parameters
@@ -4916,7 +5062,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     initial_window=initial_window,
                     step_length=step_length,
                     fh=self.fh,
-                    start_with_window=True,
                 )
 
             if fold_strategy == "sliding":
@@ -5079,13 +5224,19 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             elif split == "all":
                 y = self.y
         elif data_type == "imputed":
-            y, _ = _get_imputed_data(pipeline=self.pipeline, y=self.y, X=self.X)
             if split == "train":
                 y, _ = _get_imputed_data(
                     pipeline=self.pipeline, y=self.y_train, X=self.X_train
                 )
-            elif split == "test":
-                y = y.loc[self.y_test.index]
+            else:
+                # split == "test" or split == "all"
+                y, _ = _get_imputed_data(
+                    pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+                )
+                if split == "test":
+                    y = y.loc[self.y_test.index]
+            # "imputed" data does not remember the name in all cases for some reason
+            y.name = self.y.name
         elif data_type == "transformed":
             if split == "train":
                 y = self.y_train_transformed
@@ -5184,7 +5335,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         index is not of type DatetimeIndex, then it returns the y and X values as is.
 
         Note that this estimator data is different from the data used to train the
-        pipeline. Because of transformatons in the pipeline, the estimator (y, X)
+        pipeline. Because of transformations in the pipeline, the estimator (y, X)
         values may be different from the (self.y_train, self.X_train) or
         (self.y, self.X) values passed to the pipeline.
 

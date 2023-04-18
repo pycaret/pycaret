@@ -750,10 +750,7 @@ class RidgeClassifierContainer(ClassifierContainer):
         else:
             args = {"random_state": experiment.seed}
 
-        tune_grid = {
-            "normalize": [True, False],
-        }
-
+        tune_grid = {}
         tune_grid["alpha"] = np_list_arange(0.01, 10, 0.01, inclusive=False)
         tune_grid["fit_intercept"] = [True, False]
         tune_distributions["alpha"] = UniformDistribution(0.001, 10)
@@ -1427,9 +1424,7 @@ class CatBoostClassifierContainer(ClassifierContainer):
         # suppress output
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
-        use_gpu = experiment.gpu_param == "force" or (
-            experiment.gpu_param and len(experiment.X_train) >= 50000
-        )
+        use_gpu = experiment.gpu_param
 
         args = {
             "random_state": experiment.seed,
@@ -1471,7 +1466,7 @@ class CatBoostClassifierContainer(ClassifierContainer):
 
         if use_gpu:
             tune_grid["depth"] = list(range(1, 9))
-            tune_distributions["depth"] = (IntUniformDistribution(1, 8),)
+            tune_distributions["depth"] = IntUniformDistribution(1, 8)
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 

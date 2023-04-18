@@ -1,31 +1,35 @@
+import inspect
+import os
 import warnings
 from collections import defaultdict
-from typing import Any, Dict, Optional
+from typing import Any, BinaryIO, Callable, Dict, Optional, Union
 
-import joblib
+import cloudpickle
 import pandas as pd
 
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
-from pycaret import show_versions
 from pycaret.internal.logging import get_logger
-from pycaret.utils.generic import MLUsecase
-from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
+from pycaret.utils.constants import DATAFRAME_LIKE
+from pycaret.utils.generic import LazyExperimentMapping
 
 LOGGER = get_logger()
 
 
 class _PyCaretExperiment:
+    # Will not include those attributes in the pickle file
+    _attributes_to_not_save = ["data", "test_data", "data_func"]
+
     def __init__(self) -> None:
         self._ml_usecase = None
         self._available_plots = {}
-        self.variable_keys = set()
+        self._variable_keys = set()
         self.exp_id = None
         self.gpu_param = False
         self.n_jobs_param = -1
         self.logger = LOGGER
-        self.master_model_container = []
+        self._master_model_container = []
 
         # Data attrs
         self.data = None
@@ -35,7 +39,7 @@ class _PyCaretExperiment:
         # Setup attrs
         self.fold_generator = None
         self.pipeline = None
-        self.display_container = None
+        self._display_container = None
         self._fxs = defaultdict(list)
         self._setup_ran = False
         self._setup_params = None
@@ -67,19 +71,32 @@ class _PyCaretExperiment:
         }
 
     @property
-    def _gpu_n_jobs_param(self) -> int:
+    def _property_keys(self) -> set:
+        return {
+            n
+            for n in dir(self)
+            if not n.startswith("_")
+            and isinstance(getattr(self.__class__, n, None), property)
+        }
+
+    @property
+    def gpu_n_jobs_param(self) -> int:
         return self.n_jobs_param if not self.gpu_param else 1
 
     @property
     def variables(self) -> dict:
-        return {k: getattr(self, k, None) for k in self.variable_keys}
+        return LazyExperimentMapping(self)
 
     @property
-    def _is_multiclass(self) -> bool:
+    def is_multiclass(self) -> bool:
         """
         Method to check if the problem is multiclass.
         """
         return False
+
+    @property
+    def variable_and_property_keys(self) -> set:
+        return self._variable_keys.union(self._property_keys)
 
     def _check_environment(self) -> None:
         # logging environment and libraries
@@ -97,6 +114,8 @@ class _PyCaretExperiment:
         self.logger.info(f"Memory: {psutil.virtual_memory()}")
         self.logger.info(f"Physical Core: {psutil.cpu_count(logical=False)}")
         self.logger.info(f"Logical Core: {psutil.cpu_count(logical=True)}")
+
+        from pycaret.utils._show_versions import show_versions
 
         self.logger.info("Checking libraries")
         self.logger.info(show_versions(logger=self.logger))
@@ -256,7 +275,7 @@ class _PyCaretExperiment:
 
         return runs
 
-    def get_config(self, variable: str) -> Any:
+    def get_config(self, variable: Optional[str] = None) -> Any:
         """
         This function is used to access global environment variables.
 
@@ -264,7 +283,13 @@ class _PyCaretExperiment:
         -------
         >>> X_train = get_config('X_train')
 
-        This will return X_train transformed dataset.
+        This will return training features.
+
+
+        variable : str, default = None
+            Name of the variable to return the value of. If None,
+            will return a list of possible names.
+
 
         Returns
         -------
@@ -278,15 +303,20 @@ class _PyCaretExperiment:
         self.logger.info("Initializing get_config()")
         self.logger.info(f"get_config({function_params_str})")
 
-        if variable not in self.variables:
+        variable_and_property_keys = self.variable_and_property_keys
+
+        if not variable:
+            return variable_and_property_keys
+
+        if variable not in variable_and_property_keys:
             raise ValueError(
-                f"Variable {variable} not found. Possible variables are: {list(self.variables)}"
+                f"Variable '{variable}' not found. Possible variables are: {list(variable_and_property_keys)}"
             )
 
         if any(variable.endswith(attr) for attr in ("train", "test", "dataset")):
             msg = (
-                f"Variable: '{variable}' used to return the transformed values in pycaret 2.x. "
-                "From pycaret 3.x, this will return the raw values. "
+                f"Variable: '{variable}' used to return the transformed values in PyCaret 2.x. "
+                "From PyCaret 3.x, this will return the raw values. "
                 f"If you need the transformed values, call get_config with '{variable}_transformed' instead."
             )
             self.logger.info(msg)
@@ -325,16 +355,26 @@ class _PyCaretExperiment:
             raise ValueError(
                 "variable parameter cannot be used together with keyword arguments."
             )
-
-        variables = kwargs if kwargs else {variable: value}
+        else:
+            if kwargs:
+                variables = kwargs
+            elif variable:
+                variables = {variable: value}
+            else:
+                variables = {}
 
         for k, v in variables.items():
             if k.startswith("_"):
                 raise ValueError(f"Variable {k} is read only ('_' prefix).")
 
-            if k not in self.variables:
+            writeable_keys = [
+                x
+                for x in self._variable_keys.difference(self._property_keys)
+                if not x.startswith("_")
+            ]
+            if k not in writeable_keys:
                 raise ValueError(
-                    f"Variable {k} not found. Possible variables are: {list(self.variables)}"
+                    f"Variable {k} not found or is not writeable. Possible writeable variables are: {writeable_keys}"
                 )
 
             setattr(self, k, v)
@@ -344,95 +384,157 @@ class _PyCaretExperiment:
         )
         return
 
-    def save_config(self, file_name: str) -> None:
+    def __getstate__(self) -> dict:
+        state = self.__dict__.copy()
+
+        for key in self._attributes_to_not_save:
+            state.pop(key, None)
+        if state["_setup_params"]:
+            state["_setup_params"] = state["_setup_params"].copy()
+            for key in self._attributes_to_not_save:
+                state["_setup_params"].pop(key, None)
+        return state
+
+    @classmethod
+    def _load_experiment(
+        cls,
+        path_or_file: Union[str, os.PathLike, BinaryIO],
+        cloudpickle_kwargs=None,
+        preprocess_data: bool = True,
+        **kwargs,
+    ):
+        cloudpickle_kwargs = cloudpickle_kwargs or {}
+        try:
+            loaded_exp: _PyCaretExperiment = cloudpickle.load(
+                path_or_file, **cloudpickle_kwargs
+            )
+        except TypeError:
+            with open(path_or_file, mode="rb") as f:
+                loaded_exp: _PyCaretExperiment = cloudpickle.load(
+                    f, **cloudpickle_kwargs
+                )
+        original_state = loaded_exp.__dict__.copy()
+        new_params = kwargs
+        setup_params = loaded_exp._setup_params or {}
+        setup_params = setup_params.copy()
+        setup_params.update(
+            {
+                k: v
+                for k, v in new_params.items()
+                if k in inspect.signature(cls.setup).parameters
+            }
+        )
+
+        if preprocess_data and not setup_params.get("data_func", None):
+            loaded_exp.setup(
+                **setup_params,
+            )
+        else:
+            data = new_params.get("data", None)
+            data_func = new_params.get("data_func", None)
+            if (data is None and data_func is None) or (
+                data is not None and data_func is not None
+            ):
+                raise ValueError("One and only one of data and data_func must be set")
+            for key, value in new_params.items():
+                setattr(loaded_exp, key, value)
+            original_state["_setup_params"] = setup_params
+
+        loaded_exp.__dict__.update(original_state)
+        return loaded_exp
+
+    @classmethod
+    def load_experiment(
+        cls,
+        path_or_file: Union[str, os.PathLike, BinaryIO],
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+        preprocess_data: bool = True,
+        **cloudpickle_kwargs,
+    ) -> "_PyCaretExperiment":
         """
-        This function save all global variables to a pickle file, allowing to
-        later resume without rerunning the ``setup``.
+        Load an experiment saved with ``save_experiment`` from path
+        or file.
+
+        The data (and test data) is NOT saved with the experiment
+        and will need to be specified again.
 
 
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> from pycaret.classification import *
-        >>> exp_name = setup(data = juice,  target = 'Purchase')
-        >>> save_config('myvars.pkl')
+        path_or_file: str or BinaryIO (file pointer)
+            The path/file pointer to load the experiment from.
+            The pickle file must be created through ``save_experiment``.
+
+
+        data: dataframe-like
+            Data set with shape (n_samples, n_features), where n_samples is the
+            number of samples and n_features is the number of features. If data
+            is not a pandas dataframe, it's converted to one using default column
+            names.
+
+
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
+
+
+        preprocess_data: bool, default = True
+            If True, the data will be preprocessed again (through running ``setup``
+            internally). If False, the data will not be preprocessed. This means
+            you can save the value of the ``data`` attribute of an experiment
+            separately, and then load it separately and pass it here with
+            ``preprocess_data`` set to False. This is an advanced feature.
+            We recommend leaving it set to True and passing the same data
+            as passed to the initial ``setup`` call.
+
+
+        **cloudpickle_kwargs:
+            Kwargs to pass to the ``cloudpickle.load`` call.
+
+
+        Returns:
+            loaded experiment
+
+        """
+        return cls._load_experiment(
+            path_or_file,
+            cloudpickle_kwargs=cloudpickle_kwargs,
+            preprocess_data=preprocess_data,
+            data=data,
+            data_func=data_func,
+        )
+
+    def save_experiment(
+        self, path_or_file: Union[str, os.PathLike, BinaryIO], **cloudpickle_kwargs
+    ) -> None:
+        """
+        Saves the experiment to a pickle file.
+
+        The experiment is saved using cloudpickle to deal with lambda
+        functions. The data or test data is NOT saved with the experiment
+        and will need to be specified again when loading using
+        ``load_experiment``.
+
+
+        path_or_file: str or BinaryIO (file pointer)
+            The path/file pointer to save the experiment to.
+
+
+        **cloudpickle_kwargs:
+            Kwargs to pass to the ``cloudpickle.dump`` call.
 
 
         Returns:
             None
 
         """
-        function_params_str = ", ".join(
-            [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
-        )
-
-        self.logger.info("Initializing save_config()")
-        self.logger.info(f"save_config({function_params_str})")
-
-        globals_to_ignore = {
-            "_all_models",
-            "_all_models_internal",
-            "_all_metrics",
-            "master_model_container",
-            "display_container",
-        }
-
-        globals_to_dump = {
-            k: v
-            for k, v in self.variables.items()
-            if k not in globals_to_ignore
-            and not isinstance(getattr(self.__class__, k, None), property)
-            and not k.startswith("_")
-        }
-
-        joblib.dump(globals_to_dump, file_name)
-
-        self.logger.info(f"Global variables dumped to {file_name}")
-        self.logger.info(
-            "save_config() successfully completed......................................"
-        )
-        return
-
-    def load_config(self, file_name: str) -> None:
-        """
-        This function loads global variables from a pickle file into Python
-        environment.
-
-
-        Example
-        -------
-        >>> from pycaret.classification import load_config
-        >>> load_config('myvars.pkl')
-
-
-        Returns:
-            Global variables
-
-        """
-        self._check_setup_ran()
-
-        function_params_str = ", ".join(
-            [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
-        )
-
-        self.logger.info("Initializing load_config()")
-        self.logger.info(f"load_config({function_params_str})")
-
-        loaded_globals = joblib.load(file_name)
-
-        self.logger.info(f"Global variables loaded from {file_name}")
-
-        for k, v in loaded_globals.items():
-            self.set_config(k, v)
-            self.logger.info(f"Global variable: {k} updated to {v}")
-
-        self.logger.info(f"Global variables set to match those in {file_name}")
-
-        self.logger.info(
-            "load_config() successfully completed......................................"
-        )
-        return
+        try:
+            cloudpickle.dump(self, path_or_file, **cloudpickle_kwargs)
+        except TypeError:
+            with open(path_or_file, mode="wb") as f:
+                cloudpickle.dump(self, f, **cloudpickle_kwargs)
 
     def pull(self, pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
         """
@@ -447,10 +549,9 @@ class _PyCaretExperiment:
         Returns
         -------
         pandas.DataFrame
-            Equivalent to get_config('display_container')[-1]
 
         """
-        return self.display_container.pop(-1) if pop else self.display_container[-1]
+        return self._display_container.pop(-1) if pop else self._display_container[-1]
 
     @property
     def dataset(self):
@@ -458,276 +559,36 @@ class _PyCaretExperiment:
         return self.data[[c for c in self.data.columns if c not in self._fxs["Ignore"]]]
 
     @property
-    def train(self):
-        """Training set."""
-        return self.dataset.loc[self.idx[0], :]
-
-    @property
-    def test(self):
-        """Test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return self.dataset.loc[self.idx[1], :]
-        else:
-            # Return the y_test indices not X_test indices.
-            # X_test indices are expanded indices for handling FH with gaps.
-            # But if we return X_test indices, then we will get expanded test
-            # indices even for univariate time series without exogenous variables
-            # which would be confusing. Hence, we return y_test indices here and if
-            # we want to get X_test indices, then we use self.X_test directly.
-            # Refer:
-            # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
-            # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
-            return self.dataset.loc[self.idx[1], :]
-
-    @property
     def X(self):
         """Feature set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return self.dataset.drop(self.target_param, axis=1)
-            else:
-                return self.dataset  # For unsupervised: dataset == X
-        else:
-            X = self.dataset.drop(self.target_param, axis=1)
-            if X.empty and self.fe_exogenous is None:
-                return None
-            else:
-                # If X is not empty or empty but self.fe_exogenous is provided
-                # Return X instead of None, since the index can be used to
-                # generate features using self.fe_exogenous
-                return X
-
-    @property
-    def y(self):
-        """Target column."""
-        if self.target_param:
-            return self.dataset[self.target_param]
-
-    @property
-    def X_train(self):
-        """Feature set of the training set."""
-        if self.target_param is not None:
-            # Supervised Learning
-            X_train = self.train.drop(self.target_param, axis=1)
-        else:
-            # Unsupervised Learning
-            X_train = self.train
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return X_train
-        else:
-            if X_train.empty and self.fe_exogenous is None:
-                return None
-            else:
-                # If X_train is not empty or empty but self.fe_exogenous is provided
-                # Return X_train instead of None, since the index can be used to
-                # generate features using self.fe_exogenous
-                return X_train
-
-    @property
-    def X_test(self):
-        """Feature set of the test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param is not None:
-                X_test = self.test.drop(self.target_param, axis=1)
-            else:
-                # Unsupervised Learning
-                X_test = self.test
-        else:
-            # Use index for y_test (idx 2) to get the data
-            test = self.dataset.loc[self.idx[2], :]
-            X_test = test.drop(self.target_param, axis=1)
-
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return X_test
-        else:
-            if X_test.empty and self.fe_exogenous is None:
-                return None
-            else:
-                # If X_test is not empty or empty but self.fe_exogenous is provided
-                # Return X_test instead of None, since the index can be used to
-                # generate features using self.fe_exogenous
-                return X_test
-
-    @property
-    def y_train(self):
-        """Target column of the training set."""
-        if self.target_param:
-            return self.train[self.target_param]
-
-    @property
-    def y_test(self):
-        """Target column of the test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return self.test[self.target_param]
-        else:
-            if self.target_param:
-                # Use index for y_test (idx 1) to get the data
-                test = self.dataset.loc[self.idx[1], :]
-                return test[self.target_param]
+        return self.dataset
 
     @property
     def dataset_transformed(self):
         """Transformed dataset."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return pd.concat([self.train_transformed, self.test_transformed])
-            else:
-                return self.train_transformed
-        else:
-            # Use fully trained pipeline to get the requested data
-            return pd.concat(
-                [
-                    *_pipeline_transform(
-                        pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-                    )
-                ],
-                axis=1,
-            )
+        return self.train_transformed
 
     @property
-    def train_transformed(self):
-        """Transformed training set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return pd.concat(
-                    [self.X_train_transformed, self.y_train_transformed],
-                    axis=1,
-                )
-            else:
-                return self.X_train_transformed
-        else:
-            # Use pipeline trained on training data only to get the requested data
-            # In time series, the order of arguments and returns may be reversed.
-            return pd.concat(
-                [
-                    *_pipeline_transform(
-                        pipeline=self.pipeline, y=self.y_train, X=self.X_train
-                    )
-                ],
-                axis=1,
-            )
+    def X_train(self):
+        """Feature set of the training set."""
+        return self.train
 
     @property
-    def test_transformed(self):
-        """Transformed test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return pd.concat(
-                [self.X_test_transformed, self.y_test_transformed],
-                axis=1,
-            )
-        else:
-            # When transforming the test set, we can and should use all data before that
-            # In time series, the order of arguments and returns may be reversed.
-            all_data = pd.concat(
-                [
-                    *_pipeline_transform(
-                        pipeline=self.pipeline_fully_trained,
-                        y=self.y,
-                        X=self.X,
-                    )
-                ],
-                axis=1,
-            )
-            # Return the y_test indices not X_test indices.
-            # X_test indices are expanded indices for handling FH with gaps.
-            # But if we return X_test indices, then we will get expanded test
-            # indices even for univariate time series without exogenous variables
-            # which would be confusing. Hence, we return y_test indices here and if
-            # we want to get X_test indices, then we use self.X_test directly.
-            # Refer:
-            # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
-            # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
-            return all_data.loc[self.idx[1]]
-
-    @property
-    def X_transformed(self):
-        """Transformed feature set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return pd.concat([self.X_train_transformed, self.X_test_transformed])
-            else:
-                return self.X_train_transformed
-        else:
-            # Use fully trained pipeline to get the requested data
-            # In time series, the order of arguments and returns may be reversed.
-            return _pipeline_transform(
-                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-            )[1]
-
-    @property
-    def y_transformed(self):
-        """Transformed target column."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return pd.concat([self.y_train_transformed, self.y_test_transformed])
-        else:
-            # Use fully trained pipeline to get the requested data
-            # In time series, the order of arguments and returns may be reversed.
-            return _pipeline_transform(
-                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-            )[0]
+    def train(self):
+        """Training set."""
+        return self.dataset
 
     @property
     def X_train_transformed(self):
         """Transformed feature set of the training set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return self.pipeline.transform(
-                    X=self.X_train,
-                    y=self.y_train,
-                    filter_train_only=False,
-                )[0]
-            else:
-                return self.pipeline.transform(self.X_train, filter_train_only=False)
-        else:
-            # Use pipeline trained on training data only to get the requested data
-            # In time series, the order of arguments and returns may be reversed.
-            return _pipeline_transform(
-                pipeline=self.pipeline, y=self.y_train, X=self.X_train
-            )[1]
+        return self.pipeline.transform(self.X_train, filter_train_only=False)
 
     @property
-    def X_test_transformed(self):
-        """Transformed feature set of the test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return self.pipeline.transform(self.X_test)
-        else:
-            # In time series, the order of arguments and returns may be reversed.
-            # When transforming the test set, we can and should use all data before that
-            _, X = _pipeline_transform(
-                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-            )
-
-            if X is None:
-                return None
-            else:
-                return X.loc[self.idx[2]]
+    def train_transformed(self):
+        """Transformed training set."""
+        return self.X_train_transformed
 
     @property
-    def y_train_transformed(self):
-        """Transformed target column of the training set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return self.pipeline.transform(
-                X=self.X_train,
-                y=self.y_train,
-                filter_train_only=False,
-            )[1]
-        else:
-            # Use pipeline trained on training data only to get the requested data
-            # In time series, the order of arguments and returns may be reversed.
-            return _pipeline_transform(
-                pipeline=self.pipeline, y=self.y_train, X=self.X_train
-            )[0]
-
-    @property
-    def y_test_transformed(self):
-        """Transformed target column of the test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return self.pipeline.transform(y=self.y_test)
-        else:
-            # In time series, the order of arguments and returns may be reversed.
-            # When transforming the test set, we can and should use all data before that
-            y, _ = _pipeline_transform(
-                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-            )
-            return y.loc[self.idx[1]]
+    def X_transformed(self):
+        """Transformed feature set."""
+        return self.X_train_transformed

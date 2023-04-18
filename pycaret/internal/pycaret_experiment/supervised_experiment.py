@@ -4,9 +4,10 @@ import os
 import time
 import traceback
 import warnings
+from abc import abstractmethod
 from copy import copy, deepcopy
 from functools import partial
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Tuple, Union
 from unittest.mock import patch
 
 import matplotlib.pyplot as plt
@@ -53,7 +54,7 @@ from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExper
 from pycaret.internal.tunable import TunableMixin
 from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
 from pycaret.utils._dependencies import _check_soft_dependencies
-from pycaret.utils.constants import LABEL_COLUMN, SCORE_COLUMN
+from pycaret.utils.constants import DATAFRAME_LIKE, LABEL_COLUMN, SCORE_COLUMN
 from pycaret.utils.generic import (
     MLUsecase,
     can_early_stop,
@@ -79,7 +80,7 @@ class _SupervisedExperiment(_TabularExperiment):
     def __init__(self) -> None:
         super().__init__()
         self.transform_target_param = False  # Default False for both class/reg
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "X",
                 "y",
@@ -602,7 +603,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not sort.is_multiclass:
                 raise TypeError(
                     f"{sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -989,10 +990,12 @@ class _SupervisedExperiment(_TabularExperiment):
         pd.reset_option("display.max_columns")
 
         # store in display container
-        self.display_container.append(compare_models_.data)
+        self._display_container.append(compare_models_.data)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(sorted_models))
         self.logger.info(
@@ -1049,14 +1052,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 if train_results is not None:
                     model_results = pd.concat([model_results, train_results])
 
-                self.display_container.append(model_results)
+                self._display_container.append(model_results)
 
                 model_results = model_results.style.format(precision=round)
 
                 if system:
                     display.display(model_results)
 
-                self.logger.info(f"display_container: {len(self.display_container)}")
+                self.logger.info(f"_display_container: {len(self._display_container)}")
 
             if not model_only:
                 return pipeline_with_model, model_fit_time
@@ -1095,7 +1098,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Starting cross validation")
 
-        n_jobs = self._gpu_n_jobs_param
+        n_jobs = self.gpu_n_jobs_param
         from sklearn.gaussian_process import (
             GaussianProcessClassifier,
             GaussianProcessRegressor,
@@ -1266,6 +1269,12 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.format(precision=round)
         return model_results
 
+    @abstractmethod
+    def _create_model_get_train_X_y(self, X_train, y_train):
+        """Return appropriate training X and y values depending on whether
+        X_train and y_train are passed or not."""
+        pass
+
     def _create_model(
         self,
         estimator,
@@ -1399,18 +1408,9 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Copying training dataset")
 
         # Storing X_train and y_train in data_X and data_y parameter
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            data_X = self.X_train if X_train_data is None else X_train_data.copy()
-            data_y = self.y_train if y_train_data is None else y_train_data.copy()
-        else:
-            if X_train_data is not None:
-                data_X = X_train_data.copy()
-            else:
-                if self.X_train is None:
-                    data_X = None
-                else:
-                    data_X = self.X_train
-            data_y = self.y_train if y_train_data is None else y_train_data.copy()
+        data_X, data_y = self._create_model_get_train_X_y(
+            X_train=X_train_data, y_train=y_train_data
+        )
 
         groups = self._get_groups(groups, data=data_X)
 
@@ -1464,17 +1464,18 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.update_monitor(2, full_name)
 
-        if (
-            probability_threshold
-            and self._ml_usecase == MLUsecase.CLASSIFICATION
-            and not self._is_multiclass
-        ):
+        if probability_threshold is not None:
+            if self._ml_usecase != MLUsecase.CLASSIFICATION or self.is_multiclass:
+                raise ValueError(
+                    "Cannot use probability_threshold with non-binary "
+                    "classification usecases."
+                )
             if not isinstance(model, CustomProbabilityThresholdClassifier):
                 model = CustomProbabilityThresholdClassifier(
                     classifier=model,
                     probability_threshold=probability_threshold,
                 )
-            elif probability_threshold is not None:
+            else:
                 model.set_params(probability_threshold=probability_threshold)
         self.logger.info(f"{full_name} Imported successfully")
 
@@ -1565,12 +1566,12 @@ class _SupervisedExperiment(_TabularExperiment):
         if not self._ml_usecase == MLUsecase.TIME_SERIES:
             model_results.drop("cutoff", axis=1, inplace=True, errors="ignore")
 
-        self.display_container.append(model_results)
+        self._display_container.append(model_results)
 
-        # storing results in master_model_container
+        # storing results in _master_model_container
         if add_to_model_list:
             self.logger.info("Uploading model into container now")
-            self.master_model_container.append(
+            self._master_model_container.append(
                 {"model": model, "scores": model_results, "cv": cv}
             )
 
@@ -1581,8 +1582,10 @@ class _SupervisedExperiment(_TabularExperiment):
         if system:
             display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -1692,7 +1695,7 @@ class _SupervisedExperiment(_TabularExperiment):
             If False, method will return a tuple of model and the model fit time.
 
         add_to_model_list: bool, default = True
-            Whether to save model and results in master_model_container.
+            Whether to save model and results in _master_model_container.
 
         X_train_data: pandas.DataFrame, default = None
             If not None, will use this dataframe as training features.
@@ -2143,7 +2146,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
             # checking optimize parameter for multiclass
-            if self._is_multiclass:
+            if self.is_multiclass:
                 if not optimize.is_multiclass:
                     raise TypeError(
                         "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -2374,7 +2377,7 @@ class _SupervisedExperiment(_TabularExperiment):
             if estimator_definition is not None:
                 search_kwargs = {**estimator_definition.tune_args, **kwargs}
                 n_jobs = (
-                    self._gpu_n_jobs_param
+                    self.gpu_n_jobs_param
                     if estimator_definition.is_gpu_enabled
                     else self.n_jobs_param
                 )
@@ -2681,6 +2684,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if isinstance(model, TunableMixin):
             self.logger.info("Getting base sklearn object from tunable")
+            model = clone(model)
+            model.set_params(**best_params)
             best_params = {
                 k: v
                 for k, v in model.get_params().items()
@@ -2756,8 +2761,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(best_model))
         self.logger.info(
@@ -2953,7 +2960,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3129,8 +3136,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -3339,7 +3348,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3430,18 +3439,21 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             model = voting_model_definition.class_def(
-                estimators=estimator_list, voting=method, n_jobs=self._gpu_n_jobs_param
+                estimators=estimator_list,
+                voting=method,
+                n_jobs=self.gpu_n_jobs_param,
+                weights=weights,
             )
         elif self._ml_usecase == MLUsecase.TIME_SERIES:
             model = voting_model_definition.class_def(
                 forecasters=estimator_list,
                 method=method,
                 weights=weights,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
             )
         else:
             model = voting_model_definition.class_def(
-                estimators=estimator_list, n_jobs=self._gpu_n_jobs_param
+                estimators=estimator_list, n_jobs=self.gpu_n_jobs_param, weights=weights
             )
 
         display.update_monitor(2, voting_model_definition.name)
@@ -3516,8 +3528,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -3719,7 +3733,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3813,7 +3827,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 final_estimator=meta_model,
                 cv=meta_model_fold,
                 stack_method=method,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
                 passthrough=restack,
             )
         else:
@@ -3821,7 +3835,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 estimators=estimator_list,
                 final_estimator=meta_model,
                 cv=meta_model_fold,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
                 passthrough=restack,
             )
 
@@ -3896,8 +3910,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -4269,13 +4285,21 @@ class _SupervisedExperiment(_TabularExperiment):
             from interpret.blackbox import PartialDependence
 
             try:
+                # interpret>=0.3.1
                 pdp = PartialDependence(
-                    predict_fn=model.predict_proba, data=test_X
-                )  # classification
-            except AttributeError:
-                pdp = PartialDependence(
-                    predict_fn=model.predict, data=test_X
-                )  # regression
+                    model=model,
+                    data=test_X.to_numpy(),
+                    feature_names=list(test_X.columns),
+                )
+            except TypeError:
+                try:
+                    pdp = PartialDependence(
+                        predict_fn=model.predict_proba, data=test_X
+                    )  # classification
+                except AttributeError:
+                    pdp = PartialDependence(
+                        predict_fn=model.predict, data=test_X
+                    )  # regression
 
             pdp_global = pdp.explain_global()
             pdp_plot = pdp_global.visualize(list(test_X.columns).index(pdp_feature))
@@ -4293,13 +4317,21 @@ class _SupervisedExperiment(_TabularExperiment):
             from interpret.blackbox import MorrisSensitivity
 
             try:
+                # interpret>=0.3.1
                 msa = MorrisSensitivity(
-                    predict_fn=model.predict_proba, data=test_X
-                )  # classification
-            except AttributeError:
-                msa = MorrisSensitivity(
-                    predict_fn=model.predict, data=test_X
-                )  # regression
+                    model=model,
+                    data=test_X.to_numpy(),
+                    feature_names=list(test_X.columns),
+                )
+            except TypeError:
+                try:
+                    msa = MorrisSensitivity(
+                        predict_fn=model.predict_proba, data=test_X
+                    )  # classification
+                except AttributeError:
+                    msa = MorrisSensitivity(
+                        predict_fn=model.predict, data=test_X
+                    )  # regression
             msa_global = msa.explain_global()
             msa_plot = msa_global.visualize()
             if save:
@@ -4722,8 +4754,10 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(pipeline_final))
         self.logger.info(
@@ -4744,7 +4778,6 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         encoded_labels: bool = False,  # added in pycaret==2.1.0
         raw_score: bool = False,
-        drift_report: bool = False,
         round: int = 4,  # added in pycaret==2.2.0
         verbose: bool = True,
         ml_usecase: Optional[MLUsecase] = None,
@@ -4814,12 +4847,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        def replace_labels_in_column(pipeline, labels: pd.Series) -> pd.Series:
+        def replace_labels_in_column(label_encoder, labels: pd.Series) -> pd.Series:
             # Check if there is a LabelEncoder in the pipeline
-            le = get_label_encoder(pipeline)
-            if le:
+            if label_encoder:
                 return pd.Series(
-                    data=le.inverse_transform(labels),
+                    data=label_encoder.inverse_transform(labels),
                     name=labels.name,
                     index=labels.index,
                 )
@@ -4904,6 +4936,7 @@ class _SupervisedExperiment(_TabularExperiment):
         y_test_ = None
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
+            X_test_untransformed, y_test_untransformed = self.X_test, self.y_test
         else:
             if y_name in data.columns:
                 data = self._set_index(self._prepare_dataset(data, y_name))
@@ -4912,6 +4945,8 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 data = self._set_index(self._prepare_dataset(data))
                 target = None
+            X_test_untransformed = data
+            y_test_untransformed = target
             data = data[X_columns]  # Ignore all columns but the originals
             if preprocess:
                 X_test_ = pipeline.transform(
@@ -4929,36 +4964,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 X_test_ = data
                 y_test_ = target
 
-        # generate drift report
-        if drift_report:
-            _check_soft_dependencies("evidently", extra="mlops", severity="error")
-            from evidently.dashboard import Dashboard
-            from evidently.pipeline.column_mapping import ColumnMapping
-            from evidently.tabs import CatTargetDriftTab, DataDriftTab
-
-            column_mapping = ColumnMapping()
-            column_mapping.target = self.target_param
-            column_mapping.prediction = None
-            column_mapping.datetime = None
-            column_mapping.numerical_features = self._fxs["Numeric"]
-            column_mapping.categorical_features = self._fxs["Categorical"]
-            column_mapping.datetime_features = self._fxs["Date"]
-
-            drift_data = data if data is not None else self.test
-
-            if y_name not in drift_data.columns:
-                raise ValueError(
-                    f"The dataset must contain a label column {y_name} "
-                    "in order to create a drift report."
-                )
-
-            dashboard = Dashboard(tabs=[DataDriftTab(), CatTargetDriftTab()])
-            dashboard.calculate(self.train, drift_data, column_mapping=column_mapping)
-            report_name = f"{self._get_model_name(estimator)}_Drift_Report.html"
-            dashboard.save(report_name)
-            if verbose:
-                print(f"{report_name} saved successfully.")
-
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):
             if probability_threshold is None:
@@ -4966,6 +4971,14 @@ class _SupervisedExperiment(_TabularExperiment):
             estimator = get_estimator_from_meta_estimator(estimator)
 
         pred = np.nan_to_num(estimator.predict(X_test_))
+        pred = pipeline.inverse_transform(pred)
+        # Need to convert labels back to numbers
+        # TODO optimize
+        label_encoder = get_label_encoder(pipeline)
+        if label_encoder:
+            pred = label_encoder.transform(pred)
+        if isinstance(pred, pd.Series):
+            pred = pred.values
 
         try:
             score = estimator.predict_proba(X_test_)
@@ -4998,7 +5011,9 @@ class _SupervisedExperiment(_TabularExperiment):
             df_score = df_score.round(round)
             display.display(df_score.style.format(precision=round))
 
-        label = pd.DataFrame(pred, columns=[LABEL_COLUMN], index=X_test_.index)
+        label = pd.DataFrame(
+            pred, columns=[LABEL_COLUMN], index=X_test_untransformed.index
+        )
         if ml_usecase == MLUsecase.CLASSIFICATION:
             try:
                 label[LABEL_COLUMN] = label[LABEL_COLUMN].astype(int)
@@ -5007,12 +5022,12 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not encoded_labels:
             label[LABEL_COLUMN] = replace_labels_in_column(
-                pipeline, label[LABEL_COLUMN]
+                label_encoder, label[LABEL_COLUMN]
             )
-            if y_test_ is not None:
-                y_test_ = replace_labels_in_column(pipeline, y_test_)
-        old_index = X_test_.index
-        X_test_ = pd.concat([X_test_, y_test_, label], axis=1)
+        else:
+            y_test_untransformed = y_test_
+        old_index = X_test_untransformed.index
+        X_test_ = pd.concat([X_test_untransformed, y_test_untransformed, label], axis=1)
         X_test_.index = old_index
 
         if score is not None:
@@ -5026,9 +5041,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
             else:
                 if not encoded_labels:
-                    le = get_label_encoder(pipeline)
-                    if le:
-                        columns = le.classes_
+                    if label_encoder:
+                        columns = label_encoder.classes_
                     else:
                         columns = range(score.shape[1])
                 else:
@@ -5043,9 +5057,9 @@ class _SupervisedExperiment(_TabularExperiment):
             score = score.round(round)
             X_test_ = pd.concat((X_test_, score), axis=1)
 
-        # store predictions on hold-out in display_container
+        # store predictions on hold-out in _display_container
         if df_score is not None:
-            self.display_container.append(df_score)
+            self._display_container.append(df_score)
 
         gc.collect()
         return X_test_
@@ -5061,7 +5075,7 @@ class _SupervisedExperiment(_TabularExperiment):
         """
         generates leaderboard for all models run in current run.
         """
-        model_container = self.master_model_container
+        model_container = self._master_model_container
 
         progress_args = {"max": len(model_container) + 1}
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -5095,7 +5109,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
             model_results = model_results_tuple["scores"]
             model = model_results_tuple["model"]
-            mean_scores = model_results[-2:-1]
+            try:
+                mean_scores = model_results.loc[["Mean"]]
+            except KeyError:
+                continue
             model_name = self._get_model_name(model)
             mean_scores["Index"] = i
             mean_scores["Model Name"] = model_name
@@ -5139,6 +5156,7 @@ class _SupervisedExperiment(_TabularExperiment):
         rearranged_columns = ["Model Name", "Model"] + rearranged_columns
         results = results[rearranged_columns]
         results.set_index("Index", inplace=True, drop=True)
+        display.close()
         # display.clear_output()
         return results
 
@@ -5276,7 +5294,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -5305,7 +5323,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if use_holdout:
             self.logger.info("Model Selection Basis : Holdout set")
-            for i in self.master_model_container:
+            for i in self._master_model_container:
                 self.logger.info(f"Checking model {i}")
                 model = i["model"]
                 try:
@@ -5333,8 +5351,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         else:
             self.logger.info("Model Selection Basis : CV Results on Training set")
-            for i in range(len(self.master_model_container)):
-                model = self.master_model_container[i]
+            for i in range(len(self._master_model_container)):
+                model = self._master_model_container[i]
                 scores = None
                 if model["cv"] is not self.fold_generator:
                     if turbo or self._is_unsupervised():
@@ -5349,7 +5367,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         return_train_score=return_train_score,
                     )
                     scores = self.pull(pop=True)
-                    self.master_model_container.pop()
+                    self._master_model_container.pop()
                 self.logger.info(f"Checking model {i}")
                 if scores is None:
                     scores = model["scores"]
@@ -5540,3 +5558,298 @@ class _SupervisedExperiment(_TabularExperiment):
 
         suite = full_suite(**check_kwargs)
         return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)
+
+    def check_drift(
+        self,
+        reference_data: Optional[pd.DataFrame] = None,
+        current_data: Optional[pd.DataFrame] = None,
+        target: Optional[str] = None,
+        numeric_features: Optional[List[str]] = None,
+        categorical_features: Optional[List[str]] = None,
+        date_features: Optional[List[str]] = None,
+        filename: Optional[str] = None,
+    ) -> str:
+        """
+        This function generates a drift report file using the
+        evidently library.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> check_drift()
+
+
+        reference_data: Optional[pd.DataFrame] = None
+            Reference data. If not specified, will use training data.
+            Must be specified if ``setup()`` has not been run.
+
+
+        current_data: Optional[pd.DataFrame] = None
+            Current data. If not specified, will use test data.
+            Must be specified if ``setup()`` has not been run.
+
+
+        target: Optional[str] = None
+            Name of the target column. If not specified, will use
+            the column specified in ``setup()``.
+            Must be specified if ``setup()`` has not been run.
+
+
+        numeric_features: Optional[List[str]] = None
+            Names of numeric columns. If not specified, will use
+            the columns specified/inferred in ``setup()``, or
+            all non-categorical and non-date columns otherwise.
+
+
+        categorical_features: Optional[List[str]] = None
+            Names of categorical columns. If not specified, will use
+            the columns specified/inferred in ``setup()``.
+
+
+        date_features: Optional[List[str]] = None
+            Names of date columns. If not specified, will use
+            the columns specified/inferred in ``setup()``.
+
+
+        filename: Optional[str] = None
+            Path to save the generated HTML file to. If not specified,
+            will default to '[EXPERIMENT_NAME]_[TIMESTAMP]_Drift_Report.html'.
+
+
+        Returns:
+            Path the generated HTML file was saved to.
+        """
+        _check_soft_dependencies("evidently", extra="mlops", severity="error")
+
+        if self._setup_ran:
+            reference_data = self.train if reference_data is None else reference_data
+            current_data = self.test if current_data is None else current_data
+            target = self.target_param if target is None else target
+            numeric_features = numeric_features or self._fxs["Numeric"]
+            categorical_features = categorical_features or self._fxs["Categorical"]
+            date_features = date_features or self._fxs["Date"]
+        none_vars = [
+            k
+            for k, v in {
+                "reference_data": reference_data,
+                "current_data": current_data,
+                "target": target,
+            }.items()
+            if v is None
+        ]
+        if none_vars:
+            raise ValueError(
+                "The following variables couldn't have been inferred "
+                f"from the experiment state: {none_vars}."
+                "If you have not ran `setup()`, you must pass all of the arguments"
+                "above."
+            )
+
+        date_features = date_features or []
+        categorical_features = categorical_features or []
+
+        if numeric_features is None:
+            numeric_features = list(
+                set(reference_data.columns)
+                .difference(categorical_features)
+                .difference(date_features)
+            )
+
+        from evidently.dashboard import Dashboard
+        from evidently.pipeline.column_mapping import ColumnMapping
+        from evidently.tabs import CatTargetDriftTab, DataDriftTab
+
+        column_mapping = ColumnMapping()
+        column_mapping.target = target
+        column_mapping.prediction = None
+        column_mapping.datetime = None
+        column_mapping.numerical_features = numeric_features
+        column_mapping.categorical_features = categorical_features
+        column_mapping.datetime_features = date_features
+
+        if target not in reference_data.columns or target not in current_data.columns:
+            raise ValueError(
+                f"Both dataset must contain a label column {target} "
+                "in order to create a drift report."
+            )
+
+        dashboard = Dashboard(tabs=[DataDriftTab(), CatTargetDriftTab()])
+        dashboard.calculate(reference_data, current_data, column_mapping=column_mapping)
+        filename = (
+            filename or f"{self.exp_name_log}_{int(time.time())}_Drift_Report.html"
+        )
+        dashboard.save(filename)
+        return filename
+
+    @classmethod
+    def load_experiment(
+        cls,
+        path_or_file: Union[str, os.PathLike, BinaryIO],
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+        test_data: Optional[DATAFRAME_LIKE] = None,
+        preprocess_data: bool = True,
+        **cloudpickle_kwargs,
+    ) -> "_SupervisedExperiment":
+        """
+        Load an experiment saved with ``save_experiment`` from path
+        or file.
+
+        The data (and test data) is NOT saved with the experiment
+        and will need to be specified again.
+
+
+        path_or_file: str or BinaryIO (file pointer)
+            The path/file pointer to load the experiment from.
+            The pickle file must be created through ``save_experiment``.
+
+
+        data: dataframe-like
+            Data set with shape (n_samples, n_features), where n_samples is the
+            number of samples and n_features is the number of features. If data
+            is not a pandas dataframe, it's converted to one using default column
+            names.
+
+
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
+
+
+        test_data: dataframe-like or None, default = None
+            If not None, test_data is used as a hold-out set and `train_size` parameter
+            is ignored. The columns of data and test_data must match.
+
+
+        preprocess_data: bool, default = True
+            If True, the data will be preprocessed again (through running ``setup``
+            internally). If False, the data will not be preprocessed. This means
+            you can save the value of the ``data`` attribute of an experiment
+            separately, and then load it separately and pass it here with
+            ``preprocess_data`` set to False. This is an advanced feature.
+            We recommend leaving it set to True and passing the same data
+            as passed to the initial ``setup`` call.
+
+
+        **cloudpickle_kwargs:
+            Kwargs to pass to the ``cloudpickle.load`` call.
+
+
+        Returns:
+            loaded experiment
+
+        """
+
+        return cls._load_experiment(
+            path_or_file,
+            cloudpickle_kwargs=cloudpickle_kwargs,
+            preprocess_data=preprocess_data,
+            data=data,
+            data_func=data_func,
+            test_data=test_data,
+        )
+
+    @property
+    @abstractmethod
+    def X(self):
+        """Feature set."""
+        pass
+
+    @property
+    @abstractmethod
+    def dataset_transformed(self):
+        """Transformed dataset."""
+        pass
+
+    @property
+    @abstractmethod
+    def X_train_transformed(self):
+        """Transformed feature set of the training set."""
+        pass
+
+    @property
+    @abstractmethod
+    def train_transformed(self):
+        """Transformed training set."""
+        pass
+
+    @property
+    @abstractmethod
+    def X_transformed(self):
+        """Transformed feature set."""
+        pass
+
+    @property
+    def y(self):
+        """Target column."""
+        return self.dataset[self.target_param]
+
+    @property
+    @abstractmethod
+    def X_train(self):
+        """Feature set of the training set."""
+        pass
+
+    @property
+    @abstractmethod
+    def X_test(self):
+        """Feature set of the test set."""
+        pass
+
+    @property
+    def train(self):
+        """Training set."""
+        return self.dataset.loc[self.idx[0], :]
+
+    @property
+    @abstractmethod
+    def test(self):
+        """Test set."""
+        pass
+
+    @property
+    def y_train(self):
+        """Target column of the training set."""
+        return self.train[self.target_param]
+
+    @property
+    def y_test(self):
+        """Target column of the test set."""
+        return self.test[self.target_param]
+
+    @property
+    @abstractmethod
+    def test_transformed(self):
+        """Transformed test set."""
+        pass
+
+    @property
+    @abstractmethod
+    def y_transformed(self):
+        """Transformed target column."""
+        pass
+
+    @property
+    @abstractmethod
+    def X_test_transformed(self):
+        """Transformed feature set of the test set."""
+        pass
+
+    @property
+    @abstractmethod
+    def y_train_transformed(self):
+        """Transformed target column of the training set."""
+        pass
+
+    @property
+    @abstractmethod
+    def y_test_transformed(self):
+        """Transformed target column of the test set."""
+        pass

@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -19,8 +20,8 @@ from pycaret.internal.parallel.parallel_backend import ParallelBackend
 # Own module
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.preprocess.preprocessor import Preprocessor
-from pycaret.internal.pycaret_experiment.supervised_experiment import (
-    _SupervisedExperiment,
+from pycaret.internal.pycaret_experiment.non_ts_supervised_experiment import (
+    _NonTSSupervisedExperiment,
 )
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE, TARGET_LIKE
@@ -29,15 +30,14 @@ from pycaret.utils.generic import MLUsecase, highlight_setup
 LOGGER = get_logger()
 
 
-class RegressionExperiment(_SupervisedExperiment, Preprocessor):
+class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.REGRESSION
         self.exp_name_log = "reg-default-name"
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "transform_target_param",
-                "transform_target_method_param",
             }
         )
         self._available_plots = {
@@ -80,7 +80,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         data: Optional[DATAFRAME_LIKE] = None,
         data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
         target: TARGET_LIKE = -1,
-        index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+        index: Union[bool, int, str, SEQUENCE_LIKE] = True,
         train_size: float = 0.7,
         test_data: Optional[DATAFRAME_LIKE] = None,
         ordinal_features: Optional[Dict[str, list]] = None,
@@ -108,6 +108,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         low_variance_threshold: Optional[float] = None,
         group_features: Optional[list] = None,
         group_names: Optional[Union[str, list]] = None,
+        drop_groups: bool = False,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
         bin_numeric_features: Optional[List[str]] = None,
@@ -179,7 +180,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         data_func: Callable[[], DATAFRAME_LIKE] = None
             The function that generate ``data`` (the dataframe-like input). This
             is useful when the dataset is large, and you need parallel operations
-            such as ``compare_models``. It can avoid boradcasting large dataset
+            such as ``compare_models``. It can avoid broadcasting large dataset
             from driver to workers. Notice one and only one of ``data`` and
             ``data_func`` must be set.
 
@@ -191,7 +192,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             multiclass.
 
 
-        index: bool, int, str or sequence, default = False
+        index: bool, int, str or sequence, default = True
             Handle indices in the `data` dataframe.
                 - If False: Reset to RangeIndex.
                 - If True: Keep the provided index.
@@ -357,10 +358,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         group_features: list, list of lists or None, default = None
             When the dataset contains features with related characteristics,
-            replace those fetaures with the following statistical properties
-            of that group: min, max, mean, std, median and mode. The parameter
-            takes a list of feature names or a list of lists of feature names
-            to specify multiple groups.
+            add new fetaures with the following statistical properties of that
+            group: min, max, mean, std, median and mode. The parameter takes a
+            list of feature names or a list of lists of feature names to specify
+            multiple groups.
 
 
         group_names: str, list, or None, default = None
@@ -368,6 +369,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             should match with the number of groups specified in ``group_features``.
             If None, new features are named using the default form, e.g. group_1,
             group_2, etc... Ignored when ``group_features`` is None.
+
+        drop_groups: bool, default=False
+            Whether to drop the original features in the group. Ignored when
+            ``group_features`` is None.
 
         remove_multicollinearity: bool, default = False
             When set to True, features with the inter-correlations higher than
@@ -587,10 +592,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
 
         log_experiment: bool, default = False
-            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb', 'comet_ml')
             corresponding to a logger to determine which experiment loggers to use.
             Setting to True will use just MLFlow.
-            If ``wandb`` (Weights & Biases) is installed, will also log there.
+            If ``wandb`` (Weights & Biases) or ``comet_ml``  is installed, will also log there.
 
 
         system_log: bool or str or logging.Logger, default = True
@@ -667,9 +672,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         runtime_start = time.time()
 
-        if data_func is not None:
-            data = data_func()
-
         self.all_allowed_engines = ALL_ALLOWED_ENGINES
 
         # Define parameter attrs
@@ -713,9 +715,14 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         # Set up data ============================================== >>
 
+        if data_func is not None:
+            data = data_func()
+
         self.data = self._prepare_dataset(data, target)
         self.target_param = self.data.columns[-1]
         self.index = index
+        self.data_split_stratify = data_split_stratify
+        self.data_split_shuffle = data_split_shuffle
 
         self._prepare_train_test(
             train_size=train_size,
@@ -756,10 +763,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
-
-            # Encode the target column
-            if self.y.dtype.kind not in "ifu":
-                self._encode_target_column()
 
             # Power transform the target to be more Gaussian-like
             if transform_target:
@@ -807,7 +810,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
             # Get statistical properties of a group of features
             if group_features:
-                self._group_features(group_features, group_names)
+                self._group_features(group_features, group_names, drop_groups)
 
             # Drop features that are collinear with other features
             if remove_multicollinearity:
@@ -845,7 +848,13 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         if custom_pipeline:
             self._add_custom_pipeline(custom_pipeline, custom_pipeline_position)
 
-            # Remove placeholder step
+        # Remove weird characters from column names
+        # This has to be done right before the estimator, as modifying column
+        # names early messes self._fxs up
+        if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
+            self._clean_column_names()
+
+        # Remove placeholder step
         if ("placeholder", None) in self.pipeline.steps and len(self.pipeline) > 1:
             self.pipeline.steps.remove(("placeholder", None))
 
@@ -862,9 +871,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         container.append(["Session id", self.seed])
         container.append(["Target", self.target_param])
         container.append(["Target type", "Regression"])
-        container.append(["Data shape", self.dataset_transformed.shape])
-        container.append(["Train data shape", self.train_transformed.shape])
-        container.append(["Test data shape", self.test_transformed.shape])
+        container.append(["Original data shape", self.data.shape])
+        container.append(["Transformed data shape", self.dataset_transformed.shape])
+        container.append(["Transformed train set shape", self.train_transformed.shape])
+        container.append(["Transformed test set shape", self.test_transformed.shape])
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
                 container.append([f"{fx} features", len(cols)])
@@ -943,17 +953,17 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [
+        self._display_container = [
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
-        self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        self.logger.info(f"Setup _display_container: {self._display_container[0]}")
         display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
@@ -2157,7 +2167,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         self,
         estimator,
         data: Optional[pd.DataFrame] = None,
-        drift_report: bool = False,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -2187,11 +2196,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             must be available in the unseen dataset.
 
 
-        drift_report: bool, default = False
-            When set to True, interactive drift report is generated on test set
-            with the evidently library.
-
-
         round: int, default = 4
             Number of decimal places to round predictions to.
 
@@ -2219,7 +2223,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             data=data,
             probability_threshold=None,
             encoded_labels=False,
-            drift_report=drift_report,
             round=round,
             verbose=verbose,
         )

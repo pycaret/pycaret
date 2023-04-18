@@ -19,21 +19,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Run black
         uses: psf/black@stable
         with:
           src: pycaret tests
+          version: 22.12.0
       - name: Check imports
         uses: jamescurtin/isort-action@master
         with:
-          sortPaths: pycaret tests
+          sort-paths: pycaret tests
+          isort-version: 5.11.4
       - name: Run flake8
         uses: py-actions/flake8@v2
         with:
           path: pycaret tests
+          flake8-version: 6.0.0
 
   # JOBS MUST START WITH test !!!!
+  test_notebooks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v3
+      - name: Set up Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          pip install -U pytest pytest-xdist nbmake
+          pip install -e ".[full]"
+          python -m ipykernel install --user --name cikernel
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: 3.10"
+          python --version
+          which python
+          pip list
+      - name: Run notebooks
+        run: pytest --nbmake --nbmake-kernel=cikernel -n=auto --nbmake-timeout=3000 --ignore=./tutorials/translations ./tutorials/
+
   test_linux:
     runs-on: ubuntu-latest
     strategy:
@@ -41,9 +67,9 @@ jobs:
         python-version: [3.7, 3.8, 3.9, "3.10"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -52,12 +78,10 @@ jobs:
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
+          python -m pip install -U pytest numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-          python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -85,9 +109,9 @@ jobs:
         python-version: [3.7, 3.8, 3.9, "3.10"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -96,12 +120,10 @@ jobs:
         run: |
           $env:SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL = 'True'
           python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
+          python -m pip install -U pytest numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, test]"
           pip install -r requirements-prophet.txt
-          pip install -r requirements-test.txt
-          python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -122,9 +144,9 @@ jobs:
         python-version: ["3.10"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -133,10 +155,8 @@ jobs:
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install --upgrade pip
-          python -m pip install -U pytest codecov numpy
-          pip install -e ".[full, nlp]"
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-          python -m spacy download en_core_web_sm
+          python -m pip install -U pytest numpy
+          pip install -e ".[full, test]"
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -156,9 +176,9 @@ jobs:
         python-version: ["3.10"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -167,13 +187,10 @@ jobs:
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
+          python -m pip install -U pytest numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-
-          python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -193,9 +210,9 @@ jobs:
         python-version: ["3.10"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -204,13 +221,10 @@ jobs:
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
+          python -m pip install -U pytest numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-
-          python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -230,9 +244,9 @@ jobs:
         python-version: ["3.10"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -241,33 +255,27 @@ jobs:
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
+          python -m pip install -U pytest numpy
 
-          pip install -e ".[full, nlp]"
+          pip install -e ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-
-          python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
           python --version
           which python
           pip list
-      - name: Remove tests
-        run: |
-          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_sp_detection.py' -delete
       - name: Run benchmarks
-        run: pytest --durations=0
+        run: pytest tests/benchmarks --durations=0
 
   # test_tuning:
 
   #   runs-on: ubuntu-latest
 
   #   steps:
-  #   - uses: actions/checkout@v2
+  #   - uses: actions/checkout@v3
   #   - name: Set up Python 3.8
-  #     uses: actions/setup-python@v2
+  #     uses: actions/setup-python@v4
   #     with:
   #       python-version: 3.8
   #   - name: Install dependencies
@@ -275,9 +283,8 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full, nlp]"
+  #       pip install -e ".[full]"
   #       python -m pip install hpbandster ConfigSpace
-  #       python -m spacy download en
   #   - name: Remove tests
   #     run: |
   #       find tests -type f -not -name '__init__.py' -not -name 'test_classification_tuning.py' -not -name 'test_regression_tuning.py' -delete
@@ -289,9 +296,9 @@ jobs:
   #   runs-on: windows-latest
 
   #   steps:
-  #   - uses: actions/checkout@v2
+  #   - uses: actions/checkout@v3
   #   - name: Set up Python 3.8
-  #     uses: actions/setup-python@v2
+  #     uses: actions/setup-python@v4
   #     with:
   #       python-version: 3.8
   #   - name: Install dependencies
@@ -299,8 +306,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full, nlp]"
-  #       python -m spacy download en
+  #       pip install -e ".[full]"
   #   - name: Remove tests
   #     run: |
   #       remove-item tests/* -Exclude @('__init__.py','test_classification_tuning.py')
@@ -312,9 +318,9 @@ jobs:
   #   runs-on: windows-latest
 
   #   steps:
-  #   - uses: actions/checkout@v2
+  #   - uses: actions/checkout@v3
   #   - name: Set up Python 3.8
-  #     uses: actions/setup-python@v2
+  #     uses: actions/setup-python@v4
   #     with:
   #       python-version: 3.8
   #   - name: Install dependencies
@@ -322,8 +328,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full, nlp]"
-  #       python -m spacy download en
+  #       pip install -e ".[full]"
   #   - name: Remove tests
   #     run: |
   #       remove-item tests/* -Exclude @('__init__.py','test_regression_tuning.py')

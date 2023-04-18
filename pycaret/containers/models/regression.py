@@ -253,7 +253,7 @@ class LinearRegressionContainer(RegressorContainer):
 
         args = {}
         tune_args = {}
-        tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+        tune_grid = {"fit_intercept": [True, False]}
         tune_distributions = {}
 
         if not gpu_imported:
@@ -310,7 +310,6 @@ class LassoRegressionContainer(RegressorContainer):
         tune_grid = {
             "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
@@ -368,7 +367,6 @@ class RidgeRegressionContainer(RegressorContainer):
         tune_grid = {
             "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
@@ -427,7 +425,6 @@ class ElasticNetContainer(RegressorContainer):
             "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "l1_ratio": np_list_arange(0.01, 1, 0.001, inclusive=False),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "alpha": UniformDistribution(0, 1),
@@ -464,7 +461,6 @@ class LarsContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "fit_intercept": [True, False],
-            "normalize": [True, False],
             "eps": [
                 0.00001,
                 0.0001,
@@ -509,7 +505,6 @@ class LassoLarsContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "fit_intercept": [True, False],
-            "normalize": [True, False],
             "alpha": [
                 0.0000001,
                 0.000001,
@@ -573,7 +568,6 @@ class OrthogonalMatchingPursuitContainer(RegressorContainer):
         tune_grid = {
             "n_nonzero_coefs": range(1, len(experiment.X_train.columns) + 1),
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "n_nonzero_coefs": IntUniformDistribution(
@@ -663,7 +657,6 @@ class BayesianRidgeContainer(RegressorContainer):
             ],
             "compute_score": [True, False],
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "alpha_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),
@@ -768,7 +761,6 @@ class AutomaticRelevanceDeterminationContainer(RegressorContainer):
             ],
             "compute_score": [True, False],
             "fit_intercept": [True, False],
-            "normalize": [True, False],
         }
         tune_distributions = {
             "alpha_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),
@@ -1153,7 +1145,7 @@ class DecisionTreeRegressorContainer(RegressorContainer):
                 0.4,
                 0.5,
             ],
-            "criterion": ["mse", "mae", "friedman_mse"],
+            "criterion": ["squared_error", "absolute_error", "friedman_mse"],
         }
         tune_distributions = {
             "max_depth": IntUniformDistribution(1, 16),
@@ -1246,10 +1238,8 @@ class RandomForestRegressorContainer(RegressorContainer):
             "max_features": UniformDistribution(0.4, 1),
         }
 
-        if gpu_imported:
-            tune_grid["split_criterion"] = [2, 3]
-        else:
-            tune_grid["criterion"] = ["mse", "mae"]
+        if not gpu_imported:
+            tune_grid["criterion"] = ["squared_error", "absolute_error"]
             tune_grid["min_samples_split"] = [2, 5, 7, 9, 10]
             tune_grid["min_samples_leaf"] = [2, 3, 4, 5, 6]
             tune_distributions["min_samples_split"] = IntUniformDistribution(2, 10)
@@ -1284,7 +1274,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
-            "criterion": ["mse", "mae"],
+            "criterion": ["squared_error", "absolute_error"],
             "max_depth": np_list_arange(1, 11, 1, inclusive=True),
             "min_impurity_decrease": [
                 0,
@@ -1812,9 +1802,7 @@ class CatBoostRegressorContainer(RegressorContainer):
         # suppress output
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
-        use_gpu = experiment.gpu_param == "force" or (
-            experiment.gpu_param and len(experiment.X_train) >= 50000
-        )
+        use_gpu = experiment.gpu_param
 
         args = {
             "random_state": experiment.seed,
@@ -1856,7 +1844,7 @@ class CatBoostRegressorContainer(RegressorContainer):
 
         if use_gpu:
             tune_grid["depth"] = list(range(1, 9))
-            tune_distributions["depth"] = (IntUniformDistribution(1, 8),)
+            tune_distributions["depth"] = IntUniformDistribution(1, 8)
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 

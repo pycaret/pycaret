@@ -3,23 +3,17 @@ import gc
 import logging
 import time
 import traceback
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
-import plotly.graph_objects as go  # type: ignore
 from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
-from sklearn.preprocessing import LabelEncoder
 
-from pycaret.containers.metrics import (
-    get_all_class_metric_containers,
-    get_all_clust_metric_containers,
-    get_all_reg_metric_containers,
-)
-from pycaret.containers.models import (
-    get_all_class_model_containers,
-    get_all_reg_model_containers,
+from pycaret.containers.metrics import get_all_clust_metric_containers
+from pycaret.containers.models.clustering import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
 )
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger, redirect_output
@@ -30,7 +24,7 @@ from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExper
 from pycaret.internal.validation import is_sklearn_pipeline
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
-from pycaret.utils.generic import MLUsecase, highlight_setup, infer_ml_usecase
+from pycaret.utils.generic import MLUsecase, highlight_setup
 
 LOGGER = get_logger()
 
@@ -38,7 +32,7 @@ LOGGER = get_logger()
 class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     def __init__(self) -> None:
         super().__init__()
-        self.variable_keys = self.variable_keys.union({"X"})
+        self._variable_keys = self._variable_keys.union({"X"})
         return
 
     def _calculate_metrics(self, X, labels, ground_truth=None, ml_usecase=None) -> dict:
@@ -85,8 +79,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
     def setup(
         self,
-        data: DATAFRAME_LIKE,
-        index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], Union[pd.Series, pd.DataFrame]]] = None,
+        index: Union[bool, int, str, SEQUENCE_LIKE] = True,
         ordinal_features: Optional[Dict[str, list]] = None,
         numeric_features: Optional[List[str]] = None,
         categorical_features: Optional[List[str]] = None,
@@ -109,6 +104,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         low_variance_threshold: Optional[float] = None,
         group_features: Optional[list] = None,
         group_names: Optional[Union[str, list]] = None,
+        drop_groups: bool = False,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
         bin_numeric_features: Optional[List[str]] = None,
@@ -141,6 +137,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
+        engines: Optional[Dict[str, str]] = None,
     ):
         """
 
@@ -164,7 +161,14 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             names.
 
 
-        index: bool, int, str or sequence, default = False
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
+
+        index: bool, int, str or sequence, default = True
             Handle indices in the `data` dataframe.
                 - If False: Reset to RangeIndex.
                 - If True: Keep the provided index.
@@ -264,7 +268,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         encoding_method: category-encoders estimator, default = None
             A `category-encoders` estimator to encode the categorical columns
             with more than `max_encoding_ohe` unique values. If None,
-            `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+            `category_encoders.basen.BaseN` is used.
 
 
         rare_to_value: float or None, default=None
@@ -298,10 +302,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         group_features: list, list of lists or None, default = None
             When the dataset contains features with related characteristics,
-            replace those fetaures with the following statistical properties
-            of that group: min, max, mean, std, median and mode. The parameter
-            takes a list of feature names or a list of lists of feature names
-            to specify multiple groups.
+            add new fetaures with the following statistical properties of that
+            group: min, max, mean, std, median and mode. The parameter takes a
+            list of feature names or a list of lists of feature names to specify
+            multiple groups.
 
 
         group_names: str, list, or None, default = None
@@ -309,6 +313,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             should match with the number of groups specified in ``group_features``.
             If None, new features are named using the default form, e.g. group_1,
             group_2, etc... Ignored when ``group_features`` is None.
+
+        drop_groups: bool, default=False
+            Whether to drop the original features in the group. Ignored when
+            ``group_features`` is None.
 
 
         remove_multicollinearity: bool, default = False
@@ -447,10 +455,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
 
         log_experiment: bool, default = False
-            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb', 'comet_ml')
             corresponding to a logger to determine which experiment loggers to use.
             Setting to True will use just MLFlow.
-            If ``wandb`` (Weights & Biases) is installed, will also log there.
+            If ``wandb`` (Weights & Biases) or ``comet_ml``is installed, will also log there.
 
 
         experiment_name: str, default = None
@@ -503,9 +511,18 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         """
 
+        self._register_setup_params(dict(locals()))
+
+        if (data is None and data_func is None) or (
+            data is not None and data_func is not None
+        ):
+            raise ValueError("One and only one of data and data_func must be set")
+
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
+
+        self.all_allowed_engines = ALL_ALLOWED_ENGINES
 
         self._initialize_setup(
             n_jobs=n_jobs,
@@ -533,6 +550,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                     )
 
         # Set up data ============================================== >>
+        if data_func is not None:
+            data = data_func()
 
         self.index = index
         self.data = self._set_index(self._prepare_dataset(data))
@@ -548,6 +567,11 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             text_features=text_features,
             ignore_features=ignore_features,
             keep_features=keep_features,
+        )
+
+        self._set_exp_model_engines(
+            container_default_engines=get_container_default_engines(),
+            engine=engines,
         )
 
         # Preprocessing ============================================ >>
@@ -597,7 +621,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
             # Get statistical properties of a group of features
             if group_features:
-                self._group_features(group_features, group_names)
+                self._group_features(group_features, group_names, drop_groups)
 
             # Drop features that are collinear with other features
             if remove_multicollinearity:
@@ -642,7 +666,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         container = []
         container.append(["Session id", self.seed])
-        container.append(["Original data shape", self.dataset.shape])
+        container.append(["Original data shape", self.data.shape])
         container.append(["Transformed data shape", self.dataset_transformed.shape])
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
@@ -694,17 +718,17 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [
+        self._display_container = [
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
-        self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        self.logger.info(f"Setup _display_container: {self._display_container[0]}")
         display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
@@ -729,479 +753,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         return self
 
-    def tune_model(
-        self,
-        model,
-        supervised_target: str,
-        supervised_type: Optional[str] = None,
-        supervised_estimator: Union[str, Any] = "lr",
-        optimize: Optional[str] = None,
-        custom_grid: Optional[List[int]] = None,
-        fold: Optional[Union[int, Any]] = None,
-        groups: Optional[Union[str, Any]] = None,
-        ground_truth: Optional[str] = None,
-        method: str = "drop",
-        fit_kwargs: Optional[dict] = None,
-        round: int = 4,
-        verbose: bool = True,
-        **kwargs,
-    ):
-        """
-        This function tunes the ``num_clusters`` parameter of a given model.
-
-
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> from pycaret.clustering import *
-        >>> exp_name = setup(data = juice)
-        >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'Purchase')
-
-
-        model: str
-            ID of an model available in the model library. Models that can be
-            tuned in this function (ID - Model):
-
-            * 'kmeans' - K-Means Clustering
-            * 'sc' - Spectral Clustering
-            * 'hclust' - Agglomerative Clustering
-            * 'birch' - Birch Clustering
-            * 'kmodes' - K-Modes Clustering
-
-
-        supervised_target: str
-            Name of the target column containing labels.
-
-
-        supervised_type: str, default = None
-            Type of task. 'classification' or 'regression'. Automatically inferred
-            when None.
-
-
-        supervised_estimator: str, default = None
-            Classification (ID - Name):
-                * 'lr' - Logistic Regression (Default)
-                * 'knn' - K Nearest Neighbour
-                * 'nb' - Naive Bayes
-                * 'dt' - Decision Tree Classifier
-                * 'svm' - SVM - Linear Kernel
-                * 'rbfsvm' - SVM - Radial Kernel
-                * 'gpc' - Gaussian Process Classifier
-                * 'mlp' - Multi Level Perceptron
-                * 'ridge' - Ridge Classifier
-                * 'rf' - Random Forest Classifier
-                * 'qda' - Quadratic Discriminant Analysis
-                * 'ada' - Ada Boost Classifier
-                * 'gbc' - Gradient Boosting Classifier
-                * 'lda' - Linear Discriminant Analysis
-                * 'et' - Extra Trees Classifier
-                * 'xgboost' - Extreme Gradient Boosting
-                * 'lightgbm' - Light Gradient Boosting
-                * 'catboost' - CatBoost Classifier
-
-            Regression (ID - Name):
-                * 'lr' - Linear Regression (Default)
-                * 'lasso' - Lasso Regression
-                * 'ridge' - Ridge Regression
-                * 'en' - Elastic Net
-                * 'lar' - Least Angle Regression
-                * 'llar' - Lasso Least Angle Regression
-                * 'omp' - Orthogonal Matching Pursuit
-                * 'br' - Bayesian Ridge
-                * 'ard' - Automatic Relevance Determ.
-                * 'par' - Passive Aggressive Regressor
-                * 'ransac' - Random Sample Consensus
-                * 'tr' - TheilSen Regressor
-                * 'huber' - Huber Regressor
-                * 'kr' - Kernel Ridge
-                * 'svm' - Support Vector Machine
-                * 'knn' - K Neighbors Regressor
-                * 'dt' - Decision Tree
-                * 'rf' - Random Forest
-                * 'et' - Extra Trees Regressor
-                * 'ada' - AdaBoost Regressor
-                * 'gbr' - Gradient Boosting
-                * 'mlp' - Multi Level Perceptron
-                * 'xgboost' - Extreme Gradient Boosting
-                * 'lightgbm' - Light Gradient Boosting
-                * 'catboost' - CatBoost Regressor
-
-
-        optimize: str, default = None
-            For Classification tasks:
-                Accuracy, AUC, Recall, Precision, F1, Kappa (default = 'Accuracy')
-
-            For Regression tasks:
-                MAE, MSE, RMSE, R2, RMSLE, MAPE (default = 'R2')
-
-
-        custom_grid: list, default = None
-            By default, a pre-defined number of clusters is iterated over to
-            optimize the supervised objective. To overwrite default iteration,
-            pass a list of num_clusters to iterate over in custom_grid param.
-
-
-        fold: int, default = 10
-            Number of folds to be used in Kfold CV. Must be at least 2.
-
-
-        verbose: bool, default = True
-            Status update is not printed when verbose is set to False.
-
-
-        Returns:
-            Trained Model with optimized ``num_clusters`` parameter.
-
-
-        Warnings
-        --------
-        - Affinity Propagation, Mean shift, Density-Based Spatial Clustering
-        and OPTICS Clustering cannot be used in this function since they donot
-        support the ``num_clusters`` param.
-
-
-        """
-
-        function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
-
-        self.logger.info("Initializing tune_model()")
-        self.logger.info(f"tune_model({function_params_str})")
-
-        self.logger.info("Checking exceptions")
-
-        # run_time
-        runtime_start = time.time()
-
-        if not fit_kwargs:
-            fit_kwargs = {}
-
-        if supervised_target not in self.dataset.columns:
-            raise ValueError(
-                f"{supervised_target} is not present as a column in the dataset."
-            )
-
-        np.random.seed(self.seed)
-
-        cols_to_drop = [x for x in self.X.columns if x.startswith(supervised_target)]
-        data_X = self.X.drop(cols_to_drop, axis=1)
-        data_y = self.dataset[[supervised_target]]
-        if data_y.dtypes[0] not in [int, float, bool]:
-            data_y[supervised_target] = LabelEncoder().fit_transform(
-                data_y[supervised_target]
-            )
-        data_y = data_y[supervised_target]
-
-        temp_globals = self.variables
-        temp_globals["y_train"] = data_y
-
-        if supervised_type is None:
-            supervised_type, _ = infer_ml_usecase(data_y)
-            self.logger.info(f"supervised_type inferred as {supervised_type}")
-
-        if supervised_type == "classification":
-            metrics = get_all_class_metric_containers(self, raise_errors=True)
-            available_estimators = get_all_class_model_containers(
-                self, raise_errors=True
-            )
-            ml_usecase = MLUsecase.CLASSIFICATION
-        elif supervised_type == "regression":
-            metrics = get_all_reg_metric_containers(self, raise_errors=True)
-            available_estimators = get_all_reg_model_containers(self, raise_errors=True)
-            ml_usecase = MLUsecase.REGRESSION
-        else:
-            raise ValueError(
-                "supervised_type parameter must be either 'classification' or 'regression'."
-            )
-
-        fold = self._get_cv_splitter(fold, ml_usecase)
-
-        if isinstance(supervised_estimator, str):
-            if supervised_estimator in available_estimators:
-                estimator_definition = available_estimators[supervised_estimator]
-                estimator_args = estimator_definition.args
-                estimator_args = {**estimator_args}
-                supervised_estimator = estimator_definition.class_def(**estimator_args)
-            else:
-                raise ValueError(
-                    f"Unknown supervised_estimator {supervised_estimator}."
-                )
-        else:
-            self.logger.info("Declaring custom model")
-
-            supervised_estimator = clone(supervised_estimator)
-
-        supervised_estimator_name = self._get_model_name(
-            supervised_estimator, models=available_estimators
-        )
-
-        if optimize is None:
-            optimize = "Accuracy" if supervised_type == "classification" else "R2"
-        optimize = self._get_metric_by_name_or_id(optimize, metrics=metrics)
-        if optimize is None:
-            raise ValueError(
-                "Optimize method not supported. See docstring for list of available parameters."
-            )
-
-        if custom_grid is not None and not isinstance(custom_grid, list):
-            raise ValueError("custom_grid parameter must be a list.")
-
-        # checking round parameter
-        if type(round) is not int:
-            raise TypeError("Round parameter only accepts integer value.")
-
-        # checking verbose parameter
-        if type(verbose) is not bool:
-            raise TypeError(
-                "Verbose parameter can only take argument as True or False."
-            )
-
-        if custom_grid is None:
-            if self._ml_usecase == MLUsecase.CLUSTERING:
-                param_grid = [2, 4, 5, 6, 8, 10, 14, 18, 25, 30, 40]
-            else:
-                param_grid = [
-                    0.01,
-                    0.02,
-                    0.03,
-                    0.04,
-                    0.05,
-                    0.06,
-                    0.07,
-                    0.08,
-                    0.09,
-                    0.10,
-                ]
-        else:
-            param_grid = custom_grid
-            try:
-                param_grid.remove(0)
-            except ValueError:
-                pass
-        param_grid.sort()
-
-        progress_args = {"max": len(param_grid) * 3 + (len(param_grid) + 1) * 4}
-        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-        monitor_rows = [
-            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-            [
-                "Status",
-                ". . . . . . . . . . . . . . . . . .",
-                "Loading Dependencies",
-            ],
-            [
-                "Estimator",
-                ". . . . . . . . . . . . . . . . . .",
-                "Compiling Library",
-            ],
-        ]
-        display = CommonDisplay(
-            verbose=verbose,
-            html_param=self.html_param,
-            progress_args=progress_args,
-            monitor_rows=monitor_rows,
-        )
-
-        unsupervised_models = {}
-        unsupervised_models_results = {}
-        unsupervised_grids = {0: data_X}
-
-        self.logger.info("Fitting unsupervised models")
-
-        for k in param_grid:
-            if self._ml_usecase == MLUsecase.CLUSTERING:
-                try:
-                    new_model, _ = self._create_model(
-                        model,
-                        num_clusters=k,
-                        X_data=data_X,
-                        display=display,
-                        system=False,
-                        ground_truth=ground_truth,
-                        round=round,
-                        fit_kwargs=fit_kwargs,
-                        raise_num_clusters=True,
-                        **kwargs,
-                    )
-                except ValueError:
-                    raise ValueError(
-                        f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters parameter required)."
-                    )
-            else:
-                new_model, _ = self._create_model(
-                    model,
-                    fraction=k,
-                    X_data=data_X,
-                    display=display,
-                    system=False,
-                    ground_truth=ground_truth,
-                    round=round,
-                    fit_kwargs=fit_kwargs,
-                    **kwargs,
-                )
-            unsupervised_models_results[k] = self.pull(pop=True)
-            unsupervised_models[k] = new_model
-            unsupervised_grids[k] = (
-                self.assign_model(new_model, verbose=False, transformation=True)
-                .reset_index(drop=True)
-                .drop(cols_to_drop, axis=1)
-            )
-            if self._ml_usecase == MLUsecase.CLUSTERING:
-                unsupervised_grids[k] = pd.get_dummies(
-                    unsupervised_grids[k],
-                    columns=["Cluster"],
-                )
-            elif method == "drop":
-                unsupervised_grids[k] = unsupervised_grids[k][
-                    unsupervised_grids[k]["Anomaly"] == 0
-                ].drop(["Anomaly", "Anomaly_Score"], axis=1)
-
-        results = {}
-
-        self.logger.info("Fitting supervised estimator")
-
-        for k, v in unsupervised_grids.items():
-            self._create_model(
-                supervised_estimator,
-                fold=fold,
-                display=display,
-                system=False,
-                X_train_data=v,
-                y_train_data=data_y[data_y.index.isin(v.index)],
-                metrics=metrics,
-                groups=groups,
-                round=round,
-                refit=False,
-            )
-            results[k] = self.pull(pop=True).loc["Mean"]
-            display.move_progress()
-
-        self.logger.info("Compiling results")
-
-        results = pd.DataFrame(results).T
-
-        greater_is_worse_columns = {
-            v.display_name for k, v in metrics.items() if not v.greater_is_better
-        }
-
-        best_model_idx = (
-            results.drop(0)
-            .sort_values(
-                by=optimize.display_name, ascending=optimize in greater_is_worse_columns
-            )
-            .index[0]
-        )
-
-        def highlight_max(s):
-            to_highlight = s == s.max()
-            return ["background-color: yellow" if v else "" for v in to_highlight]
-
-        def highlight_min(s):
-            to_highlight = s == s.min()
-            return ["background-color: yellow" if v else "" for v in to_highlight]
-
-        # end runtime
-        runtime_end = time.time()
-        runtime = np.array(runtime_end - runtime_start).round(2)
-
-        if self._ml_usecase == MLUsecase.CLUSTERING:
-            best_model, best_model_fit_time = self._create_model(
-                unsupervised_models[best_model_idx],
-                num_clusters=best_model_idx,
-                system=False,
-                round=round,
-                ground_truth=ground_truth,
-                fit_kwargs=fit_kwargs,
-                display=display,
-                **kwargs,
-            )
-        else:
-            best_model, best_model_fit_time = self._create_model(
-                unsupervised_models[best_model_idx],
-                fraction=best_model_idx,
-                system=False,
-                round=round,
-                fit_kwargs=fit_kwargs,
-                display=display,
-                **kwargs,
-            )
-        best_model_results = self.pull(pop=True)
-
-        if self.logging_param:
-
-            metrics_log = {k: v[0] for k, v in best_model_results.items()}
-
-            self._log_model(
-                model=model,
-                model_results=None,
-                score_dict=metrics_log,
-                source="tune_model",
-                runtime=runtime,
-                model_fit_time=best_model_fit_time,
-                pipeline=self.pipeline,
-                log_plots=self.log_plots_param,
-                display=display,
-            )
-
-        self.display_container.append(results)
-
-        results = results.style.apply(
-            highlight_max,
-            subset=[x for x in results.columns if x not in greater_is_worse_columns],
-        ).apply(
-            highlight_min,
-            subset=[x for x in results.columns if x in greater_is_worse_columns],
-        )
-        display.display(results.format(precision=round))
-
-        if self.html_param and verbose:
-            self.logger.info("Rendering Visual")
-            plot_df = results.data.drop(
-                [x for x in results.columns if x != optimize.display_name], axis=1
-            )
-
-            fig = go.Figure()
-            fig.add_trace(
-                go.Scatter(
-                    x=plot_df.index,
-                    y=plot_df[optimize.display_name],
-                    mode="lines+markers",
-                    name=optimize.display_name,
-                )
-            )
-            msg = (
-                "Number of Clusters"
-                if self._ml_usecase == MLUsecase.CLUSTERING
-                else "Anomaly Fraction"
-            )
-            title = f"{supervised_estimator_name} Metrics and {msg} by {self._get_model_name(best_model)}"
-            fig.update_layout(
-                plot_bgcolor="rgb(245,245,245)",
-                title={
-                    "text": title,
-                    "y": 0.95,
-                    "x": 0.45,
-                    "xanchor": "center",
-                    "yanchor": "top",
-                },
-                xaxis_title=msg,
-                yaxis_title=optimize.display_name,
-            )
-            fig.show()
-            self.logger.info("Visual Rendered Successfully")
-
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
-
-        self.logger.info(str(best_model))
-        self.logger.info(
-            "tune_model() successfully completed......................................"
-        )
-
-        gc.collect()
-
-        return best_model
-
     def assign_model(
         self,
         model,
@@ -1209,7 +760,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         score: bool = True,
         verbose: bool = True,
     ) -> pd.DataFrame:
-
         """
         This function assigns cluster labels to the dataset for a given model.
 
@@ -1366,7 +916,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
         **kwargs,
     ) -> Any:
-
         """
         Internal version of ``create_model`` with private arguments.
         """
@@ -1563,7 +1112,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         display.move_progress()
 
         if ground_truth is not None:
-
             self.logger.info(f"ground_truth parameter set to {ground_truth}")
 
             gt = np.array(self.dataset[ground_truth])
@@ -1587,7 +1135,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         # mlflow logging
         if self.logging_param and system:
-
             metrics_log = {k: v for k, v in metrics.items()}
 
             self._log_model(
@@ -1610,14 +1157,14 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         if metrics:
             model_results = pd.DataFrame(metrics, index=[0])
             model_results = model_results.round(round)
-            self.display_container.append(model_results)
+            self._display_container.append(model_results)
         else:
             model_results = None
 
         if add_to_model_list:
-            # storing results in master_model_container
+            # storing results in _master_model_container
             self.logger.info("Uploading model into container now")
-            self.master_model_container.append(
+            self._master_model_container.append(
                 {"model": model, "scores": model_results, "cv": None}
             )
 
@@ -1626,8 +1173,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         else:
             display.close()
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -1649,10 +1198,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         round: int = 4,
         fit_kwargs: Optional[dict] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engine: Optional[str] = None,
         verbose: bool = True,
         **kwargs,
     ) -> Any:
-
         """
         This function trains and evaluates the performance of a given model.
         Metrics evaluated can be accessed using the ``get_metrics`` function.
@@ -1708,6 +1257,12 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             Status update is not printed when verbose is set to False.
 
 
+        engine: Optional[str] = None
+            The execution engine to use for the model, e.g. for K-Means Clustering ("kmeans"), users can
+            switch between "sklearn" and "sklearnex" by specifying
+            `engine="sklearnex"`.
+
+
         experiment_custom_tags: dict, default = None
             Dictionary of tag_name: String -> value: (String, but will be string-ified
             if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
@@ -1751,18 +1306,32 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
             for x in kwargs
         )
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_default_model_engines = self.exp_model_engines.copy()
+            self._set_engine(estimator=estimator, engine=engine, severity="error")
 
-        return self._create_model(
-            estimator=estimator,
-            num_clusters=num_clusters,
-            fraction=fraction,
-            ground_truth=ground_truth,
-            round=round,
-            fit_kwargs=fit_kwargs,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-            **kwargs,
-        )
+        try:
+            return_values = self._create_model(
+                estimator=estimator,
+                num_clusters=num_clusters,
+                fraction=fraction,
+                ground_truth=ground_truth,
+                round=round,
+                fit_kwargs=fit_kwargs,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                **kwargs,
+            )
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engine=initial_default_model_engines,
+                )
+
+        return return_values
 
     def evaluate_model(
         self,

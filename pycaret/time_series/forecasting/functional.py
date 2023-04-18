@@ -2,7 +2,18 @@
 """
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+import os
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    BinaryIO,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import pandas as pd
@@ -41,9 +52,14 @@ def setup(
     fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
     fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
+    hyperparameter_split: str = "all",
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
+    ignore_seasonality_test: bool = False,
     sp_detection: str = "auto",
-    multiple_sp_to_use: int = 1,
+    max_sp_to_consider: Optional[int] = 60,
+    remove_harmonics: bool = False,
+    harmonic_order_method: str = "harmonic_max",
+    num_sps_to_use: int = 1,
     point_alpha: Optional[float] = None,
     coverage: Union[float, List[float]] = 0.9,
     enforce_exogenous: bool = True,
@@ -83,7 +99,7 @@ def setup(
     data_func: Callable[[], Union[pd.Series, pd.DataFrame]] = None
             The function that generate ``data`` (the dataframe-like input). This
             is useful when the dataset is large, and you need parallel operations
-            such as ``compare_models``. It can avoid boradcasting large dataset
+            such as ``compare_models``. It can avoid broadcasting large dataset
             from driver to workers. Notice one and only one of ``data`` and
             ``data_func`` must be set.
 
@@ -95,9 +111,12 @@ def setup(
 
 
     index: Optional[str], default = None
-        Column name to be used as the datetime index for modeling. Column is
-        internally converted to datetime using `pd.to_datetime()`. If None,
-        then the data's index is used as is for modeling.
+        Column name to be used as the datetime index for modeling. If 'index'
+        column is specified & is of type string, it is assumed to be coercible
+        to pd.DatetimeIndex using `pd.to_datetime()`. It can also be of type
+        Int (e.g. RangeIndex, Int64Index), or DatetimeIndex or PeriodIndex
+        in which case, it is processed appropriately. If None, then the
+        data's index is used as is for modeling.
 
 
     ignore_features: Optional[List], default = None
@@ -272,9 +291,17 @@ def setup(
             object. In this case, fh is derived from this object.
 
 
+    hyperparameter_split: str, default = "all"
+        The split of data used to determine certain hyperparameters such as
+        "seasonal_period", whether multiplicative seasonality can be used or not,
+        whether the data is white noise or not, the values of non-seasonal difference
+        "d" and seasonal difference "D" to use in certain models.
+        Allowed values are: ["all", "train"].
+        Refer for more details: https://github.com/pycaret/pycaret/issues/3202
+
+
     seasonal_period: list or int or str, default = None
-        Periods to check when performing seasonality checks. If not provided,
-        then seasonal periods are detected per the sp_detection setting.
+        Seasonal periods to use when performing seasonality checks (i.e. candidates).
 
         Users can provide `seasonal_period` by passing it as an integer or a
         string corresponding to the keys below (e.g. 'W' for weekly data,
@@ -295,8 +322,23 @@ def setup(
         don't accept multiple seasonal values, the first value of the list
         will be used as the seasonal period.
 
+        NOTE:
+        (1) If seasonal_period is provided, whether the seasonality check is
+        performed or not depends on the ignore_seasonality_test setting.
+        (2) If seasonal_period is not provided, then the candidates are detected
+        per the sp_detection setting. If seasonal_period is provided,
+        sp_detection setting is ignored.
 
-    sp_detection: str = "auto"
+
+    ignore_seasonality_test: bool = False
+        Whether to ignore the seasonality test or not. Applicable when seasonal_period
+        is provided. If False, then a seasonality tests is performed to determine
+        if the provided seasonal_period is valid or not. If it is found to be not
+        valid, no seasonal period is used for modeling. If True, then the the
+        provided seasonal_period is used as is.
+
+
+    sp_detection: str, default = "auto"
         If seasonal_period is None, then this parameter determines the algorithm
         to use to detect the seasonal periods to use in the models.
 
@@ -307,11 +349,41 @@ def setup(
         period as shown in seasonal_period.
 
 
-    multiple_sp_to_use: int = 1
-        Applicable only when sp_detection is set to "auto". It determines how
-        many seasonal periods to use in the models. If a model only allows one
-        seasonal period and multiple_sp_to_use > 1, then the most dominant
-        (primary) seasonal that is detected is used.
+    max_sp_to_consider: Optional[int], default = 60,
+        Max period to consider when detecting seasonal periods. If None, all
+        periods up to int(("length of data"-1)/2) are considered. Length of
+        the data is determined by hyperparameter_split setting.
+
+
+    remove_harmonics: bool, default = False
+        Should harmonics be removed when considering what seasonal periods to
+        use for modeling.
+
+
+    harmonic_order_method: str, default = "harmonic_max"
+        Applicable when remove_harmonics = True. This determines how the harmonics
+        are replaced. Allowed values are "harmonic_strength", "harmonic_max" or "raw_strength.
+        - If set to  "harmonic_max", then lower seasonal period is replaced by its
+        highest harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "harmonic_strength", then lower seasonal period is replaced by its
+        highest strength harmonic seasonal period in same position as the lower seasonal period.
+        - If set to  "raw_strength", then lower seasonal periods is removed and the
+        higher harmonic seasonal periods is retained in its original position
+        based on its seasonal strength.
+
+        e.g. Assuming detected seasonal periods in strength order are [2, 3, 4, 50]
+        and remove_harmonics = True, then:
+        - If harmonic_order_method = "harmonic_max", result = [50, 3, 4]
+        - If harmonic_order_method = "harmonic_strength", result = [4, 3, 50]
+        - If harmonic_order_method = "raw_strength", result = [3, 4, 50]
+
+
+    num_sps_to_use: int, default = 1
+        It determines the maximum number of seasonal periods to use in the models.
+        Set to -1 to use all detected seasonal periods (in models that allow
+        multiple seasonalities). If a model only allows one seasonal period
+        and num_sps_to_use > 1, then the most dominant (primary) seasonal
+        that is detected is used.
 
 
     point_alpha: Optional[float], default = None
@@ -469,12 +541,12 @@ def setup(
             aggregation.
 
         resampler_kwargs: The keyword arguments that are fed to configure the
-            `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash" or
-            "plotly-widget") which downsampler will be used; how many datapoints are
-            shown in the front-end. When the plotly-resampler figure is renderd via Dash
-            (by setting the `display_format` to "plotly-dash"), one can also use the
-            "show_dash" key within this dictionary to configure the show_dash method its
-            args.
+            `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash"
+            or "plotly-widget") which down sampler will be used; how many data points
+            are shown in the front-end. When the plotly-resampler figure is rendered
+            via Dash (by setting the `display_format` to "plotly-dash"), one can
+            also use the "show_dash" key within this dictionary to configure the
+            show_dash method its args.
 
             example::
 
@@ -511,9 +583,14 @@ def setup(
         fold_strategy=fold_strategy,
         fold=fold,
         fh=fh,
+        hyperparameter_split=hyperparameter_split,
         seasonal_period=seasonal_period,
+        ignore_seasonality_test=ignore_seasonality_test,
         sp_detection=sp_detection,
-        multiple_sp_to_use=multiple_sp_to_use,
+        max_sp_to_consider=max_sp_to_consider,
+        remove_harmonics=remove_harmonics,
+        harmonic_order_method=harmonic_order_method,
+        num_sps_to_use=num_sps_to_use,
         point_alpha=point_alpha,
         coverage=coverage,
         enforce_exogenous=enforce_exogenous,
@@ -552,7 +629,6 @@ def compare_models(
     verbose: bool = True,
     parallel: Optional[ParallelBackend] = None,
 ):
-
     """
     This function trains and evaluates performance of all estimators available in the
     model library using cross validation. The output of this function is a score grid
@@ -726,7 +802,6 @@ def create_model(
     verbose: bool = True,
     **kwargs,
 ):
-
     """
     This function trains and evaluates the performance of a given estimator
     using cross validation. The output of this function is a score grid with
@@ -861,7 +936,6 @@ def tune_model(
     tuner_verbose: Union[int, bool] = True,
     **kwargs,
 ):
-
     """
     This function tunes the hyperparameters of a given estimator. The output of
     this function is a score grid with CV scores by fold of the best selected
@@ -984,7 +1058,6 @@ def blend_models(
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
 ):
-
     """
     This function trains a EnsembleForecaster for select models passed in the
     ``estimator_list`` param. The output of this function is a score grid with
@@ -1081,7 +1154,6 @@ def plot_model(
     fig_kwargs: Optional[Dict] = None,
     save: Union[str, bool] = False,
 ) -> Optional[Tuple[str, list]]:
-
     """
     This function analyzes the performance of a trained model on holdout set.
     When used without any estimator, this function generates plots on the
@@ -1329,7 +1401,6 @@ def predict_model(
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
-
     """
     This function forecast using a trained model. When ``fh`` is None,
     it forecasts using the same forecast horizon used during the
@@ -1415,7 +1486,6 @@ def predict_model(
 def finalize_model(
     estimator, fit_kwargs: Optional[dict] = None, model_only: bool = False
 ) -> Any:
-
     """
     This function trains a given estimator on the entire dataset including the
     holdout set.
@@ -1456,7 +1526,6 @@ def finalize_model(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def deploy_model(model, model_name: str, authentication: dict, platform: str = "aws"):
-
     """
     This function deploys the transformation pipeline and trained model on cloud.
 
@@ -1543,8 +1612,7 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_model(model, model_name: str, model_only: bool = True, verbose: bool = True):
-
+def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
     """
     This function saves the transformation pipeline and trained model object
     into the current working directory as a pickle file for later use.
@@ -1567,8 +1635,9 @@ def save_model(model, model_name: str, model_only: bool = True, verbose: bool = 
         Name of the model.
 
 
-    model_only: bool, default = True
-        Parameter not in use for now. Behavior may change in future.
+    model_only: bool, default = False
+        When set to True, only trained model object is saved instead of the
+        entire pipeline.
 
 
     verbose: bool, default = True
@@ -1592,7 +1661,6 @@ def load_model(
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,
 ):
-
     """
     This function loads a previously saved pipeline/model.
 
@@ -1668,7 +1736,6 @@ def pull(pop: bool = False) -> pd.DataFrame:
 def models(
     type: Optional[str] = None, internal: bool = False, raise_errors: bool = True
 ) -> pd.DataFrame:
-
     """
     Returns table of models available in the model library.
 
@@ -1711,7 +1778,6 @@ def models(
 def get_metrics(
     reset: bool = False, include_custom: bool = True, raise_errors: bool = True
 ) -> pd.DataFrame:
-
     """
     Returns table of available metrics used for CV.
 
@@ -1753,7 +1819,6 @@ def get_metrics(
 def add_metric(
     id: str, name: str, score_func: type, greater_is_better: bool = True, **kwargs
 ) -> pd.Series:
-
     """
     Adds a custom metric to be used for CV.
 
@@ -1804,7 +1869,6 @@ def add_metric(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def remove_metric(name_or_id: str):
-
     """
     Removes a metric from CV.
 
@@ -1831,7 +1895,6 @@ def remove_metric(name_or_id: str):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
-
     """
     Returns a table of experiment logs. Only works when ``log_experiment``
     is True when initializing the ``setup`` function.
@@ -1864,8 +1927,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_config(variable: str):
-
+def get_config(variable: Optional[str] = None):
     """
     This function retrieves the global variables created when initializing the
     ``setup`` function. Following variables are accessible:
@@ -1882,8 +1944,8 @@ def get_config(variable: str):
     - prep_pipe: Transformation pipeline
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
+    - _master_model_container: model storage container
+    - _display_container: results display container
     - exp_name_log: Name of experiment
     - logging_param: log_experiment param
     - log_plots_param: log_plots param
@@ -1905,6 +1967,11 @@ def get_config(variable: str):
     >>> X_train = get_config('X_train')
 
 
+    variable : str, default = None
+        Name of the variable to return the value of. If None,
+        will return a list of possible names.
+
+
     Returns:
         Global variable
 
@@ -1916,7 +1983,6 @@ def get_config(variable: str):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def set_config(variable: str, value):
-
     """
     This function resets the global variables. Following variables are
     accessible:
@@ -1933,8 +1999,8 @@ def set_config(variable: str, value):
     - prep_pipe: Transformation pipeline
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
+    - _master_model_container: model storage container
+    - _display_container: results display container
     - exp_name_log: Name of experiment
     - logging_param: log_experiment param
     - log_plots_param: log_plots param
@@ -1965,20 +2031,24 @@ def set_config(variable: str, value):
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_config(file_name: str):
-
+def save_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO], **cloudpickle_kwargs
+) -> None:
     """
-    This function save all global variables to a pickle file, allowing to
-    later resume without rerunning the ``setup``.
+    Saves the experiment to a pickle file.
+
+    The experiment is saved using cloudpickle to deal with lambda
+    functions. The data or test data is NOT saved with the experiment
+    and will need to be specified again when loading using
+    ``load_experiment``.
 
 
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> airline = get_data('airline')
-    >>> from pycaret.time_series import *
-    >>> exp_name = setup(data = airline,  fh = 12)
-    >>> save_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to save the experiment to.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.dump`` call.
 
 
     Returns:
@@ -1986,29 +2056,80 @@ def save_config(file_name: str):
 
     """
 
-    return _CURRENT_EXPERIMENT.save_config(file_name=file_name)
+    return _CURRENT_EXPERIMENT.save_experiment(
+        path_or_file=path_or_file, **cloudpickle_kwargs
+    )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def load_config(file_name: str):
-
+def load_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO],
+    data: Optional[Union[pd.Series, pd.DataFrame]] = None,
+    data_func: Optional[Callable[[], Union[pd.Series, pd.DataFrame]]] = None,
+    test_data: Optional[Union[pd.Series, pd.DataFrame]] = None,
+    preprocess_data: bool = True,
+    **cloudpickle_kwargs,
+) -> TSForecastingExperiment:
     """
-    This function loads global variables from a pickle file into Python
-    environment.
+    Load an experiment saved with ``save_experiment`` from path
+    or file.
+
+    The data (and test data) is NOT saved with the experiment
+    and will need to be specified again.
 
 
-    Example
-    -------
-    >>> from pycaret.time_series import load_config
-    >>> load_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to load the experiment from.
+        The pickle file must be created through ``save_experiment``.
+
+
+    data: pandas.Series or pandas.DataFrame
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
+
+
+    data_func: Callable[[], pandas.Series or pandas.DataFrame] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    test_data: pandas.Series or pandas.DataFrame or None, default = None
+        If not None, test_data is used as a hold-out set and `train_size` parameter
+        is ignored. The columns of data and test_data must match.
+
+
+    preprocess_data: bool, default = True
+        If True, the data will be preprocessed again (through running ``setup``
+        internally). If False, the data will not be preprocessed. This means
+        you can save the value of the ``data`` attribute of an experiment
+        separately, and then load it separately and pass it here with
+        ``preprocess_data`` set to False. This is an advanced feature.
+        We recommend leaving it set to True and passing the same data
+        as passed to the initial ``setup`` call.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.load`` call.
 
 
     Returns:
-        Global variables
+        loaded experiment
 
     """
-
-    return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
+    exp = _EXPERIMENT_CLASS.load_experiment(
+        path_or_file=path_or_file,
+        data=data,
+        data_func=data_func,
+        test_data=test_data,
+        preprocess_data=preprocess_data,
+        **cloudpickle_kwargs,
+    )
+    set_current_experiment(exp)
+    return exp
 
 
 def set_current_experiment(experiment: TSForecastingExperiment):
@@ -2028,6 +2149,16 @@ def set_current_experiment(experiment: TSForecastingExperiment):
             f"experiment must be a PyCaret TSForecastingExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> TSForecastingExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current TSForecastingExperiment
+    """
+    return _CURRENT_EXPERIMENT
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)

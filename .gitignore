@@ -36,3 +36,4 @@ dask*/
 /.devcontainer
 tmp/
 nbtest1.ipynb
+.DS_Store

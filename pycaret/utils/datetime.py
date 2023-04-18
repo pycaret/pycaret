@@ -59,6 +59,8 @@ def coerce_period_to_datetime_index(
     elif not inplace:
         return data
 
+    return None
+
 
 def coerce_datetime_to_period_index(
     data: Optional[Union[pd.Series, pd.DataFrame, Any]],
@@ -105,3 +107,5 @@ def coerce_datetime_to_period_index(
 
     elif not inplace:
         return data
+
+    return None

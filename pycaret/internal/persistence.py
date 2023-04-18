@@ -5,6 +5,7 @@ import gc
 import os
 from typing import Dict, Optional
 
+import joblib
 from sklearn.pipeline import Pipeline
 
 from pycaret.utils._dependencies import _check_soft_dependencies
@@ -317,8 +318,6 @@ def save_model(
             model_ = deepcopy(prep_pipe_)
             model_.steps.append(("trained_model", model))
 
-    import joblib
-
     model_name = f"{model_name}.pkl"
     joblib.dump(model_, model_name, **kwargs)
     if verbose:
@@ -388,9 +387,6 @@ def load_model(
             raise ValueError("Authentication is missing.")
 
     if not platform:
-
-        import joblib
-
         model_name = f"{model_name}.pkl"
         model = joblib.load(model_name)
         if verbose:

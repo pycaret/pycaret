@@ -90,7 +90,6 @@ def test_splitter_pass_cv_object(load_pos_and_neg_data):
         step_length=12,
         # window_length=12,
         fh=fh,
-        start_with_window=True,
     )
 
     exp_name = setup(
@@ -184,8 +183,10 @@ def test_enforce_exogenous_exo_data(load_uni_exo_data_target):
     assert num_models1 < num_models2
 
 
-def test_sp_to_use_using_index():
-    """Seasonal Period detection using Indices (used before 3.0.0rc5)."""
+def test_sp_to_use_using_index_and_user_def():
+    """Seasonal Period detection using Indices (used before 3.0.0rc5). Also
+    tests the user defined seasonal periods when used in conjunction with "index".
+    """
 
     exp = TSForecastingExperiment()
     data = get_data("airline", verbose=False)
@@ -197,8 +198,13 @@ def test_sp_to_use_using_index():
         verbose=False,
         session_id=42,
     )
-    assert exp.seasonal_period == 12
-    assert exp.all_sp_values == [12]
+    assert exp.seasonal_period is None
+    assert exp.sp_detection == "index"
+    assert exp.ignore_seasonality_test is False
+    assert exp.candidate_sps == [12]
+    assert exp.significant_sps == [12]
+    assert exp.significant_sps_no_harmonics == [12]
+    assert exp.all_sps_to_use == [12]
     assert exp.primary_sp_to_use == 12
 
     # 1.2 Airline Data with seasonality of M (12), 6
@@ -208,9 +214,16 @@ def test_sp_to_use_using_index():
         verbose=False,
         session_id=42,
         seasonal_period=["M", 6],
+        num_sps_to_use=-1,
     )
-    assert exp.seasonal_period == [12, 6]
-    assert exp.all_sp_values == [12, 6]
+    assert exp.seasonal_period == ["M", 6]
+    # overridden to user_defined even through we pass "index"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is False
+    assert exp.candidate_sps == [12, 6]
+    assert exp.significant_sps == [12, 6]
+    assert exp.significant_sps_no_harmonics == [12]
+    assert exp.all_sps_to_use == [12, 6]
     assert exp.primary_sp_to_use == 12
 
     # 1.3 White noise Data with seasonality of 12
@@ -225,12 +238,42 @@ def test_sp_to_use_using_index():
 
     # Should get 1 even though we passed 12
     assert exp.seasonal_period == 12
-    assert exp.all_sp_values == [1]
+    # overridden to user_defined even through we pass "index"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is False
+    assert exp.candidate_sps == [12]
+    assert exp.significant_sps == [1]
+    assert exp.significant_sps_no_harmonics == [1]
+    assert exp.all_sps_to_use == [1]
     assert exp.primary_sp_to_use == 1
 
+    # 1.4 White noise Data with seasonality of 12 and ignore_seasonality_test = True
+    data = get_data("1", folder="time_series/white_noise", verbose=False)
+    exp.setup(
+        data=data,
+        sp_detection="index",
+        seasonal_period=12,
+        ignore_seasonality_test=True,
+        verbose=False,
+        session_id=42,
+    )
 
-def test_sp_to_use_using_auto():
-    """Seasonal Period detection using Statistical tests (used on and after 3.0.0rc5)."""
+    # Should get 1 even though we passed 12
+    assert exp.seasonal_period == 12
+    # overridden to user_defined even through we pass "index"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is True
+    assert exp.candidate_sps == [12]
+    assert exp.significant_sps == [12]
+    assert exp.significant_sps_no_harmonics == [12]
+    assert exp.all_sps_to_use == [12]
+    assert exp.primary_sp_to_use == 12
+
+
+def test_sp_to_use_using_auto_and_user_def():
+    """Seasonal Period detection using Statistical tests (used on and after 3.0.0rc5).
+    Also tests the user defined seasonal periods when used in conjunction with "auto".
+    """
 
     exp = TSForecastingExperiment()
     data = get_data("airline", verbose=False)
@@ -242,8 +285,10 @@ def test_sp_to_use_using_auto():
         verbose=False,
         session_id=42,
     )
-    assert exp.seasonal_period == [12, 24, 36, 11, 48]
-    assert exp.all_sp_values == [12]
+    assert exp.candidate_sps == [12, 24, 36, 11, 48]
+    assert exp.significant_sps == [12, 24, 36, 11, 48]
+    assert exp.significant_sps_no_harmonics == [48, 36, 11]
+    assert exp.all_sps_to_use == [12]
     assert exp.primary_sp_to_use == 12
 
     # 1.2 Auto Detection with multiple values allowed ----
@@ -251,30 +296,150 @@ def test_sp_to_use_using_auto():
     exp.setup(
         data=data,
         sp_detection="auto",
-        multiple_sp_to_use=2,
+        num_sps_to_use=2,
         verbose=False,
         session_id=42,
     )
-    assert exp.seasonal_period == [12, 24, 36, 11, 48]
-    assert exp.all_sp_values == [12, 24]
+    assert exp.candidate_sps == [12, 24, 36, 11, 48]
+    assert exp.significant_sps == [12, 24, 36, 11, 48]
+    assert exp.significant_sps_no_harmonics == [48, 36, 11]
+    assert exp.all_sps_to_use == [12, 24]
     assert exp.primary_sp_to_use == 12
 
     # 1.2.2 Multiple Seasonalities > tested and detected ----
     exp.setup(
         data=data,
         sp_detection="auto",
-        multiple_sp_to_use=100,
+        num_sps_to_use=100,
         verbose=False,
         session_id=42,
     )
-    assert exp.seasonal_period == [12, 24, 36, 11, 48]
-    assert exp.all_sp_values == [12, 24, 36, 11, 48]
+    assert exp.candidate_sps == [12, 24, 36, 11, 48]
+    assert exp.significant_sps == [12, 24, 36, 11, 48]
+    assert exp.significant_sps_no_harmonics == [48, 36, 11]
+    assert exp.all_sps_to_use == [12, 24, 36, 11, 48]
     assert exp.primary_sp_to_use == 12
+
+    # 2.0 Auto Detection based on length of data ----
+    # 2.1 Length barely enough to detect seasonality (2*sp + 1)
+    np.random.seed(42)
+    sp = 60
+    data = np.random.randint(0, 100, size=sp)
+    data = pd.DataFrame(np.concatenate((np.tile(data, 2), [data[0]])))
+    exp = TSForecastingExperiment()
+    exp.setup(data=data)
+    assert exp.primary_sp_to_use == sp
+
+    # 2.2 Length just below threshold to detect seasonality (2*sp)
+    exp = TSForecastingExperiment()
+    exp.setup(data=data.iloc[: 2 * sp])
+    assert exp.primary_sp_to_use < sp
+
+    # 3.0 Overwritten by user defined seasonal period ----
+    sp = 19
+    # 3.1 ignore_seasonality_test = False (default)
+    exp.setup(
+        data=data,
+        seasonal_period=sp,
+        # ignore_seasonality_test=False,  # default
+        sp_detection="auto",
+        verbose=False,
+        session_id=42,
+    )
+    assert exp.seasonal_period == sp
+    # overridden to user_defined even through we pass "auto"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is False
+    assert exp.candidate_sps == [sp]
+    assert exp.significant_sps == [1]
+    assert exp.significant_sps_no_harmonics == [1]
+    assert exp.all_sps_to_use == [1]
+    assert exp.primary_sp_to_use == 1
+
+    # 3.2 ignore_seasonality_test = True
+    exp.setup(
+        data=data,
+        seasonal_period=sp,
+        ignore_seasonality_test=True,
+        sp_detection="auto",
+        verbose=False,
+        session_id=42,
+    )
+    assert exp.seasonal_period == sp
+    # overridden to user_defined even through we pass "auto"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is True
+    assert exp.candidate_sps == [sp]
+    assert exp.significant_sps == [sp]
+    assert exp.significant_sps_no_harmonics == [sp]
+    assert exp.all_sps_to_use == [sp]
+    assert exp.primary_sp_to_use == sp
+
+
+def test_sp_to_use_upto_max_sp():
+    """Seasonal Period detection upto a max seasonal period provided by user."""
+    data = get_data("airline", verbose=False)
+
+    # 1.0 Max SP not specified ----
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data, fh=12, session_id=42, remove_harmonics=False, max_sp_to_consider=None
+    )
+    assert exp.candidate_sps == [12, 24, 36, 11, 48]
+    assert exp.significant_sps == [12, 24, 36, 11, 48]
+    assert exp.significant_sps_no_harmonics == [48, 36, 11]
+    assert exp.all_sps_to_use == [12]
+    assert exp.primary_sp_to_use == 12
+
+    # 2.0 Max SP more than at least some detected values ----
+    # 2.1 Without removing harmonics
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data, fh=12, session_id=42, remove_harmonics=False, max_sp_to_consider=24
+    )
+    assert exp.candidate_sps == [12, 24, 11]
+    assert exp.significant_sps == [12, 24, 11]
+    assert exp.significant_sps_no_harmonics == [24, 11]
+    assert exp.all_sps_to_use == [12]
+    assert exp.primary_sp_to_use == 12
+
+    # 2.2 Removing harmonics
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data, fh=12, session_id=42, remove_harmonics=True, max_sp_to_consider=24
+    )
+    assert exp.candidate_sps == [12, 24, 11]
+    assert exp.significant_sps == [12, 24, 11]
+    assert exp.significant_sps_no_harmonics == [24, 11]
+    assert exp.all_sps_to_use == [24]
+    assert exp.primary_sp_to_use == 24
+
+    # 3.0 Max SP less than all detected values ----
+    # 3.1 Without removing harmonics
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data, fh=12, session_id=42, remove_harmonics=False, max_sp_to_consider=2
+    )
+    assert exp.candidate_sps == []
+    assert exp.significant_sps == [1]
+    assert exp.significant_sps_no_harmonics == [1]
+    assert exp.all_sps_to_use == [1]
+    assert exp.primary_sp_to_use == 1
+
+    # 3.2 Removing harmonics
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data, fh=12, session_id=42, remove_harmonics=True, max_sp_to_consider=2
+    )
+    assert exp.candidate_sps == []
+    assert exp.significant_sps == [1]
+    assert exp.significant_sps_no_harmonics == [1]
+    assert exp.all_sps_to_use == [1]
+    assert exp.primary_sp_to_use == 1
 
 
 @pytest.mark.parametrize("seasonal_key, seasonal_value", _get_seasonal_values())
 def test_setup_seasonal_period_int(load_pos_and_neg_data, seasonal_key, seasonal_value):
-
     exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
@@ -290,7 +455,7 @@ def test_setup_seasonal_period_int(load_pos_and_neg_data, seasonal_key, seasonal
         seasonal_period=seasonal_value,
     )
 
-    assert exp.seasonal_period == seasonal_value
+    assert exp.candidate_sps == [seasonal_value]
 
 
 @pytest.mark.parametrize("seasonal_period, seasonal_value", _get_seasonal_values())
@@ -313,7 +478,7 @@ def test_setup_seasonal_period_str(
         seasonal_period=seasonal_period,
     )
 
-    assert exp.seasonal_period == seasonal_value
+    assert exp.candidate_sps == [seasonal_value]
 
 
 @pytest.mark.parametrize(
@@ -327,7 +492,7 @@ def test_setup_seasonal_period_alphanumeric(
     seasonal_period = prefix + seasonal_period
     prefix = int(prefix)
     lcm = abs(seasonal_value * prefix) // math.gcd(seasonal_value, prefix)
-    expected_seasonal_value = int(lcm / prefix)
+    expected_candidate_sps = [int(lcm / prefix)]
 
     exp = TSForecastingExperiment()
 
@@ -344,7 +509,7 @@ def test_setup_seasonal_period_alphanumeric(
         seasonal_period=seasonal_period,
     )
 
-    assert exp.seasonal_period == expected_seasonal_value
+    assert exp.candidate_sps == expected_candidate_sps
 
 
 def test_train_test_split_uni_no_exo(load_pos_and_neg_data):
@@ -775,3 +940,48 @@ def test_missing_indices():
     exceptionmsg = errmsg.value.args[0]
 
     assert "Data has missing indices!" in exceptionmsg
+
+
+def test_hyperparameter_splits():
+    """Tests the splits to use to determine the hyperparameters"""
+
+    # 1.0 Recommended d, white noise, seasonal_period ----
+    data = get_data("airline")
+
+    FOLD = 1
+    FH = 60
+    TRAIN_SIZE = len(data) - FH
+    # Train set
+    data[:TRAIN_SIZE] = 1
+    print("Experiment 1 ----")
+    exp1 = TSForecastingExperiment()
+    exp1.setup(data=data, fh=FH, fold=FOLD)
+
+    print("Experiment 2 ----")
+    exp2 = TSForecastingExperiment()
+    exp2.setup(data=data, hyperparameter_split="train", fh=FH, fold=FOLD)
+
+    assert exp1.primary_sp_to_use != exp2.primary_sp_to_use
+    assert exp1.lowercase_d != exp2.lowercase_d
+    assert exp1.white_noise != exp2.white_noise
+    # uppercase_d turns out to be the same, hence tested separately
+    assert exp1.uppercase_d == exp2.uppercase_d
+
+    # 2.0 Recommended Seasonal D
+    data = get_data("airline")
+
+    FOLD = 1
+    FH = 36
+    TRAIN_SIZE = len(data) - FH
+
+    np.random.seed(42)
+    indices = np.random.randint(1, int(TRAIN_SIZE / 2), 12)
+    data.iloc[indices] = 200
+
+    exp1 = TSForecastingExperiment()
+    exp1.setup(data=data, fh=FH, fold=FOLD)
+
+    exp2 = TSForecastingExperiment()
+    exp2.setup(data=data, hyperparameter_split="train", fh=FH, fold=FOLD)
+
+    assert exp1.uppercase_d != exp2.uppercase_d

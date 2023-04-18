@@ -82,7 +82,6 @@ Install development version of the package with additional extra dependencies re
 .. code-block:: shell
 
     pip install -e .[test]
-    python -m spacy download en_core_web_sm
 
 We use `pytest <https://docs.pytest.org/en/latest/>`_ for unit testing.
 

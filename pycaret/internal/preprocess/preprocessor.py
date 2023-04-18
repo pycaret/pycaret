@@ -5,6 +5,7 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+from category_encoders.basen import BaseNEncoder
 from category_encoders.leave_one_out import LeaveOneOutEncoder
 from category_encoders.one_hot import OneHotEncoder
 from category_encoders.ordinal import OrdinalEncoder
@@ -66,6 +67,7 @@ from pycaret.containers.models import (
 )
 from pycaret.internal.preprocess.iterative_imputer import IterativeImputer
 from pycaret.internal.preprocess.transformers import (
+    CleanColumnNames,
     DropImputer,
     EmbedTextFeatures,
     ExtractDateTimeFeatures,
@@ -177,7 +179,7 @@ class Preprocessor:
         target = df.columns[-1]
 
         if getattr(self, "index", True) is True:  # True gets caught by isinstance(int)
-            return df
+            pass
         elif self.index is False:
             df = df.reset_index(drop=True)
         elif isinstance(self.index, int):
@@ -201,6 +203,12 @@ class Preprocessor:
             raise ValueError(
                 "Invalid value for the index parameter. The index column "
                 f"can not be the same as the target column, got {target}."
+            )
+
+        if df.index.duplicated().any():
+            raise ValueError(
+                "Invalid value for the index parameter. There are duplicate indices "
+                "in the dataset. Use index=False to reset the index to RangeIndex."
             )
 
         return df
@@ -285,7 +293,11 @@ class Preprocessor:
             check_features_exist(numeric_features, self.X)
             self._fxs["Numeric"] = numeric_features
         else:
-            self._fxs["Numeric"] = list(self.X.select_dtypes(include="number").columns)
+            self._fxs["Numeric"] = [
+                col
+                for col in self.X.select_dtypes(include="number").columns
+                if col not in (categorical_features or [])
+            ]
 
         # Date features
         if date_features:
@@ -370,6 +382,13 @@ class Preprocessor:
             self.fold_generator = TimeSeriesSplit(fold)
         else:
             self.fold_generator = fold_strategy
+
+    def _clean_column_names(self):
+        """Add CleanColumnNames to the pipeline."""
+        self.logger.info("Set up column name cleaning.")
+        self.pipeline.steps.append(
+            ("clean_column_names", TransformerWrapper(CleanColumnNames()))
+        )
 
     def _encode_target_column(self):
         """Add LabelEncoder to the pipeline."""
@@ -671,6 +690,7 @@ class Preprocessor:
             if len(one_hot_cols) > 0:
                 onehot_estimator = TransformerWrapper(
                     transformer=OneHotEncoder(
+                        cols=one_hot_cols,
                         use_cat_names=True,
                         handle_missing="return_nan",
                         handle_unknown="value",
@@ -683,11 +703,18 @@ class Preprocessor:
             # Encode the rest of the categorical columns
             if len(rest_cols) > 0:
                 if not encoding_method:
-                    encoding_method = LeaveOneOutEncoder(
-                        handle_missing="return_nan",
-                        handle_unknown="value",
-                        random_state=self.seed,
-                    )
+                    if self._ml_usecase in (MLUsecase.ANOMALY, MLUsecase.CLUSTERING):
+                        encoding_method = BaseNEncoder(
+                            base=5,
+                            handle_missing="return_nan",
+                            handle_unknown="value",
+                        )
+                    else:
+                        encoding_method = LeaveOneOutEncoder(
+                            handle_missing="return_nan",
+                            handle_unknown="value",
+                            random_state=self.seed,
+                        )
 
                 rest_estimator = TransformerWrapper(
                     transformer=encoding_method,
@@ -728,7 +755,7 @@ class Preprocessor:
 
         self.pipeline.steps.append(("low_variance", variance_estimator))
 
-    def _group_features(self, group_features, group_names):
+    def _group_features(self, group_features, group_names, drop_groups):
         """Get statistical properties of a group of features."""
         self.logger.info("Set up feature grouping.")
 
@@ -748,7 +775,7 @@ class Preprocessor:
                 )
 
         grouping_estimator = TransformerWrapper(
-            transformer=GroupFeatures(group_features, group_names),
+            transformer=GroupFeatures(group_features, group_names, drop_groups),
             exclude=self._fxs["Keep"],
         )
 
@@ -799,6 +826,7 @@ class Preprocessor:
             RemoveOutliers(
                 method=outliers_method,
                 threshold=outliers_threshold,
+                random_state=self.seed,
             ),
         )
 

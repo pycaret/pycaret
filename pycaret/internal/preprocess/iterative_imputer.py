@@ -220,11 +220,21 @@ class IterativeImputer(SklearnIterativeImputer):
         X_filled = X_filled[:, reorder_indices]
 
         combined_statistics = np.zeros(X.shape[1])
+        # Use getattr as the imputers may not have been fitted if there have
+        # been no columns with the required dtype
         num_statistics = list(
-            self.initial_imputer_.named_transformers_["num_imputer"].statistics_
+            getattr(
+                self.initial_imputer_.named_transformers_["num_imputer"],
+                "statistics_",
+                [],
+            )
         )
         cat_statistics = list(
-            self.initial_imputer_.named_transformers_["cat_imputer"].statistics_
+            getattr(
+                self.initial_imputer_.named_transformers_["cat_imputer"],
+                "statistics_",
+                [],
+            )
         )
         for i in range(len(combined_statistics)):
             if i in categorical_indices:

@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Callable, Dict, List, Optional, Union
+import os
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Union
 
 import pandas as pd
 from joblib.memory import Memory
@@ -24,7 +25,7 @@ def setup(
     data: Optional[DATAFRAME_LIKE] = None,
     data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
     target: TARGET_LIKE = -1,
-    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = True,
     train_size: float = 0.7,
     test_data: Optional[DATAFRAME_LIKE] = None,
     ordinal_features: Optional[Dict[str, list]] = None,
@@ -52,6 +53,7 @@ def setup(
     low_variance_threshold: Optional[float] = None,
     group_features: Optional[list] = None,
     group_names: Optional[Union[str, list]] = None,
+    drop_groups: bool = False,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
@@ -120,7 +122,7 @@ def setup(
     data_func: Callable[[], DATAFRAME_LIKE] = None
         The function that generate ``data`` (the dataframe-like input). This
         is useful when the dataset is large, and you need parallel operations
-        such as ``compare_models``. It can avoid boradcasting large dataset
+        such as ``compare_models``. It can avoid broadcasting large dataset
         from driver to workers. Notice one and only one of ``data`` and
         ``data_func`` must be set.
 
@@ -132,7 +134,7 @@ def setup(
         multiclass.
 
 
-    index: bool, int, str or sequence, default = False
+    index: bool, int, str or sequence, default = True
         Handle indices in the `data` dataframe.
             - If False: Reset to RangeIndex.
             - If True: Keep the provided index.
@@ -298,17 +300,21 @@ def setup(
 
     group_features: list, list of lists or None, default = None
         When the dataset contains features with related characteristics,
-        replace those fetaures with the following statistical properties
-        of that group: min, max, mean, std, median and mode. The parameter
-        takes a list of feature names or a list of lists of feature names
-        to specify multiple groups.
-
+        add new fetaures with the following statistical properties of that
+        group: min, max, mean, std, median and mode. The parameter takes a
+        list of feature names or a list of lists of feature names to specify
+        multiple groups.
 
     group_names: str, list, or None, default = None
         Group names to be used when naming the new features. The length
         should match with the number of groups specified in ``group_features``.
         If None, new features are named using the default form, e.g. group_1,
         group_2, etc... Ignored when ``group_features`` is None.
+
+
+    drop_groups: bool, default=False
+        Whether to drop the original features in the group. Ignored when
+        ``group_features`` is None.
 
 
     remove_multicollinearity: bool, default = False
@@ -531,7 +537,7 @@ def setup(
 
 
     log_experiment: bool or str or BaseLogger or list of str or BaseLogger, default = False
-        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb', 'comet_ml')
         corresponding to a logger to determine which experiment loggers to use.
         Setting to True will use just MLFlow.
 
@@ -626,6 +632,7 @@ def setup(
         low_variance_threshold=low_variance_threshold,
         group_features=group_features,
         group_names=group_names,
+        drop_groups=drop_groups,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         bin_numeric_features=bin_numeric_features,
@@ -2051,17 +2058,17 @@ def calibrate_model(
 def optimize_threshold(
     estimator,
     optimize: str = "Accuracy",
-    grid_interval: float = 0.1,
     return_data: bool = False,
     plot_kwargs: Optional[dict] = None,
+    **shgo_kwargs,
 ):
 
     """
     This function optimizes probability threshold for a trained classifier. It
-    iterates over performance metrics at different ``probability_threshold`` with
-    a step size defined in ``grid_interval`` parameter. This function will display
-    a plot of the performance metrics at each probability threshold and returns the
-    best model based on the metric defined under ``optimize`` parameter.
+    uses the SHGO optimizer from ``scipy`` to optimize for the given metric.
+    This function will display a plot of the performance metrics at each probability
+    threshold checked by the optimizer and returns the best model based on the metric
+    defined under ``optimize`` parameter.
 
 
     Example
@@ -2083,16 +2090,16 @@ def optimize_threshold(
         Metric to be used for selecting best model.
 
 
-    grid_interval : float, default = 0.0001
-        Grid interval for threshold grid search. Default 10 iterations.
-
-
     return_data :  bool, default = False
         When set to True, data used for visualization is also returned.
 
 
     plot_kwargs :  dict, default = {} (empty dict)
         Dictionary of arguments passed to the visualizer class.
+
+
+    **shgo_kwargs:
+        Kwargs to pass to ``scipy.optimize.shgo``.
 
 
     Returns
@@ -2108,9 +2115,9 @@ def optimize_threshold(
     return _CURRENT_EXPERIMENT.optimize_threshold(
         estimator=estimator,
         optimize=optimize,
-        grid_interval=grid_interval,
         return_data=return_data,
         plot_kwargs=plot_kwargs,
+        **shgo_kwargs,
     )
 
 
@@ -2121,7 +2128,6 @@ def predict_model(
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,
     raw_score: bool = False,
-    drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -2167,11 +2173,6 @@ def predict_model(
         When set to True, scores for all labels will be returned.
 
 
-    drift_report: bool, default = False
-        When set to True, interactive drift report is generated on test set
-        with the evidently library.
-
-
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
@@ -2203,7 +2204,6 @@ def predict_model(
         probability_threshold=probability_threshold,
         encoded_labels=encoded_labels,
         raw_score=raw_score,
-        drift_report=drift_report,
         round=round,
         verbose=verbose,
     )
@@ -2555,7 +2555,6 @@ def pull(pop: bool = False) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        Equivalent to get_config('display_container')[-1]
 
     """
     return _CURRENT_EXPERIMENT.pull(pop=pop)
@@ -2785,7 +2784,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_config(variable: str):
+def get_config(variable: Optional[str] = None):
 
     """
     This function is used to access global environment variables.
@@ -2794,7 +2793,13 @@ def get_config(variable: str):
     -------
     >>> X_train = get_config('X_train')
 
-    This will return X_train transformed dataset.
+    This will return training features.
+
+
+    variable : str, default = None
+        Name of the variable to return the value of. If None,
+        will return a list of possible names.
+
 
     Returns
     -------
@@ -2823,20 +2828,24 @@ def set_config(variable: str, value):
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_config(file_name: str):
-
+def save_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO], **cloudpickle_kwargs
+) -> None:
     """
-    This function save all global variables to a pickle file, allowing to
-    later resume without rerunning the ``setup``.
+    Saves the experiment to a pickle file.
+
+    The experiment is saved using cloudpickle to deal with lambda
+    functions. The data or test data is NOT saved with the experiment
+    and will need to be specified again when loading using
+    ``load_experiment``.
 
 
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> save_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to save the experiment to.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.dump`` call.
 
 
     Returns:
@@ -2844,29 +2853,81 @@ def save_config(file_name: str):
 
     """
 
-    return _CURRENT_EXPERIMENT.save_config(file_name=file_name)
+    return _CURRENT_EXPERIMENT.save_experiment(
+        path_or_file=path_or_file, **cloudpickle_kwargs
+    )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def load_config(file_name: str):
+def load_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO],
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+    test_data: Optional[DATAFRAME_LIKE] = None,
+    preprocess_data: bool = True,
+    **cloudpickle_kwargs,
+) -> ClassificationExperiment:
 
     """
-    This function loads global variables from a pickle file into Python
-    environment.
+    Load an experiment saved with ``save_experiment`` from path
+    or file.
+
+    The data (and test data) is NOT saved with the experiment
+    and will need to be specified again.
 
 
-    Example
-    -------
-    >>> from pycaret.classification import load_config
-    >>> load_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to load the experiment from.
+        The pickle file must be created through ``save_experiment``.
+
+
+    data: dataframe-like
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
+
+
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    test_data: dataframe-like or None, default = None
+        If not None, test_data is used as a hold-out set and `train_size` parameter
+        is ignored. The columns of data and test_data must match.
+
+
+    preprocess_data: bool, default = True
+        If True, the data will be preprocessed again (through running ``setup``
+        internally). If False, the data will not be preprocessed. This means
+        you can save the value of the ``data`` attribute of an experiment
+        separately, and then load it separately and pass it here with
+        ``preprocess_data`` set to False. This is an advanced feature.
+        We recommend leaving it set to True and passing the same data
+        as passed to the initial ``setup`` call.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.load`` call.
 
 
     Returns:
-        Global variables
+        loaded experiment
 
     """
-
-    return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
+    exp = _EXPERIMENT_CLASS.load_experiment(
+        path_or_file=path_or_file,
+        data=data,
+        data_func=data_func,
+        test_data=test_data,
+        preprocess_data=preprocess_data,
+        **cloudpickle_kwargs,
+    )
+    set_current_experiment(exp)
+    return exp
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -3268,6 +3329,86 @@ def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
     )
 
 
+def check_drift(
+    reference_data: Optional[pd.DataFrame] = None,
+    current_data: Optional[pd.DataFrame] = None,
+    target: Optional[str] = None,
+    numeric_features: Optional[List[str]] = None,
+    categorical_features: Optional[List[str]] = None,
+    date_features: Optional[List[str]] = None,
+    filename: Optional[str] = None,
+) -> str:
+    """
+    This function generates a drift report file using the
+    evidently library.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> check_drift()
+
+
+    reference_data: Optional[pd.DataFrame] = None
+        Reference data. If not specified, will use training data.
+        Must be specified if ``setup()`` has not been run.
+
+
+    current_data: Optional[pd.DataFrame] = None
+        Current data. If not specified, will use test data.
+        Must be specified if ``setup()`` has not been run.
+
+
+    target: Optional[str] = None
+        Name of the target column. If not specified, will use
+        the column specified in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    numeric_features: Optional[List[str]] = None
+        Names of numeric columns. If not specified, will use
+        the columns specified/inferred in ``setup()``, or
+        all non-categorical and non-date columns otherwise.
+
+
+    categorical_features: Optional[List[str]] = None
+        Names of categorical columns. If not specified, will use
+        the columns specified/inferred in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    date_features: Optional[List[str]] = None
+        Names of date columns. If not specified, will use
+        the columns specified/inferred in ``setup()``.
+        Must be specified if ``setup()`` has not been run.
+
+
+    filename: Optional[str] = None
+        Path to save the generated HTML file to. If not specified,
+        will default to '[EXPERIMENT_NAME]_[TIMESTAMP]_Drift_Report.html'.
+
+
+    Returns:
+        Path the generated HTML file was saved to.
+    """
+    experiment = _CURRENT_EXPERIMENT
+    if experiment is None:
+        experiment = _EXPERIMENT_CLASS()
+
+    return experiment.check_drift(
+        reference_data=reference_data,
+        current_data=current_data,
+        target=target,
+        numeric_features=numeric_features,
+        categorical_features=categorical_features,
+        date_features=date_features,
+        filename=filename,
+    )
+
+
 def set_current_experiment(experiment: ClassificationExperiment) -> None:
     """
     Set the current experiment to be used with the functional API.
@@ -3285,3 +3426,13 @@ def set_current_experiment(experiment: ClassificationExperiment) -> None:
             f"experiment must be a PyCaret ClassificationExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> ClassificationExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current ClassificationExperiment
+    """
+    return _CURRENT_EXPERIMENT

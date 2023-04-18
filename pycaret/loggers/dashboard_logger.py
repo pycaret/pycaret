@@ -26,9 +26,9 @@ class DashboardLogger:
     def __repr__(self) -> str:
         return ", ".join([str(logger) for logger in self.loggers])
 
-    def init_loggers(self, exp_name_log, full_name=None):
+    def init_loggers(self, exp_name_log, full_name=None, setup=True):
         for logger in self.loggers:
-            logger.init_experiment(exp_name_log, full_name)
+            logger.init_experiment(exp_name_log, full_name, setup=setup)
 
     def log_params(self, params):
         for logger in self.loggers:
@@ -61,7 +61,7 @@ class DashboardLogger:
 
         full_name = experiment._get_model_name(model)
         console.info(f"Model: {full_name}")
-        self.init_loggers(experiment.exp_name_log, full_name)
+        self.init_loggers(experiment.exp_name_log, full_name, setup=False)
 
         # Log model parameters
         pipeline_estimator_name = get_pipeline_estimator_label(model)
@@ -200,13 +200,13 @@ class DashboardLogger:
         console = experiment.logger
         console.info("Logging experiment in loggers")
 
-        k = experiment.display_container[0].copy()
+        k = experiment._display_container[0].copy()
         k.set_index("Description", drop=True, inplace=True)
         kdict = k.to_dict()
         params = kdict.get("Value")
         for logger in self.loggers:
             logger.init_experiment(
-                experiment.exp_name_log, f"{SETUP_TAG} {experiment.USI}"
+                experiment.exp_name_log, f"{SETUP_TAG} {experiment.USI}", setup=True
             )
             logger.log_params(params, "setup")
             logger.set_tags("setup", experiment_custom_tags, runtime)
@@ -257,10 +257,53 @@ class DashboardLogger:
                         logger.log_artifact(test_path, "test_data")
                         for logger in self.loggers
                     ]
+                    # upload data to remote server
+                    [
+                        logger.log_artifact(train_path, "data")
+                        for logger in self.loggers
+                        if hasattr(logger, "remote")
+                    ]
+                    [
+                        logger.log_artifact(test_path, "data")
+                        for logger in self.loggers
+                        if hasattr(logger, "remote")
+                    ]
+                    if experiment.transform_target_param:
+                        train_transform_path = os.path.join(
+                            tmpdir, "Train_transform.csv"
+                        )
+                        test_transform_path = os.path.join(tmpdir, "Test_transform.csv")
+                        experiment.train_transformed.to_csv(train_transform_path)
+                        experiment.test_transformed.to_csv(test_transform_path)
+                        [
+                            logger.log_artifact(train_transform_path, "data")
+                            for logger in self.loggers
+                            if hasattr(logger, "remote")
+                        ]
+                        [
+                            logger.log_artifact(test_transform_path, "data")
+                            for logger in self.loggers
+                            if hasattr(logger, "remote")
+                        ]
                 else:
                     train_path = os.path.join(tmpdir, "Dataset.csv")
                     experiment.train.to_csv(train_path)
                     [logger.log_artifact(train_path, "data") for logger in self.loggers]
+                    if experiment.transform_target_param:
+                        train_transform_path = os.path.join(
+                            tmpdir, "Dataset_transform.csv"
+                        )
+                        experiment.train_transformed.to_csv(train_transform_path)
+                        [
+                            logger.log_artifact(train_transform_path, "data")
+                            for logger in self.loggers
+                            if hasattr(logger, "remote")
+                        ]
+                [
+                    logger.log_artifact(file="", type="data_commit")
+                    for logger in self.loggers
+                    if hasattr(logger, "remote")
+                ]
 
     def log_model_comparison(self, results, source):
         for logger in self.loggers:

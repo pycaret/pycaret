@@ -26,13 +26,15 @@ import pycaret.internal.preprocess
 import pycaret.loggers
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import create_logger, get_logger, redirect_output
+from pycaret.internal.memory import get_memory
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
-from pycaret.internal.pipeline import get_memory
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.loggers.comet_logger import CometLogger
+from pycaret.loggers.dagshub_logger import DagshubLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
@@ -53,19 +55,16 @@ class _TabularExperiment(_PyCaretExperiment):
         self.fold_shuffle_param = False
         self.fold_groups_param = None
         self.exp_model_engines = {}
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "_ml_usecase",
                 "_available_plots",
-                "variable_keys",
                 "USI",
                 "html_param",
                 "seed",
                 "pipeline",
                 "n_jobs_param",
-                "_gpu_n_jobs_param",
-                "master_model_container",
-                "display_container",
+                "gpu_n_jobs_param",
                 "exp_name_log",
                 "exp_id",
                 "logging_param",
@@ -73,9 +72,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 "data",
                 "idx",
                 "gpu_param",
-                "_all_models",
-                "_all_models_internal",
-                "_all_metrics",
                 "memory",
             }
         )
@@ -233,7 +229,8 @@ class _TabularExperiment(_PyCaretExperiment):
 
     def _validate_log_experiment(self, obj: Any) -> None:
         return isinstance(obj, (bool, BaseLogger)) or (
-            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb"]
+            isinstance(obj, str)
+            and obj.lower() in ["mlflow", "wandb", "dagshub", "comet_ml"]
         )
 
     def _convert_log_experiment(
@@ -247,7 +244,7 @@ class _TabularExperiment(_PyCaretExperiment):
             or self._validate_log_experiment(log_experiment)
         ):
             raise TypeError(
-                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb'; or a list of the former."
+                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb', 'dagshub', 'comet_ml'; or a list of the former."
             )
 
         def convert_logging_param(obj):
@@ -258,6 +255,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 return MlflowLogger()
             if obj == "wandb":
                 return WandbLogger()
+            if obj == "dagshub":
+                return DagshubLogger(os.getenv("MLFLOW_TRACKING_URI"))
+            if obj == "comet_ml":
+                return CometLogger()
 
         if log_experiment:
             if log_experiment is True:
@@ -292,7 +293,7 @@ class _TabularExperiment(_PyCaretExperiment):
         target column.
 
         """
-        from pycaret.utils import __version__
+        from pycaret import __version__
 
         # Parameter attrs
         self.n_jobs_param = n_jobs
@@ -324,7 +325,7 @@ class _TabularExperiment(_PyCaretExperiment):
         self.logger.info("Initializing setup()")
         self.logger.info(f"self.USI: {self.USI}")
 
-        self.logger.info(f"self.variable_keys: {self.variable_keys}")
+        self.logger.info(f"self._variable_keys: {self._variable_keys}")
 
         self._check_environment()
 
@@ -346,10 +347,18 @@ class _TabularExperiment(_PyCaretExperiment):
                 cuml_version = __version__
                 self.logger.info(f"cuml=={cuml_version}")
 
+                try:
+                    import cuml.common.memory_utils
+
+                    cuml.common.memory_utils.set_global_output_type("numpy")
+                except Exception:
+                    self.logger.exception("Couldn't set cuML global output type")
+
             if cuml_version is None or not version.parse(cuml_version) >= version.parse(
                 "22.10"
             ):
-                message = f"cuML is outdated or not found. Required version is >=22.10, got {__version__}"
+                message = """cuML is outdated or not found. Required version is >=22.10.
+                Please visit https://rapids.ai/ for installation instructions."""
                 if use_gpu == "force":
                     raise ImportError(message)
                 else:
@@ -417,7 +426,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # multiclass plot exceptions:
         multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
-        if self._is_multiclass:
+        if self.is_multiclass:
             if plot in multiclass_not_available:
                 raise ValueError(
                     "Plot Not Available for multiclass problems. Please see docstring for list of available Plots."
@@ -1352,7 +1361,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         cv=cv,
                         train_sizes=sizes,
                         groups=groups,
-                        n_jobs=self._gpu_n_jobs_param,
+                        n_jobs=self.gpu_n_jobs_param,
                         random_state=self.seed,
                     )
                     return show_yellowbrick_plot(
@@ -1770,7 +1779,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         cv=cv,
                         groups=groups,
                         random_state=self.seed,
-                        n_jobs=self._gpu_n_jobs_param,
+                        n_jobs=self.gpu_n_jobs_param,
                     )
                     return show_yellowbrick_plot(
                         visualizer=viz,
@@ -2395,7 +2404,7 @@ class _TabularExperiment(_PyCaretExperiment):
         else:
             pipeline_to_use = self.pipeline
 
-        return pycaret.internal.persistence.save_model(
+        model_, model_filename = pycaret.internal.persistence.save_model(
             model=model,
             model_name=model_name,
             prep_pipe_=None if model_only else pipeline_to_use,
@@ -2403,6 +2412,14 @@ class _TabularExperiment(_PyCaretExperiment):
             use_case=self._ml_usecase,
             **kwargs,
         )
+        if self.logging_param:
+            [
+                logger.log_artifact(file=model_filename, type="model")
+                for logger in self.logging_param.loggers
+                if hasattr(logger, "remote")
+            ]
+
+        return model_, model_filename
 
     def load_model(
         self,
@@ -2588,7 +2605,7 @@ class _TabularExperiment(_PyCaretExperiment):
         _check_soft_dependencies("pydantic", extra="mlops", severity="error")
 
         self.save_model(estimator, model_name=api_name, verbose=False)
-        target = f"{self.target_param}_prediction"
+        target = "prediction"
 
         query = f"""# -*- coding: utf-8 -*-
 

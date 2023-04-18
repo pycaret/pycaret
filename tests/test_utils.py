@@ -17,8 +17,6 @@ def test_utils():
     # version
     version = pycaret.utils.version()
     assert isinstance(version, str)
-    nightly_version = pycaret.utils.nightly_version()
-    assert isinstance(nightly_version, str)
     version = pycaret.utils.__version__
     assert isinstance(version, str)
 

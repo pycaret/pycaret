@@ -17,7 +17,7 @@ RUN "${CONDA_DIR}/envs/${conda_env}/bin/python" -m ipykernel install --user --na
     fix-permissions "/home/${NB_USER}"
 
 # install pycaret light version
-RUN "${CONDA_DIR}/envs/${conda_env}/bin/pip" install pycaret==2.3.10
+RUN "${CONDA_DIR}/envs/${conda_env}/bin/pip" install pycaret==3.0.0
 
 
 # prepend conda environment to path

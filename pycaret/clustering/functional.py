@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Dict, List, Optional, Union
+import os
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Union
 
 import pandas as pd
 from joblib.memory import Memory
@@ -20,8 +21,9 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data: DATAFRAME_LIKE,
-    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = True,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -96,7 +98,15 @@ def setup(
         names.
 
 
-    index: bool, int, str or sequence, default = False
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    index: bool, int, str or sequence, default = True
         Handle indices in the `data` dataframe.
             - If False: Reset to RangeIndex.
             - If True: Keep the provided index.
@@ -196,7 +206,7 @@ def setup(
     encoding_method: category-encoders estimator, default = None
         A `category-encoders` estimator to encode the categorical columns
         with more than `max_encoding_ohe` unique values. If None,
-        `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+        `category_encoders.basen.BaseN` is used.
 
 
     rare_to_value: float or None, default=None
@@ -364,7 +374,7 @@ def setup(
 
 
     log_experiment: bool, default = False
-        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb', 'comet_ml')
         corresponding to a logger to determine which experiment loggers to use.
         Setting to True will use just MLFlow.
         If ``wandb`` (Weights & Biases) is installed, will also log there.
@@ -424,6 +434,7 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        data_func=data_func,
         index=index,
         ordinal_features=ordinal_features,
         numeric_features=numeric_features,
@@ -479,6 +490,43 @@ def setup(
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_allowed_engines(estimator: str) -> Optional[str]:
+    """Get all the allowed engines for the specified model
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engines should be retrieved,
+        e.g. "auto_arima"
+    Returns
+    -------
+    Optional[str]
+        The allowed engines for the model. If the model only supports the
+        default sktime engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_allowed_engines(estimator=estimator)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_engine(estimator: str) -> Optional[str]:
+    """Gets the model engine currently set in the experiment for the specified
+    model.
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engine should be retrieved,
+        e.g. "auto_arima"
+    Returns
+    -------
+    Optional[str]
+        The engine for the model. If the model only supports the default sktime
+        engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_engine(estimator=estimator)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_model(
     model: Union[str, Any],
     num_clusters: int = 4,
@@ -487,6 +535,7 @@ def create_model(
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    engine: Optional[str] = None,
     **kwargs,
 ):
 
@@ -550,6 +599,12 @@ def create_model(
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
+    engine: Optional[str] = None
+        The execution engine to use for the model, e.g. for K-Means Clustering ("kmeans"), users can
+        switch between "sklearn" and "sklearnex" by specifying
+        `engine="sklearnex"`.
+
+
     **kwargs:
         Additional keyword arguments to pass to the estimator.
 
@@ -584,6 +639,7 @@ def create_model(
         fit_kwargs=fit_kwargs,
         verbose=verbose,
         experiment_custom_tags=experiment_custom_tags,
+        engine=engine,
         **kwargs,
     )
 
@@ -763,152 +819,6 @@ def evaluate_model(
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def tune_model(
-    model,
-    supervised_target: str,
-    supervised_type: Optional[str] = None,
-    supervised_estimator: Union[str, Any] = "lr",
-    optimize: Optional[str] = None,
-    custom_grid: Optional[List[int]] = None,
-    fold: int = 10,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    round: int = 4,
-    verbose: bool = True,
-):
-
-    """
-    This function tunes the ``num_clusters`` parameter of a given model.
-
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.clustering import *
-    >>> exp_name = setup(data = juice)
-    >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'Purchase')
-
-
-    model: str
-        ID of an model available in the model library. Models that can be
-        tuned in this function (ID - Model):
-
-        * 'kmeans' - K-Means Clustering
-        * 'sc' - Spectral Clustering
-        * 'hclust' - Agglomerative Clustering
-        * 'birch' - Birch Clustering
-        * 'kmodes' - K-Modes Clustering
-
-
-    supervised_target: str
-        Name of the target column containing labels.
-
-
-    supervised_type: str, default = None
-        Type of task. 'classification' or 'regression'. Automatically inferred
-        when None.
-
-
-    supervised_estimator: str, default = None
-        Classification (ID - Name):
-            * 'lr' - Logistic Regression (Default)
-            * 'knn' - K Nearest Neighbour
-            * 'nb' - Naive Bayes
-            * 'dt' - Decision Tree Classifier
-            * 'svm' - SVM - Linear Kernel
-            * 'rbfsvm' - SVM - Radial Kernel
-            * 'gpc' - Gaussian Process Classifier
-            * 'mlp' - Multi Level Perceptron
-            * 'ridge' - Ridge Classifier
-            * 'rf' - Random Forest Classifier
-            * 'qda' - Quadratic Discriminant Analysis
-            * 'ada' - Ada Boost Classifier
-            * 'gbc' - Gradient Boosting Classifier
-            * 'lda' - Linear Discriminant Analysis
-            * 'et' - Extra Trees Classifier
-            * 'xgboost' - Extreme Gradient Boosting
-            * 'lightgbm' - Light Gradient Boosting
-            * 'catboost' - CatBoost Classifier
-
-        Regression (ID - Name):
-            * 'lr' - Linear Regression (Default)
-            * 'lasso' - Lasso Regression
-            * 'ridge' - Ridge Regression
-            * 'en' - Elastic Net
-            * 'lar' - Least Angle Regression
-            * 'llar' - Lasso Least Angle Regression
-            * 'omp' - Orthogonal Matching Pursuit
-            * 'br' - Bayesian Ridge
-            * 'ard' - Automatic Relevance Determ.
-            * 'par' - Passive Aggressive Regressor
-            * 'ransac' - Random Sample Consensus
-            * 'tr' - TheilSen Regressor
-            * 'huber' - Huber Regressor
-            * 'kr' - Kernel Ridge
-            * 'svm' - Support Vector Machine
-            * 'knn' - K Neighbors Regressor
-            * 'dt' - Decision Tree
-            * 'rf' - Random Forest
-            * 'et' - Extra Trees Regressor
-            * 'ada' - AdaBoost Regressor
-            * 'gbr' - Gradient Boosting
-            * 'mlp' - Multi Level Perceptron
-            * 'xgboost' - Extreme Gradient Boosting
-            * 'lightgbm' - Light Gradient Boosting
-            * 'catboost' - CatBoost Regressor
-
-
-    optimize: str, default = None
-        For Classification tasks:
-            Accuracy, AUC, Recall, Precision, F1, Kappa (default = 'Accuracy')
-
-        For Regression tasks:
-            MAE, MSE, RMSE, R2, RMSLE, MAPE (default = 'R2')
-
-
-    custom_grid: list, default = None
-        By default, a pre-defined number of clusters is iterated over to
-        optimize the supervised objective. To overwrite default iteration,
-        pass a list of num_clusters to iterate over in custom_grid param.
-
-
-    fold: int, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2.
-
-
-    verbose: bool, default = True
-        Status update is not printed when verbose is set to False.
-
-
-    Returns:
-        Trained Model with optimized ``num_clusters`` parameter.
-
-
-    Warnings
-    --------
-    - Affinity Propagation, Mean shift, Density-Based Spatial Clustering
-      and OPTICS Clustering cannot be used in this function since they donot
-      support the ``num_clusters`` param.
-
-
-    """
-    return _CURRENT_EXPERIMENT.tune_model(
-        model=model,
-        supervised_target=supervised_target,
-        supervised_type=supervised_type,
-        supervised_estimator=supervised_estimator,
-        optimize=optimize,
-        custom_grid=custom_grid,
-        fold=fold,
-        fit_kwargs=fit_kwargs,
-        groups=groups,
-        round=round,
-        verbose=verbose,
-    )
-
-
 # not using check_if_global_is_not_none on purpose
 def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
@@ -1070,7 +980,7 @@ def save_model(
     >>> from pycaret.clustering import *
     >>> exp_name = setup(data = jewellery)
     >>> kmeans = create_model('kmeans')
-    >>> save_model(lr, 'saved_kmeans_model')
+    >>> save_model(kmeans, 'saved_kmeans_model')
 
 
     model: scikit-learn compatible object
@@ -1183,7 +1093,6 @@ def pull(pop: bool = False) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        Equivalent to get_config('display_container')[-1]
 
     """
     return _CURRENT_EXPERIMENT.pull(pop=pop)
@@ -1392,7 +1301,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_config(variable: str):
+def get_config(variable: Optional[str] = None):
 
     """
     This function is used to access global environment variables.
@@ -1401,7 +1310,13 @@ def get_config(variable: str):
     -------
     >>> X_train = get_config('X_train')
 
-    This will return X_train transformed dataset.
+    This will return training features.
+
+
+    variable : str, default = None
+        Name of the variable to return the value of. If None,
+        will return a list of possible names.
+
 
     Returns
     -------
@@ -1429,20 +1344,24 @@ def set_config(variable: str, value):
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_config(file_name: str):
-
+def save_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO], **cloudpickle_kwargs
+) -> None:
     """
-    This function save all global variables to a pickle file, allowing to
-    later resume without rerunning the ``setup``.
+    Saves the experiment to a pickle file.
+
+    The experiment is saved using cloudpickle to deal with lambda
+    functions. The data or test data is NOT saved with the experiment
+    and will need to be specified again when loading using
+    ``load_experiment``.
 
 
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> from pycaret.clustering import *
-    >>> exp_name = setup(data = jewellery)
-    >>> save_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to save the experiment to.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.dump`` call.
 
 
     Returns:
@@ -1450,29 +1369,73 @@ def save_config(file_name: str):
 
     """
 
-    return _CURRENT_EXPERIMENT.save_config(file_name=file_name)
+    return _CURRENT_EXPERIMENT.save_experiment(
+        path_or_file=path_or_file, **cloudpickle_kwargs
+    )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def load_config(file_name: str):
-
+def load_experiment(
+    path_or_file: Union[str, os.PathLike, BinaryIO],
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+    preprocess_data: bool = True,
+    **cloudpickle_kwargs,
+) -> ClusteringExperiment:
     """
-    This function loads global variables from a pickle file into Python
-    environment.
+    Load an experiment saved with ``save_experiment`` from path
+    or file.
+
+    The data (and test data) is NOT saved with the experiment
+    and will need to be specified again.
 
 
-    Example
-    -------
-    >>> from pycaret.clustering import load_config
-    >>> load_config('myvars.pkl')
+    path_or_file: str or BinaryIO (file pointer)
+        The path/file pointer to load the experiment from.
+        The pickle file must be created through ``save_experiment``.
+
+
+    data: dataframe-like
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
+
+
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
+
+
+    preprocess_data: bool, default = True
+        If True, the data will be preprocessed again (through running ``setup``
+        internally). If False, the data will not be preprocessed. This means
+        you can save the value of the ``data`` attribute of an experiment
+        separately, and then load it separately and pass it here with
+        ``preprocess_data`` set to False. This is an advanced feature.
+        We recommend leaving it set to True and passing the same data
+        as passed to the initial ``setup`` call.
+
+
+    **cloudpickle_kwargs:
+        Kwargs to pass to the ``cloudpickle.load`` call.
 
 
     Returns:
-        Global variables
+        loaded experiment
 
     """
-
-    return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
+    exp = _EXPERIMENT_CLASS.load_experiment(
+        path_or_file=path_or_file,
+        data=data,
+        data_func=data_func,
+        preprocess_data=preprocess_data,
+        **cloudpickle_kwargs,
+    )
+    set_current_experiment(exp)
+    return exp
 
 
 def set_current_experiment(experiment: ClusteringExperiment):
@@ -1492,3 +1455,13 @@ def set_current_experiment(experiment: ClusteringExperiment):
             f"experiment must be a PyCaret ClusteringExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> ClusteringExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current ClusteringExperiment
+    """
+    return _CURRENT_EXPERIMENT

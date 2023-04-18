@@ -1,4 +1,5 @@
 import daal4py
+import pytest
 import sklearn
 
 import pycaret.classification
@@ -129,10 +130,8 @@ def test_compare_models_engines_local_args():
     assert isinstance(model, sklearn.linear_model._logistic.LogisticRegression)
 
 
-def test_all_sklearnex_models():
-
-    ALGORITHMS_LIST = ["lr", "knn", "rbfsvm"]
-
+@pytest.mark.parametrize("algo", ("lr", "knn", "rbfsvm"))
+def test_sklearnex_model(algo: str):
     juice_dataframe = pycaret.datasets.get_data("juice")
     exp = pycaret.classification.ClassificationExperiment()
 
@@ -148,15 +147,12 @@ def test_all_sklearnex_models():
         n_jobs=1,
     )
 
-    for algo in ALGORITHMS_LIST:
-        model = exp.create_model(algo)
-        parent_library = model.__module__
-        assert parent_library.startswith("sklearn")
+    model = exp.create_model(algo)
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearn")
 
-    for algo in ALGORITHMS_LIST:
-        model = exp.create_model(algo, engine="sklearnex")
-        parent_library = model.__module__
-        if algo == "rbfsvm" or algo == "knn":
-            assert parent_library.startswith("sklearnex")
-        else:
-            assert parent_library.startswith("daal4py")
+    model = exp.create_model(algo, engine="sklearnex")
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
+    )
