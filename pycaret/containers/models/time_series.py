@@ -1141,10 +1141,10 @@ class BATSContainer(TimeSeriesContainer):
         args = (
             {
                 "sp": self.sp,
-                "use_box_cox": False,  # None or True leads to many errors in M3 dataset
+                "use_box_cox": True,
                 "use_arma_errors": True,
-                "show_warnings": False,
                 "n_jobs": self.n_jobs_param,
+                "show_warnings": False,
             }
             if self.seasonality_present
             else {}
@@ -1159,7 +1159,9 @@ class BATSContainer(TimeSeriesContainer):
             "use_box_cox": [None],
             "use_trend": [None],
             "use_damped_trend": [None],
+            "use_arma_errors": [True],
             "n_jobs": [self.n_jobs_param],
+            "show_warnings": [False],
         }
         return tune_grid
 
@@ -1208,10 +1210,10 @@ class TBATSContainer(TimeSeriesContainer):
         args = (
             {
                 "sp": self.sp,
-                "use_box_cox": False,  # None or True leads to many errors in M3 dataset
+                "use_box_cox": True,
                 "use_arma_errors": True,
-                "show_warnings": False,
                 "n_jobs": self.n_jobs_param,
+                "show_warnings": False,
             }
             if self.seasonality_present
             else {}
@@ -1226,7 +1228,9 @@ class TBATSContainer(TimeSeriesContainer):
             "use_box_cox": [None],
             "use_trend": [None],
             "use_damped_trend": [None],
+            "use_arma_errors": [True],
             "n_jobs": [self.n_jobs_param],
+            "show_warnings": [False],
         }
         return tune_grid
 
