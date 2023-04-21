@@ -777,6 +777,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         self.seasonality_present = experiment.seasonality_present
         self.sp = experiment.primary_sp_to_use
         self.strictly_positive = experiment.strictly_positive
+        self.seasonality_type = experiment.seasonality_type
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -800,14 +801,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> Dict[str, Any]:
-        # TODO: Check if there is a formal test for type of seasonality
-        if self.seasonality_present and self.strictly_positive:
-            seasonal = "mul"
-        elif self.seasonality_present and not self.strictly_positive:
-            seasonal = "add"
-        else:
-            seasonal = None
-        args = {"sp": self.sp, "seasonal": seasonal}
+        args = {"sp": self.sp, "seasonal": self.seasonality_type}
         # Add irrespective of whether seasonality is present or not
         args["trend"] = "add"
         return args
@@ -816,23 +810,19 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
         if self.seasonality_present:
             tune_grid = {
-                # TODO: Check if add and additive are doing the same thing
-                "trend": ["add", "mul", "additive", "multiplicative", None]
+                "trend": ["add", "mul", None]
                 if self.strictly_positive
-                else ["add", "additive", None],
+                else ["add", None],
                 # "damped_trend": [True, False],
-                "seasonal": ["add", "mul", "additive", "multiplicative"]
-                if self.strictly_positive
-                else ["add", "additive"],
+                "seasonal": ["add", "mul"] if self.strictly_positive else ["add"],
                 "use_boxcox": [True, False] if self.strictly_positive else [False],
                 "sp": [self.sp],
             }
         else:
             tune_grid = {
-                # TODO: Check if add and additive are doing the same thing
-                "trend": ["add", "mul", "additive", "multiplicative", None]
+                "trend": ["add", "mul", None]
                 if self.strictly_positive
-                else ["add", "additive", None],
+                else ["add", None],
                 # "damped_trend": [True, False],
                 "seasonal": [None],
                 "use_boxcox": [True, False] if self.strictly_positive else [False],
@@ -845,15 +835,13 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         if self.seasonality_present:
             tune_distributions = {
                 "trend": CategoricalDistribution(
-                    values=["add", "mul", "additive", "multiplicative", None]
+                    values=["add", "mul", None]
                     if self.strictly_positive
-                    else ["add", "additive", None],
+                    else ["add", None],
                 ),
                 # "damped_trend": [True, False],
                 "seasonal": CategoricalDistribution(
-                    values=["add", "mul", "additive", "multiplicative"]
-                    if self.strictly_positive
-                    else ["add", "additive"],
+                    values=["add", "mul"] if self.strictly_positive else ["add"],
                 ),
                 # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
                 # "initial_trend": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_trend has been set.
@@ -866,9 +854,9 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         else:
             tune_distributions = {
                 "trend": CategoricalDistribution(
-                    values=["add", "mul", "additive", "multiplicative", None]
+                    values=["add", "mul", None]
                     if self.strictly_positive
-                    else ["add", "additive", None],
+                    else ["add", None],
                 ),
                 # "damped_trend": [True, False],
                 "seasonal": CategoricalDistribution(values=[None]),
@@ -880,57 +868,6 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
                 ),  # 'log', float
                 "sp": CategoricalDistribution(values=[None]),
             }
-        return tune_distributions
-
-
-class CrostonContainer(TimeSeriesContainer):
-    """
-    SKtime documentation:
-    https://www.sktime.org/en/latest/api_reference/auto_generated/sktime.forecasting.croston.Croston.html
-
-    """
-
-    model_type = TSModelTypes.CLASSICAL
-
-    def __init__(self, experiment) -> None:
-        self.logger = get_logger()
-        np.random.seed(experiment.seed)
-        self.gpu_imported = False
-
-        from sktime.forecasting.croston import Croston  # type: ignore
-
-        # Disable container if certain features are not supported but enforced ----
-        dummy = Croston()
-        self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
-        if not self.active:
-            return
-
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        super().__init__(
-            id="croston",
-            name="Croston",
-            class_def=Croston,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            is_gpu_enabled=self.gpu_imported,
-        )
-
-    @property
-    def _set_tune_grid(self) -> Dict[str, List[Any]]:
-        # lack of research/evidence for suitable range here,
-        # SKtime and R implementations are default 0.1
-        smoothing_grid: List[float] = [0.01, 0.03, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
-        tune_grid = {"smoothing": smoothing_grid}
-        return tune_grid
-
-    @property
-    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-        tune_distributions = {
-            "smoothing": UniformDistribution(lower=0.01, upper=1, log=True)
-        }
         return tune_distributions
 
 
@@ -953,6 +890,7 @@ class ETSContainer(TimeSeriesContainer):
         self.seasonality_present = experiment.seasonality_present
         self.sp = experiment.primary_sp_to_use
         self.strictly_positive = experiment.strictly_positive
+        self.seasonality_type = experiment.seasonality_type
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -973,14 +911,7 @@ class ETSContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> Dict[str, Any]:
-        # TODO: Check if there is a formal test for type of seasonality
-        if self.seasonality_present and self.strictly_positive:
-            seasonal = "mul"
-        elif self.seasonality_present and not self.strictly_positive:
-            seasonal = "add"
-        else:
-            seasonal = None
-        args = {"sp": self.sp, "seasonal": seasonal}
+        args = {"sp": self.sp, "seasonal": self.seasonality_type}
         # Add irrespective of whether seasonality is present or not
         args["trend"] = "add"
         return args
@@ -1094,6 +1025,57 @@ class ThetaContainer(TimeSeriesContainer):
             tune_distributions = {
                 # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
             }
+        return tune_distributions
+
+
+class CrostonContainer(TimeSeriesContainer):
+    """
+    SKtime documentation:
+    https://www.sktime.org/en/latest/api_reference/auto_generated/sktime.forecasting.croston.Croston.html
+
+    """
+
+    model_type = TSModelTypes.CLASSICAL
+
+    def __init__(self, experiment) -> None:
+        self.logger = get_logger()
+        np.random.seed(experiment.seed)
+        self.gpu_imported = False
+
+        from sktime.forecasting.croston import Croston  # type: ignore
+
+        # Disable container if certain features are not supported but enforced ----
+        dummy = Croston()
+        self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
+        if not self.active:
+            return
+
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="croston",
+            name="Croston",
+            class_def=Croston,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            is_gpu_enabled=self.gpu_imported,
+        )
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        # lack of research/evidence for suitable range here,
+        # SKtime and R implementations are default 0.1
+        smoothing_grid: List[float] = [0.01, 0.03, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+        tune_grid = {"smoothing": smoothing_grid}
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions = {
+            "smoothing": UniformDistribution(lower=0.01, upper=1, log=True)
+        }
         return tune_distributions
 
 
@@ -1296,6 +1278,66 @@ class ProphetContainer(TimeSeriesContainer):
             ),
             "holidays_prior_scale": UniformDistribution(lower=0.01, upper=10, log=True),
         }
+
+
+class STLFContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.CLASSICAL
+
+    def __init__(self, experiment) -> None:
+        self.logger = get_logger()
+        np.random.seed(experiment.seed)
+        self.gpu_imported = False
+
+        from sktime.forecasting.trend import STLForecaster
+
+        # Disable container if certain features are not supported but enforced ----
+        dummy = STLForecaster()
+        self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
+        if not self.active:
+            return
+
+        self.seasonality_present = experiment.seasonality_present
+        self.sp = experiment.primary_sp_to_use
+        self.strictly_positive = experiment.strictly_positive
+
+        if self.sp == 1:
+            self.active = False
+            return
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="stlf",
+            name="STLF",
+            class_def=STLForecaster,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=self.gpu_imported,
+        )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args = {"sp": self.sp}
+        return args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        # TODO: There may be other hyperparameters to tune. Check:
+        # http://www.sktime.net/en/latest/api_reference/auto_generated/sktime.forecasting.trend.STLForecaster.html
+        tune_grid = {
+            "sp": [self.sp],
+            "seasonal_deg": [0, 1],
+            "trend_deg": [0, 1],
+            "low_pass_deg": [0, 1],
+            "robust": [True, False],
+        }
+        return tune_grid
 
 
 #################################
@@ -1665,46 +1707,46 @@ class LassoCdsDtContainer(CdsDtContainer):
         return tune_distributions
 
 
-class LarsCdsDtContainer(CdsDtContainer):
-    id = "lar_cds_dt"
-    name = "Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
-    active = True  # set back to True as the parent has False
-    model_type = TSModelTypes.LINEAR
+# class LarsCdsDtContainer(CdsDtContainer):
+#     id = "lar_cds_dt"
+#     name = "Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
+#     active = True  # set back to True as the parent has False
+#     model_type = TSModelTypes.LINEAR
 
-    def return_regressor_class(self):
-        from sklearn.linear_model import Lars
+#     def return_regressor_class(self):
+#         from sklearn.linear_model import Lars
 
-        return Lars
+#         return Lars
 
-    @property
-    def _set_tune_grid(self) -> Dict[str, List[Any]]:
-        tune_grid = {
-            "sp": [self.sp],
-            "deseasonal_model": ["additive"],
-            "degree": [1],
-            "window_length": [10],
-            "regressor__eps": [0.0001, 0.001, 0.01, 0.1],
-            "regressor__fit_intercept": [True, False],
-        }
-        return tune_grid
+#     @property
+#     def _set_tune_grid(self) -> Dict[str, List[Any]]:
+#         tune_grid = {
+#             "sp": [self.sp],
+#             "deseasonal_model": ["additive"],
+#             "degree": [1],
+#             "window_length": [10],
+#             "regressor__eps": [0.0001, 0.001, 0.01, 0.1],
+#             "regressor__fit_intercept": [True, False],
+#         }
+#         return tune_grid
 
-    @property
-    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-        tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[self.sp, 2 * self.sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
-            ),
-            "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
-            "regressor__eps": UniformDistribution(0.00001, 0.1, log=True),
-            "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
-        }
-        return tune_distributions
+#     @property
+#     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+#         tune_distributions = {
+#             "sp": CategoricalDistribution(
+#                 values=[self.sp, 2 * self.sp]
+#             ),  # TODO: 'None' errors out here
+#             "deseasonal_model": CategoricalDistribution(
+#                 values=["additive", "multiplicative"]
+#                 if self.strictly_positive
+#                 else ["additive"]
+#             ),
+#             "degree": IntUniformDistribution(lower=1, upper=10),
+#             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
+#             "regressor__eps": UniformDistribution(0.00001, 0.1, log=True),
+#             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
+#         }
+#         return tune_distributions
 
 
 class LassoLarsCdsDtContainer(CdsDtContainer):
@@ -1858,49 +1900,49 @@ class HuberCdsDtContainer(CdsDtContainer):
         return tune_distributions
 
 
-class PassiveAggressiveCdsDtContainer(CdsDtContainer):
-    id = "par_cds_dt"
-    name = "Passive Aggressive w/ Cond. Deseasonalize & Detrending"
-    active = True  # set back to True as the parent has False
-    model_type = TSModelTypes.LINEAR
+# class PassiveAggressiveCdsDtContainer(CdsDtContainer):
+#     id = "par_cds_dt"
+#     name = "Passive Aggressive w/ Cond. Deseasonalize & Detrending"
+#     active = True  # set back to True as the parent has False
+#     model_type = TSModelTypes.LINEAR
 
-    def return_regressor_class(self):
-        from sklearn.linear_model import PassiveAggressiveRegressor
+#     def return_regressor_class(self):
+#         from sklearn.linear_model import PassiveAggressiveRegressor
 
-        return PassiveAggressiveRegressor
+#         return PassiveAggressiveRegressor
 
-    @property
-    def _set_tune_grid(self) -> Dict[str, List[Any]]:
-        tune_grid = {
-            "sp": [self.sp],
-            "deseasonal_model": ["additive"],
-            "degree": [1],
-            "window_length": [10],
-            "regressor__epsilon": [0.1, 0.5, 0.9],
-            "regressor__C": [0, 5, 10],
-            "regressor__fit_intercept": [True, False],
-            "regressor__loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
-            "regressor__shuffle": [True, False],
-        }
-        return tune_grid
+#     @property
+#     def _set_tune_grid(self) -> Dict[str, List[Any]]:
+#         tune_grid = {
+#             "sp": [self.sp],
+#             "deseasonal_model": ["additive"],
+#             "degree": [1],
+#             "window_length": [10],
+#             "regressor__epsilon": [0.1, 0.5, 0.9],
+#             "regressor__C": [0, 5, 10],
+#             "regressor__fit_intercept": [True, False],
+#             "regressor__loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
+#             "regressor__shuffle": [True, False],
+#         }
+#         return tune_grid
 
-    @property
-    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-        tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[self.sp, 2 * self.sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
-            ),
-            "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
-            "regressor__C": UniformDistribution(0, 10),
-            "regressor__epsilon": UniformDistribution(0.0000000001, 0.9999999999),
-        }
-        return tune_distributions
+#     @property
+#     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+#         tune_distributions = {
+#             "sp": CategoricalDistribution(
+#                 values=[self.sp, 2 * self.sp]
+#             ),  # TODO: 'None' errors out here
+#             "deseasonal_model": CategoricalDistribution(
+#                 values=["additive", "multiplicative"]
+#                 if self.strictly_positive
+#                 else ["additive"]
+#             ),
+#             "degree": IntUniformDistribution(lower=1, upper=10),
+#             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
+#             "regressor__C": UniformDistribution(0, 10),
+#             "regressor__epsilon": UniformDistribution(0.0000000001, 0.9999999999),
+#         }
+#         return tune_distributions
 
 
 class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
