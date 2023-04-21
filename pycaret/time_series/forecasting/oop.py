@@ -2278,6 +2278,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
             * 'auto_arima' - Auto ARIMA
             * 'exp_smooth' - Exponential Smoothing
+            * 'stlf' - STL Forecaster
             * 'croston' - Croston Forecaster
             * 'ets' - ETS
             * 'theta' - Theta Forecaster
