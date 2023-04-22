@@ -1206,7 +1206,7 @@ class TBATSContainer(TimeSeriesContainer):
             "use_box_cox": [None],
             "use_trend": [None],
             "use_damped_trend": [None],
-            "use_arma_errors": [True],
+            "use_arma_errors": [None],
             "n_jobs": [self.n_jobs_param],
             "show_warnings": [False],
         }
