@@ -1181,7 +1181,7 @@ class BATSContainer(TimeSeriesContainer):
                 "sp": self.sp,
                 "use_box_cox": True,
                 "use_arma_errors": True,
-                "n_jobs": self.n_jobs_param,
+                # "n_jobs": self.n_jobs_param,  # causes issues with multiprocessing
                 "show_warnings": False,
             }
             if self.seasonality_present
@@ -1198,7 +1198,7 @@ class BATSContainer(TimeSeriesContainer):
             "use_trend": [None],
             "use_damped_trend": [None],
             "use_arma_errors": [None],
-            "n_jobs": [self.n_jobs_param],
+            # "n_jobs": [self.n_jobs_param],  # causes issues with multiprocessing
             "show_warnings": [False],
         }
         return tune_grid
@@ -1250,7 +1250,7 @@ class TBATSContainer(TimeSeriesContainer):
                 "sp": self.sp,
                 "use_box_cox": True,
                 "use_arma_errors": True,
-                "n_jobs": self.n_jobs_param,
+                # "n_jobs": self.n_jobs_param,  # causes issues with multiprocessing
                 "show_warnings": False,
             }
             if self.seasonality_present
@@ -1267,7 +1267,7 @@ class TBATSContainer(TimeSeriesContainer):
             "use_trend": [None],
             "use_damped_trend": [None],
             "use_arma_errors": [None],
-            "n_jobs": [self.n_jobs_param],
+            # "n_jobs": [self.n_jobs_param],  # causes issues with multiprocessing
             "show_warnings": [False],
         }
         return tune_grid
