@@ -574,7 +574,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             figsize=((2 + len(self.pipeline) * 5), 6)
                         )
 
-                        d.draw(canvas=ax, showframe=False, show=False)
+                        d.draw(ax=ax, showframe=False, show=False)
                         ax.set_aspect("equal")
                         plt.axis("off")
                         plt.tight_layout()
