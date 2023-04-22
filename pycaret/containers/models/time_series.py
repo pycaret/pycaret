@@ -1032,7 +1032,6 @@ class CrostonContainer(TimeSeriesContainer):
     """
     SKtime documentation:
     https://www.sktime.org/en/latest/api_reference/auto_generated/sktime.forecasting.croston.Croston.html
-
     """
 
     model_type = TSModelTypes.CLASSICAL
@@ -1041,7 +1040,6 @@ class CrostonContainer(TimeSeriesContainer):
         self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
-
         from sktime.forecasting.croston import Croston  # type: ignore
 
         # Disable container if certain features are not supported but enforced ----
@@ -1049,11 +1047,9 @@ class CrostonContainer(TimeSeriesContainer):
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
             return
-
         tune_grid = self._set_tune_grid
         tune_distributions = self._set_tune_distributions
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
         super().__init__(
             id="croston",
             name="Croston",
