@@ -107,6 +107,7 @@ def test_assign_index(index):
 def test_duplicate_columns():
     """Assert that an error is raised when there are duplicate columns."""
     data = pycaret.datasets.get_data("juice")
+    data = data.rename(columns={"Purchase": "Id"})  # Make another column named Id
     with pytest.raises(ValueError, match=".*Duplicate column names found in X.*"):
         pycaret.classification.setup(data)
 
@@ -114,7 +115,6 @@ def test_duplicate_columns():
 def test_duplicate_indices():
     """Assert that an error is raised when there are duplicate indices."""
     data = pycaret.datasets.get_data("juice")
-    data["Id"] = list(range(len(data)))  # Make another column named Id
     with pytest.raises(ValueError, match=".*duplicate indices.*"):
         pycaret.classification.setup(
             data=data,
