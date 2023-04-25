@@ -119,6 +119,10 @@ class Preprocessor:
         # Make copy to not overwrite mutable arguments
         X = to_df(deepcopy(X))
 
+        # No duplicate column names are allowed
+        if len(set(X.columns)) != len(X.columns):
+            raise ValueError("Duplicate column names found in X.")
+
         # Prepare target column
         if isinstance(y, (list, tuple, np.ndarray, pd.Series)):
             if not isinstance(y, pd.Series):
