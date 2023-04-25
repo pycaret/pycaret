@@ -8,7 +8,6 @@ def _score_dummy(y_true, y_prob, axis=0):
     return 0.0
 
 
-@pytest.mark.skip(reason="failing on github - dont know why. TODO: reenable after fix")
 def test_classification_parallel():
     from pycaret.parallel import FugueBackend
 
