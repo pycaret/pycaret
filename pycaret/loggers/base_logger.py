@@ -1,4 +1,7 @@
 from abc import ABC
+from copy import deepcopy
+
+from sklearn.pipeline import Pipeline
 
 SETUP_TAG = "Session Initialized"
 
@@ -24,6 +27,15 @@ class BaseLogger(ABC):
 
     def set_tags(self, source, experiment_custom_tags, runtime):
         pass
+
+    def _construct_pipeline_if_needed(model, prep_pipe: Pipeline) -> Pipeline:
+        """If model is a pipeline, return it, else append model to copy of prep_pipe."""
+        if not isinstance(model, Pipeline):
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(["trained_model", model])
+        else:
+            prep_pipe_temp = model
+        return prep_pipe_temp
 
     def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
         pass

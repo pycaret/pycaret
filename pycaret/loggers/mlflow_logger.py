@@ -1,6 +1,5 @@
 import secrets
 from contextlib import contextmanager
-from copy import deepcopy
 
 from pycaret import __version__
 from pycaret.loggers.base_logger import BaseLogger
@@ -156,11 +155,9 @@ class MlflowLogger(BaseLogger):
         #     input_example = data_before_preprocess.iloc[0].to_dict()
 
         # log model as sklearn flavor
-        prep_pipe_temp = deepcopy(prep_pipe)
-        prep_pipe_temp.steps.append(["trained_model", model])
         with set_active_mlflow_run(self.active_run):
             mlflow.sklearn.log_model(
-                prep_pipe_temp,
+                self._construct_pipeline_if_needed(model, prep_pipe),
                 "model",
                 conda_env=default_conda_env,
                 # signature=signature,
