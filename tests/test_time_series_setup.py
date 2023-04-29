@@ -985,3 +985,43 @@ def test_hyperparameter_splits():
     exp2.setup(data=data, hyperparameter_split="train", fh=FH, fold=FOLD)
 
     assert exp1.uppercase_d != exp2.uppercase_d
+
+
+def test_seasonality_type():
+    # Create base data
+    N = 100
+    dates = pd.date_range(start="2020-01-01", periods=N, freq="MS")
+    y_trend = np.arange(100, 100 + N)
+    y_season = 100 * (1 + np.sin(y_trend))  # No negative values when creating final y
+
+    # -------------------------------------------------------------------------#
+    # Test 1: Additive Seasonality
+    # -------------------------------------------------------------------------#
+    y = pd.Series(y_trend + y_season)
+    y.index = dates
+
+    err_msg = "Expected additive seasonality, got multiplicative"
+    exp = TSForecastingExperiment()
+    exp.setup(data=y, session_id=42)
+    assert exp.seasonality_type == "add", err_msg
+
+    # # -------------------------------------------------------------------------#
+    # # Test 2A: Multiplicative Seasonality (1)
+    # # -------------------------------------------------------------------------#
+    # y = pd.Series(y_trend * y_season)
+    # y.index = dates
+
+    # err_msg = "Expected multiplicative seasonality, got additive (1)"
+    # exp = TSForecastingExperiment()
+    # exp.setup(data=y, session_id=42)
+    # assert exp.seasonality_type == "mul", err_msg
+
+    # -------------------------------------------------------------------------#
+    # Test 2B: Multiplicative Seasonality (2)
+    # -------------------------------------------------------------------------#
+    y = get_data("airline", verbose=False)
+
+    err_msg = "Expected multiplicative seasonality, got additive (2)"
+    exp = TSForecastingExperiment()
+    exp.setup(data=y, session_id=42)
+    assert exp.seasonality_type == "mul", err_msg

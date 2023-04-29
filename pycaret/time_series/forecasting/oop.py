@@ -1167,8 +1167,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         """Sets the seasonal type to be used in the models.
 
         Decomposes data using additive and multiplicative seasonal decomposition
-        Then selects the seasonality type that has the least amount of variance
-        in the residuals.
+        Then selects the seasonality type based on seasonality strength per FPP
+        (https://otexts.com/fpp2/seasonal-strength.html).
+
+        NOTE: For Multiplicative, the denominator multiplies the seasonal and residual
+        components instead of adding them. Rest of the calculations remain the same.
 
         Returns
         -------
@@ -1206,15 +1209,30 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             )
 
             if data_add is None or data_mult is None:
-                # None is retuirned when decomposition fails
+                # None is returned when decomposition fails
                 # Default to "add" since mul can give issues
                 seasonality_type = "add"
             else:
                 key = list(data_mult.get("decomp").keys())[0]
-                std_add = np.std(data_add.get("decomp")[key].resid)
-                std_mul = np.std(data_mult.get("decomp")[key].resid)
+                var_r_add = (np.std(data_add.get("decomp")[key].resid)) ** 2
+                var_rs_add = (
+                    np.std(
+                        data_add.get("decomp")[key].resid
+                        + data_add.get("decomp")[key].seasonal
+                    )
+                ) ** 2
+                var_r_mult = (np.std(data_mult.get("decomp")[key].resid)) ** 2
+                var_rs_mult = (
+                    np.std(
+                        data_mult.get("decomp")[key].resid
+                        * data_mult.get("decomp")[key].seasonal
+                    )
+                ) ** 2
 
-                if std_mul < std_add:
+                Fs_add = np.maximum(1 - var_r_add / var_rs_add, 0)
+                Fs_mult = np.maximum(1 - var_r_mult / var_rs_mult, 0)
+
+                if Fs_mult > Fs_add:
                     seasonality_type = "mul"
                 else:
                     seasonality_type = "add"
