@@ -25,6 +25,7 @@ from sktime.forecasting.model_selection import (
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
 from sktime.utils.seasonality import autocorrelation_seasonality_test
+from statsmodels.tsa.seasonal import seasonal_decompose
 
 from pycaret.containers.metrics import get_all_ts_metric_containers
 from pycaret.containers.models import get_all_ts_model_containers
@@ -85,6 +86,7 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _get_imputed_data,
     _get_pipeline_estimator_label,
 )
+
 
 LOGGER = get_logger()
 
@@ -1187,47 +1189,22 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 )
             )
 
-            _, data_add = plot_time_series_decomposition(
-                data=data_to_use,
-                plot="decomp",
-                data_kwargs={
-                    "seasonal_period": self.primary_sp_to_use,
-                    "type": "additive",
-                },
-                fig_defaults={"template": "plotly_dark", "width": 1000, "height": 600},
-                data_label="sth",
+            decomp_add = seasonal_decompose(
+                data_to_use, period=self.primary_sp_to_use, model="additive"
             )
-            _, data_mult = plot_time_series_decomposition(
-                data=data_to_use,
-                plot="decomp",
-                data_kwargs={
-                    "seasonal_period": self.primary_sp_to_use,
-                    "type": "multiplicative",
-                },
-                fig_defaults={"template": "plotly_dark", "width": 1000, "height": 600},
-                data_label="sth",
+            decomp_mult = seasonal_decompose(
+                data_to_use, period=self.primary_sp_to_use, model="multiplicative"
             )
 
-            if data_add is None or data_mult is None:
+            if decomp_add is None or decomp_mult is None:
                 # None is returned when decomposition fails
                 # Default to "add" since mul can give issues
                 seasonality_type = "add"
             else:
-                key = list(data_mult.get("decomp").keys())[0]
-                var_r_add = (np.std(data_add.get("decomp")[key].resid)) ** 2
-                var_rs_add = (
-                    np.std(
-                        data_add.get("decomp")[key].resid
-                        + data_add.get("decomp")[key].seasonal
-                    )
-                ) ** 2
-                var_r_mult = (np.std(data_mult.get("decomp")[key].resid)) ** 2
-                var_rs_mult = (
-                    np.std(
-                        data_mult.get("decomp")[key].resid
-                        * data_mult.get("decomp")[key].seasonal
-                    )
-                ) ** 2
+                var_r_add = (np.std(decomp_add.resid)) ** 2
+                var_rs_add = (np.std(decomp_add.resid + decomp_add.seasonal)) ** 2
+                var_r_mult = (np.std(decomp_mult.resid)) ** 2
+                var_rs_mult = (np.std(decomp_mult.resid * decomp_mult.seasonal)) ** 2
 
                 Fs_add = np.maximum(1 - var_r_add / var_rs_add, 0)
                 Fs_mult = np.maximum(1 - var_r_mult / var_rs_mult, 0)

@@ -987,19 +987,36 @@ def test_hyperparameter_splits():
     assert exp1.uppercase_d != exp2.uppercase_d
 
 
-def test_seasonality_type():
+@pytest.mark.parametrize("index", ["RangeIndex", "DatetimeIndex"])
+def test_seasonality_type(index: str):
+    """Tests the detection of the seasonality type
+
+    Tests various index types and tests for both additive and multiplicative
+    seasonality.
+
+    Parameters
+    ----------
+    index : str
+        Type of index. Options are: "RangeIndex" and "DatetimeIndex"
+    """
     # Create base data
     N = 100
-    dates = pd.date_range(start="2020-01-01", periods=N, freq="MS")
     y_trend = np.arange(100, 100 + N)
     y_season = 100 * (1 + np.sin(y_trend))  # No negative values when creating final y
+    y = pd.Series(y_trend + y_season)
 
+    # RangeIndex is default index
+    if index == "DatetimeIndex":
+        dates = pd.date_range(start="2020-01-01", periods=N, freq="MS")
+        y.index = dates
+
+    _test_seasonality_type(y)
+
+
+def _test_seasonality_type(y):
     # -------------------------------------------------------------------------#
     # Test 1: Additive Seasonality
     # -------------------------------------------------------------------------#
-    y = pd.Series(y_trend + y_season)
-    y.index = dates
-
     err_msg = "Expected additive seasonality, got multiplicative"
     exp = TSForecastingExperiment()
     exp.setup(data=y, session_id=42)
