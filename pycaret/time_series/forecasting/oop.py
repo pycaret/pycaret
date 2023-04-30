@@ -87,7 +87,6 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _get_pipeline_estimator_label,
 )
 
-
 LOGGER = get_logger()
 
 
