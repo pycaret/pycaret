@@ -1,5 +1,3 @@
-import pytest
-
 import pycaret.time_series as pt
 from pycaret.datasets import get_data
 from pycaret.parallel import FugueBackend

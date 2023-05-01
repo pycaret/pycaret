@@ -1,5 +1,3 @@
-import pytest
-
 import pycaret.regression as pr
 from pycaret.datasets import get_data
 

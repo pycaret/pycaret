@@ -1,5 +1,3 @@
-import pytest
-
 import pycaret.classification as pc
 from pycaret.datasets import get_data
 
