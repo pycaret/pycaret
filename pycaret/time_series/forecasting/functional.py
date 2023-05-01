@@ -836,6 +836,7 @@ def create_model(
         * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
         * 'auto_arima' - Auto ARIMA
         * 'exp_smooth' - Exponential Smoothing
+        * 'stlf' - STL Forecaster
         * 'croston' - Croston Forecaster
         * 'ets' - ETS
         * 'theta' - Theta Forecaster
@@ -846,11 +847,9 @@ def create_model(
         * 'en_cds_dt' - Elastic Net w/ Cond. Deseasonalize & Detrending
         * 'ridge_cds_dt' - Ridge w/ Cond. Deseasonalize & Detrending
         * 'lasso_cds_dt' - Lasso w/ Cond. Deseasonalize & Detrending
-        * 'lar_cds_dt' -   Least Angular Regressor w/ Cond. Deseasonalize & Detrending
         * 'llar_cds_dt' - Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending
         * 'br_cds_dt' - Bayesian Ridge w/ Cond. Deseasonalize & Deseasonalize & Detrending
         * 'huber_cds_dt' - Huber w/ Cond. Deseasonalize & Detrending
-        * 'par_cds_dt' - Passive Aggressive w/ Cond. Deseasonalize & Detrending
         * 'omp_cds_dt' - Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending
         * 'knn_cds_dt' - K Neighbors w/ Cond. Deseasonalize & Detrending
         * 'dt_cds_dt' - Decision Tree w/ Cond. Deseasonalize & Detrending

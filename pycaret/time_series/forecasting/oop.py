@@ -25,6 +25,7 @@ from sktime.forecasting.model_selection import (
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
 from sktime.utils.seasonality import autocorrelation_seasonality_test
+from statsmodels.tsa.seasonal import seasonal_decompose
 
 from pycaret.containers.metrics import get_all_ts_metric_containers
 from pycaret.containers.models import get_all_ts_model_containers
@@ -202,6 +203,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             ["All Seasonalities to Use", self.all_sps_to_use],
             ["Primary Seasonality", self.primary_sp_to_use],
             ["Seasonality Present", self.seasonality_present],
+            ["Seasonality Type", self.seasonality_type],
             ["Target Strictly Positive", self.strictly_positive],
             ["Target White Noise", self.white_noise],
             ["Recommended d", self.lowercase_d],
@@ -1162,6 +1164,62 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         self.strictly_positive = np.all(self.y_transformed > 0)
         return self
 
+    def _set_seasonal_type(self) -> "TSForecastingExperiment":
+        """Sets the seasonal type to be used in the models.
+
+        Decomposes data using additive and multiplicative seasonal decomposition
+        Then selects the seasonality type based on seasonality strength per FPP
+        (https://otexts.com/fpp2/seasonal-strength.html).
+
+        NOTE: For Multiplicative, the denominator multiplies the seasonal and residual
+        components instead of adding them. Rest of the calculations remain the same.
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        if self.seasonality_present and self.strictly_positive:
+            # Try out additive and multiplicative seasonal decompostion
+            # Check residuals and select the one with the least amount of variance
+            data_to_use = pd.DataFrame(
+                self._get_y_data(
+                    split=self.hyperparameter_split, data_type="transformed"
+                )
+            )
+
+            decomp_add = seasonal_decompose(
+                data_to_use, period=self.primary_sp_to_use, model="additive"
+            )
+            decomp_mult = seasonal_decompose(
+                data_to_use, period=self.primary_sp_to_use, model="multiplicative"
+            )
+
+            if decomp_add is None or decomp_mult is None:
+                # None is returned when decomposition fails
+                # Default to "add" since mul can give issues
+                seasonality_type = "add"
+            else:
+                var_r_add = (np.std(decomp_add.resid)) ** 2
+                var_rs_add = (np.std(decomp_add.resid + decomp_add.seasonal)) ** 2
+                var_r_mult = (np.std(decomp_mult.resid)) ** 2
+                var_rs_mult = (np.std(decomp_mult.resid * decomp_mult.seasonal)) ** 2
+
+                Fs_add = np.maximum(1 - var_r_add / var_rs_add, 0)
+                Fs_mult = np.maximum(1 - var_r_mult / var_rs_mult, 0)
+
+                if Fs_mult > Fs_add:
+                    seasonality_type = "mul"
+                else:
+                    seasonality_type = "add"
+        elif self.seasonality_present and not self.strictly_positive:
+            seasonality_type = "add"
+        else:
+            seasonality_type = None
+
+        self.seasonality_type = seasonality_type
+        return self
+
     def _set_is_white_noise(self) -> "TSForecastingExperiment":
         """Is the data being modeled white noise?
 
@@ -1271,6 +1329,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
+        self._set_seasonal_type()
         self._set_is_white_noise()
         self._set_lowercase_d()
         self._set_uppercase_d()
@@ -2278,6 +2337,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
             * 'auto_arima' - Auto ARIMA
             * 'exp_smooth' - Exponential Smoothing
+            * 'stlf' - STL Forecaster
             * 'croston' - Croston Forecaster
             * 'ets' - ETS
             * 'theta' - Theta Forecaster
@@ -2288,11 +2348,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             * 'en_cds_dt' - Elastic Net w/ Cond. Deseasonalize & Detrending
             * 'ridge_cds_dt' - Ridge w/ Cond. Deseasonalize & Detrending
             * 'lasso_cds_dt' - Lasso w/ Cond. Deseasonalize & Detrending
-            * 'lar_cds_dt' -   Least Angular Regressor w/ Cond. Deseasonalize & Detrending
             * 'llar_cds_dt' - Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending
             * 'br_cds_dt' - Bayesian Ridge w/ Cond. Deseasonalize & Deseasonalize & Detrending
             * 'huber_cds_dt' - Huber w/ Cond. Deseasonalize & Detrending
-            * 'par_cds_dt' - Passive Aggressive w/ Cond. Deseasonalize & Detrending
             * 'omp_cds_dt' - Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending
             * 'knn_cds_dt' - K Neighbors w/ Cond. Deseasonalize & Detrending
             * 'dt_cds_dt' - Decision Tree w/ Cond. Deseasonalize & Detrending
