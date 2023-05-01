@@ -2,7 +2,6 @@ import secrets
 from contextlib import contextmanager
 from copy import deepcopy
 
-from pycaret import __version__
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.generic import mlflow_remove_bad_chars
 
@@ -129,6 +128,8 @@ class MlflowLogger(BaseLogger):
     def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
         # get default conda env
         from mlflow.sklearn import get_default_conda_env
+
+        from pycaret import __version__
 
         default_conda_env = get_default_conda_env()
         default_conda_env["name"] = f"{experiment.exp_name_log}-env"

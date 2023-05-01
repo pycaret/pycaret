@@ -1,11 +1,8 @@
-import pytest
-
 import pycaret.time_series as pt
 from pycaret.datasets import get_data
 from pycaret.parallel import FugueBackend
 
 
-@pytest.mark.skip(reason="failing on github - dont know why. TODO: reenable after fix")
 def test_ts_parallel():
     exp = pt.TSForecastingExperiment()
 
@@ -35,7 +32,6 @@ def test_ts_parallel():
     exp.pull()
 
 
-@pytest.mark.skip(reason="failing on github - dont know why. TODO: reenable after fix")
 def test_ts_parallel_singleton():
     pt.setup(
         data_func=lambda: get_data("airline", verbose=False),
