@@ -2005,7 +2005,7 @@ class _SupervisedExperiment(_TabularExperiment):
             raise TypeError("n_iter parameter only accepts integer value.")
 
         # checking early_stopping parameter
-        possible_early_stopping = ["asha", "Hyperband", "Median"]
+        possible_early_stopping = ["asha", "hyperband", "median"]
         if (
             isinstance(early_stopping, str)
             and early_stopping not in possible_early_stopping
