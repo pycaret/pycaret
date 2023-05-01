@@ -69,7 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -80,7 +80,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
