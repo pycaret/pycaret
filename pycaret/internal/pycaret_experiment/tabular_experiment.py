@@ -1512,7 +1512,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             class_names = {
                                 i: class_name
                                 for i, class_name in enumerate(
-                                    get_label_encoder(self.pipeline).classes_
+                                    label_encoder.classes_
                                 )
                             }
                     fitted_estimator = tree_estimator
