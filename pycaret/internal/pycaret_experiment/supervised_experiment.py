@@ -4981,6 +4981,7 @@ class _SupervisedExperiment(_TabularExperiment):
             pred = pred.values
 
         try:
+            # This is a classifier
             score = estimator.predict_proba(X_test_)
 
             if len(np.unique(pred)) <= 2:
@@ -4988,9 +4989,13 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 pred_prob = score
 
+            y_test_metrics = y_test_
+
         except Exception:
+            # This is not a classifier
             score = None
             pred_prob = None
+            y_test_metrics = y_test_untransformed
 
         if probability_threshold is not None and pred_prob is not None:
             try:
@@ -5005,7 +5010,7 @@ class _SupervisedExperiment(_TabularExperiment):
         if y_test_ is not None and self._setup_ran:
             # model name
             full_name = self._get_model_name(estimator)
-            metrics = self._calculate_metrics(y_test_, pred, pred_prob)  # type: ignore
+            metrics = self._calculate_metrics(y_test_metrics, pred, pred_prob)  # type: ignore
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
             df_score = df_score.round(round)

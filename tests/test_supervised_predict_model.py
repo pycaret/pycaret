@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 import pycaret.classification
@@ -51,5 +52,22 @@ def test_regression_predict_model():
     )
     lr_model = pycaret.regression.create_model("lr")
     predictions = pycaret.regression.predict_model(lr_model, data=unseen_data)
+    metrics = pycaret.regression.pull()
     # Check that columns of raw data are contained in columns of returned dataframe
     assert all(item in predictions.columns for item in unseen_data.columns)
+
+    pycaret.regression.setup(
+        data,
+        target="medv",
+        ignore_features=["crim", "zn"],
+        remove_multicollinearity=True,
+        multicollinearity_threshold=0.95,
+        transform_target=True,
+        html=False,
+        session_id=123,
+        n_jobs=1,
+    )
+    lr_model = pycaret.regression.create_model("lr")
+    pycaret.regression.predict_model(lr_model, data=unseen_data)
+    metrics_transformed = pycaret.regression.pull()
+    assert np.isclose(metrics["R2"], metrics_transformed["R2"], atol=0.15)
