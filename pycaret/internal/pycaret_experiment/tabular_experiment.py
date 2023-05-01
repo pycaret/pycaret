@@ -1511,9 +1511,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         if label_encoder:
                             class_names = {
                                 i: class_name
-                                for i, class_name in enumerate(
-                                    label_encoder.classes_
-                                )
+                                for i, class_name in enumerate(label_encoder.classes_)
                             }
                     fitted_estimator = tree_estimator
                     if is_stacked_model:
