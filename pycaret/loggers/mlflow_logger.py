@@ -128,6 +128,7 @@ class MlflowLogger(BaseLogger):
     def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
         # get default conda env
         from mlflow.sklearn import get_default_conda_env
+
         from pycaret import __version__
 
         default_conda_env = get_default_conda_env()
