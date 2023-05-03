@@ -49,7 +49,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pytest pytest-xdist nbmake
-          pip install -e ".[full]"
+          pip install ".[full]"
           python -m ipykernel install --user --name cikernel
       - name: Python version and dependency list
         run: |
@@ -69,7 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -80,7 +80,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
@@ -122,7 +122,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
           pip install -r requirements-prophet.txt
       - name: Python version and dependency list
         run: |
@@ -156,7 +156,7 @@ jobs:
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install --upgrade pip
           python -m pip install -U pytest numpy
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -189,7 +189,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
@@ -223,7 +223,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
@@ -257,7 +257,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
@@ -283,7 +283,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full]"
+  #       pip install ".[full]"
   #       python -m pip install hpbandster ConfigSpace
   #   - name: Remove tests
   #     run: |
@@ -306,7 +306,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full]"
+  #       pip install ".[full]"
   #   - name: Remove tests
   #     run: |
   #       remove-item tests/* -Exclude @('__init__.py','test_classification_tuning.py')
@@ -328,7 +328,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full]"
+  #       pip install ".[full]"
   #   - name: Remove tests
   #     run: |
   #       remove-item tests/* -Exclude @('__init__.py','test_regression_tuning.py')

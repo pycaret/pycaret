@@ -60,8 +60,7 @@ class WandbLogger(BaseLogger):
 
     def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
         path = path or ""
-        pipeline = deepcopy(prep_pipe)
-        pipeline.steps.append(["trained_model", model])
+        pipeline = self._construct_pipeline_if_needed(model, prep_pipe)
         art = wandb.Artifact("pipeline", type="model")
         with art.new_file(os.path.join(path, "pipeline.pkl")) as f:
             f.write(pipeline)

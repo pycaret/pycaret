@@ -25,6 +25,7 @@ from sktime.forecasting.model_selection import (
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
 from sktime.utils.seasonality import autocorrelation_seasonality_test
+from statsmodels.tsa.seasonal import seasonal_decompose
 
 from pycaret.containers.metrics import get_all_ts_metric_containers
 from pycaret.containers.models import get_all_ts_model_containers
@@ -36,7 +37,7 @@ from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-from pycaret.internal.plots.time_series import _get_plot, plot_time_series_decomposition
+from pycaret.internal.plots.time_series import _get_plot
 from pycaret.internal.plots.utils.time_series import (
     _clean_model_results_labels,
     _get_data_types_to_plot,
@@ -1167,8 +1168,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         """Sets the seasonal type to be used in the models.
 
         Decomposes data using additive and multiplicative seasonal decomposition
-        Then selects the seasonality type that has the least amount of variance
-        in the residuals.
+        Then selects the seasonality type based on seasonality strength per FPP
+        (https://otexts.com/fpp2/seasonal-strength.html).
+
+        NOTE: For Multiplicative, the denominator multiplies the seasonal and residual
+        components instead of adding them. Rest of the calculations remain the same.
 
         Returns
         -------
@@ -1184,37 +1188,27 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 )
             )
 
-            _, data_add = plot_time_series_decomposition(
-                data=data_to_use,
-                plot="decomp",
-                data_kwargs={
-                    "seasonal_period": self.primary_sp_to_use,
-                    "type": "additive",
-                },
-                fig_defaults={"template": "plotly_dark", "width": 1000, "height": 600},
-                data_label="sth",
+            decomp_add = seasonal_decompose(
+                data_to_use, period=self.primary_sp_to_use, model="additive"
             )
-            _, data_mult = plot_time_series_decomposition(
-                data=data_to_use,
-                plot="decomp",
-                data_kwargs={
-                    "seasonal_period": self.primary_sp_to_use,
-                    "type": "multiplicative",
-                },
-                fig_defaults={"template": "plotly_dark", "width": 1000, "height": 600},
-                data_label="sth",
+            decomp_mult = seasonal_decompose(
+                data_to_use, period=self.primary_sp_to_use, model="multiplicative"
             )
 
-            if data_add is None or data_mult is None:
-                # None is retuirned when decomposition fails
+            if decomp_add is None or decomp_mult is None:
+                # None is returned when decomposition fails
                 # Default to "add" since mul can give issues
                 seasonality_type = "add"
             else:
-                key = list(data_mult.get("decomp").keys())[0]
-                std_add = np.std(data_add.get("decomp")[key].resid)
-                std_mul = np.std(data_mult.get("decomp")[key].resid)
+                var_r_add = (np.std(decomp_add.resid)) ** 2
+                var_rs_add = (np.std(decomp_add.resid + decomp_add.seasonal)) ** 2
+                var_r_mult = (np.std(decomp_mult.resid)) ** 2
+                var_rs_mult = (np.std(decomp_mult.resid * decomp_mult.seasonal)) ** 2
 
-                if std_mul < std_add:
+                Fs_add = np.maximum(1 - var_r_add / var_rs_add, 0)
+                Fs_mult = np.maximum(1 - var_r_mult / var_rs_mult, 0)
+
+                if Fs_mult > Fs_add:
                     seasonality_type = "mul"
                 else:
                     seasonality_type = "add"

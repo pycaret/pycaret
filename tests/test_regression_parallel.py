@@ -1,10 +1,7 @@
-import pytest
-
 import pycaret.regression as pr
 from pycaret.datasets import get_data
 
 
-@pytest.mark.skip(reason="failing on github - dont know why. TODO: reenable after fix")
 def test_regression_parallel():
     from pycaret.parallel import FugueBackend
 

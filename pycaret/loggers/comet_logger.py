@@ -39,8 +39,7 @@ class CometLogger(BaseLogger):
             self.run.log_others(experiment_custom_tags)
 
     def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
-        pipeline = deepcopy(prep_pipe)
-        pipeline.steps.append(["trained_model", model])
+        pipeline = self._construct_pipeline_if_needed(model, prep_pipe)
         joblib.dump(pipeline, "pipeline.pkl")
         self.run.log_model(name="model", file_or_folder="pipeline.pkl")
 

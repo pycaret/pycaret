@@ -570,7 +570,7 @@ def decomp_subplot(
         except ValueError as exception:
             logger.warning(exception)
             logger.warning(
-                "Seasonal Decompose plot failed most likely sue to missing data"
+                "Seasonal Decompose plot failed most likely due to missing data"
             )
             return fig, None
     elif plot == "decomp_stl":

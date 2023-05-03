@@ -1505,15 +1505,14 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.logger.info("Plotting decision trees")
                     trees = []
                     feature_names = list(self.X_train_transformed.columns)
+                    class_names = None
                     if self._ml_usecase == MLUsecase.CLASSIFICATION:
-                        class_names = {
-                            i: class_name
-                            for i, class_name in enumerate(
-                                get_label_encoder(self.pipeline).classes_
-                            )
-                        }
-                    else:
-                        class_names = None
+                        label_encoder = get_label_encoder(self.pipeline)
+                        if label_encoder:
+                            class_names = {
+                                i: class_name
+                                for i, class_name in enumerate(label_encoder.classes_)
+                            }
                     fitted_estimator = tree_estimator
                     if is_stacked_model:
                         stacked_feature_names = []
