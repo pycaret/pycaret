@@ -1146,16 +1146,17 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         return self
 
-    def _set_multiplicative_components(self) -> "TSForecastingExperiment":
-        """Should multiplicative components be allowed in certain models?
-        These only work if the data is strictly positive.
+    def _set_strictly_positive(self) -> "TSForecastingExperiment":
+        """Sets parameter to indicate whether the data is strictly positive or not.
+        Useful for determining wherher multiplicative components should be allowed
+        in certain models or not.
 
         Returns
         -------
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
-        self.logger.info("Set up whether Multiplicative components allowed.")
+        self.logger.info("Checking if data is strictly positive.")
         # Should multiplicative components be allowed in models that support it
         # NOTE: This can still use all the data to determine if multiplicative
         # components should be potentially allowed, but when eventually deciding
@@ -1164,58 +1165,82 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         self.strictly_positive = np.all(self.y_transformed > 0)
         return self
 
-    def _set_seasonal_type(self) -> "TSForecastingExperiment":
+    def _set_seasonal_type(self, seasonality_type: str) -> "TSForecastingExperiment":
         """Sets the seasonal type to be used in the models.
 
-        Decomposes data using additive and multiplicative seasonal decomposition
-        Then selects the seasonality type based on seasonality strength per FPP
-        (https://otexts.com/fpp2/seasonal-strength.html).
+        The detection flow sequence is as follows:
+        (1) If seasonality is not detected, then seasonality type is set to None.
+        (2) If seasonality is detected but data is not strictly positive, then
+        seasonality type is set to "add".
+        (3) If seasonality_type is "auto", then the type of seasonality is
+        determined using an internal algorithm as follows
+            - If seasonality is detected, then data is decomposed using additive
+            and multiplicative seasonal decomposition. Then seasonality type is
+            selected based on seasonality strength per FPP
+            (https://otexts.com/fpp2/seasonal-strength.html).
+            NOTE: For Multiplicative, the denominator multiplies the seasonal and
+            residual components instead of adding them. Rest of the calculations
+            remain the same. If seasonal decompositon fails for any reason, then
+            defaults to multiplicative seasonality.
+        (4) Otherwise, seasonality_type is set to the user provided value.
 
-        NOTE: For Multiplicative, the denominator multiplies the seasonal and residual
-        components instead of adding them. Rest of the calculations remain the same.
+        Parameters
+        ----------
+        seasonality_type : str
+            The type of seasonality to use. Allowed values are ["add", "mul" or "auto"]
 
         Returns
         -------
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
-        if self.seasonality_present and self.strictly_positive:
-            # Try out additive and multiplicative seasonal decompostion
-            # Check residuals and select the one with the least amount of variance
-            data_to_use = pd.DataFrame(
-                self._get_y_data(
-                    split=self.hyperparameter_split, data_type="transformed"
+        self.logger.info("Setting the seasonal component type - 'add' or 'mul'.")
+        self._set_strictly_positive()
+
+        # ---------------------------------------------------------------------#
+        # Override seasonality_type depending on various conditons
+        # ---------------------------------------------------------------------#
+        if not self.seasonality_present:
+            seasonality_type = None
+        elif self.seasonality_present and not self.strictly_positive:
+            # Multiplicative components not allowed with non-strictly positive data
+            seasonality_type = "add"
+        elif seasonality_type == "auto":
+            if self.seasonality_present and self.strictly_positive:
+                # Try out additive and multiplicative seasonal decompostion
+                # Check residuals and select the one with the least amount of variance
+                data_to_use = pd.DataFrame(
+                    self._get_y_data(
+                        split=self.hyperparameter_split, data_type="transformed"
+                    )
                 )
-            )
 
-            decomp_add = seasonal_decompose(
-                data_to_use, period=self.primary_sp_to_use, model="additive"
-            )
-            decomp_mult = seasonal_decompose(
-                data_to_use, period=self.primary_sp_to_use, model="multiplicative"
-            )
+                decomp_add = seasonal_decompose(
+                    data_to_use, period=self.primary_sp_to_use, model="additive"
+                )
+                decomp_mult = seasonal_decompose(
+                    data_to_use, period=self.primary_sp_to_use, model="multiplicative"
+                )
 
-            if decomp_add is None or decomp_mult is None:
-                # None is returned when decomposition fails
-                # Default to "add" since mul can give issues
-                seasonality_type = "add"
-            else:
-                var_r_add = (np.std(decomp_add.resid)) ** 2
-                var_rs_add = (np.std(decomp_add.resid + decomp_add.seasonal)) ** 2
-                var_r_mult = (np.std(decomp_mult.resid)) ** 2
-                var_rs_mult = (np.std(decomp_mult.resid * decomp_mult.seasonal)) ** 2
-
-                Fs_add = np.maximum(1 - var_r_add / var_rs_add, 0)
-                Fs_mult = np.maximum(1 - var_r_mult / var_rs_mult, 0)
-
-                if Fs_mult > Fs_add:
+                if decomp_add is None or decomp_mult is None:
+                    # None is returned when decomposition fails
+                    # Default to "mul" since it gives better results in benchmarks
                     seasonality_type = "mul"
                 else:
-                    seasonality_type = "add"
-        elif self.seasonality_present and not self.strictly_positive:
-            seasonality_type = "add"
-        else:
-            seasonality_type = None
+                    var_r_add = (np.std(decomp_add.resid)) ** 2
+                    var_rs_add = (np.std(decomp_add.resid + decomp_add.seasonal)) ** 2
+                    var_r_mult = (np.std(decomp_mult.resid)) ** 2
+                    var_rs_mult = (
+                        np.std(decomp_mult.resid * decomp_mult.seasonal)
+                    ) ** 2
+
+                    Fs_add = np.maximum(1 - var_r_add / var_rs_add, 0)
+                    Fs_mult = np.maximum(1 - var_r_mult / var_rs_mult, 0)
+
+                    if Fs_mult > Fs_add:
+                        seasonality_type = "mul"
+                    else:
+                        seasonality_type = "add"
 
         self.seasonality_type = seasonality_type
         return self
@@ -1329,7 +1354,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
-        self._set_seasonal_type()
         self._set_is_white_noise()
         self._set_lowercase_d()
         self._set_uppercase_d()
@@ -1446,6 +1470,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         remove_harmonics: bool = False,
         harmonic_order_method: str = "harmonic_max",
         num_sps_to_use: int = 1,
+        seasonality_type: str = "mul",
         point_alpha: Optional[float] = None,
         coverage: Union[float, List[float]] = 0.9,
         enforce_exogenous: bool = True,
@@ -1776,6 +1801,26 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             that is detected is used.
 
 
+        seasonality_type : str, default = "mul"
+            The type of seasonality to use. Allowed values are ["add", "mul" or "auto"]
+
+            The detection flow sequence is as follows:
+            (1) If seasonality is not detected, then seasonality type is set to None.
+            (2) If seasonality is detected but data is not strictly positive, then
+            seasonality type is set to "add".
+            (3) If seasonality_type is "auto", then the type of seasonality is
+            determined using an internal algorithm as follows
+                - If seasonality is detected, then data is decomposed using
+                additive and multiplicative seasonal decomposition. Then
+                seasonality type is selected based on seasonality strength
+                per FPP (https://otexts.com/fpp2/seasonal-strength.html). NOTE:
+                For Multiplicative, the denominator multiplies the seasonal and
+                residual components instead of adding them. Rest of the
+                calculations remain the same. If seasonal decompositon fails for
+                any reason, then defaults to multiplicative seasonality.
+            (4) Otherwise, seasonality_type is set to the user provided value.
+
+
         point_alpha: Optional[float], default = None
             The alpha (quantile) value to use for the point predictions. By default
             this is set to None which uses sktime's predict() method to get the
@@ -2029,6 +2074,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             )
         self.harmonic_order_method = harmonic_order_method
         self.num_sps_to_use = num_sps_to_use
+        if seasonality_type not in ["mul", "add", "auto"]:
+            raise ValueError(
+                "seasonality_type must be either 'mul', 'add' or 'auto'. "
+                f"You provided {seasonality_type}."
+            )
 
         self.log_plots_param = log_plots
         if self.log_plots_param is True:
@@ -2075,7 +2125,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             # should also be derived from the transformed data.
             ##################################################################
             ._check_and_set_seasonal_period()
-            ._set_multiplicative_components()
+            ._set_seasonal_type(seasonality_type=seasonality_type)
             ._perform_setup_eda()
             ._setup_display_container()
             ._profile(profile, profile_kwargs)
