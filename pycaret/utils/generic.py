@@ -1,5 +1,6 @@
 import functools
 import inspect
+import traceback
 import warnings
 from collections.abc import Mapping
 from copy import deepcopy
@@ -527,6 +528,7 @@ def _calculate_unsupervised_metric(
         try:
             calculated_metric = score_func(target, labels, **container.args)
         except Exception:
+            warnings.warn(traceback.format_exc())
             calculated_metric = 0
 
     return (display_name, calculated_metric)
@@ -581,9 +583,11 @@ def _calculate_metric(
     try:
         calculated_metric = score_func(y_test, target, sample_weight=weights, **kwargs)
     except Exception:
+
         try:
             calculated_metric = score_func(y_test, target, **kwargs)
         except Exception:
+            warnings.warn(traceback.format_exc())
             calculated_metric = 0
 
     return display_name, calculated_metric
