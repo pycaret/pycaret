@@ -3279,10 +3279,14 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs = {}
 
         # checking method parameter
-        available_method = ["auto", "soft", "hard", "mean", "median", "voting"]
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            available_method = ["mean", "median", "min", "max", "gmean"]
+        else:
+            available_method = ["auto", "soft", "hard", "mean", "median", "voting"]
         if method not in available_method:
             raise ValueError(
-                "Method parameter only accepts 'auto', 'soft', 'hard', 'mean', 'median' or 'voting' as a parameter. See Docstring for details."
+                f"Method parameter only accepts the following values: {available_method}. "
+                "See Docstring for details."
             )
 
         # checking error for estimator_list (skip for timeseries)
@@ -3447,7 +3451,7 @@ class _SupervisedExperiment(_TabularExperiment):
         elif self._ml_usecase == MLUsecase.TIME_SERIES:
             model = voting_model_definition.class_def(
                 forecasters=estimator_list,
-                method=method,
+                aggfunc=method,
                 weights=weights,
                 n_jobs=self.gpu_n_jobs_param,
             )
