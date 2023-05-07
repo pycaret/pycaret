@@ -2850,14 +2850,6 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
         tune_grid = {"aggfunc": ["mean", "median", "min", "max", "gmean"]}
         return tune_grid
 
-    # @property
-    # def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-    #     tune_distributions = {
-    #         "degree": IntUniformDistribution(lower=1, upper=10),
-    #         "with_intercept": CategoricalDistribution(values=[True, False]),
-    #     }
-    #     return tune_distributions
-
 
 def get_all_model_containers(
     experiment, raise_errors: bool = True
