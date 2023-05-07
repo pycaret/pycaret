@@ -1059,10 +1059,8 @@ def blend_models(
 ):
     """
     This function trains a EnsembleForecaster for select models passed in the
-    ``estimator_list`` param. The output of this function is a score grid with
-    CV scores by fold. Metrics evaluated during CV can be accessed using the
-    ``get_metrics`` function. Custom metrics can be added or removed using
-    ``add_metric`` and ``remove_metric`` function.
+    ``estimator_list`` param. Trains a sktime EnsembleForecaster under the hood.
+    Refer to it's documentation for more details.
 
 
     Example
@@ -1084,8 +1082,10 @@ def blend_models(
         Available Methods:
 
         * 'mean' - Mean of individual predictions
+        * 'gmean' - Geometric Mean of individual predictions
         * 'median' - Median of individual predictions
-        * 'voting' - Vote individual predictions based on the provided weights.
+        * 'min' - Minimum of individual predictions
+        * 'max' - Maximum of individual predictions
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -1109,9 +1109,9 @@ def blend_models(
 
 
     weights: list, default = None
-        Sequence of weights (float or int) to weight the occurrences of predicted class
-        labels (hard voting) or class probabilities before averaging (soft voting). Uses
-        uniform weights when None.
+        Sequence of weights (float or int) to apply to the individual model
+        predictons. Uses uniform weights when None. Note that weights only
+        apply 'mean', 'gmean' and 'median' methods.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1124,10 +1124,7 @@ def blend_models(
 
     Returns:
         Trained Model
-
-
     """
-
     return _CURRENT_EXPERIMENT.blend_models(
         estimator_list=estimator_list,
         fold=fold,

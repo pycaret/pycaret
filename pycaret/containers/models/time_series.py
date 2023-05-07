@@ -2821,28 +2821,42 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
-        from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
+        from sktime.forecasting.compose import EnsembleForecaster
 
-        args = {}
-        tune_args = {}
-        tune_grid = {}
-        tune_distributions = {}
-
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = experiment.n_jobs_param
-
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="ensemble_forecaster",
             name="EnsembleForecaster",
-            class_def=_EnsembleForecasterWithVoting,
+            class_def=EnsembleForecaster,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=self.gpu_imported,
         )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args = {"aggfunc": "mean"}
+        return args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        tune_grid = {"aggfunc": ["mean", "median", "min", "max", "gmean"]}
+        return tune_grid
+
+    # @property
+    # def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+    #     tune_distributions = {
+    #         "degree": IntUniformDistribution(lower=1, upper=10),
+    #         "with_intercept": CategoricalDistribution(values=[True, False]),
+    #     }
+    #     return tune_distributions
 
 
 def get_all_model_containers(
