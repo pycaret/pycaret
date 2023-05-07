@@ -60,6 +60,7 @@ def setup(
     remove_harmonics: bool = False,
     harmonic_order_method: str = "harmonic_max",
     num_sps_to_use: int = 1,
+    seasonality_type: str = "mul",
     point_alpha: Optional[float] = None,
     coverage: Union[float, List[float]] = 0.9,
     enforce_exogenous: bool = True,
@@ -386,6 +387,26 @@ def setup(
         that is detected is used.
 
 
+    seasonality_type : str, default = "mul"
+        The type of seasonality to use. Allowed values are ["add", "mul" or "auto"]
+
+        The detection flow sequence is as follows:
+        (1) If seasonality is not detected, then seasonality type is set to None.
+        (2) If seasonality is detected but data is not strictly positive, then
+        seasonality type is set to "add".
+        (3) If seasonality_type is "auto", then the type of seasonality is
+        determined using an internal algorithm as follows
+            - If seasonality is detected, then data is decomposed using
+            additive and multiplicative seasonal decomposition. Then
+            seasonality type is selected based on seasonality strength
+            per FPP (https://otexts.com/fpp2/seasonal-strength.html). NOTE:
+            For Multiplicative, the denominator multiplies the seasonal and
+            residual components instead of adding them. Rest of the
+            calculations remain the same. If seasonal decompositon fails for
+            any reason, then defaults to multiplicative seasonality.
+        (4) Otherwise, seasonality_type is set to the user provided value.
+
+
     point_alpha: Optional[float], default = None
         The alpha (quantile) value to use for the point predictions. By default
         this is set to None which uses sktime's predict() method to get the
@@ -591,6 +612,7 @@ def setup(
         remove_harmonics=remove_harmonics,
         harmonic_order_method=harmonic_order_method,
         num_sps_to_use=num_sps_to_use,
+        seasonality_type=seasonality_type,
         point_alpha=point_alpha,
         coverage=coverage,
         enforce_exogenous=enforce_exogenous,
