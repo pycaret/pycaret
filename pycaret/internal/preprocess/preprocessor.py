@@ -6,9 +6,9 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 from category_encoders.basen import BaseNEncoder
-from category_encoders.leave_one_out import LeaveOneOutEncoder
 from category_encoders.one_hot import OneHotEncoder
 from category_encoders.ordinal import OrdinalEncoder
+from category_encoders.target_encoder import TargetEncoder
 from imblearn.combine import SMOTEENN, SMOTETomek
 from imblearn.over_sampling import (
     ADASYN,
@@ -707,7 +707,7 @@ class Preprocessor:
                             handle_unknown="value",
                         )
                     else:
-                        encoding_method = LeaveOneOutEncoder(
+                        encoding_method = TargetEncoder(
                             handle_missing="return_nan",
                             handle_unknown="value",
                             random_state=self.seed,
