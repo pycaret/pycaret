@@ -710,7 +710,6 @@ class Preprocessor:
                         encoding_method = TargetEncoder(
                             handle_missing="return_nan",
                             handle_unknown="value",
-                            random_state=self.seed,
                         )
 
                 rest_estimator = TransformerWrapper(
