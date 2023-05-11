@@ -94,7 +94,6 @@ class AnomalyMetricContainer(MetricContainer):
         needs_ground_truth: bool = False,
         is_custom: bool = False,
     ) -> None:
-
         allowed_targets = ["pred"]
         if target not in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")

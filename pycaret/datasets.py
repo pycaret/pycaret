@@ -15,7 +15,6 @@ def get_data(
     verbose: bool = True,
     address: Optional[str] = None,
 ):
-
     """
     Function to load sample datasets.
 

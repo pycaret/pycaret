@@ -199,7 +199,6 @@ def variable_return(X, y):
 
 
 def get_config(variable: str, globals_d: dict):
-
     """
     This function is used to access global environment variables.
 
@@ -240,7 +239,6 @@ def get_config(variable: str, globals_d: dict):
 
 
 def set_config(variable: str, value, globals_d: dict):
-
     """
     This function is used to reset global environment variables.
 
@@ -497,7 +495,6 @@ def calculate_unsupervised_metrics(
     ground_truth: Optional[Any] = None,
     score_dict: Optional[Dict[str, np.array]] = None,
 ) -> Dict[str, np.array]:
-
     score_dict = []
 
     for k, v in metrics.items():
@@ -547,7 +544,6 @@ def calculate_metrics(
     weights: Optional[list] = None,
     **additional_kwargs,
 ) -> Dict[str, np.array]:
-
     score_dict = []
 
     for k, v in metrics.items():
@@ -1075,7 +1071,6 @@ def check_metric(
     round: int = 4,
     train: Optional[pd.Series] = None,
 ):
-
     """
     Function to evaluate classification, regression and timeseries metrics.
 
@@ -1178,7 +1173,6 @@ def enable_colab():
 
 
 def get_system_logs():
-
     """
     Read and print 'logs.log' file from current active directory
     """

@@ -166,7 +166,6 @@ class _PyCaretExperiment:
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
     ):
-
         """
         This function loads a previously saved transformation pipeline and model
         from the current active directory into the current python environment.
@@ -216,7 +215,6 @@ class _PyCaretExperiment:
     def get_logs(
         self, experiment_name: Optional[str] = None, save: bool = False
     ) -> pd.DataFrame:
-
         """
         Returns a table with experiment logs consisting
         run details, parameter, metrics and tags.
