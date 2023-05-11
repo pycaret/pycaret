@@ -4851,11 +4851,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        def replace_labels_in_column(label_encoder, labels: pd.Series) -> pd.Series:
+        def encode_labels(label_encoder, labels: pd.Series) -> pd.Series:
             # Check if there is a LabelEncoder in the pipeline
             if label_encoder:
                 return pd.Series(
-                    data=label_encoder.inverse_transform(labels),
+                    data=label_encoder.transform(labels),
                     name=labels.name,
                     index=labels.index,
                 )
@@ -4979,8 +4979,6 @@ class _SupervisedExperiment(_TabularExperiment):
         # Need to convert labels back to numbers
         # TODO optimize
         label_encoder = get_label_encoder(pipeline)
-        if label_encoder:
-            pred = label_encoder.transform(pred)
         if isinstance(pred, pd.Series):
             pred = pred.values
 
@@ -4993,17 +4991,18 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 pred_prob = score
 
-            y_test_metrics = y_test_
-
         except Exception:
             # This is not a classifier
             score = None
             pred_prob = None
-            y_test_metrics = y_test_untransformed
+
+        y_test_metrics = y_test_untransformed
 
         if probability_threshold is not None and pred_prob is not None:
             try:
                 pred = (pred_prob >= probability_threshold).astype(int)
+                if label_encoder:
+                    pred = label_encoder.inverse_transform(pred)
             except Exception:
                 pass
 
@@ -5029,10 +5028,8 @@ class _SupervisedExperiment(_TabularExperiment):
             except Exception:
                 pass
 
-        if not encoded_labels:
-            label[LABEL_COLUMN] = replace_labels_in_column(
-                label_encoder, label[LABEL_COLUMN]
-            )
+        if encoded_labels:
+            label[LABEL_COLUMN] = encode_labels(label_encoder, label[LABEL_COLUMN])
         else:
             y_test_untransformed = y_test_
         old_index = X_test_untransformed.index
@@ -5040,9 +5037,10 @@ class _SupervisedExperiment(_TabularExperiment):
         X_test_.index = old_index
 
         if score is not None:
-            pred = pred.astype(int)
-
             if not raw_score:
+                if label_encoder:
+                    pred = label_encoder.transform(pred)
+
                 score = pd.DataFrame(
                     data=[s[pred[i]] for i, s in enumerate(score)],
                     index=X_test_.index,
