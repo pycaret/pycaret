@@ -30,6 +30,9 @@ class DagshubLogger(MlflowLogger):
 
         if repo:
             self.repo_name, self.repo_owner = self.splitter(repo)
+        elif self.remote and self.remote.startswith("https://dagshub.com"):
+            self.repo_owner = self.remote.split(os.sep)[-2],
+            self.repo_name = self.remote.split(os.sep)[-1].replace(".mlflow", "")
         else:
             self.repo_name, self.repo_owner = None, None
 
