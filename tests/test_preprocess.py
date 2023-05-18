@@ -14,6 +14,7 @@ import pytest
 from imblearn.over_sampling import ADASYN
 from scipy.sparse import csr_matrix
 from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -478,6 +479,20 @@ def test_feature_selection(fs_method):
         feature_selection=True,
         feature_selection_method=fs_method,
         feature_selection_estimator="rf",
+        n_features_to_select=12,
+    )
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
+    assert X.shape[1] == 12
+
+
+def test_feature_selection_custom_estimator():
+    """Assert that feature selection can be applied using a custom estimator."""
+    data = pycaret.datasets.get_data("juice")
+    pc = pycaret.classification.setup(
+        data=data,
+        feature_selection=True,
+        feature_selection_method="classic",
+        feature_selection_estimator=RandomForestClassifier(),
         n_features_to_select=12,
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)
