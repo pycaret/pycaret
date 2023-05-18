@@ -28,7 +28,7 @@ class BaseLogger(ABC):
     def set_tags(self, source, experiment_custom_tags, runtime):
         pass
 
-    def _construct_pipeline_if_needed(model, prep_pipe: Pipeline) -> Pipeline:
+    def _construct_pipeline_if_needed(self, model, prep_pipe: Pipeline) -> Pipeline:
         """If model is a pipeline, return it, else append model to copy of prep_pipe."""
         if not isinstance(model, Pipeline):
             prep_pipe_temp = deepcopy(prep_pipe)
