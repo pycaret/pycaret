@@ -71,7 +71,13 @@ class MlflowLogger(BaseLogger):
     def parent_run(self):
         if len(self.runs) < 2:
             return None
-        return self.runs[-2]
+        # Get the setup with the same USI as the current run.
+        current_USI = mlflow.get_run(self.runs[-1].info.run_id).data.tags["USI"]
+        for run in reversed(self.runs[:-1]):
+            tags = mlflow.get_run(run.info.run_id).data.tags
+            if tags["Source"] == "setup" and tags["USI"] == current_USI:
+                return run
+        return None
 
     @property
     def run_id(self):
