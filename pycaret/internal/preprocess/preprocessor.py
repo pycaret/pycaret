@@ -969,6 +969,8 @@ class Preprocessor:
                 "Invalid value for the feature_selection_estimator parameter. "
                 "The provided estimator does not adhere to sklearn's API."
             )
+        else:
+            fs_estimator = feature_selection_estimator
 
         if 0 < n_features_to_select < 1:
             n_features_to_select = int(n_features_to_select * self.X.shape[1])
