@@ -23,7 +23,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 def setup(
     data: Optional[DATAFRAME_LIKE] = None,
     data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
-    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = True,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -46,6 +46,7 @@ def setup(
     low_variance_threshold: Optional[float] = None,
     group_features: Optional[list] = None,
     group_names: Optional[Union[str, list]] = None,
+    drop_groups: bool = False,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
@@ -77,7 +78,6 @@ def setup(
     profile: bool = False,
     profile_kwargs: Optional[Dict[str, Any]] = None,
 ):
-
     """
     This function initializes the training environment and creates the transformation
     pipeline. Setup function must be called before executing any other function. It
@@ -107,7 +107,7 @@ def setup(
         ``data_func`` must be set.
 
 
-    index: bool, int, str or sequence, default = False
+    index: bool, int, str or sequence, default = True
         Handle indices in the `data` dataframe.
             - If False: Reset to RangeIndex.
             - If True: Keep the provided index.
@@ -236,17 +236,21 @@ def setup(
 
     group_features: list, list of lists or None, default = None
         When the dataset contains features with related characteristics,
-        replace those fetaures with the following statistical properties
-        of that group: min, max, mean, std, median and mode. The parameter
-        takes a list of feature names or a list of lists of feature names
-        to specify multiple groups.
-
+        add new fetaures with the following statistical properties of that
+        group: min, max, mean, std, median and mode. The parameter takes a
+        list of feature names or a list of lists of feature names to specify
+        multiple groups.
 
     group_names: str, list, or None, default = None
         Group names to be used when naming the new features. The length
         should match with the number of groups specified in ``group_features``.
         If None, new features are named using the default form, e.g. group_1,
         group_2, etc... Ignored when ``group_features`` is None.
+
+
+    drop_groups: bool, default=False
+        Whether to drop the original features in the group. Ignored when
+        ``group_features`` is None.
 
 
     remove_multicollinearity: bool, default = False
@@ -468,6 +472,7 @@ def setup(
         low_variance_threshold=low_variance_threshold,
         group_features=group_features,
         group_names=group_names,
+        drop_groups=drop_groups,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         bin_numeric_features=bin_numeric_features,
@@ -510,7 +515,6 @@ def create_model(
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     **kwargs,
 ):
-
     """
     This function trains a given model from the model library. All available
     models can be accessed using the ``models`` function.
@@ -586,7 +590,6 @@ def create_model(
 def assign_model(
     model, transformation: bool = False, score: bool = True, verbose: bool = True
 ) -> pd.DataFrame:
-
     """
     This function assigns anomaly labels to the dataset for a given model.
     (1 = outlier, 0 = inlier).
@@ -637,7 +640,6 @@ def plot_model(
     save: bool = False,
     display_format: Optional[str] = None,
 ) -> Optional[str]:
-
     """
     This function analyzes the performance of a trained model.
 
@@ -707,7 +709,6 @@ def evaluate_model(
     feature: Optional[str] = None,
     fit_kwargs: Optional[dict] = None,
 ):
-
     """
     This function displays a user interface for analyzing performance of a trained
     model. It calls the ``plot_model`` function internally.
@@ -753,7 +754,6 @@ def evaluate_model(
 
 # not using check_if_global_is_not_none on purpose
 def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
-
     """
     This function generates anomaly labels on using a trained model.
 
@@ -805,7 +805,6 @@ def deploy_model(
     authentication: dict,
     platform: str = "aws",
 ):
-
     """
     This function deploys the transformation pipeline and trained model on cloud.
 
@@ -897,7 +896,6 @@ def deploy_model(
 def save_model(
     model, model_name: str, model_only: bool = False, verbose: bool = True, **kwargs
 ):
-
     """
     This function saves the transformation pipeline and trained model object
     into the current working directory as a pickle file for later use.
@@ -955,7 +953,6 @@ def load_model(
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,
 ):
-
     """
     This function loads a previously saved pipeline.
 
@@ -1033,7 +1030,6 @@ def models(
     internal: bool = False,
     raise_errors: bool = True,
 ) -> pd.DataFrame:
-
     """
     Returns table of models available in the model library.
 
@@ -1065,7 +1061,6 @@ def models(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
-
     """
     Returns a table of experiment logs. Only works when ``log_experiment``
     is True when initializing the ``setup`` function.
@@ -1099,7 +1094,6 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_config(variable: Optional[str] = None):
-
     """
     This function is used to access global environment variables.
 
@@ -1126,7 +1120,6 @@ def get_config(variable: Optional[str] = None):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def set_config(variable: str, value):
-
     """
     This function is used to reset global environment variables.
 
@@ -1178,7 +1171,6 @@ def load_experiment(
     preprocess_data: bool = True,
     **cloudpickle_kwargs,
 ) -> AnomalyExperiment:
-
     """
     Load an experiment saved with ``save_experiment`` from path
     or file.

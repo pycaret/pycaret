@@ -25,7 +25,7 @@ def setup(
     data: Optional[DATAFRAME_LIKE] = None,
     data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
     target: TARGET_LIKE = -1,
-    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = True,
     train_size: float = 0.7,
     test_data: Optional[DATAFRAME_LIKE] = None,
     ordinal_features: Optional[Dict[str, list]] = None,
@@ -53,6 +53,7 @@ def setup(
     low_variance_threshold: Optional[float] = None,
     group_features: Optional[list] = None,
     group_names: Optional[Union[str, list]] = None,
+    drop_groups: bool = False,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
@@ -96,7 +97,6 @@ def setup(
     profile: bool = False,
     profile_kwargs: Optional[Dict[str, Any]] = None,
 ):
-
     """
     This function initializes the training environment and creates the transformation
     pipeline. Setup function must be called before executing any other function. It takes
@@ -133,7 +133,7 @@ def setup(
         multiclass.
 
 
-    index: bool, int, str or sequence, default = False
+    index: bool, int, str or sequence, default = True
         Handle indices in the `data` dataframe.
             - If False: Reset to RangeIndex.
             - If True: Keep the provided index.
@@ -265,7 +265,7 @@ def setup(
     encoding_method: category-encoders estimator, default = None
         A `category-encoders` estimator to encode the categorical columns
         with more than `max_encoding_ohe` unique values. If None,
-        `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+        `category_encoders.target_encoder.TargetEncoder` is used.
 
 
     rare_to_value: float or None, default=None
@@ -299,17 +299,21 @@ def setup(
 
     group_features: list, list of lists or None, default = None
         When the dataset contains features with related characteristics,
-        replace those fetaures with the following statistical properties
-        of that group: min, max, mean, std, median and mode. The parameter
-        takes a list of feature names or a list of lists of feature names
-        to specify multiple groups.
-
+        add new fetaures with the following statistical properties of that
+        group: min, max, mean, std, median and mode. The parameter takes a
+        list of feature names or a list of lists of feature names to specify
+        multiple groups.
 
     group_names: str, list, or None, default = None
         Group names to be used when naming the new features. The length
         should match with the number of groups specified in ``group_features``.
         If None, new features are named using the default form, e.g. group_1,
         group_2, etc... Ignored when ``group_features`` is None.
+
+
+    drop_groups: bool, default=False
+        Whether to drop the original features in the group. Ignored when
+        ``group_features`` is None.
 
 
     remove_multicollinearity: bool, default = False
@@ -627,6 +631,7 @@ def setup(
         low_variance_threshold=low_variance_threshold,
         group_features=group_features,
         group_names=group_names,
+        drop_groups=drop_groups,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         bin_numeric_features=bin_numeric_features,
@@ -692,7 +697,6 @@ def compare_models(
     verbose: bool = True,
     parallel: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
-
     """
     This function trains and evaluates performance of all estimators available in the
     model library using cross validation. The output of this function is a score grid
@@ -888,7 +892,6 @@ def create_model(
     return_train_score: bool = False,
     **kwargs,
 ) -> Any:
-
     """
     This function trains and evaluates the performance of a given estimator
     using cross validation. The output of this function is a score grid with
@@ -1041,7 +1044,6 @@ def tune_model(
     return_train_score: bool = False,
     **kwargs,
 ) -> Any:
-
     """
     This function tunes the hyperparameters of a given estimator. The output of
     this function is a score grid with CV scores by fold of the best selected
@@ -1249,7 +1251,6 @@ def ensemble_model(
     verbose: bool = True,
     return_train_score: bool = False,
 ) -> Any:
-
     """
     This function ensembles a given estimator. The output of this function is
     a score grid with CV scores by fold. Metrics evaluated during CV can be
@@ -1370,7 +1371,6 @@ def blend_models(
     verbose: bool = True,
     return_train_score: bool = False,
 ) -> Any:
-
     """
     This function trains a Soft Voting / Majority Rule classifier for select
     models passed in the ``estimator_list`` param. The output of this function
@@ -1493,7 +1493,6 @@ def stack_models(
     verbose: bool = True,
     return_train_score: bool = False,
 ) -> Any:
-
     """
     This function trains a meta model over select estimators passed in
     the ``estimator_list`` parameter. The output of this function is a
@@ -1631,7 +1630,6 @@ def plot_model(
     verbose: bool = True,
     display_format: Optional[str] = None,
 ) -> Optional[str]:
-
     """
     This function analyzes the performance of a trained model on holdout set.
     It may require re-training the model in certain cases.
@@ -1762,7 +1760,6 @@ def evaluate_model(
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
 ):
-
     """
     This function displays a user interface for analyzing performance of a trained
     model. It calls the ``plot_model`` function internally.
@@ -1841,7 +1838,6 @@ def interpret_model(
     save: Union[str, bool] = False,
     **kwargs,
 ):
-
     """
     This function takes a trained model object and returns an interpretation plot
     based on the test / hold-out set.
@@ -1953,7 +1949,6 @@ def calibrate_model(
     verbose: bool = True,
     return_train_score: bool = False,
 ) -> Any:
-
     """
     This function calibrates the probability of a given estimator using isotonic
     or logistic regression. The output of this function is a score grid with CV
@@ -2056,7 +2051,6 @@ def optimize_threshold(
     plot_kwargs: Optional[dict] = None,
     **shgo_kwargs,
 ):
-
     """
     This function optimizes probability threshold for a trained classifier. It
     uses the SHGO optimizer from ``scipy`` to optimize for the given metric.
@@ -2125,7 +2119,6 @@ def predict_model(
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
-
     """
     This function predicts ``Label`` and ``Score`` (probability of predicted
     class) using a trained model. When ``data`` is None, it predicts label and
@@ -2211,7 +2204,6 @@ def finalize_model(
     model_only: bool = False,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
 ) -> Any:
-
     """
     This function trains a given estimator on the entire dataset including the
     holdout set.
@@ -2362,7 +2354,6 @@ def deploy_model(
 def save_model(
     model, model_name: str, model_only: bool = False, verbose: bool = True, **kwargs
 ):
-
     """
     This function saves the transformation pipeline and trained model object
     into the current working directory as a pickle file for later use.
@@ -2419,7 +2410,6 @@ def load_model(
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,
 ):
-
     """
     This function loads a previously saved pipeline.
 
@@ -2480,7 +2470,6 @@ def automl(
     turbo: bool = True,
     return_train_score: bool = False,
 ) -> Any:
-
     """
     This function returns the best model out of all trained models in
     current session based on the ``optimize`` parameter. Metrics
@@ -2560,7 +2549,6 @@ def models(
     internal: bool = False,
     raise_errors: bool = True,
 ) -> pd.DataFrame:
-
     """
     Returns table of models available in the model library.
 
@@ -2603,7 +2591,6 @@ def get_metrics(
     include_custom: bool = True,
     raise_errors: bool = True,
 ) -> pd.DataFrame:
-
     """
     Returns table of available metrics used in the experiment.
 
@@ -2653,7 +2640,6 @@ def add_metric(
     multiclass: bool = True,
     **kwargs,
 ) -> pd.Series:
-
     """
     Adds a custom metric to be used in the experiment.
 
@@ -2718,7 +2704,6 @@ def add_metric(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def remove_metric(name_or_id: str):
-
     """
     Removes a metric from the experiment.
 
@@ -2745,7 +2730,6 @@ def remove_metric(name_or_id: str):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
-
     """
     Returns a table of experiment logs. Only works when ``log_experiment``
     is True when initializing the ``setup`` function.
@@ -2779,7 +2763,6 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_config(variable: Optional[str] = None):
-
     """
     This function is used to access global environment variables.
 
@@ -2806,7 +2789,6 @@ def get_config(variable: Optional[str] = None):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def set_config(variable: str, value):
-
     """
     This function is used to reset global environment variables.
 
@@ -2860,7 +2842,6 @@ def load_experiment(
     preprocess_data: bool = True,
     **cloudpickle_kwargs,
 ) -> ClassificationExperiment:
-
     """
     Load an experiment saved with ``save_experiment`` from path
     or file.
@@ -2932,7 +2913,6 @@ def get_leaderboard(
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
 ) -> pd.DataFrame:
-
     """
     This function returns the leaderboard of all models trained in the
     current setup.
@@ -3043,7 +3023,6 @@ def dashboard(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def convert_model(estimator, language: str = "python") -> str:
-
     """
     This function transpiles trained machine learning models into native
     inference script in different programming languages (Python, C, Java,
@@ -3096,7 +3075,6 @@ def convert_model(estimator, language: str = "python") -> str:
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def eda(display_format: str = "bokeh", **kwargs):
-
     """
     This function generates AutoEDA using AutoVIZ library. You must
     install Autoviz separately ``pip install autoviz`` to use this
@@ -3128,7 +3106,6 @@ def eda(display_format: str = "bokeh", **kwargs):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
-
     """
     There are many approaches to conceptualizing fairness. This function follows
     the approach known as group fairness, which asks: Which groups of individuals
@@ -3174,7 +3151,6 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 def create_api(
     estimator, api_name: str, host: str = "127.0.0.1", port: int = 8000
 ) -> None:
-
     """
     This function takes an input ``estimator`` and creates a POST API for
     inference. It only creates the API and doesn't run it automatically.
@@ -3220,7 +3196,6 @@ def create_api(
 def create_docker(
     api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
 ) -> None:
-
     """
     This function creates a ``Dockerfile`` and ``requirements.txt`` for
     productionalizing API end-point.
@@ -3259,7 +3234,6 @@ def create_docker(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
-
     """
     This function creates a basic gradio app for inference.
     It will later be expanded for other app types such as

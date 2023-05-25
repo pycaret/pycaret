@@ -39,8 +39,7 @@ class CometLogger(BaseLogger):
             self.run.log_others(experiment_custom_tags)
 
     def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
-        pipeline = deepcopy(prep_pipe)
-        pipeline.steps.append(["trained_model", model])
+        pipeline = self._construct_pipeline_if_needed(model, prep_pipe)
         joblib.dump(pipeline, "pipeline.pkl")
         self.run.log_model(name="model", file_or_folder="pipeline.pkl")
 
@@ -50,7 +49,7 @@ class CometLogger(BaseLogger):
             result_copy["Object"] = result_copy["Object"].apply(
                 lambda obj: str(type(obj).__name__)
             )
-        self.run.log_metrics({source: result_copy})
+        self.run.log_table("compare.csv", result_copy)
 
     def log_metrics(self, metrics, source=None):
         self.run.log_metrics(metrics)

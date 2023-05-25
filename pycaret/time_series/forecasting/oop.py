@@ -25,6 +25,7 @@ from sktime.forecasting.model_selection import (
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
 from sktime.utils.seasonality import autocorrelation_seasonality_test
+from statsmodels.tsa.seasonal import seasonal_decompose
 
 from pycaret.containers.metrics import get_all_ts_metric_containers
 from pycaret.containers.models import get_all_ts_model_containers
@@ -202,6 +203,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             ["All Seasonalities to Use", self.all_sps_to_use],
             ["Primary Seasonality", self.primary_sp_to_use],
             ["Seasonality Present", self.seasonality_present],
+            ["Seasonality Type", self.seasonality_type],
             ["Target Strictly Positive", self.strictly_positive],
             ["Target White Noise", self.white_noise],
             ["Recommended d", self.lowercase_d],
@@ -579,6 +581,10 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                     "\n>>> import numpy as np"
                     "\n>>> idx = pd.period_range(min(data.index), max(data.index))"
                     "\n>>> data = data.reindex(idx, fill_value=np.nan)"
+                    "\n\nAlternately, you can use this utility function:"
+                    "\n>>> from pycaret.utils.time_series import clean_time_index"
+                    ">>> # Provide the right frequency argument and index column name if necessary"
+                    ">>> cleaned = clean_time_index(data=data, index_col=index_col, freq=freq)"
                 )
 
         # Save index type so that we can disable certain models ----
@@ -1140,22 +1146,103 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         return self
 
-    def _set_multiplicative_components(self) -> "TSForecastingExperiment":
-        """Should multiplicative components be allowed in certain models?
-        These only work if the data is strictly positive.
+    def _set_strictly_positive(self) -> "TSForecastingExperiment":
+        """Sets parameter to indicate whether the data is strictly positive or not.
+        Useful for determining wherher multiplicative components should be allowed
+        in certain models or not.
 
         Returns
         -------
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
-        self.logger.info("Set up whether Multiplicative components allowed.")
+        self.logger.info("Checking if data is strictly positive.")
         # Should multiplicative components be allowed in models that support it
         # NOTE: This can still use all the data to determine if multiplicative
         # components should be potentially allowed, but when eventually deciding
         # they type of seasonality (multiplicative or additive), we should respect
         # the users choice in hyperparameter_split.
         self.strictly_positive = np.all(self.y_transformed > 0)
+        return self
+
+    def _set_seasonal_type(self, seasonality_type: str) -> "TSForecastingExperiment":
+        """Sets the seasonal type to be used in the models.
+
+        The detection flow sequence is as follows:
+        (1) If seasonality is not detected, then seasonality type is set to None.
+        (2) If seasonality is detected but data is not strictly positive, then
+        seasonality type is set to "add".
+        (3) If seasonality_type is "auto", then the type of seasonality is
+        determined using an internal algorithm as follows
+            - If seasonality is detected, then data is decomposed using additive
+            and multiplicative seasonal decomposition. Then seasonality type is
+            selected based on seasonality strength per FPP
+            (https://otexts.com/fpp2/seasonal-strength.html).
+            NOTE: For Multiplicative, the denominator multiplies the seasonal and
+            residual components instead of adding them. Rest of the calculations
+            remain the same. If seasonal decompositon fails for any reason, then
+            defaults to multiplicative seasonality.
+        (4) Otherwise, seasonality_type is set to the user provided value.
+
+        Parameters
+        ----------
+        seasonality_type : str
+            The type of seasonality to use. Allowed values are ["add", "mul" or "auto"]
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.logger.info("Setting the seasonal component type - 'add' or 'mul'.")
+        self._set_strictly_positive()
+
+        # ---------------------------------------------------------------------#
+        # Override seasonality_type depending on various conditons
+        # ---------------------------------------------------------------------#
+        if not self.seasonality_present:
+            seasonality_type = None
+        elif self.seasonality_present and not self.strictly_positive:
+            # Multiplicative components not allowed with non-strictly positive data
+            seasonality_type = "add"
+        elif seasonality_type == "auto":
+            if self.seasonality_present and self.strictly_positive:
+                # Try out additive and multiplicative seasonal decompostion
+                # Check residuals and select the one with the least amount of variance
+                data_to_use = pd.DataFrame(
+                    self._get_y_data(
+                        split=self.hyperparameter_split, data_type="transformed"
+                    )
+                )
+
+                decomp_add = seasonal_decompose(
+                    data_to_use, period=self.primary_sp_to_use, model="additive"
+                )
+                decomp_mult = seasonal_decompose(
+                    data_to_use, period=self.primary_sp_to_use, model="multiplicative"
+                )
+
+                if decomp_add is None or decomp_mult is None:
+                    # None is returned when decomposition fails
+                    # Default to "mul" since it gives better results in benchmarks
+                    seasonality_type = "mul"
+                else:
+                    var_r_add = (np.std(decomp_add.resid)) ** 2
+                    var_rs_add = (np.std(decomp_add.resid + decomp_add.seasonal)) ** 2
+                    var_r_mult = (np.std(decomp_mult.resid)) ** 2
+                    var_rs_mult = (
+                        np.std(decomp_mult.resid * decomp_mult.seasonal)
+                    ) ** 2
+
+                    Fs_add = np.maximum(1 - var_r_add / var_rs_add, 0)
+                    Fs_mult = np.maximum(1 - var_r_mult / var_rs_mult, 0)
+
+                    if Fs_mult > Fs_add:
+                        seasonality_type = "mul"
+                    else:
+                        seasonality_type = "add"
+
+        self.seasonality_type = seasonality_type
         return self
 
     def _set_is_white_noise(self) -> "TSForecastingExperiment":
@@ -1387,6 +1474,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         remove_harmonics: bool = False,
         harmonic_order_method: str = "harmonic_max",
         num_sps_to_use: int = 1,
+        seasonality_type: str = "mul",
         point_alpha: Optional[float] = None,
         coverage: Union[float, List[float]] = 0.9,
         enforce_exogenous: bool = True,
@@ -1718,6 +1806,26 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             that is detected is used.
 
 
+        seasonality_type : str, default = "mul"
+            The type of seasonality to use. Allowed values are ["add", "mul" or "auto"]
+
+            The detection flow sequence is as follows:
+            (1) If seasonality is not detected, then seasonality type is set to None.
+            (2) If seasonality is detected but data is not strictly positive, then
+            seasonality type is set to "add".
+            (3) If seasonality_type is "auto", then the type of seasonality is
+            determined using an internal algorithm as follows
+                - If seasonality is detected, then data is decomposed using
+                additive and multiplicative seasonal decomposition. Then
+                seasonality type is selected based on seasonality strength
+                per FPP (https://otexts.com/fpp2/seasonal-strength.html). NOTE:
+                For Multiplicative, the denominator multiplies the seasonal and
+                residual components instead of adding them. Rest of the
+                calculations remain the same. If seasonal decompositon fails for
+                any reason, then defaults to multiplicative seasonality.
+            (4) Otherwise, seasonality_type is set to the user provided value.
+
+
         point_alpha: Optional[float], default = None
             The alpha (quantile) value to use for the point predictions. By default
             this is set to None which uses sktime's predict() method to get the
@@ -1976,6 +2084,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             )
         self.harmonic_order_method = harmonic_order_method
         self.num_sps_to_use = num_sps_to_use
+        if seasonality_type not in ["mul", "add", "auto"]:
+            raise ValueError(
+                "seasonality_type must be either 'mul', 'add' or 'auto'. "
+                f"You provided {seasonality_type}."
+            )
 
         self.log_plots_param = log_plots
         if self.log_plots_param is True:
@@ -2022,7 +2135,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             # should also be derived from the transformed data.
             ##################################################################
             ._check_and_set_seasonal_period()
-            ._set_multiplicative_components()
+            ._set_seasonal_type(seasonality_type=seasonality_type)
             ._perform_setup_eda()
             ._setup_display_container()
             ._profile(profile, profile_kwargs)
@@ -2284,6 +2397,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
             * 'auto_arima' - Auto ARIMA
             * 'exp_smooth' - Exponential Smoothing
+            * 'stlf' - STL Forecaster
             * 'croston' - Croston Forecaster
             * 'ets' - ETS
             * 'theta' - Theta Forecaster
@@ -2294,11 +2408,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             * 'en_cds_dt' - Elastic Net w/ Cond. Deseasonalize & Detrending
             * 'ridge_cds_dt' - Ridge w/ Cond. Deseasonalize & Detrending
             * 'lasso_cds_dt' - Lasso w/ Cond. Deseasonalize & Detrending
-            * 'lar_cds_dt' -   Least Angular Regressor w/ Cond. Deseasonalize & Detrending
             * 'llar_cds_dt' - Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending
             * 'br_cds_dt' - Bayesian Ridge w/ Cond. Deseasonalize & Deseasonalize & Detrending
             * 'huber_cds_dt' - Huber w/ Cond. Deseasonalize & Detrending
-            * 'par_cds_dt' - Passive Aggressive w/ Cond. Deseasonalize & Detrending
             * 'omp_cds_dt' - Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending
             * 'knn_cds_dt' - K Neighbors w/ Cond. Deseasonalize & Detrending
             * 'dt_cds_dt' - Decision Tree w/ Cond. Deseasonalize & Detrending
@@ -3197,10 +3309,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
     ):
         """
         This function trains a EnsembleForecaster for select models passed in the
-        ``estimator_list`` param. The output of this function is a score grid with
-        CV scores by fold. Metrics evaluated during CV can be accessed using the
-        ``get_metrics`` function. Custom metrics can be added or removed using
-        ``add_metric`` and ``remove_metric`` function.
+        ``estimator_list`` param. Trains a sktime EnsembleForecaster under the hood.
+        Refer to it's documentation for more details.
 
 
         Example
@@ -3222,8 +3332,10 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             Available Methods:
 
             * 'mean' - Mean of individual predictions
+            * 'gmean' - Geometric Mean of individual predictions
             * 'median' - Median of individual predictions
-            * 'voting' - Vote individual predictions based on the provided weights.
+            * 'min' - Minimum of individual predictions
+            * 'max' - Maximum of individual predictions
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -3247,9 +3359,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
 
         weights: list, default = None
-            Sequence of weights (float or int) to weight the occurrences of predicted class
-            labels (hard voting) or class probabilities before averaging (soft voting). Uses
-            uniform weights when None.
+            Sequence of weights (float or int) to apply to the individual model
+            predictons. Uses uniform weights when None. Note that weights only
+            apply 'mean', 'gmean' and 'median' methods.
 
 
         fit_kwargs: dict, default = {} (empty dict)
@@ -3262,9 +3374,14 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         Returns:
             Trained Model
-
-
         """
+        msg = (
+            "method 'voting' is not supported from pycaret 3.0.1 onwards. "
+            "Please use method = 'mean' and pass the weights to mimic the "
+            "functionality of 'voting' blender from prior releases."
+        )
+        if method == "voting":
+            raise ValueError(msg)
 
         return super().blend_models(
             estimator_list=estimator_list,

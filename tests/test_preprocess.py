@@ -14,6 +14,7 @@ import pytest
 from imblearn.over_sampling import ADASYN
 from scipy.sparse import csr_matrix
 from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -90,7 +91,7 @@ def test_assign_index_is_true():
     assert pc.dataset.index[0] == 100
 
 
-@pytest.mark.parametrize("index", [1, "WeekofPurchase", list(range(2, 1072))])
+@pytest.mark.parametrize("index", [0, "Id", list(range(2, 1072))])
 def test_assign_index(index):
     """Assert that the index can be assigned."""
     data = pycaret.datasets.get_data("juice")
@@ -102,6 +103,25 @@ def test_assign_index(index):
         preprocess=False,
     )
     assert pc.dataset.index[0] != 0
+
+
+def test_duplicate_columns():
+    """Assert that an error is raised when there are duplicate columns."""
+    data = pycaret.datasets.get_data("juice")
+    data = data.rename(columns={"Purchase": "Id"})  # Make another column named Id
+    with pytest.raises(ValueError, match=".*Duplicate column names found in X.*"):
+        pycaret.classification.setup(data)
+
+
+def test_duplicate_indices():
+    """Assert that an error is raised when there are duplicate indices."""
+    data = pycaret.datasets.get_data("juice")
+    with pytest.raises(ValueError, match=".*duplicate indices.*"):
+        pycaret.classification.setup(
+            data=data,
+            test_data=data,
+            index=True,
+        )
 
 
 def test_preprocess_is_False():
@@ -339,18 +359,24 @@ def test_low_variance_threshold():
     assert "feature" not in X
 
 
-def test_feature_grouping():
+@pytest.mark.parametrize("drop_groups", (True, False))
+def test_feature_grouping(drop_groups):
     """Assert that feature groups are replaced for stats."""
     data = pycaret.datasets.get_data("juice")
+    group_features = [list(data.columns[:2]), list(data.columns[3:5])]
     pc = pycaret.classification.setup(
         data=data,
         target="STORE",
-        group_features=[list(data.columns[:2]), list(data.columns[3:5])],
+        group_features=group_features,
         group_names=["gr1", "gr2"],
+        drop_groups=drop_groups,
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)
-    assert "Id" not in X
     assert "mean(gr1)" in X and "median(gr2)" in X
+    if drop_groups:
+        assert all(all(column not in X for column in group) for group in group_features)
+    else:
+        assert all(all(column in X for column in group) for group in group_features)
 
 
 def test_remove_multicollinearity():
@@ -453,6 +479,20 @@ def test_feature_selection(fs_method):
         feature_selection=True,
         feature_selection_method=fs_method,
         feature_selection_estimator="rf",
+        n_features_to_select=12,
+    )
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
+    assert X.shape[1] == 12
+
+
+def test_feature_selection_custom_estimator():
+    """Assert that feature selection can be applied using a custom estimator."""
+    data = pycaret.datasets.get_data("juice")
+    pc = pycaret.classification.setup(
+        data=data,
+        feature_selection=True,
+        feature_selection_method="classic",
+        feature_selection_estimator=RandomForestClassifier(),
         n_features_to_select=12,
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)

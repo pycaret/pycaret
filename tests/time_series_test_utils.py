@@ -3,6 +3,7 @@
 import random
 
 import numpy as np
+import pandas as pd
 from pandas.testing import assert_frame_equal
 from sktime.forecasting.base import ForecastingHorizon
 
@@ -327,6 +328,22 @@ def _return_data_big_small():
     data = data - 400
     data_small = data[:11]  # 11 data points
     datasets = [data, data_small]
+
+    return datasets
+
+
+def _return_data_seasonal_types_strictly_pos():
+    """Returns data with additive and multiplicative seasonal types
+    (with strictly positive values only)"""
+    # Create base data
+    N = 100
+    y_trend = np.arange(100, 100 + N)
+    y_season = 100 * (1 + np.sin(y_trend))  # No negative values when creating final y
+
+    y_add = pd.Series(y_trend + y_season)
+    y_mul = pd.Series(y_trend * y_season)
+
+    datasets = [y_add, y_mul]
 
     return datasets
 
