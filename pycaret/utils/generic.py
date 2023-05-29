@@ -414,7 +414,7 @@ def get_model_name(
                     e = params["estimator"]
                 else:
                     break
-        if e is None:
+        if e is None or isinstance(e, str):
             e = old_e
         model_id = get_model_id(e, all_models)
 

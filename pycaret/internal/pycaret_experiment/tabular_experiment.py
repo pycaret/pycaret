@@ -1588,7 +1588,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     ax1.legend(loc="lower right")
                     ax1.set_title("Calibration plots (reliability curve)")
                     ax1.set_facecolor("white")
-                    ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
+                    ax1.grid(True, color="grey", linewidth=0.5, linestyle="-")
                     plt.tight_layout()
                     # display.clear_output()
                     plot_filename = None
