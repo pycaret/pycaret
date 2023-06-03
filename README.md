@@ -227,7 +227,7 @@ pip install scikit-learn-intelex
 
 # 🤝 Contributors
 <a href="https://github.com/pycaret/pycaret/graphs/contributors">
-  <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" width = 800/>
+  <img src="https://contrib.rocks/image?repo=pycaret/pycaret" width=600/>
 </a>
 
 # 📝 License
