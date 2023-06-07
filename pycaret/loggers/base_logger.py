@@ -25,7 +25,7 @@ class BaseLogger(ABC):
     def init_experiment(self, exp_name_log, full_name=None, setup=True, **kwargs):
         pass
 
-    def set_tags(self, source, experiment_custom_tags, runtime):
+    def set_tags(self, source, experiment_custom_tags, runtime, USI=None):
         pass
 
     def _construct_pipeline_if_needed(self, model, prep_pipe: Pipeline) -> Pipeline:

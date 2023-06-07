@@ -32,7 +32,7 @@ class CometLogger(BaseLogger):
     def log_params(self, params, model_name=None):
         self.run.log_parameters(params, prefix=model_name)
 
-    def set_tags(self, source, experiment_custom_tags, runtime):
+    def set_tags(self, source, experiment_custom_tags, runtime, USI=None):
         tags = [source, runtime]
         self.run.add_tags(tags)
         if experiment_custom_tags:
