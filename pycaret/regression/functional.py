@@ -1561,7 +1561,6 @@ def plot_model(
     fit_kwargs: Optional[dict] = None,
     plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
-    use_train_data: bool = False,
     verbose: bool = True,
     display_format: Optional[str] = None,
 ) -> Optional[str]:
@@ -1638,11 +1637,6 @@ def plot_model(
         the column name in the dataset containing group labels.
 
 
-    use_train_data: bool, default = False
-        When set to true, train data will be used for plots, instead
-        of test data.
-
-
     verbose: bool, default = True
         When set to False, progress bar is not displayed.
 
@@ -1667,7 +1661,6 @@ def plot_model(
         plot_kwargs=plot_kwargs,
         groups=groups,
         verbose=verbose,
-        use_train_data=use_train_data,
         display_format=display_format,
     )
 
@@ -1679,7 +1672,6 @@ def evaluate_model(
     fit_kwargs: Optional[dict] = None,
     plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
-    use_train_data: bool = False,
 ):
     """
     This function displays a user interface for analyzing performance of a trained
@@ -1721,11 +1713,6 @@ def evaluate_model(
         the column name in the dataset containing group labels.
 
 
-    use_train_data: bool, default = False
-        When set to true, train data will be used for plots, instead
-        of test data.
-
-
     Returns:
         None
 
@@ -1742,7 +1729,6 @@ def evaluate_model(
         fit_kwargs=fit_kwargs,
         plot_kwargs=plot_kwargs,
         groups=groups,
-        use_train_data=use_train_data,
     )
 
 

@@ -1341,7 +1341,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         plot_kwargs: Optional[dict] = None,
         feature_name: Optional[str] = None,
         groups: Optional[Union[str, Any]] = None,
-        use_train_data: bool = False,
     ):
         """
         This function displays a user interface for analyzing performance of a trained
@@ -1390,5 +1389,4 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             plot_kwargs,
             feature_name,
             groups,
-            use_train_data,
         )

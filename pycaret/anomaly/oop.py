@@ -98,7 +98,6 @@ class AnomalyExperiment(_UnsupervisedExperiment):
         groups: Optional[Union[str, Any]] = None,
         feature_name: Optional[str] = None,
         label: bool = False,
-        use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
     ) -> Optional[str]:
@@ -165,7 +164,6 @@ class AnomalyExperiment(_UnsupervisedExperiment):
             groups,
             feature_name,
             label,
-            use_train_data,
             verbose,
             display_format,
         )

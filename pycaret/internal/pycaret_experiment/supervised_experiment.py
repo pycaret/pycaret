@@ -5017,6 +5017,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 if label_encoder:
                     pred = label_encoder.transform(pred)
 
+                print(score)
+                print(pred)
                 score = pd.DataFrame(
                     data=[s[pred[i]] for i, s in enumerate(score)],
                     index=X_test_.index,
