@@ -370,4 +370,6 @@ def test_plot_final_model_exo():
     exp.setup(data=train, target=target, fh=FH, session_id=42)
     model = exp.create_model("arima")
     final_model = exp.finalize_model(model)
+
+    # This should not give an error
     exp.plot_model(final_model, data_kwargs={"X": test})
