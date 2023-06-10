@@ -301,22 +301,59 @@ def test_add_model_to_pipeline_noexo(load_pos_and_neg_data):
 
     exp.setup(data=y, fh=FH)
 
+    # -------------------------------------------------------------------------#
+    # A. Final Model
+    # -------------------------------------------------------------------------#
+
     # Check that the final model has changed ----
     assert isinstance(exp.pipeline.steps[-1][1].steps[-1][1], DummyForecaster)
     pipeline = _add_model_to_pipeline(pipeline=exp.pipeline, model=model)
     assert isinstance(pipeline.steps[-1][1].steps[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps_[-1][1].steps_[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps[-1][1].steps_[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps_[-1][1].steps[-1][1], NaiveForecaster)
+
+    # -------------------------------------------------------------------------#
+    # B. Forecasting Pipeline
+    # -------------------------------------------------------------------------#
+
+    # Check that the length of the Forecasting Pipeline has not changed ----
+    assert len(exp.pipeline.steps) == len(pipeline.steps)
+    assert len(exp.pipeline.steps_) == len(pipeline.steps_)
 
     # Check that the steps for X in the Forecasting Pipeline have not changed ----
     for i in np.arange(len(exp.pipeline.steps_)):
+        assert exp.pipeline.steps[i][1].__class__ is pipeline.steps[i][1].__class__
         assert exp.pipeline.steps_[i][1].__class__ is pipeline.steps_[i][1].__class__
 
+    # -------------------------------------------------------------------------#
+    # C. Transformed Target Forecaster
+    # -------------------------------------------------------------------------#
+
+    # Check that the length of the Transformed Target Forecaster has not changed ----
+    assert len(exp.pipeline.steps[-1][1].steps) == len(pipeline.steps[-1][1].steps)
+    assert len(exp.pipeline.steps_[-1][1].steps_) == len(pipeline.steps_[-1][1].steps_)
+    assert len(exp.pipeline.steps[-1][1].steps_) == len(pipeline.steps[-1][1].steps_)
+    assert len(exp.pipeline.steps_[-1][1].steps) == len(pipeline.steps_[-1][1].steps)
+
     # Check that the steps for y in the Forecasting Pipeline have not changed ----
-    tgt_fcst_org = exp.pipeline.steps_[-1][1]
-    tgt_fcst_new = pipeline.steps_[-1][1]
     # Check except last step which has been checked above (Dummy vs Naive)
-    for i in np.arange(len(tgt_fcst_org.steps_) - 1):
+    for i in np.arange(len(exp.pipeline.steps_[-1][1]) - 1):
         assert (
-            tgt_fcst_org.steps_[i][1].__class__ is tgt_fcst_new.steps_[i][1].__class__
+            exp.pipeline.steps[-1][1].steps[i][1].__class__
+            is pipeline.steps[-1][1].steps[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps_[-1][1].steps_[i][1].__class__
+            is pipeline.steps_[-1][1].steps_[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps[-1][1].steps_[i][1].__class__
+            is pipeline.steps[-1][1].steps_[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps_[-1][1].steps[i][1].__class__
+            is pipeline.steps_[-1][1].steps[i][1].__class__
         )
 
     ###############################
@@ -325,22 +362,59 @@ def test_add_model_to_pipeline_noexo(load_pos_and_neg_data):
 
     exp.setup(data=y, fh=FH, numeric_imputation_target="drift")
 
+    # -------------------------------------------------------------------------#
+    # A. Final Model
+    # -------------------------------------------------------------------------#
+
     # Check that the final model has changed ----
     assert isinstance(exp.pipeline.steps[-1][1].steps[-1][1], DummyForecaster)
     pipeline = _add_model_to_pipeline(pipeline=exp.pipeline, model=model)
     assert isinstance(pipeline.steps[-1][1].steps[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps_[-1][1].steps_[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps[-1][1].steps_[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps_[-1][1].steps[-1][1], NaiveForecaster)
+
+    # -------------------------------------------------------------------------#
+    # B. Forecasting Pipeline
+    # -------------------------------------------------------------------------#
+
+    # Check that the length of the Forecasting Pipeline has not changed ----
+    assert len(exp.pipeline.steps) == len(pipeline.steps)
+    assert len(exp.pipeline.steps_) == len(pipeline.steps_)
 
     # Check that the steps for X in the Forecasting Pipeline have not changed ----
     for i in np.arange(len(exp.pipeline.steps_)):
+        assert exp.pipeline.steps[i][1].__class__ is pipeline.steps[i][1].__class__
         assert exp.pipeline.steps_[i][1].__class__ is pipeline.steps_[i][1].__class__
 
+    # -------------------------------------------------------------------------#
+    # C. Transformed Target Forecaster
+    # -------------------------------------------------------------------------#
+
+    # Check that the length of the Transformed Target Forecaster has not changed ----
+    assert len(exp.pipeline.steps[-1][1].steps) == len(pipeline.steps[-1][1].steps)
+    assert len(exp.pipeline.steps_[-1][1].steps_) == len(pipeline.steps_[-1][1].steps_)
+    assert len(exp.pipeline.steps[-1][1].steps_) == len(pipeline.steps[-1][1].steps_)
+    assert len(exp.pipeline.steps_[-1][1].steps) == len(pipeline.steps_[-1][1].steps)
+
     # Check that the steps for y in the Forecasting Pipeline have not changed ----
-    tgt_fcst_org = exp.pipeline.steps_[-1][1]
-    tgt_fcst_new = pipeline.steps_[-1][1]
     # Check except last step which has been checked above (Dummy vs Naive)
-    for i in np.arange(len(tgt_fcst_org.steps_) - 1):
+    for i in np.arange(len(exp.pipeline.steps_[-1][1]) - 1):
         assert (
-            tgt_fcst_org.steps_[i][1].__class__ is tgt_fcst_new.steps_[i][1].__class__
+            exp.pipeline.steps[-1][1].steps[i][1].__class__
+            is pipeline.steps[-1][1].steps[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps_[-1][1].steps_[i][1].__class__
+            is pipeline.steps_[-1][1].steps_[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps[-1][1].steps_[i][1].__class__
+            is pipeline.steps[-1][1].steps_[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps_[-1][1].steps[i][1].__class__
+            is pipeline.steps_[-1][1].steps[i][1].__class__
         )
 
 
@@ -358,21 +432,60 @@ def test_add_model_to_pipeline_exo(load_uni_exo_data_target):
 
     exp.setup(data=data, target=target, fh=FH)
 
+    # -------------------------------------------------------------------------#
+    # A. Final Model
+    # -------------------------------------------------------------------------#
+
     # Check that the final model has changed ----
     assert isinstance(exp.pipeline.steps[-1][1].steps[-1][1], DummyForecaster)
     pipeline = _add_model_to_pipeline(pipeline=exp.pipeline, model=model)
     assert isinstance(pipeline.steps[-1][1].steps[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps_[-1][1].steps_[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps[-1][1].steps_[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps_[-1][1].steps[-1][1], NaiveForecaster)
+
+    # -------------------------------------------------------------------------#
+    # B. Forecasting Pipeline
+    # -------------------------------------------------------------------------#
+
+    # Check that the length of the Forecasting Pipeline has not changed ----
+    assert len(exp.pipeline.steps) == len(pipeline.steps)
+    assert len(exp.pipeline.steps_) == len(pipeline.steps_)
 
     # Check that the steps for X in the Forecasting Pipeline have not changed ----
     for i in np.arange(len(exp.pipeline.steps_)):
+        assert exp.pipeline.steps[i][1].__class__ is pipeline.steps[i][1].__class__
         assert exp.pipeline.steps_[i][1].__class__ is pipeline.steps_[i][1].__class__
 
+    # -------------------------------------------------------------------------#
+    # C. Transformed Target Forecaster
+    # -------------------------------------------------------------------------#
+
+    # Check that the length of the Transformed Target Forecaster has not changed ----
+    assert len(exp.pipeline.steps[-1][1].steps) == len(pipeline.steps[-1][1].steps)
+    assert len(exp.pipeline.steps_[-1][1].steps_) == len(pipeline.steps_[-1][1].steps_)
+    assert len(exp.pipeline.steps[-1][1].steps_) == len(pipeline.steps[-1][1].steps_)
+    assert len(exp.pipeline.steps_[-1][1].steps) == len(pipeline.steps_[-1][1].steps)
+
     # Check that the steps for y in the Forecasting Pipeline have not changed ----
-    tgt_fcst_org = exp.pipeline.steps_[-1][1]
-    tgt_fcst_new = pipeline.steps_[-1][1]
     # Check except last step which has been checked above (Dummy vs Naive)
-    for i in np.arange(len(tgt_fcst_org.steps_) - 1):
-        assert isinstance(tgt_fcst_org.steps_[i][1], tgt_fcst_new.steps_[i][1])
+    for i in np.arange(len(exp.pipeline.steps_[-1][1]) - 1):
+        assert (
+            exp.pipeline.steps[-1][1].steps[i][1].__class__
+            is pipeline.steps[-1][1].steps[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps_[-1][1].steps_[i][1].__class__
+            is pipeline.steps_[-1][1].steps_[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps[-1][1].steps_[i][1].__class__
+            is pipeline.steps[-1][1].steps_[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps_[-1][1].steps[i][1].__class__
+            is pipeline.steps_[-1][1].steps[i][1].__class__
+        )
 
     ###############################
     # 2: Not Empty Pipeline ####
@@ -386,20 +499,57 @@ def test_add_model_to_pipeline_exo(load_uni_exo_data_target):
         numeric_imputation_exogenous="drift",
     )
 
+    # -------------------------------------------------------------------------#
+    # A. Final Model
+    # -------------------------------------------------------------------------#
+
     # Check that the final model has changed ----
     assert isinstance(exp.pipeline.steps[-1][1].steps[-1][1], DummyForecaster)
     pipeline = _add_model_to_pipeline(pipeline=exp.pipeline, model=model)
     assert isinstance(pipeline.steps[-1][1].steps[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps_[-1][1].steps_[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps[-1][1].steps_[-1][1], NaiveForecaster)
+    assert isinstance(pipeline.steps_[-1][1].steps[-1][1], NaiveForecaster)
+
+    # -------------------------------------------------------------------------#
+    # B. Forecasting Pipeline
+    # -------------------------------------------------------------------------#
+
+    # Check that the length of the Forecasting Pipeline has not changed ----
+    assert len(exp.pipeline.steps) == len(pipeline.steps)
+    assert len(exp.pipeline.steps_) == len(pipeline.steps_)
 
     # Check that the steps for X in the Forecasting Pipeline have not changed ----
     for i in np.arange(len(exp.pipeline.steps_)):
+        assert exp.pipeline.steps[i][1].__class__ is pipeline.steps[i][1].__class__
         assert exp.pipeline.steps_[i][1].__class__ is pipeline.steps_[i][1].__class__
 
+    # -------------------------------------------------------------------------#
+    # C. Transformed Target Forecaster
+    # -------------------------------------------------------------------------#
+
+    # Check that the length of the Transformed Target Forecaster has not changed ----
+    assert len(exp.pipeline.steps[-1][1].steps) == len(pipeline.steps[-1][1].steps)
+    assert len(exp.pipeline.steps_[-1][1].steps_) == len(pipeline.steps_[-1][1].steps_)
+    assert len(exp.pipeline.steps[-1][1].steps_) == len(pipeline.steps[-1][1].steps_)
+    assert len(exp.pipeline.steps_[-1][1].steps) == len(pipeline.steps_[-1][1].steps)
+
     # Check that the steps for y in the Forecasting Pipeline have not changed ----
-    tgt_fcst_org = exp.pipeline.steps_[-1][1]
-    tgt_fcst_new = pipeline.steps_[-1][1]
     # Check except last step which has been checked above (Dummy vs Naive)
-    for i in np.arange(len(tgt_fcst_org.steps_) - 1):
+    for i in np.arange(len(exp.pipeline.steps_[-1][1]) - 1):
         assert (
-            tgt_fcst_org.steps_[i][1].__class__ is tgt_fcst_new.steps_[i][1].__class__
+            exp.pipeline.steps[-1][1].steps[i][1].__class__
+            is pipeline.steps[-1][1].steps[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps_[-1][1].steps_[i][1].__class__
+            is pipeline.steps_[-1][1].steps_[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps[-1][1].steps_[i][1].__class__
+            is pipeline.steps[-1][1].steps_[i][1].__class__
+        )
+        assert (
+            exp.pipeline.steps_[-1][1].steps[i][1].__class__
+            is pipeline.steps_[-1][1].steps[i][1].__class__
         )
