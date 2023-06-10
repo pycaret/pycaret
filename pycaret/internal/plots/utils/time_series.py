@@ -951,7 +951,7 @@ def _resolve_hoverinfo(
     hoverinfo: Optional[str],
     threshold: int,
     data: Optional[pd.Series],
-    X: Optional[pd.DataFrame],
+    X: Optional[List[pd.DataFrame]],
 ) -> str:
     """Decide whether data tip obtained by hovering over a Plotly plot should be
     enabled or disabled based user settings and size of data. If user provides the
@@ -965,8 +965,10 @@ def _resolve_hoverinfo(
         The number of data points above which the hovering should be disabled.
     data : Optional[pd.Series]
         A series of data
-    X : Optional[pd.DataFrame]
-        The dataframe of exogenous variables.
+    X : Optional[List[pd.DataFrame]]
+        A list of dataframe of exogenous variables (1 dataframe per exogenous
+        variable; each dataframe containing multiple columns corresponding to the
+        plot data types requested)
 
     Returns
     -------
@@ -977,7 +979,7 @@ def _resolve_hoverinfo(
         hoverinfo = "text"
         if data is not None and len(data) > threshold:
             hoverinfo = "skip"
-        if X is not None and len(X) * X.shape[1] > threshold:
+        if X is not None and len(X) * len(X[0]) * X[0].shape[1] > threshold:
             hoverinfo = "skip"
     # if hoverinfo is not None, then use as is.
     return hoverinfo
@@ -987,7 +989,7 @@ def _resolve_renderer(
     renderer: Optional[str],
     threshold: int,
     data: Optional[pd.Series],
-    X: Optional[pd.DataFrame],
+    X: Optional[List[pd.DataFrame]],
 ) -> str:
     """Decide the renderer to use for the Plotly plot based user settings and
     size of data. If user provides the `renderer` option, it is honored, else it
@@ -1001,8 +1003,10 @@ def _resolve_renderer(
         The number of data points above which the hovering should be disabled.
     data : Optional[pd.Series]
         A series of data
-    X : Optional[pd.DataFrame]
-        The dataframe of exogenous variables.
+    X : Optional[List[pd.DataFrame]]
+        A list of dataframe of exogenous variables (1 dataframe per exogenous
+        variable; each dataframe containing multiple columns corresponding to the
+        plot data types requested)
 
     Returns
     -------
@@ -1013,7 +1017,7 @@ def _resolve_renderer(
         renderer = pio.renderers.default
         if data is not None and len(data) > threshold:
             renderer = "png"
-        if X is not None and len(X) * X.shape[1] > threshold:
+        if X is not None and len(X) * len(X[0]) * X[0].shape[1] > threshold:
             renderer = "png"
     # if renderer is not None, then use as is.
 
