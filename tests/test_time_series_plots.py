@@ -13,6 +13,7 @@ from time_series_test_utils import (
     _return_model_names_for_plots_stats,
 )
 
+from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
@@ -352,3 +353,21 @@ def test_plot_multiple_model_overlays(
     assert (
         "Please provide a label corresponding to each model to proceed." in exceptionmsg
     )
+
+
+def test_plot_final_model_exo():
+    """Tests running plot model after running finalize_model when exogenous
+    variables are present. Fix for https://github.com/pycaret/pycaret/issues/3565
+    """
+    data = get_data("uschange")
+    target = "Consumption"
+    FH = 3
+    train = data.iloc[: int(len(data) - FH)]
+    test = data.iloc[int(len(data)) - FH :]
+    test = test.drop(columns=[target], axis=1)
+
+    exp = TSForecastingExperiment()
+    exp.setup(data=train, target=target, fh=FH, session_id=42)
+    model = exp.create_model("arima")
+    final_model = exp.finalize_model(model)
+    exp.plot_model(final_model, data_kwargs={"X": test})
