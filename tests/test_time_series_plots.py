@@ -371,5 +371,10 @@ def test_plot_final_model_exo():
     model = exp.create_model("arima")
     final_model = exp.finalize_model(model)
 
-    # This should not give an error
+    # Previous issue coming from renderer resolution due to X
+
+    # This should not give an error (passing X explicitly)
     exp.plot_model(final_model, data_kwargs={"X": test})
+
+    # Also, plotting without explicit passing X should also pass
+    exp.plot_model()

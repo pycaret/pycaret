@@ -3778,6 +3778,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                     # Disable Prediction Intervals if more than 1 estimator is provided.
                     return_pred_int = False
 
+                X = _reformat_dataframes_for_plots(data=[X], labels_suffix=["original"])
+
             elif plot == "insample":
                 # Try to get insample forecasts if possible
                 model_results = [
