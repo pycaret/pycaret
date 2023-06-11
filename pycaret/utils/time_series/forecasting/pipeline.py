@@ -35,14 +35,33 @@ def _add_model_to_pipeline(
     # as well as the `TransformedTargetForecaster` else this causes issues when
     # the method is used in `predict_model` where it tries to predict using the
     # "dummy" Forecaster instead of the correct one.
+
+    # Until sktime 0.17.0, we had to explicitly do this for all 4 combinations
+    # of steps/steps_. Sometime after that, the functionality has changed and
+    # updating `pipeline_with_model.steps[-1][1].steps` also updates
+    # `pipeline_with_model.steps_[-1][1].steps` automatically. Hence, if we try
+    # to do this again, it fails. Since we are supporting older and newer
+    # versions of sktime, we need to check for this and act accordingly.
+    # Here we check that `pipeline_with_model.steps_[-1][1].steps` has something
+    # in it and that the last step is named "model" or not. This is needed since
+    # here could be other steps in the pipeline that are not named "model" so
+    # just checking length is not enough.
     pipeline_with_model.steps[-1][1].steps.pop()
     pipeline_with_model.steps[-1][1].steps_.pop()
-    pipeline_with_model.steps_[-1][1].steps.pop()
+    if (
+        len(pipeline_with_model.steps_[-1][1].steps) > 0
+        and pipeline_with_model.steps_[-1][1].steps[-1][0] == "model"
+    ):
+        pipeline_with_model.steps_[-1][1].steps.pop()
     pipeline_with_model.steps_[-1][1].steps_.pop()
 
     pipeline_with_model.steps[-1][1].steps.extend([("model", model)])
     pipeline_with_model.steps[-1][1].steps_.extend([("model", model)])
-    pipeline_with_model.steps_[-1][1].steps.extend([("model", model)])
+    if (len(pipeline_with_model.steps_[-1][1].steps) == 0) or (
+        len(pipeline_with_model.steps_[-1][1].steps) > 0
+        and pipeline_with_model.steps_[-1][1].steps[-1][0] != "model"
+    ):
+        pipeline_with_model.steps_[-1][1].steps.extend([("model", model)])
     pipeline_with_model.steps_[-1][1].steps_.extend([("model", model)])
 
     # Clone Tags so that the ability to get prediction intervals can be set correctly
