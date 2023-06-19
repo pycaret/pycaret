@@ -20,7 +20,7 @@ scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine
 
 # Tuners
 tune-sklearn>=0.2.1
-ray[tune]>=1.0.0
+ray[tune]>=1.0.0; python_version < "3.11"
 hyperopt>=0.2.7
 optuna>=3.0.0
 scikit-optimize>=0.9.0
