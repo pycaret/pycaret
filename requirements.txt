@@ -6,7 +6,9 @@ numpy>=1.21, <1.24  # Can't >=1.24 because of np.float deprecation
 pandas>=1.3.0, <2.0.0  # Can't >=2.0.0 because of sktime
 jinja2>=1.2  # Required by pycaret.internal.utils --> pandas.io.formats.style
 scipy<2.0.0  # Can't >=2.0.0 due to sktime
-joblib>=1.2.0  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution (https://github.com/advisories/GHSA-6hrg-qmvc-2xh8)
+# joblib<1.2.0 is vulnerable to Arbitrary Code Execution (https://github.com/advisories/GHSA-6hrg-qmvc-2xh8)
+# But there is a depenency conflcict for python 3.11 (https://github.com/pycaret/pycaret/pull/3612#issuecomment-1597044633
+joblib>=1.0.1
 scikit-learn>=1.0
 pyod>=1.0.8
 imbalanced-learn>=0.8.1
