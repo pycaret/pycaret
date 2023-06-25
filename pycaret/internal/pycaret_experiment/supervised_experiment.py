@@ -4995,14 +4995,15 @@ class _SupervisedExperiment(_TabularExperiment):
             df_score = df_score.round(round)
             display.display(df_score.style.format(precision=round))
 
+        if ml_usecase == MLUsecase.CLASSIFICATION:
+            try:
+                pred = pred.astype(int)
+            except Exception:
+                pass
+
         label = pd.DataFrame(
             pred, columns=[LABEL_COLUMN], index=X_test_untransformed.index
         )
-        if ml_usecase == MLUsecase.CLASSIFICATION:
-            try:
-                label[LABEL_COLUMN] = label[LABEL_COLUMN].astype(int)
-            except Exception:
-                pass
 
         if encoded_labels:
             label[LABEL_COLUMN] = encode_labels(label_encoder, label[LABEL_COLUMN])
