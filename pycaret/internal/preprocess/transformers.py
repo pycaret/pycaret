@@ -3,7 +3,7 @@
 
 
 import re
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from inspect import signature
 
 import numpy as np
@@ -142,23 +142,28 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
             )
 
         # Define new column order
-        columns = []
+        # Use OrderedDict as ordered set (only keys matter)
+        # We want a set to avoid duplicate column names, which can happen
+        # if we have eg. COL_A and COL_A_2 encoded using OHE
+        columns = OrderedDict()
         for col in original_df:
             if col in df or col not in self._include:
-                columns.append(col)
+                columns[col] = None
 
             # Add all derivative columns: cols that originate from another
             # and start with its progenitor name, e.g. one-hot encoded columns
-            columns.extend(
+            columns.update(
                 [
-                    c
+                    (c, None)
                     for c in df.columns
                     if c.startswith(f"{col}_") and c not in original_df
                 ]
             )
 
         # Add remaining new columns (non-derivatives)
-        columns.extend([col for col in df if col not in columns])
+        columns.update([(col, None) for col in df if col not in columns])
+
+        columns = list(columns.keys())
 
         # Merge the new and old datasets keeping the newest columns
         new_df = df.merge(

@@ -320,6 +320,16 @@ def test_encoding_categorical_features():
     assert list(sorted(X["Purchase"].unique())) == [0.0, 1.0]
 
 
+def test_encoding_categorical_features_duplicate_names():
+    """Assert that no duplicate columns are created after OHE"""
+    data = pycaret.datasets.get_data("iris")
+    data["species_2"] = data["species"].copy()
+    data["target"] = data["species"].copy()
+    pc = pycaret.classification.setup(data, target="target")
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
+    assert len(list(X.columns)) == len(set(X.columns))
+
+
 @pytest.mark.parametrize("transformation_method", ["yeo-johnson", "quantile"])
 def test_transformation(transformation_method):
     """Assert that features can be transformed to a gaussian distribution."""
