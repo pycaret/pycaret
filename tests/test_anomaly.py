@@ -30,6 +30,8 @@ def test_anomaly(data):
     # create model
     iforest = pycaret.anomaly.create_model("iforest", experiment_custom_tags={"tag": 1})
     knn = pycaret.anomaly.create_model("knn", experiment_custom_tags={"tag": 1})
+    # https://github.com/pycaret/pycaret/issues/3606
+    cluster = pycaret.anomaly.create_model("cluster", experiment_custom_tags={"tag": 1})
 
     # Plot model
     pycaret.anomaly.plot_model(iforest)
@@ -38,14 +40,18 @@ def test_anomaly(data):
     # assign model
     iforest_results = pycaret.anomaly.assign_model(iforest)
     knn_results = pycaret.anomaly.assign_model(knn)
+    cluster_results = pycaret.anomaly.assign_model(cluster)
     assert isinstance(iforest_results, pd.DataFrame)
     assert isinstance(knn_results, pd.DataFrame)
+    assert isinstance(cluster_results, pd.DataFrame)
 
     # predict model
     iforest_predictions = pycaret.anomaly.predict_model(model=iforest, data=data)
     knn_predictions = pycaret.anomaly.predict_model(model=knn, data=data)
+    cluster_predictions = pycaret.anomaly.predict_model(model=cluster, data=data)
     assert isinstance(iforest_predictions, pd.DataFrame)
     assert isinstance(knn_predictions, pd.DataFrame)
+    assert isinstance(cluster_predictions, pd.DataFrame)
 
     # get config
     X = pycaret.anomaly.get_config("X")
