@@ -1099,10 +1099,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                             )
                             model_fit_start = time.time()
                             pipeline_with_model.fit(data_X, **fit_kwargs)
-                        except Exception:
+                        except Exception as e:
                             raise RuntimeError(
                                 "Could not form valid cluster separation. Try a different dataset or model."
-                            )
+                            ) from e
                 else:
                     pipeline_with_model.fit(data_X, **fit_kwargs)
             model_fit_end = time.time()
