@@ -17,7 +17,7 @@ if sys.version_info < (3, 8):
 
 from pycaret.utils._show_versions import show_versions
 
-version_ = "3.0.3"
+version_ = "3.0.4"
 
 __version__ = version_
 

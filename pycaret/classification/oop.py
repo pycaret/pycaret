@@ -13,10 +13,10 @@ import sklearn
 from joblib.memory import Memory
 from scipy.optimize import shgo
 
-from pycaret.containers.metrics import get_all_class_metric_containers
-from pycaret.containers.models import get_all_class_model_containers
+from pycaret.containers.metrics.classification import get_all_metric_containers
 from pycaret.containers.models.classification import (
     ALL_ALLOWED_ENGINES,
+    get_all_model_containers,
     get_container_default_engines,
 )
 from pycaret.internal.display import CommonDisplay
@@ -81,20 +81,16 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in get_all_class_model_containers(
+            for k, v in get_all_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = get_all_class_model_containers(
-            self, raise_errors=raise_errors
-        )
+        all_models_internal = get_all_model_containers(self, raise_errors=raise_errors)
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return get_all_class_metric_containers(
-            self.variables, raise_errors=raise_errors
-        )
+        return get_all_metric_containers(self.variables, raise_errors=raise_errors)
 
     @property
     def is_multiclass(self) -> bool:

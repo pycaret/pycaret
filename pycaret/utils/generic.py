@@ -1099,10 +1099,14 @@ def check_metric(
         float
 
     """
-    from pycaret.containers.metrics import (
-        get_all_class_metric_containers,
-        get_all_reg_metric_containers,
-        get_all_ts_metric_containers,
+    from pycaret.containers.metrics.classification import (
+        get_all_metric_containers as get_all_class_metric_containers,
+    )
+    from pycaret.containers.metrics.regression import (
+        get_all_metric_containers as get_all_reg_metric_containers,
+    )
+    from pycaret.containers.metrics.time_series import (
+        get_all_metric_containers as get_all_ts_metric_containers,
     )
 
     globals_dict = {"y": prediction}

@@ -10,7 +10,7 @@ import pandas as pd
 from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
 
-from pycaret.containers.metrics import get_all_clust_metric_containers
+from pycaret.containers.metrics.clustering import get_all_metric_containers
 from pycaret.containers.models.clustering import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
@@ -50,7 +50,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
         except Exception:
             if ml_usecase == MLUsecase.CLUSTERING:
-                metrics = get_all_clust_metric_containers(self.variables, True)
+                metrics = get_all_metric_containers(self.variables, True)
             return calculate_unsupervised_metrics(
                 metrics=metrics,  # type: ignore
                 X=X,
