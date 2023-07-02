@@ -10,7 +10,6 @@ from sklearn.pipeline import Pipeline
 
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import MLUsecase, get_logger
-from pycaret.utils.time_series.forecasting.pipeline import _add_model_to_pipeline
 
 
 def deploy_model(
@@ -294,6 +293,10 @@ def save_model(
     logger.info("Adding model into prep_pipe")
 
     if use_case == MLUsecase.TIME_SERIES:
+        from pycaret.utils.time_series.forecasting.pipeline import (
+            _add_model_to_pipeline,
+        )
+
         if prep_pipe_:
             pipeline = deepcopy(prep_pipe_)
             model = _add_model_to_pipeline(pipeline=pipeline, model=model)

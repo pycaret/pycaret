@@ -7,10 +7,10 @@ import numpy as np  # type: ignore
 import pandas as pd
 from joblib.memory import Memory
 
-from pycaret.containers.metrics import get_all_reg_metric_containers
-from pycaret.containers.models import get_all_reg_model_containers
+from pycaret.containers.metrics.regression import get_all_metric_containers
 from pycaret.containers.models.regression import (
     ALL_ALLOWED_ENGINES,
+    get_all_model_containers,
     get_container_default_engines,
 )
 from pycaret.internal.display import CommonDisplay
@@ -59,18 +59,16 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in get_all_reg_model_containers(
+            for k, v in get_all_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = get_all_reg_model_containers(
-            self, raise_errors=raise_errors
-        )
+        all_models_internal = get_all_model_containers(self, raise_errors=raise_errors)
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return get_all_reg_metric_containers(self.variables, raise_errors=raise_errors)
+        return get_all_metric_containers(self.variables, raise_errors=raise_errors)
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["residuals", "error", "feature"]

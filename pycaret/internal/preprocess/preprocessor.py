@@ -61,9 +61,11 @@ from sklearn.preprocessing import (
     StandardScaler,
 )
 
-from pycaret.containers.models import (
-    get_all_class_model_containers,
-    get_all_reg_model_containers,
+from pycaret.containers.models.classification import (
+    get_all_model_containers as get_all_class_model_containers,
+)
+from pycaret.containers.models.regression import (
+    get_all_model_containers as get_all_reg_model_containers,
 )
 from pycaret.internal.preprocess.iterative_imputer import IterativeImputer
 from pycaret.internal.preprocess.transformers import (
