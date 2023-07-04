@@ -373,20 +373,18 @@ def test_low_variance_threshold():
 def test_feature_grouping(drop_groups):
     """Assert that feature groups are replaced for stats."""
     data = pycaret.datasets.get_data("juice")
-    group_features = [list(data.columns[:2]), list(data.columns[3:5])]
     pc = pycaret.classification.setup(
         data=data,
         target="STORE",
-        group_features=group_features,
-        group_names=["gr1", "gr2"],
+        group_features={"gr1": list(data.columns[:2]), "gr2": list(data.columns[3:5])},
         drop_groups=drop_groups,
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert "mean(gr1)" in X and "median(gr2)" in X
     if drop_groups:
-        assert all(all(column not in X for column in group) for group in group_features)
+        assert all(all(column not in X for column in group) for group in ("gr1", "gr2"))
     else:
-        assert all(all(column in X for column in group) for group in group_features)
+        assert all(all(column in X for column in group) for group in ("gr1", "gr2"))
 
 
 def test_remove_multicollinearity():

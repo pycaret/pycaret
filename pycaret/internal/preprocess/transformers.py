@@ -410,21 +410,15 @@ class GroupFeatures(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, group_features, group_names=None, drop_groups=False):
+    def __init__(self, group_features, drop_groups=False):
         self.group_features = group_features
-        self.group_names = group_names
         self.drop_groups = drop_groups
 
     def fit(self, X, y=None):
         return self
 
     def transform(self, X, y=None):
-        if not self.group_names:
-            self.group_names = [
-                f"group_{i}" for i in range(1, len(self.group_features) + 1)
-            ]
-
-        for name, group in zip(self.group_names, self.group_features):
+        for name, group in self.group_features.items():
             # Drop columns that are not in the dataframe (can be excluded)
             group = [g for g in group if g in X]
 

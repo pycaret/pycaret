@@ -143,7 +143,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         polynomial_degree: int = 2,
         low_variance_threshold: Optional[float] = None,
         group_features: Optional[list] = None,
-        group_names: Optional[Union[str, list]] = None,
         drop_groups: bool = False,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
@@ -391,19 +390,13 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             this transformation step.
 
 
-        group_features: list, list of lists or None, default = None
+        group_features: dict or None, default = None
             When the dataset contains features with related characteristics,
             add new fetaures with the following statistical properties of that
             group: min, max, mean, std, median and mode. The parameter takes a
-            list of feature names or a list of lists of feature names to specify
-            multiple groups.
+            dict with the group name as key and a list of feature names
+            belonging to that group as value.
 
-
-        group_names: str, list, or None, default = None
-            Group names to be used when naming the new features. The length
-            should match with the number of groups specified in ``group_features``.
-            If None, new features are named using the default form, e.g. group_1,
-            group_2, etc... Ignored when ``group_features`` is None.
 
         drop_groups: bool, default=False
             Whether to drop the original features in the group. Ignored when
@@ -841,7 +834,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
             # Get statistical properties of a group of features
             if group_features:
-                self._group_features(group_features, group_names, drop_groups)
+                self._group_features(group_features, drop_groups)
 
             # Drop features that are collinear with other features
             if remove_multicollinearity:
