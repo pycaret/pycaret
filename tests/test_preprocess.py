@@ -382,9 +382,9 @@ def test_feature_grouping(drop_groups):
     X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert "mean(gr1)" in X and "median(gr2)" in X
     if drop_groups:
-        assert all(all(column not in X for column in group) for group in ("gr1", "gr2"))
+        assert data.columns[0] not in X
     else:
-        assert all(all(column in X for column in group) for group in ("gr1", "gr2"))
+        assert data.columns[0] in X
 
 
 def test_remove_multicollinearity():
