@@ -420,15 +420,15 @@ class GroupFeatures(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         for name, group in self.group_features.items():
             # Drop columns that are not in the dataframe (can be excluded)
-            group = [g for g in group if g in X]
+            group_df = X[[g for g in group if g in X]]
 
-            group_df = X[group]
-            X[f"min({name})"] = group_df.apply(np.min, axis=1)
-            X[f"max({name})"] = group_df.apply(np.max, axis=1)
-            X[f"mean({name})"] = group_df.apply(np.mean, axis=1)
-            X[f"std({name})"] = group_df.apply(np.std, axis=1)
-            X[f"median({name})"] = group_df.apply(np.median, axis=1)
-            X[f"mode({name})"] = stats.mode(group_df, axis=1)[0]
+            if not group_df.empty:
+                X[f"min({name})"] = group_df.apply(np.min, axis=1)
+                X[f"max({name})"] = group_df.apply(np.max, axis=1)
+                X[f"mean({name})"] = group_df.apply(np.mean, axis=1)
+                X[f"std({name})"] = group_df.apply(np.std, axis=1)
+                X[f"median({name})"] = group_df.apply(np.median, axis=1)
+                X[f"mode({name})"] = stats.mode(group_df, axis=1)[0]
 
             if self.drop_groups:
                 X = X.drop(group, axis=1)

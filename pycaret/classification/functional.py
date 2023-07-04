@@ -51,7 +51,7 @@ def setup(
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
     low_variance_threshold: Optional[float] = None,
-    group_features: Optional[list] = None,
+    group_features: Optional[dict] = None,
     drop_groups: bool = False,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
