@@ -1116,19 +1116,19 @@ class _SupervisedExperiment(_TabularExperiment):
             # for pipelines that drop samples during transformation
             with patch("sklearn.model_selection._validation._fit_and_score", fs):
                 model_fit_start = time.time()
-                # with redirect_output(self.logger):
-                scores = cross_validate(
-                    pipeline_with_model,
-                    data_X,
-                    data_y,
-                    cv=cv,
-                    groups=groups,
-                    scoring=metrics_dict,
-                    fit_params=fit_kwargs,
-                    n_jobs=n_jobs,
-                    return_train_score=return_train_score,
-                    error_score=0,
-                )
+                with redirect_output(self.logger):
+                    scores = cross_validate(
+                        pipeline_with_model,
+                        data_X,
+                        data_y,
+                        cv=cv,
+                        groups=groups,
+                        scoring=metrics_dict,
+                        fit_params=fit_kwargs,
+                        n_jobs=n_jobs,
+                        return_train_score=return_train_score,
+                        error_score=0,
+                    )
 
             model_fit_end = time.time()
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
