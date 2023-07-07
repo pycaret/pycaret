@@ -1127,7 +1127,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     fit_params=fit_kwargs,
                     n_jobs=n_jobs,
                     return_train_score=return_train_score,
-                    error_score="raise",
+                    error_score=0,
                 )
 
             model_fit_end = time.time()

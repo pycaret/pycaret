@@ -13,7 +13,7 @@ def fit_and_score(*args, **kwargs) -> dict:
 
     """
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs) -> dict:
         with patch("sklearn.model_selection._validation._score", score(_score)):
             return _fit_and_score(*args, **kwargs)
 
