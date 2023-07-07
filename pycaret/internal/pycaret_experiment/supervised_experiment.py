@@ -4954,6 +4954,8 @@ class _SupervisedExperiment(_TabularExperiment):
             X_test_untransformed = data[data.index.isin(X_test_.index)]
             if target is not None:
                 y_test_untransformed = target[target.index.isin(y_test_.index)]
+            else:
+                y_test_untransformed = target
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):
