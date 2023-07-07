@@ -4933,7 +4933,8 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 data = self._set_index(self._prepare_dataset(data))
                 target = None
-
+            X_test_untransformed = data
+            y_test_untransformed = target
             data = data[X_columns]  # Ignore all columns but the originals
             if preprocess:
                 X_test_ = pipeline.transform(
@@ -4951,11 +4952,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 X_test_ = data
                 y_test_ = target
 
-            X_test_untransformed = data[data.index.isin(X_test_.index)]
+            # Align number of rows with output of transformation
+            X_test_untransformed = X_test_untransformed[
+                X_test_untransformed.index.isin(X_test_.index)
+            ]
             if target is not None:
-                y_test_untransformed = target[target.index.isin(y_test_.index)]
-            else:
-                y_test_untransformed = target
+                y_test_untransformed = y_test_untransformed[
+                    y_test_untransformed.index.isin(X_test_.index)
+                ]
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):
