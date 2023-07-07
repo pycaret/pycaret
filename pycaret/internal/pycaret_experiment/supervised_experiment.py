@@ -67,6 +67,7 @@ from pycaret.utils.generic import (
     nullcontext,
     true_warm_start,
 )
+from pycaret.utils.patches import fit_and_score as fs
 
 try:
     from collections.abc import Iterable
@@ -1111,8 +1112,11 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
-            model_fit_start = time.time()
-            with redirect_output(self.logger):
+            # Monkey patch sklearn's _fit_and_score function to allow
+            # for pipelines that drop samples during transformation
+            with patch("sklearn.model_selection._validation._fit_and_score", fs):
+                model_fit_start = time.time()
+                # with redirect_output(self.logger):
                 scores = cross_validate(
                     pipeline_with_model,
                     data_X,
@@ -1123,8 +1127,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     fit_params=fit_kwargs,
                     n_jobs=n_jobs,
                     return_train_score=return_train_score,
-                    error_score=0,
+                    error_score="raise",
                 )
+
             model_fit_end = time.time()
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
@@ -4918,7 +4923,8 @@ class _SupervisedExperiment(_TabularExperiment):
         y_test_ = None
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
-            X_test_untransformed, y_test_untransformed = self.X_test, self.y_test
+            X_test_untransformed = self.X_test[self.X_test.index.isin(X_test_.index)]
+            y_test_untransformed = self.y_test[self.y_test.index.isin(y_test_.index)]
         else:
             if y_name in data.columns:
                 data = self._set_index(self._prepare_dataset(data, y_name))
@@ -4927,8 +4933,7 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 data = self._set_index(self._prepare_dataset(data))
                 target = None
-            X_test_untransformed = data
-            y_test_untransformed = target
+
             data = data[X_columns]  # Ignore all columns but the originals
             if preprocess:
                 X_test_ = pipeline.transform(
@@ -4945,6 +4950,9 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 X_test_ = data
                 y_test_ = target
+
+            X_test_untransformed = data[data.index.isin(X_test_.index)]
+            y_test_untransformed = target[target.index.isin(y_test_.index)]
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):
