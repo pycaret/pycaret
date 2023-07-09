@@ -46,6 +46,7 @@ from pycaret.internal.meta_estimators import (
     get_estimator_from_meta_estimator,
 )
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
+from pycaret.internal.patches.sklearn import fit_and_score as fs
 from pycaret.internal.pipeline import (
     Pipeline,
     estimator_pipeline,
@@ -67,7 +68,6 @@ from pycaret.utils.generic import (
     nullcontext,
     true_warm_start,
 )
-from pycaret.utils.patches import fit_and_score as fs
 
 try:
     from collections.abc import Iterable
