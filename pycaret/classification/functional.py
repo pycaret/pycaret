@@ -51,8 +51,7 @@ def setup(
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
     low_variance_threshold: Optional[float] = None,
-    group_features: Optional[list] = None,
-    group_names: Optional[Union[str, list]] = None,
+    group_features: Optional[dict] = None,
     drop_groups: bool = False,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
@@ -297,18 +296,12 @@ def setup(
         this transformation step.
 
 
-    group_features: list, list of lists or None, default = None
+    group_features: dict or None, default = None
         When the dataset contains features with related characteristics,
         add new fetaures with the following statistical properties of that
         group: min, max, mean, std, median and mode. The parameter takes a
-        list of feature names or a list of lists of feature names to specify
-        multiple groups.
-
-    group_names: str, list, or None, default = None
-        Group names to be used when naming the new features. The length
-        should match with the number of groups specified in ``group_features``.
-        If None, new features are named using the default form, e.g. group_1,
-        group_2, etc... Ignored when ``group_features`` is None.
+        dict with the group name as key and a list of feature names
+        belonging to that group as value.
 
 
     drop_groups: bool, default=False
@@ -630,7 +623,6 @@ def setup(
         polynomial_degree=polynomial_degree,
         low_variance_threshold=low_variance_threshold,
         group_features=group_features,
-        group_names=group_names,
         drop_groups=drop_groups,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,

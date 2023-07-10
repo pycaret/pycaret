@@ -753,27 +753,12 @@ class Preprocessor:
 
         self.pipeline.steps.append(("low_variance", variance_estimator))
 
-    def _group_features(self, group_features, group_names, drop_groups):
+    def _group_features(self, group_features, drop_groups):
         """Get statistical properties of a group of features."""
         self.logger.info("Set up feature grouping.")
 
-        # Convert a single group to sequence
-        if np.array(group_features).ndim == 1:
-            group_features = [group_features]
-
-        if group_names:
-            if isinstance(group_names, str):
-                group_names = [group_names]
-
-            if len(group_names) != len(group_features):
-                raise ValueError(
-                    "Invalid value for the group_names parameter. Length "
-                    f"({len(group_names)}) does not match with length of "
-                    f"group_features ({len(group_features)})."
-                )
-
         grouping_estimator = TransformerWrapper(
-            transformer=GroupFeatures(group_features, group_names, drop_groups),
+            transformer=GroupFeatures(group_features, drop_groups),
             exclude=self._fxs["Keep"],
         )
 
