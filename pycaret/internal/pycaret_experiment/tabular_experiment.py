@@ -213,9 +213,9 @@ class _TabularExperiment(_PyCaretExperiment):
             if self.verbose:
                 print("Loading profile... Please Wait!")
             try:
-                import pandas_profiling
+                import ydata_profiling
 
-                self.report = pandas_profiling.ProfileReport(
+                self.report = ydata_profiling.ProfileReport(
                     self.data, **profile_kwargs
                 )
             except Exception as ex:
