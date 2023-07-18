@@ -22,9 +22,11 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.containers.metrics import (
-    get_all_class_metric_containers,
-    get_all_reg_metric_containers,
+from pycaret.containers.metrics.classification import (
+    get_all_metric_containers as get_all_class_metric_containers,
+)
+from pycaret.containers.metrics.regression import (
+    get_all_metric_containers as get_all_reg_metric_containers,
 )
 from pycaret.internal.display import CommonDisplay, DummyDisplay
 from pycaret.internal.distributions import (
@@ -44,6 +46,7 @@ from pycaret.internal.meta_estimators import (
     get_estimator_from_meta_estimator,
 )
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
+from pycaret.internal.patches.sklearn import fit_and_score as fs
 from pycaret.internal.pipeline import (
     Pipeline,
     estimator_pipeline,
@@ -1109,20 +1112,24 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
-            model_fit_start = time.time()
-            with redirect_output(self.logger):
-                scores = cross_validate(
-                    pipeline_with_model,
-                    data_X,
-                    data_y,
-                    cv=cv,
-                    groups=groups,
-                    scoring=metrics_dict,
-                    fit_params=fit_kwargs,
-                    n_jobs=n_jobs,
-                    return_train_score=return_train_score,
-                    error_score=0,
-                )
+            # Monkey patch sklearn's _fit_and_score function to allow
+            # for pipelines that drop samples during transformation
+            with patch("sklearn.model_selection._validation._fit_and_score", fs):
+                model_fit_start = time.time()
+                with redirect_output(self.logger):
+                    scores = cross_validate(
+                        pipeline_with_model,
+                        data_X,
+                        data_y,
+                        cv=cv,
+                        groups=groups,
+                        scoring=metrics_dict,
+                        fit_params=fit_kwargs,
+                        n_jobs=n_jobs,
+                        return_train_score=return_train_score,
+                        error_score=0,
+                    )
+
             model_fit_end = time.time()
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
@@ -4916,7 +4923,8 @@ class _SupervisedExperiment(_TabularExperiment):
         y_test_ = None
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
-            X_test_untransformed, y_test_untransformed = self.X_test, self.y_test
+            X_test_untransformed = self.X_test[self.X_test.index.isin(X_test_.index)]
+            y_test_untransformed = self.y_test[self.y_test.index.isin(y_test_.index)]
         else:
             if y_name in data.columns:
                 data = self._set_index(self._prepare_dataset(data, y_name))
@@ -4943,6 +4951,15 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 X_test_ = data
                 y_test_ = target
+
+            # Align number of rows with output of transformation
+            X_test_untransformed = X_test_untransformed[
+                X_test_untransformed.index.isin(X_test_.index)
+            ]
+            if target is not None:
+                y_test_untransformed = y_test_untransformed[
+                    y_test_untransformed.index.isin(X_test_.index)
+                ]
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):
@@ -4995,14 +5012,15 @@ class _SupervisedExperiment(_TabularExperiment):
             df_score = df_score.round(round)
             display.display(df_score.style.format(precision=round))
 
+        if ml_usecase == MLUsecase.CLASSIFICATION:
+            try:
+                pred = pred.astype(int)
+            except Exception:
+                pass
+
         label = pd.DataFrame(
             pred, columns=[LABEL_COLUMN], index=X_test_untransformed.index
         )
-        if ml_usecase == MLUsecase.CLASSIFICATION:
-            try:
-                label[LABEL_COLUMN] = label[LABEL_COLUMN].astype(int)
-            except Exception:
-                pass
 
         if encoded_labels:
             label[LABEL_COLUMN] = encode_labels(label_encoder, label[LABEL_COLUMN])

@@ -27,8 +27,7 @@ def test_plot():
     available_plots = exp._available_plots
 
     for plot in available_plots:
-        pycaret.regression.plot_model(model, plot=plot, use_train_data=False)
-        pycaret.regression.plot_model(model, plot=plot, use_train_data=True)
+        pycaret.regression.plot_model(model, plot=plot)
 
     models = [
         pycaret.regression.create_model("et"),

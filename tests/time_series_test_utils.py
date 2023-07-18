@@ -7,7 +7,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 from sktime.forecasting.base import ForecastingHorizon
 
-from pycaret.containers.models import get_all_ts_model_containers
+from pycaret.containers.models.time_series import get_all_model_containers
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series import SeasonalPeriod
@@ -147,7 +147,7 @@ def _return_model_names():
     data = get_data("airline")
     exp = TSForecastingExperiment()
     exp.setup(data=data, session_id=42)
-    model_containers = get_all_ts_model_containers(exp)
+    model_containers = get_all_model_containers(exp)
 
     models_to_ignore = (
         ["prophet", "ensemble_forecaster"]

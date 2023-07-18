@@ -386,7 +386,6 @@ class _TabularExperiment(_PyCaretExperiment):
         groups: Optional[Union[str, Any]] = None,
         feature_name: Optional[str] = None,
         label: bool = False,
-        use_train_data: bool = False,
         verbose: bool = True,
         system: bool = True,
         display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
@@ -484,9 +483,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
         if type(label) is not bool:
             raise TypeError("Label parameter only accepts True or False.")
-
-        if type(use_train_data) is not bool:
-            raise TypeError("use_train_data parameter only accepts True or False.")
 
         if feature_name is not None and type(feature_name) is not str:
             raise TypeError(
@@ -1588,7 +1584,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     ax1.legend(loc="lower right")
                     ax1.set_title("Calibration plots (reliability curve)")
                     ax1.set_facecolor("white")
-                    ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
+                    ax1.grid(True, color="grey", linewidth=0.5, linestyle="-")
                     plt.tight_layout()
                     # display.clear_output()
                     plot_filename = None
@@ -1948,7 +1944,6 @@ class _TabularExperiment(_PyCaretExperiment):
         groups: Optional[Union[str, Any]] = None,
         feature_name: Optional[str] = None,
         label: bool = False,
-        use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
     ) -> Optional[str]:
@@ -2060,7 +2055,6 @@ class _TabularExperiment(_PyCaretExperiment):
             groups=groups,
             feature_name=feature_name,
             label=label,
-            use_train_data=use_train_data,
             verbose=verbose,
             display_format=display_format,
         )
@@ -2073,7 +2067,6 @@ class _TabularExperiment(_PyCaretExperiment):
         plot_kwargs: Optional[dict] = None,
         feature_name: Optional[str] = None,
         groups: Optional[Union[str, Any]] = None,
-        use_train_data: bool = False,
     ):
         """
         This function displays a user interface for all of the available plots for
@@ -2152,7 +2145,6 @@ class _TabularExperiment(_PyCaretExperiment):
             feature_name=fixed(feature_name),
             label=fixed(False),
             groups=fixed(groups),
-            use_train_data=fixed(use_train_data),
             system=fixed(True),
             display=fixed(None),
             display_format=fixed(None),

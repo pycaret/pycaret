@@ -30,6 +30,9 @@ class DagshubLogger(MlflowLogger):
 
         if repo:
             self.repo_name, self.repo_owner = self.splitter(repo)
+        elif self.remote and self.remote.startswith("https://dagshub.com"):
+            self.repo_owner = (self.remote.split(os.sep)[-2],)
+            self.repo_name = self.remote.split(os.sep)[-1].replace(".mlflow", "")
         else:
             self.repo_name, self.repo_owner = None, None
 
@@ -62,8 +65,8 @@ class DagshubLogger(MlflowLogger):
                 self.remote = os.getenv("MLFLOW_TRACKING_URI")
 
             self.repo = Repo(
-                owner=self.remote.split(os.sep)[-2],
-                name=self.remote.split(os.sep)[-1].replace(".mlflow", ""),
+                owner=self.remote.split("/")[-2],
+                name=self.remote.split("/")[-1].replace(".mlflow", ""),
                 branch=os.getenv("BRANCH", "main"),
             )
             self.dvc_folder = self.repo.directory(str(self.paths["dvc_directory"]))
