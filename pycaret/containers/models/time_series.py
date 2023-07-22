@@ -8,11 +8,11 @@ required parameters in the `__init__` and then call `super().__init__` to comple
 the process. Refer to the existing classes for examples.
 """
 
-from inspect import getfullargspec
 import logging
 import random
 import warnings
 from abc import abstractmethod
+from inspect import getfullargspec
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
