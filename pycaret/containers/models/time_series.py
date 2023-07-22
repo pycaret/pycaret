@@ -8,6 +8,7 @@ required parameters in the `__init__` and then call `super().__init__` to comple
 the process. Refer to the existing classes for examples.
 """
 
+from inspect import getfullargspec
 import logging
 import random
 import warnings
@@ -2752,7 +2753,12 @@ if _check_soft_dependencies("prophet", extra=None, severity="warning"):
 
             return y
 
-        def predict_quantiles(self, fh, X=None, alpha=None):
+        # From sktime
+        # https://github.com/sktime/sktime/blob/c20afabc576385259e2e0d37f46bc67da0928f16/sktime/forecasting/base/_base.py#L2085C5-L2086C48
+        # https://github.com/sktime/sktime/compare/v0.20.1...v0.21.0#diff-ef86237172bb2f91c585e845b38d6fb28bb6ac128ff8efa541cdd86f81751bf2
+        # todo 0.22.0 - switch legacy_interface default to False
+        # todo 0.23.0 - remove legacy_interface arg
+        def predict_quantiles(self, fh, X=None, alpha=None, legacy_interface=True):
             """Compute/return prediction quantiles for a forecast.
 
             private _predict_quantiles containing the core logic,
@@ -2796,7 +2802,15 @@ if _check_soft_dependencies("prophet", extra=None, severity="warning"):
             # Hence coerce the index internally if it is not DatetimeIndex
             X = coerce_period_to_datetime_index(X)
 
-            preds = super().predict_quantiles(fh=fh, X=X, alpha=alpha)
+            # https://github.com/sktime/sktime/blob/94c6355802bf91239aef36e71c56808410d6eb3f/sktime/forecasting/base/_base.py#L590
+            has_li_arg = (
+                "legacy_interface" in getfullargspec(super().predict_quantiles).args
+            )
+            if has_li_arg:
+                kwargs = {"legacy_interface": legacy_interface}
+            else:
+                kwargs = {}
+            preds = super().predict_quantiles(fh=fh, X=X, alpha=alpha, **kwargs)
 
             # sktime Prophet returns back DatetimeIndex
             # Convert back to PeriodIndex for pycaret
