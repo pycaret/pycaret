@@ -148,10 +148,10 @@ def get_data(
     else:
         if profile:
             _check_soft_dependencies(
-                "ydata_profiling", # https://github.com/pycaret/pycaret/issues/3645
+                "ydata_profiling",
                 extra="analysis",
                 severity="error",
-                install_name="ydata-profiling", # https://github.com/pycaret/pycaret/issues/3645
+                install_name="ydata-profiling",
             )
             import ydata_profiling
 
