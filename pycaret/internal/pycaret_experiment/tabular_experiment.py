@@ -215,9 +215,7 @@ class _TabularExperiment(_PyCaretExperiment):
             try:
                 import ydata_profiling
 
-                self.report = ydata_profiling.ProfileReport(
-                    self.data, **profile_kwargs
-                )
+                self.report = ydata_profiling.ProfileReport(self.data, **profile_kwargs)
             except Exception as ex:
                 print("Profiler Failed. No output to show, continue with modeling.")
                 self.logger.error(
