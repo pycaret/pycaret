@@ -36,12 +36,20 @@ required_deps = [
     "scikitplot",
     "yellowbrick",
     "plotly",
+    "plotly-resampler",
     "kaleido",
+    "schemdraw",
     "statsmodels",
     "sktime",
     "tbats",
     "pmdarima",
     "psutil",
+    "markupsafe",
+    "pickle5",
+    "cloudpickle",
+    "deprecation",
+    "xxhash",
+    "wurlitzer",
 ]
 
 optional_deps = [
@@ -52,6 +60,7 @@ optional_deps = [
     "explainerdashboard",
     "autoviz",
     "fairlearn",
+    "deepchecks",
     "xgboost",
     "catboost",
     "kmodes",

@@ -10,7 +10,7 @@ import pandas as pd
 from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
 
-from pycaret.containers.metrics import get_all_clust_metric_containers
+from pycaret.containers.metrics.clustering import get_all_metric_containers
 from pycaret.containers.models.clustering import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
@@ -50,7 +50,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
         except Exception:
             if ml_usecase == MLUsecase.CLUSTERING:
-                metrics = get_all_clust_metric_containers(self.variables, True)
+                metrics = get_all_metric_containers(self.variables, True)
             return calculate_unsupervised_metrics(
                 metrics=metrics,  # type: ignore
                 X=X,
@@ -102,8 +102,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
         low_variance_threshold: Optional[float] = None,
-        group_features: Optional[list] = None,
-        group_names: Optional[Union[str, list]] = None,
+        group_features: Optional[dict] = None,
         drop_groups: bool = False,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
@@ -300,19 +299,13 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             this transformation step.
 
 
-        group_features: list, list of lists or None, default = None
+        group_features: dict or None, default = None
             When the dataset contains features with related characteristics,
             add new fetaures with the following statistical properties of that
             group: min, max, mean, std, median and mode. The parameter takes a
-            list of feature names or a list of lists of feature names to specify
-            multiple groups.
+            dict with the group name as key and a list of feature names
+            belonging to that group as value.
 
-
-        group_names: str, list, or None, default = None
-            Group names to be used when naming the new features. The length
-            should match with the number of groups specified in ``group_features``.
-            If None, new features are named using the default form, e.g. group_1,
-            group_2, etc... Ignored when ``group_features`` is None.
 
         drop_groups: bool, default=False
             Whether to drop the original features in the group. Ignored when
@@ -621,7 +614,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
             # Get statistical properties of a group of features
             if group_features:
-                self._group_features(group_features, group_names, drop_groups)
+                self._group_features(group_features, drop_groups)
 
             # Drop features that are collinear with other features
             if remove_multicollinearity:
@@ -1099,10 +1092,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                             )
                             model_fit_start = time.time()
                             pipeline_with_model.fit(data_X, **fit_kwargs)
-                        except Exception:
+                        except Exception as e:
                             raise RuntimeError(
                                 "Could not form valid cluster separation. Try a different dataset or model."
-                            )
+                            ) from e
                 else:
                     pipeline_with_model.fit(data_X, **fit_kwargs)
             model_fit_end = time.time()
@@ -1341,7 +1334,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         plot_kwargs: Optional[dict] = None,
         feature_name: Optional[str] = None,
         groups: Optional[Union[str, Any]] = None,
-        use_train_data: bool = False,
     ):
         """
         This function displays a user interface for analyzing performance of a trained
@@ -1390,5 +1382,4 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             plot_kwargs,
             feature_name,
             groups,
-            use_train_data,
         )

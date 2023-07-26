@@ -6,9 +6,9 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 from category_encoders.basen import BaseNEncoder
-from category_encoders.leave_one_out import LeaveOneOutEncoder
 from category_encoders.one_hot import OneHotEncoder
 from category_encoders.ordinal import OrdinalEncoder
+from category_encoders.target_encoder import TargetEncoder
 from imblearn.combine import SMOTEENN, SMOTETomek
 from imblearn.over_sampling import (
     ADASYN,
@@ -61,9 +61,11 @@ from sklearn.preprocessing import (
     StandardScaler,
 )
 
-from pycaret.containers.models import (
-    get_all_class_model_containers,
-    get_all_reg_model_containers,
+from pycaret.containers.models.classification import (
+    get_all_model_containers as get_all_class_model_containers,
+)
+from pycaret.containers.models.regression import (
+    get_all_model_containers as get_all_reg_model_containers,
 )
 from pycaret.internal.preprocess.iterative_imputer import IterativeImputer
 from pycaret.internal.preprocess.transformers import (
@@ -118,6 +120,10 @@ class Preprocessor:
 
         # Make copy to not overwrite mutable arguments
         X = to_df(deepcopy(X))
+
+        # No duplicate column names are allowed
+        if len(set(X.columns)) != len(X.columns):
+            raise ValueError("Duplicate column names found in X.")
 
         # Prepare target column
         if isinstance(y, (list, tuple, np.ndarray, pd.Series)):
@@ -710,10 +716,9 @@ class Preprocessor:
                             handle_unknown="value",
                         )
                     else:
-                        encoding_method = LeaveOneOutEncoder(
+                        encoding_method = TargetEncoder(
                             handle_missing="return_nan",
                             handle_unknown="value",
-                            random_state=self.seed,
                         )
 
                 rest_estimator = TransformerWrapper(
@@ -755,27 +760,12 @@ class Preprocessor:
 
         self.pipeline.steps.append(("low_variance", variance_estimator))
 
-    def _group_features(self, group_features, group_names, drop_groups):
+    def _group_features(self, group_features, drop_groups):
         """Get statistical properties of a group of features."""
         self.logger.info("Set up feature grouping.")
 
-        # Convert a single group to sequence
-        if np.array(group_features).ndim == 1:
-            group_features = [group_features]
-
-        if group_names:
-            if isinstance(group_names, str):
-                group_names = [group_names]
-
-            if len(group_names) != len(group_features):
-                raise ValueError(
-                    "Invalid value for the group_names parameter. Length "
-                    f"({len(group_names)}) does not match with length of "
-                    f"group_features ({len(group_features)})."
-                )
-
         grouping_estimator = TransformerWrapper(
-            transformer=GroupFeatures(group_features, group_names, drop_groups),
+            transformer=GroupFeatures(group_features, drop_groups),
             exclude=self._fxs["Keep"],
         )
 
@@ -973,6 +963,8 @@ class Preprocessor:
                 "Invalid value for the feature_selection_estimator parameter. "
                 "The provided estimator does not adhere to sklearn's API."
             )
+        else:
+            fs_estimator = feature_selection_estimator
 
         if 0 < n_features_to_select < 1:
             n_features_to_select = int(n_features_to_select * self.X.shape[1])

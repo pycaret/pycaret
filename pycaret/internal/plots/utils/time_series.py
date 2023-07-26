@@ -570,7 +570,7 @@ def decomp_subplot(
         except ValueError as exception:
             logger.warning(exception)
             logger.warning(
-                "Seasonal Decompose plot failed most likely sue to missing data"
+                "Seasonal Decompose plot failed most likely due to missing data"
             )
             return fig, None
     elif plot == "decomp_stl":
@@ -951,7 +951,7 @@ def _resolve_hoverinfo(
     hoverinfo: Optional[str],
     threshold: int,
     data: Optional[pd.Series],
-    X: Optional[pd.DataFrame],
+    X: Optional[List[pd.DataFrame]],
 ) -> str:
     """Decide whether data tip obtained by hovering over a Plotly plot should be
     enabled or disabled based user settings and size of data. If user provides the
@@ -989,7 +989,7 @@ def _resolve_renderer(
     renderer: Optional[str],
     threshold: int,
     data: Optional[pd.Series],
-    X: Optional[pd.DataFrame],
+    X: Optional[List[pd.DataFrame]],
 ) -> str:
     """Decide the renderer to use for the Plotly plot based user settings and
     size of data. If user provides the `renderer` option, it is honored, else it

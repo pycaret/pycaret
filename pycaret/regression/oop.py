@@ -7,10 +7,10 @@ import numpy as np  # type: ignore
 import pandas as pd
 from joblib.memory import Memory
 
-from pycaret.containers.metrics import get_all_reg_metric_containers
-from pycaret.containers.models import get_all_reg_model_containers
+from pycaret.containers.metrics.regression import get_all_metric_containers
 from pycaret.containers.models.regression import (
     ALL_ALLOWED_ENGINES,
+    get_all_model_containers,
     get_container_default_engines,
 )
 from pycaret.internal.display import CommonDisplay
@@ -59,18 +59,16 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in get_all_reg_model_containers(
+            for k, v in get_all_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = get_all_reg_model_containers(
-            self, raise_errors=raise_errors
-        )
+        all_models_internal = get_all_model_containers(self, raise_errors=raise_errors)
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return get_all_reg_metric_containers(self.variables, raise_errors=raise_errors)
+        return get_all_metric_containers(self.variables, raise_errors=raise_errors)
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["residuals", "error", "feature"]
@@ -106,8 +104,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
         low_variance_threshold: Optional[float] = None,
-        group_features: Optional[list] = None,
-        group_names: Optional[Union[str, list]] = None,
+        group_features: Optional[dict] = None,
         drop_groups: bool = False,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
@@ -155,7 +152,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
     ):
-
         """
         This function initializes the training environment and creates the transformation
         pipeline. Setup function must be called before executing any other function. It takes
@@ -324,7 +320,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         encoding_method: category-encoders estimator, default = None
             A `category-encoders` estimator to encode the categorical columns
             with more than `max_encoding_ohe` unique values. If None,
-            `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+            `category_encoders.target_encoder.TargetEncoder` is used.
 
 
         rare_to_value: float or None, default=None
@@ -356,19 +352,13 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
             this transformation step.
 
 
-        group_features: list, list of lists or None, default = None
+        group_features: dict or None, default = None
             When the dataset contains features with related characteristics,
             add new fetaures with the following statistical properties of that
             group: min, max, mean, std, median and mode. The parameter takes a
-            list of feature names or a list of lists of feature names to specify
-            multiple groups.
+            dict with the group name as key and a list of feature names
+            belonging to that group as value.
 
-
-        group_names: str, list, or None, default = None
-            Group names to be used when naming the new features. The length
-            should match with the number of groups specified in ``group_features``.
-            If None, new features are named using the default form, e.g. group_1,
-            group_2, etc... Ignored when ``group_features`` is None.
 
         drop_groups: bool, default=False
             Whether to drop the original features in the group. Ignored when
@@ -810,7 +800,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
             # Get statistical properties of a group of features
             if group_features:
-                self._group_features(group_features, group_names, drop_groups)
+                self._group_features(group_features, drop_groups)
 
             # Drop features that are collinear with other features
             if remove_multicollinearity:
@@ -1007,7 +997,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ):
-
         """
         This function trains and evaluates performance of all estimators available in the
         model library using cross validation. The output of this function is a score grid
@@ -1172,7 +1161,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         return_train_score: bool = False,
         **kwargs,
     ):
-
         """
         This function trains and evaluates the performance of a given estimator
         using cross validation. The output of this function is a score grid with
@@ -1337,7 +1325,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         return_train_score: bool = False,
         **kwargs,
     ):
-
         """
         This function tunes the hyperparameters of a given estimator. The output of
         this function is a score grid with CV scores by fold of the best selected
@@ -1544,7 +1531,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         verbose: bool = True,
         return_train_score: bool = False,
     ) -> Any:
-
         """
         This function ensembles a given estimator. The output of this function is
         a score grid with CV scores by fold. Metrics evaluated during CV can be
@@ -1649,7 +1635,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         verbose: bool = True,
         return_train_score: bool = False,
     ):
-
         """
         This function trains a Voting Regressor for select models passed in the
         ``estimator_list`` param. The output of this function is a score grid with
@@ -1755,7 +1740,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         verbose: bool = True,
         return_train_score: bool = False,
     ):
-
         """
         This function trains a meta model over select estimators passed in
         the ``estimator_list`` parameter. The output of this function is a
@@ -1868,11 +1852,9 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         plot_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
-        use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
     ) -> Optional[str]:
-
         """
         This function analyzes the performance of a trained model on holdout set.
         It may require re-training the model in certain cases.
@@ -1946,11 +1928,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
             the column name in the dataset containing group labels.
 
 
-        use_train_data: bool, default = False
-            When set to true, train data will be used for plots, instead
-            of test data.
-
-
         verbose: bool, default = True
             When set to False, progress bar is not displayed.
 
@@ -1975,7 +1952,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
             plot_kwargs=plot_kwargs,
             groups=groups,
             verbose=verbose,
-            use_train_data=use_train_data,
             display_format=display_format,
         )
 
@@ -1986,9 +1962,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         plot_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
-        use_train_data: bool = False,
     ):
-
         """
         This function displays a user interface for analyzing performance of a trained
         model. It calls the ``plot_model`` function internally.
@@ -2029,11 +2003,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
             the column name in the dataset containing group labels.
 
 
-        use_train_data: bool, default = False
-            When set to true, train data will be used for plots, instead
-            of test data.
-
-
         Returns:
             None
 
@@ -2050,7 +2019,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
             fit_kwargs=fit_kwargs,
             plot_kwargs=plot_kwargs,
             groups=groups,
-            use_train_data=use_train_data,
         )
 
     def interpret_model(
@@ -2065,7 +2033,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         save: Union[str, bool] = False,
         **kwargs,
     ):
-
         """
         This function takes a trained model object and returns an interpretation plot
         based on the test / hold-out set.
@@ -2170,7 +2137,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
-
         """
         This function predicts ``Label`` using a trained model. When ``data`` is
         None, it predicts label on the holdout set.
@@ -2235,7 +2201,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
-
         """
         This function trains a given estimator on the entire dataset including the
         holdout set.
@@ -2294,7 +2259,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         authentication: dict,
         platform: str = "aws",
     ):
-
         """
         This function deploys the transformation pipeline and trained model on cloud.
 
@@ -2388,7 +2352,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         verbose: bool = True,
         **kwargs,
     ):
-
         """
         This function saves the transformation pipeline and trained model object
         into the current working directory as a pickle file for later use.
@@ -2444,7 +2407,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
     ):
-
         """
         This function loads a previously saved pipeline.
 
@@ -2499,7 +2461,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         turbo: bool = True,
         return_train_score: bool = False,
     ) -> Any:
-
         """
         This function returns the best model out of all trained models in
         current session based on the ``optimize`` parameter. Metrics
@@ -2561,7 +2522,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         internal: bool = False,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of models available in the model library.
 
@@ -2602,7 +2562,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         include_custom: bool = True,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of available metrics used in the experiment.
 
@@ -2649,7 +2608,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         greater_is_better: bool = True,
         **kwargs,
     ) -> pd.Series:
-
         """
         Adds a custom metric to be used in the experiment.
 
@@ -2699,7 +2657,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         )
 
     def remove_metric(self, name_or_id: str):
-
         """
         Removes a metric from experiment.
 
@@ -2727,7 +2684,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
     def get_logs(
         self, experiment_name: Optional[str] = None, save: bool = False
     ) -> pd.DataFrame:
-
         """
         Returns a table of experiment logs. Only works when ``log_experiment``
         is True when initializing the ``setup`` function.

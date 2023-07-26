@@ -49,7 +49,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pytest pytest-xdist nbmake
-          pip install -e ".[full]"
+          pip install ".[full]"
           python -m ipykernel install --user --name cikernel
       - name: Python version and dependency list
         run: |
@@ -64,12 +64,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10"]
+        python-version: [3.8, 3.9, "3.10"]
 
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -80,7 +80,49 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
+          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: ${{ matrix.python-version }}"
+          python --version
+          which python
+          pip list
+      - name: Remove tests
+        run: |
+          rm tests/test_classification_tuning.py
+          rm tests/test_classification_plots.py
+          rm tests/test_regression_plots.py
+          rm tests/test_regression_tuning.py
+          rm tests/test_time_series_tune_grid.py
+          rm tests/test_time_series_tune_random.py
+          rm tests/test_time_series_plots.py
+          rm tests/test_time_series_utils_plots.py
+          rm tests/benchmarks/*.py
+      - name: Test with pytest
+        run: pytest --durations=0
+
+  test_linux_3p7:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
+        # pyLDAvis 3.3.1 having an "sklearn" dependency
+        run: |
+          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
+          python -m pip install -U pip
+          python -m pip install -U pytest numpy
+
+          pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
@@ -106,7 +148,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10"]
+        python-version: [3.8, 3.9, "3.10"]
 
     steps:
       - uses: actions/checkout@v3
@@ -122,7 +164,42 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
+          pip install -r requirements-prophet.txt
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: ${{ matrix.python-version }}"
+          python --version
+          which python
+          pip list
+      - name: Remove tests
+        run: |
+          remove-item tests/* -Include @('test_clustering.py', 'test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
+          remove-item tests/benchmarks/*
+      - name: Test with pytest
+        run: pytest --durations=0
+
+  test_windows_3p7:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: [3.7]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
+        # pyLDAvis 3.3.1 having an "sklearn" dependency
+        run: |
+          $env:SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL = 'True'
+          python -m pip install -U pip
+          python -m pip install -U pytest numpy
+
+          pip install ".[full, test]"
           pip install -r requirements-prophet.txt
       - name: Python version and dependency list
         run: |
@@ -156,7 +233,7 @@ jobs:
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install --upgrade pip
           python -m pip install -U pytest numpy
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -189,7 +266,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
@@ -223,7 +300,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
@@ -257,7 +334,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
-          pip install -e ".[full, test]"
+          pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
@@ -268,69 +345,3 @@ jobs:
       - name: Run benchmarks
         run: pytest tests/benchmarks --durations=0
 
-  # test_tuning:
-
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - name: Set up Python 3.8
-  #     uses: actions/setup-python@v4
-  #     with:
-  #       python-version: 3.8
-  #   - name: Install dependencies
-  #     run: |
-  #       python -m pip install --upgrade pip
-  #       python -m pip install -U pytest
-  #       python -m pip install codecov
-  #       pip install -e ".[full]"
-  #       python -m pip install hpbandster ConfigSpace
-  #   - name: Remove tests
-  #     run: |
-  #       find tests -type f -not -name '__init__.py' -not -name 'test_classification_tuning.py' -not -name 'test_regression_tuning.py' -delete
-  #   - name: Test with pytest
-  #     run: pytest --durations=0
-
-  # test_tuning_clf_windows:
-
-  #   runs-on: windows-latest
-
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - name: Set up Python 3.8
-  #     uses: actions/setup-python@v4
-  #     with:
-  #       python-version: 3.8
-  #   - name: Install dependencies
-  #     run: |
-  #       python -m pip install --upgrade pip
-  #       python -m pip install -U pytest
-  #       python -m pip install codecov
-  #       pip install -e ".[full]"
-  #   - name: Remove tests
-  #     run: |
-  #       remove-item tests/* -Exclude @('__init__.py','test_classification_tuning.py')
-  #   - name: Test with pytest
-  #     run: pytest --durations=0
-
-  # test_tuning_reg_windows:
-
-  #   runs-on: windows-latest
-
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - name: Set up Python 3.8
-  #     uses: actions/setup-python@v4
-  #     with:
-  #       python-version: 3.8
-  #   - name: Install dependencies
-  #     run: |
-  #       python -m pip install --upgrade pip
-  #       python -m pip install -U pytest
-  #       python -m pip install codecov
-  #       pip install -e ".[full]"
-  #   - name: Remove tests
-  #     run: |
-  #       remove-item tests/* -Exclude @('__init__.py','test_regression_tuning.py')
-  #   - name: Test with pytest
-  #     run: pytest --durations=0

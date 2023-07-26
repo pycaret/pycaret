@@ -89,7 +89,6 @@ class AnomalyContainer(ModelContainer):
         tune_args: Dict[str, Any] = None,
         is_gpu_enabled: Optional[bool] = None,
     ) -> None:
-
         if not args:
             args = {}
 
@@ -182,7 +181,7 @@ class CBLOFAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
         get_logger()
         np.random.seed(experiment.seed)
-        from pyod.models.cblof import CBLOF
+        from pycaret.internal.patches.pyod import CBLOFForceToDouble
 
         args = {
             "random_state": experiment.seed,
@@ -195,7 +194,7 @@ class CBLOFAnomalyContainer(AnomalyContainer):
         super().__init__(
             id="cluster",
             name="Clustering-Based Local Outlier",
-            class_def=CBLOF,
+            class_def=CBLOFForceToDouble,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,

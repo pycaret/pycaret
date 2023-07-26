@@ -325,7 +325,6 @@ def plot_cv(
     def plot_windows(data, train_windows, test_windows):
         fig = go.Figure()
         for num_window in reversed(range(len(train_windows))):
-
             x = (
                 data.index.to_timestamp()
                 if isinstance(data.index, pd.PeriodIndex)
@@ -1075,7 +1074,6 @@ def plot_time_series_differences(
     plot_cols = np.cumsum(plots).tolist()
 
     for i, subplot_data in enumerate(diff_list):
-
         # Add difference data ----
 
         ts_to_plot = pd.DataFrame(subplot_data)

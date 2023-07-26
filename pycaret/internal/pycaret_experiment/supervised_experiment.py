@@ -22,9 +22,11 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.containers.metrics import (
-    get_all_class_metric_containers,
-    get_all_reg_metric_containers,
+from pycaret.containers.metrics.classification import (
+    get_all_metric_containers as get_all_class_metric_containers,
+)
+from pycaret.containers.metrics.regression import (
+    get_all_metric_containers as get_all_reg_metric_containers,
 )
 from pycaret.internal.display import CommonDisplay, DummyDisplay
 from pycaret.internal.distributions import (
@@ -44,6 +46,7 @@ from pycaret.internal.meta_estimators import (
     get_estimator_from_meta_estimator,
 )
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
+from pycaret.internal.patches.sklearn import fit_and_score as fs
 from pycaret.internal.pipeline import (
     Pipeline,
     estimator_pipeline,
@@ -387,7 +390,6 @@ class _SupervisedExperiment(_TabularExperiment):
         parallel: Optional[ParallelBackend] = None,
         caller_params: Optional[dict] = None,
     ) -> List[Any]:
-
         """
         This function train all the models available in the model library and scores them
         using Cross Validation. The output prints a score grid with Accuracy,
@@ -729,7 +731,6 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(f"Time budget is {budget_time} minutes")
 
         for i, model in enumerate(model_library):
-
             model_id = (
                 model
                 if (
@@ -966,7 +967,6 @@ class _SupervisedExperiment(_TabularExperiment):
                     full_logging = True
 
                 if self.logging_param and cross_validation and model is not None:
-
                     self._log_model(
                         model=model,
                         model_results=results,
@@ -1112,20 +1112,24 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
-            model_fit_start = time.time()
-            with redirect_output(self.logger):
-                scores = cross_validate(
-                    pipeline_with_model,
-                    data_X,
-                    data_y,
-                    cv=cv,
-                    groups=groups,
-                    scoring=metrics_dict,
-                    fit_params=fit_kwargs,
-                    n_jobs=n_jobs,
-                    return_train_score=return_train_score,
-                    error_score=0,
-                )
+            # Monkey patch sklearn's _fit_and_score function to allow
+            # for pipelines that drop samples during transformation
+            with patch("sklearn.model_selection._validation._fit_and_score", fs):
+                model_fit_start = time.time()
+                with redirect_output(self.logger):
+                    scores = cross_validate(
+                        pipeline_with_model,
+                        data_X,
+                        data_y,
+                        cv=cv,
+                        groups=groups,
+                        scoring=metrics_dict,
+                        fit_params=fit_kwargs,
+                        n_jobs=n_jobs,
+                        return_train_score=return_train_score,
+                        error_score=0,
+                    )
+
             model_fit_end = time.time()
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
@@ -1298,7 +1302,6 @@ class _SupervisedExperiment(_TabularExperiment):
         return_train_score: bool = False,
         **kwargs,
     ) -> Any:
-
         """
         Internal version of ``create_model`` with private arguments.
         """
@@ -1614,7 +1617,6 @@ class _SupervisedExperiment(_TabularExperiment):
         return_train_score: bool = False,
         **kwargs,
     ) -> Any:
-
         """
         This function creates a model and scores it using Cross Validation.
         The output prints a score grid that shows Accuracy, AUC, Recall, Precision,
@@ -1791,7 +1793,6 @@ class _SupervisedExperiment(_TabularExperiment):
         return_train_score: bool = False,
         **kwargs,
     ) -> Any:
-
         """
         This function tunes the hyperparameters of a model and scores it using Cross Validation.
         The output prints a score grid that shows Accuracy, AUC, Recall
@@ -2463,7 +2464,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
             elif search_library == "tune-sklearn":
-
                 early_stopping_translator = {
                     "asha": "ASHAScheduler",
                     "hyperband": "HyperBandScheduler",
@@ -2510,7 +2510,6 @@ class _SupervisedExperiment(_TabularExperiment):
                     pipeline_with_model
                 ) if do_early_stop else nullcontext():
                     if search_algorithm == "grid":
-
                         self.logger.info("Initializing tune_sklearn.TuneGridSearchCV")
                         model_grid = TuneGridSearchCV(
                             estimator=pipeline_with_model,
@@ -2912,7 +2911,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # check boosting conflict
         if method == "Boosting":
-
             boosting_model_definition = self._all_models_internal["ada"]
 
             check_model = estimator
@@ -3164,7 +3162,6 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool = True,
         return_train_score: bool = False,
     ) -> Any:
-
         """
         This function creates a Soft Voting / Majority Rule classifier for all the
         estimators in the model library (excluding the few when turbo is True) or
@@ -3279,10 +3276,14 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs = {}
 
         # checking method parameter
-        available_method = ["auto", "soft", "hard", "mean", "median", "voting"]
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            available_method = ["mean", "median", "min", "max", "gmean"]
+        else:
+            available_method = ["auto", "soft", "hard", "mean", "median", "voting"]
         if method not in available_method:
             raise ValueError(
-                "Method parameter only accepts 'auto', 'soft', 'hard', 'mean', 'median' or 'voting' as a parameter. See Docstring for details."
+                f"Method parameter only accepts the following values: {available_method}. "
+                "See Docstring for details."
             )
 
         # checking error for estimator_list (skip for timeseries)
@@ -3295,7 +3296,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 if self._ml_usecase == MLUsecase.CLASSIFICATION:
                     # checking method parameter with estimator list
                     if method != "hard":
-
                         for i in estimator_list:
                             if not hasattr(i, "predict_proba"):
                                 if method != "auto":
@@ -3447,7 +3447,7 @@ class _SupervisedExperiment(_TabularExperiment):
         elif self._ml_usecase == MLUsecase.TIME_SERIES:
             model = voting_model_definition.class_def(
                 forecasters=estimator_list,
-                method=method,
+                aggfunc=method,
                 weights=weights,
                 n_jobs=self.gpu_n_jobs_param,
             )
@@ -3558,7 +3558,6 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool = True,
         return_train_score: bool = False,
     ) -> Any:
-
         """
         This function trains a meta model and scores it using Cross Validation.
         The predictions from the base level models as passed in the estimator_list parameter
@@ -3935,7 +3934,6 @@ class _SupervisedExperiment(_TabularExperiment):
         save: Union[str, bool] = False,
         **kwargs,  # added in pycaret==2.1
     ):
-
         """
         This function takes a trained model object and returns an interpretation plot
         based on the test / hold-out set. It only supports tree based algorithms.
@@ -4114,7 +4112,6 @@ class _SupervisedExperiment(_TabularExperiment):
         shap_plot = None
 
         def summary(show: bool = True):
-
             self.logger.info("Creating TreeExplainer")
             explainer = shap.TreeExplainer(model)
             self.logger.info("Compiling shap values")
@@ -4136,16 +4133,13 @@ class _SupervisedExperiment(_TabularExperiment):
             return shap_plot
 
         def correlation(show: bool = True):
-
             if feature is None:
-
                 self.logger.warning(
                     f"No feature passed. Default value of feature used for correlation plot: {test_X.columns[0]}"
                 )
                 dependence = test_X.columns[0]
 
             else:
-
                 self.logger.warning(
                     f"feature value passed. Feature used for correlation plot: {feature}"
                 )
@@ -4246,7 +4240,6 @@ class _SupervisedExperiment(_TabularExperiment):
                     )
 
                 else:
-
                     row_to_show = observation
                     data_for_prediction = test_X.iloc[row_to_show]
 
@@ -4266,17 +4259,14 @@ class _SupervisedExperiment(_TabularExperiment):
             return shap_plot
 
         def pdp(show: bool = True):
-
             self.logger.info("Checking feature parameter passed")
             if feature is None:
-
                 self.logger.warning(
                     f"No feature passed. Default value of feature used for pdp : {test_X.columns[0]}"
                 )
                 pdp_feature = test_X.columns[0]
 
             else:
-
                 self.logger.warning(
                     f"feature value passed. Feature used for correlation plot: {feature}"
                 )
@@ -4377,7 +4367,6 @@ class _SupervisedExperiment(_TabularExperiment):
         internal: bool = False,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of models available in model library.
 
@@ -4657,7 +4646,6 @@ class _SupervisedExperiment(_TabularExperiment):
         model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:  # added in pycaret==2.2.0
-
         """
         This function fits the complete pipeline with the estimator on the
         complete dataset passed during the setup() stage. The purpose of
@@ -4783,7 +4771,6 @@ class _SupervisedExperiment(_TabularExperiment):
         ml_usecase: Optional[MLUsecase] = None,
         preprocess: Union[bool, str] = True,
     ) -> pd.DataFrame:
-
         """
         This function is used to predict label and probability score on the new dataset
         using a trained estimator. New unseen data can be passed to data parameter as pandas
@@ -4847,11 +4834,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        def replace_labels_in_column(label_encoder, labels: pd.Series) -> pd.Series:
+        def encode_labels(label_encoder, labels: pd.Series) -> pd.Series:
             # Check if there is a LabelEncoder in the pipeline
             if label_encoder:
                 return pd.Series(
-                    data=label_encoder.inverse_transform(labels),
+                    data=label_encoder.transform(labels),
                     name=labels.name,
                     index=labels.index,
                 )
@@ -4936,7 +4923,8 @@ class _SupervisedExperiment(_TabularExperiment):
         y_test_ = None
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
-            X_test_untransformed, y_test_untransformed = self.X_test, self.y_test
+            X_test_untransformed = self.X_test[self.X_test.index.isin(X_test_.index)]
+            y_test_untransformed = self.y_test[self.y_test.index.isin(y_test_.index)]
         else:
             if y_name in data.columns:
                 data = self._set_index(self._prepare_dataset(data, y_name))
@@ -4964,6 +4952,15 @@ class _SupervisedExperiment(_TabularExperiment):
                 X_test_ = data
                 y_test_ = target
 
+            # Align number of rows with output of transformation
+            X_test_untransformed = X_test_untransformed[
+                X_test_untransformed.index.isin(X_test_.index)
+            ]
+            if target is not None:
+                y_test_untransformed = y_test_untransformed[
+                    y_test_untransformed.index.isin(X_test_.index)
+                ]
+
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):
             if probability_threshold is None:
@@ -4975,12 +4972,11 @@ class _SupervisedExperiment(_TabularExperiment):
         # Need to convert labels back to numbers
         # TODO optimize
         label_encoder = get_label_encoder(pipeline)
-        if label_encoder:
-            pred = label_encoder.transform(pred)
         if isinstance(pred, pd.Series):
             pred = pred.values
 
         try:
+            # This is a classifier
             score = estimator.predict_proba(X_test_)
 
             if len(np.unique(pred)) <= 2:
@@ -4989,12 +4985,17 @@ class _SupervisedExperiment(_TabularExperiment):
                 pred_prob = score
 
         except Exception:
+            # This is not a classifier
             score = None
             pred_prob = None
+
+        y_test_metrics = y_test_untransformed
 
         if probability_threshold is not None and pred_prob is not None:
             try:
                 pred = (pred_prob >= probability_threshold).astype(int)
+                if label_encoder:
+                    pred = label_encoder.inverse_transform(pred)
             except Exception:
                 pass
 
@@ -5005,25 +5006,24 @@ class _SupervisedExperiment(_TabularExperiment):
         if y_test_ is not None and self._setup_ran:
             # model name
             full_name = self._get_model_name(estimator)
-            metrics = self._calculate_metrics(y_test_, pred, pred_prob)  # type: ignore
+            metrics = self._calculate_metrics(y_test_metrics, pred, pred_prob)  # type: ignore
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
             df_score = df_score.round(round)
             display.display(df_score.style.format(precision=round))
 
-        label = pd.DataFrame(
-            pred, columns=[LABEL_COLUMN], index=X_test_untransformed.index
-        )
         if ml_usecase == MLUsecase.CLASSIFICATION:
             try:
-                label[LABEL_COLUMN] = label[LABEL_COLUMN].astype(int)
+                pred = pred.astype(int)
             except Exception:
                 pass
 
-        if not encoded_labels:
-            label[LABEL_COLUMN] = replace_labels_in_column(
-                label_encoder, label[LABEL_COLUMN]
-            )
+        label = pd.DataFrame(
+            pred, columns=[LABEL_COLUMN], index=X_test_untransformed.index
+        )
+
+        if encoded_labels:
+            label[LABEL_COLUMN] = encode_labels(label_encoder, label[LABEL_COLUMN])
         else:
             y_test_untransformed = y_test_
         old_index = X_test_untransformed.index
@@ -5031,9 +5031,10 @@ class _SupervisedExperiment(_TabularExperiment):
         X_test_.index = old_index
 
         if score is not None:
-            pred = pred.astype(int)
-
             if not raw_score:
+                if label_encoder:
+                    pred = label_encoder.transform(pred)
+
                 score = pd.DataFrame(
                     data=[s[pred[i]] for i, s in enumerate(score)],
                     index=X_test_.index,
@@ -5106,7 +5107,6 @@ class _SupervisedExperiment(_TabularExperiment):
             1, "Finalizing models" if finalize_models else "Collecting models"
         )
         for i, model_results_tuple in enumerate(model_container):
-
             model_results = model_results_tuple["scores"]
             model = model_results_tuple["model"]
             try:
@@ -5163,7 +5163,6 @@ class _SupervisedExperiment(_TabularExperiment):
     def check_fairness(
         self, estimator, sensitive_features: list, plot_kwargs: dict = {}
     ):
-
         """
         There are many approaches to conceptualizing fairness. This function follows
         the approach known as group fairness, which asks: Which groups of individuals
@@ -5251,7 +5250,6 @@ class _SupervisedExperiment(_TabularExperiment):
         turbo: bool = True,
         return_train_score: bool = False,
     ) -> Any:
-
         """
         This function returns the best model out of all models created in
         current active environment based on metric defined in optimize parameter.
@@ -5437,7 +5435,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 all_inputs.append(gr.inputs.Textbox(label=i))
 
         def predict(*dict_input):
-
             input_df = pd.DataFrame.from_dict([dict_input])
             input_df.columns = list(self.X.columns)
             return (

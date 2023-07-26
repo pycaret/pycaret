@@ -32,15 +32,14 @@ class CometLogger(BaseLogger):
     def log_params(self, params, model_name=None):
         self.run.log_parameters(params, prefix=model_name)
 
-    def set_tags(self, source, experiment_custom_tags, runtime):
+    def set_tags(self, source, experiment_custom_tags, runtime, USI=None):
         tags = [source, runtime]
         self.run.add_tags(tags)
         if experiment_custom_tags:
             self.run.log_others(experiment_custom_tags)
 
     def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
-        pipeline = deepcopy(prep_pipe)
-        pipeline.steps.append(["trained_model", model])
+        pipeline = self._construct_pipeline_if_needed(model, prep_pipe)
         joblib.dump(pipeline, "pipeline.pkl")
         self.run.log_model(name="model", file_or_folder="pipeline.pkl")
 

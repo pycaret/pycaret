@@ -7,8 +7,8 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.containers.metrics import get_all_clust_metric_containers
-from pycaret.containers.models import get_all_clust_model_containers
+from pycaret.containers.metrics.clustering import get_all_metric_containers
+from pycaret.containers.models.clustering import get_all_model_containers
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
     _UnsupervisedExperiment,
@@ -36,20 +36,16 @@ class ClusteringExperiment(_UnsupervisedExperiment):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in get_all_clust_model_containers(
+            for k, v in get_all_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = get_all_clust_model_containers(
-            self, raise_errors=raise_errors
-        )
+        all_models_internal = get_all_model_containers(self, raise_errors=raise_errors)
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return get_all_clust_metric_containers(
-            self.variables, raise_errors=raise_errors
-        )
+        return get_all_metric_containers(self.variables, raise_errors=raise_errors)
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["cluster", "distribution", "elbow"]
@@ -109,7 +105,6 @@ class ClusteringExperiment(_UnsupervisedExperiment):
         groups: Optional[Union[str, Any]] = None,
         feature_name: Optional[str] = None,
         label: bool = False,
-        use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
     ) -> Optional[str]:
@@ -183,7 +178,6 @@ class ClusteringExperiment(_UnsupervisedExperiment):
             groups,
             feature_name,
             label,
-            use_train_data,
             verbose,
             display_format,
         )

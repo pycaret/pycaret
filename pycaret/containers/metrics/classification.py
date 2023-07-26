@@ -100,7 +100,6 @@ class ClassificationMetricContainer(MetricContainer):
         is_multiclass: bool = True,
         is_custom: bool = False,
     ) -> None:
-
         allowed_targets = ["pred", "pred_proba", "threshold"]
         if target not in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")

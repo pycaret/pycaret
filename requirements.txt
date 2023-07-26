@@ -3,11 +3,11 @@ ipython>=5.5.0
 ipywidgets>=7.6.5  # required by pycaret.internal.display
 tqdm>=4.62.0  # required by pycaret.internal.display
 numpy>=1.21, <1.24  # Can't >=1.24 because of np.float deprecation
-pandas>=1.3.0, <1.6.0  # Can't >=1.6 because of sktime
+pandas>=1.3.0, <2.0.0  # Can't >=2.0.0 because of sktime
 jinja2>=1.2  # Required by pycaret.internal.utils --> pandas.io.formats.style
 scipy<2.0.0  # Can't >=2.0.0 due to sktime
 joblib>=1.2.0  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution (https://github.com/advisories/GHSA-6hrg-qmvc-2xh8)
-scikit-learn>=1.0
+scikit-learn>=1.0,<1.3.0  # 1.3.0 has sktime and imbalanced-learn incompatibility
 pyod>=1.0.8
 imbalanced-learn>=0.8.1
 category-encoders>=2.4.0
@@ -30,11 +30,16 @@ scikit-plot>=0.3.7
 yellowbrick>=1.4
 plotly>=5.0.0
 kaleido>=0.2.1
-schemdraw>=0.14, <0.16
+schemdraw==0.15  # 0.16 only supports Python >3.8
 plotly-resampler>=0.8.3.1
 
 # Time-series
 statsmodels>=0.12.1
-sktime>=0.16.1,<=0.17.0  # Limited until this is fixed: https://github.com/sktime/sktime/issues/4468
-tbats>=1.1.0
+# Can not be ==0.17.1 due to this bug in 0.17.1: https://github.com/sktime/sktime/issues/4468
+# Can not be >=0.17.2 due to this bug (fixed in 0.18.1): https://github.com/sktime/sktime/issues/4587
+# Can't >=0.22.0 because of legacy_interface default will switch to False in 0.22.0
+# This restriction can be removed if the new interface is handled in pycaret for newer versions
+# of sktime and the older interface is handled in pycaret for older versions of sktime
+sktime>=0.16.1,!=0.17.1,!=0.17.2,!=0.18.0,<0.22.0
+tbats>=1.1.3
 pmdarima>=1.8.0,!=1.8.1,<3.0.0 # Matches sktime
