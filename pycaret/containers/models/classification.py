@@ -1143,7 +1143,7 @@ class XGBClassifierContainer(ClassifierContainer):
         from xgboost import XGBClassifier
         
         #If XGBoost > 2 change and add new parameters
-        xgboost_version = tuple(map(int, xgb.__version__.split('.')))
+        xgboost_version = tuple(map(int, xgboost.__version__.split('.')))
         xgboost_2_or_higher = xgboost_version >= (2, 0, 0)
 
         args = {
