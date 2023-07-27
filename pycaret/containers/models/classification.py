@@ -1154,8 +1154,8 @@ class XGBClassifierContainer(ClassifierContainer):
         }
         
         if xgboost_2_or_higher:
-            args["tree_method"] = "hist"
-            args["device"] = "cuda"
+            args["tree_method"] = "hist",
+            args["device"] = "cuda",
         else:
             args["tree_method"] = "gpu_hist" if experiment.gpu_param else "auto"
         
