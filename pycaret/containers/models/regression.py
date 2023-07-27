@@ -1542,6 +1542,7 @@ class XGBRegressorContainer(RegressorContainer):
             "learning_rate": [
                 0.0000001,
                 0.000001,
+                0.00001
                 0.0001,
                 0.001,
                 0.01,
@@ -1559,10 +1560,11 @@ class XGBRegressorContainer(RegressorContainer):
             "subsample": [0.2, 0.3, 0.5, 0.7, 0.9, 1],
             "max_depth": np_list_arange(1, 11, 1, inclusive=True),
             "colsample_bytree": [0.5, 0.7, 0.9, 1],
-            "min_child_weight": [1, 2, 3, 4],
+            "min_child_weight": [1, 1.5, 2, 2.5, 3, 3.5, 4],
             "reg_alpha": [
                 0.0000001,
                 0.000001,
+                0.00001,
                 0.0001,
                 0.001,
                 0.01,
@@ -1586,6 +1588,7 @@ class XGBRegressorContainer(RegressorContainer):
             "reg_lambda": [
                 0.0000001,
                 0.000001,
+                0.00001,
                 0.0001,
                 0.001,
                 0.01,
