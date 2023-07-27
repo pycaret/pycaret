@@ -148,17 +148,17 @@ def get_data(
     else:
         if profile:
             _check_soft_dependencies(
-                "pandas_profiling",
+                "ydata_profiling",
                 extra="analysis",
                 severity="error",
-                install_name="pandas-profiling",
+                install_name="ydata-profiling",
             )
-            import pandas_profiling
+            import ydata_profiling
 
             # create a copy for pandas profiler
             data_for_profiling = data.copy()
 
-            pf = pandas_profiling.ProfileReport(data_for_profiling)
+            pf = ydata_profiling.ProfileReport(data_for_profiling)
             display.display(pf)
 
         else:
