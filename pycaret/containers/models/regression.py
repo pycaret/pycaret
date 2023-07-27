@@ -1519,9 +1519,9 @@ class XGBRegressorContainer(RegressorContainer):
             return
 
         from xgboost import XGBRegressor
-        
-        #If XGBoost > 2 change and add new parameters
-        xgboost_version = tuple(map(int, xgboost.__version__.split('.')))
+
+        # If XGBoost >= 2 change and add new parameters
+        xgboost_version = tuple(map(int, xgboost.__version__.split(".")))
         xgboost_2_or_higher = xgboost_version >= (2, 0, 0)
 
         args = {
@@ -1530,13 +1530,13 @@ class XGBRegressorContainer(RegressorContainer):
             "verbosity": 0,
             "booster": "gbtree",
         }
-        
+
         if xgboost_2_or_higher:
-            args["tree_method"] = "hist",
-            args["device"] = "cuda",
+            args["tree_method"] = ("hist",)
+            args["device"] = ("cuda",)
         else:
             args["tree_method"] = "gpu_hist" if experiment.gpu_param else "auto"
-            
+
         tune_args = {}
         tune_grid = {
             "learning_rate": [
