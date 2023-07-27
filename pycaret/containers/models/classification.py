@@ -1150,7 +1150,7 @@ class XGBClassifierContainer(ClassifierContainer):
             "random_state": experiment.seed,
             "n_jobs": experiment.n_jobs_param,
             "verbosity": 0,
-            "booster": "gbtree",            
+            "booster": "gbtree",
         }
         
         if xgboost_2_or_higher:
