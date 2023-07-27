@@ -3890,8 +3890,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                             data=data,
                             X=X,
                         )
-                        fig.show(renderer=renderer)
-                        self.logger.info("Visual Rendered Successfully")
+                        if not return_fig:
+                            fig.show(renderer=renderer)
+                            self.logger.info("Visual Rendered Successfully")
+                        else:
+                            self.logger.info("Visual not rendered, but will be returned from function")
                     except ValueError as exception:
                         self.logger.info(exception)
                         self.logger.info("Visual Rendered Unsuccessfully")
