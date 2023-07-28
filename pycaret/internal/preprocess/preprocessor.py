@@ -850,7 +850,9 @@ class Preprocessor:
                     "Invalid value for the strategy parameter, got "
                     f"{fix_imbalance_method}. Choose from: {', '.join(strategies)}."
                 )
-            balance_estimator = FixImbalancer(strategies[fix_imbalance_method](random_state=session_id))
+            balance_estimator = FixImbalancer(
+                strategies[fix_imbalance_method](random_state=session_id)
+            )
         elif not hasattr(fix_imbalance_method, "fit_resample"):
             raise TypeError(
                 "Invalid value for the fix_imbalance_method parameter. "
