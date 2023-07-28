@@ -869,6 +869,7 @@ class Preprocessor:
             if (
                 strategies[fix_imbalance_method].__class__
                 in METHODS_WITH_RANDOM_STATE_SUPPORT
+                and session_id is not None
             ):
                 balance_estimator = FixImbalancer(
                     strategies[fix_imbalance_method](random_state=session_id)
