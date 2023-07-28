@@ -843,6 +843,22 @@ class Preprocessor:
             smotetomek=SMOTETomek,
         )
 
+        METHODS_WITH_RANDOM_STATE_SUPPORT = [
+            "CondensedNearestNeighbour"
+            "InstanceHardnessThreshold"
+            "OneSidedSelection"
+            "RandomUnderSampler"
+            "SMOTE"
+            "SMOTENC"
+            "SMOTEN"
+            "ADASYN"
+            "BorderlineSMOTE"
+            "KMeansSMOTE"
+            "SVMSMOTE"
+            "SMOTEENN"
+            "SMOTETomek"
+        ]
+
         if isinstance(fix_imbalance_method, str):
             fix_imbalance_method = fix_imbalance_method.lower()
             if fix_imbalance_method not in strategies:
@@ -850,9 +866,15 @@ class Preprocessor:
                     "Invalid value for the strategy parameter, got "
                     f"{fix_imbalance_method}. Choose from: {', '.join(strategies)}."
                 )
-            balance_estimator = FixImbalancer(
-                strategies[fix_imbalance_method](random_state=session_id)
-            )
+            if (
+                strategies[fix_imbalance_method].__class__
+                in METHODS_WITH_RANDOM_STATE_SUPPORT
+            ):
+                balance_estimator = FixImbalancer(
+                    strategies[fix_imbalance_method](random_state=session_id)
+                )
+            else:
+                balance_estimator = FixImbalancer(strategies[fix_imbalance_method])()
         elif not hasattr(fix_imbalance_method, "fit_resample"):
             raise TypeError(
                 "Invalid value for the fix_imbalance_method parameter. "
