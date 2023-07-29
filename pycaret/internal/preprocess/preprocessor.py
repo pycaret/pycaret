@@ -875,7 +875,7 @@ class Preprocessor:
                     strategies[fix_imbalance_method](random_state=session_id)
                 )
             else:
-                balance_estimator = FixImbalancer(strategies[fix_imbalance_method])()
+                balance_estimator = FixImbalancer(strategies[fix_imbalance_method]())
         elif not hasattr(fix_imbalance_method, "fit_resample"):
             raise TypeError(
                 "Invalid value for the fix_imbalance_method parameter. "
