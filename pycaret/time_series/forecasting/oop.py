@@ -4006,8 +4006,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             * 'residuals' - Residuals Plot
 
 
-        return_fig: : bool, default = False
+        return_fig: bool, default = False
             When set to True, it returns the figure used for plotting.
+            When set to False (the default), it will print the plot, but not return it.
 
 
         return_data: bool, default = False
@@ -4041,6 +4042,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
             To display plots in Streamlit (https://www.streamlit.io/), set this to
             'streamlit'.
+
 
         data_kwargs: dict, default = None
             Dictionary of arguments passed to the data for plotting.

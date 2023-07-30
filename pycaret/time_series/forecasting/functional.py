@@ -1221,8 +1221,9 @@ def plot_model(
         * 'residuals' - Residuals Plot
 
 
-    return_fig: : bool, default = False
+    return_fig: bool, default = False
         When set to True, it returns the figure used for plotting.
+        When set to False (the default), it will print the plot, but not return it.
 
 
     return_data: bool, default = False
