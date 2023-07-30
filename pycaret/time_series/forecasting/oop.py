@@ -3857,23 +3857,26 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
             elif system:
                 if display_format == "streamlit":
-                    st.write(fig)
+                    if not return_fig:
+                        st.write(fig)
                 elif display_format == "plotly-widget":
-                    fig.update_layout(autosize=True)
-                    ipython_display(
-                        FigureWidgetResampler(
+                    if not return_fig:
+                        fig.update_layout(autosize=True)
+                        ipython_display(
+                            FigureWidgetResampler(
+                                fig,
+                                **resampler_kwargs,
+                                convert_traces_kwargs=dict(limit_to_views=True),
+                            )
+                        )
+                elif display_format == "plotly-dash":
+                    if not return_fig:
+                        fig.update_layout(autosize=True)
+                        FigureResampler(
                             fig,
                             **resampler_kwargs,
                             convert_traces_kwargs=dict(limit_to_views=True),
-                        )
-                    )
-                elif display_format == "plotly-dash":
-                    fig.update_layout(autosize=True)
-                    FigureResampler(
-                        fig,
-                        **resampler_kwargs,
-                        convert_traces_kwargs=dict(limit_to_views=True),
-                    ).show_dash(**show_dash_kwargs)
+                        ).show_dash(**show_dash_kwargs)
                 else:  # just a plain plotly-figure
                     try:
                         big_data_threshold = _resolve_dict_keys(
