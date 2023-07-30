@@ -677,7 +677,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
     def _check_and_set_seasonal_period(self) -> "TSForecastingExperiment":
         """
-        Derive the seasonal periods to use per teh following algorithm
+        Derive the seasonal periods to use per the following algorithm
         (1) Get the candidate seasonal periods
         (2) Perform seasonal checks to remove periods that do not indicate seasonality
         (3) Remove harmonics based on user settings
@@ -1178,7 +1178,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             (https://otexts.com/fpp2/seasonal-strength.html).
             NOTE: For Multiplicative, the denominator multiplies the seasonal and
             residual components instead of adding them. Rest of the calculations
-            remain the same. If seasonal decompositon fails for any reason, then
+            remain the same. If seasonal decomposition fails for any reason, then
             defaults to multiplicative seasonality.
         (4) Otherwise, seasonality_type is set to the user provided value.
 
@@ -1196,7 +1196,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         self._set_strictly_positive()
 
         # ---------------------------------------------------------------------#
-        # Override seasonality_type depending on various conditons
+        # Override seasonality_type depending on various conditions
         # ---------------------------------------------------------------------#
         if not self.seasonality_present:
             seasonality_type = None
@@ -1205,7 +1205,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             seasonality_type = "add"
         elif seasonality_type == "auto":
             if self.seasonality_present and self.strictly_positive:
-                # Try out additive and multiplicative seasonal decompostion
+                # Try out additive and multiplicative seasonal decomposition
                 # Check residuals and select the one with the least amount of variance
                 data_to_use = pd.DataFrame(
                     self._get_y_data(
@@ -1814,7 +1814,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 per FPP (https://otexts.com/fpp2/seasonal-strength.html). NOTE:
                 For Multiplicative, the denominator multiplies the seasonal and
                 residual components instead of adding them. Rest of the
-                calculations remain the same. If seasonal decompositon fails for
+                calculations remain the same. If seasonal decomposition fails for
                 any reason, then defaults to multiplicative seasonality.
             (4) Otherwise, seasonality_type is set to the user provided value.
 
@@ -1950,7 +1950,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             renderer: The renderer used to display the plotly figure. Can be any value
                 supported by Plotly (e.g. "notebook", "png", "svg", etc.). Note that certain
                 renderers (like "svg") may need additional libraries to be installed. Users
-                will have to do this manually since they don't come preinstalled wit plotly.
+                will have to do this manually since they don't come preinstalled with plotly.
                 When not provided, plots use plotly's default render when data is below a
                 certain number of points (determined by `big_data_threshold`) otherwise it
                 switches to a static "png" renderer.
