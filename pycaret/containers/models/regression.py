@@ -1520,10 +1520,6 @@ class XGBRegressorContainer(RegressorContainer):
 
         from xgboost import XGBRegressor
 
-        # If XGBoost >= 2 change and add new parameters
-        xgboost_version = tuple(map(int, xgboost.__version__.split(".")))
-        xgboost_2_or_higher = xgboost_version >= (2, 0, 0)
-
         args = {
             "random_state": experiment.seed,
             "n_jobs": experiment.n_jobs_param,
@@ -1531,9 +1527,10 @@ class XGBRegressorContainer(RegressorContainer):
             "booster": "gbtree",
         }
 
-        if xgboost_2_or_higher:
-            args["tree_method"] = ("hist",)
-            args["device"] = ("cuda",)
+        # If XGBoost >= 2 change and add new parameters
+        if version.parse(xgboost.__version__) >= version.parse("2.0.0"):
+            args["tree_method"] = "hist"
+            args["device"] = "cuda"
         else:
             args["tree_method"] = "gpu_hist" if experiment.gpu_param else "auto"
 
