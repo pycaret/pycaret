@@ -3841,11 +3841,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         # Sometimes the plot is not successful, such as decomp with RangeIndex.
         # In such cases, plotting should be bypassed.
         if fig is not None:
-            plot_name = self._available_plots[plot]
-            plot_filename = f"{plot_name}.html"
-
             # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
             if save:
+                plot_name = self._available_plots[plot]
+                plot_filename = f"{plot_name}.html"
+
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_filename)
 
@@ -3855,28 +3855,25 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 # Add file name to return object ----
                 return_obj.append(plot_filename)
 
-            elif system:
+            elif system and not return_fig:
                 if display_format == "streamlit":
-                    if not return_fig:
-                        st.write(fig)
+                    st.write(fig)
                 elif display_format == "plotly-widget":
-                    if not return_fig:
-                        fig.update_layout(autosize=True)
-                        ipython_display(
-                            FigureWidgetResampler(
-                                fig,
-                                **resampler_kwargs,
-                                convert_traces_kwargs=dict(limit_to_views=True),
-                            )
-                        )
-                elif display_format == "plotly-dash":
-                    if not return_fig:
-                        fig.update_layout(autosize=True)
-                        FigureResampler(
+                    fig.update_layout(autosize=True)
+                    ipython_display(
+                        FigureWidgetResampler(
                             fig,
                             **resampler_kwargs,
                             convert_traces_kwargs=dict(limit_to_views=True),
-                        ).show_dash(**show_dash_kwargs)
+                        )
+                    )
+                elif display_format == "plotly-dash":
+                    fig.update_layout(autosize=True)
+                    FigureResampler(
+                        fig,
+                        **resampler_kwargs,
+                        convert_traces_kwargs=dict(limit_to_views=True),
+                    ).show_dash(**show_dash_kwargs)
                 else:  # just a plain plotly-figure
                     try:
                         big_data_threshold = _resolve_dict_keys(
@@ -3893,16 +3890,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                             data=data,
                             X=X,
                         )
-                        if not return_fig:
-                            fig.show(renderer=renderer)
-                            self.logger.info("Visual Rendered Successfully")
-                        else:
-                            self.logger.info(
-                                "Visual not rendered, but will be returned from function"
-                            )
+                        fig.show(renderer=renderer)
+                        self.logger.info("Visual Rendered Successfully")
                     except ValueError as exception:
-                        self.logger.info(exception)
-                        self.logger.info("Visual Rendered Unsuccessfully")
+                        self.logger.error("Visual met error during rendering")
+                        self.logger.error(exception)
                         if verbose:
                             print(exception)
                             print(
@@ -3930,6 +3922,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                                 "\t>>> plot_model(..., fig_kwargs={'renderer': 'colab'})\n"
                                 "Refer to the docstring in `setup` for more details."
                             )
+            elif system and return_fig:
+                self.logger.info("Visual not rendered because `return_fig=True`.")
 
         # Add figure and data to return object if required ----
         if return_fig:
