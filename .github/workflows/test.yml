@@ -102,47 +102,47 @@ jobs:
       - name: Test with pytest
         run: pytest --durations=0
 
-  test_linux_3p7:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.7]
+  # test_linux_3p11:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       python-version: ["3.11"]
 
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-        # pyLDAvis 3.3.1 having an "sklearn" dependency
-        run: |
-          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
-          python -m pip install -U pip
-          python -m pip install -U pytest numpy
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Set up Python ${{ matrix.python-version }}
+  #       uses: actions/setup-python@v3
+  #       with:
+  #         python-version: ${{ matrix.python-version }}
+  #     - name: Install dependencies
+  #       # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
+  #       # pyLDAvis 3.3.1 having an "sklearn" dependency
+  #       run: |
+  #         export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
+  #         python -m pip install -U pip
+  #         python -m pip install -U pytest numpy
 
-          pip install ".[full, test]"
-          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: ${{ matrix.python-version }}"
-          python --version
-          which python
-          pip list
-      - name: Remove tests
-        run: |
-          rm tests/test_classification_tuning.py
-          rm tests/test_classification_plots.py
-          rm tests/test_regression_plots.py
-          rm tests/test_regression_tuning.py
-          rm tests/test_time_series_tune_grid.py
-          rm tests/test_time_series_tune_random.py
-          rm tests/test_time_series_plots.py
-          rm tests/test_time_series_utils_plots.py
-          rm tests/benchmarks/*.py
-      - name: Test with pytest
-        run: pytest --durations=0
+  #         pip install ".[full, test]"
+  #         if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
+  #     - name: Python version and dependency list
+  #       run: |
+  #         echo "Python version expected: ${{ matrix.python-version }}"
+  #         python --version
+  #         which python
+  #         pip list
+  #     - name: Remove tests
+  #       run: |
+  #         rm tests/test_classification_tuning.py
+  #         rm tests/test_classification_plots.py
+  #         rm tests/test_regression_plots.py
+  #         rm tests/test_regression_tuning.py
+  #         rm tests/test_time_series_tune_grid.py
+  #         rm tests/test_time_series_tune_random.py
+  #         rm tests/test_time_series_plots.py
+  #         rm tests/test_time_series_utils_plots.py
+  #         rm tests/benchmarks/*.py
+  #     - name: Test with pytest
+  #       run: pytest --durations=0
 
   test_windows:
     runs-on: windows-latest
@@ -179,40 +179,40 @@ jobs:
       - name: Test with pytest
         run: pytest --durations=0
 
-  test_windows_3p7:
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        python-version: [3.7]
+  # test_windows_3p11:
+  #   runs-on: windows-latest
+  #   strategy:
+  #     matrix:
+  #       python-version: ["3.11"]
 
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-        # pyLDAvis 3.3.1 having an "sklearn" dependency
-        run: |
-          $env:SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL = 'True'
-          python -m pip install -U pip
-          python -m pip install -U pytest numpy
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Set up Python ${{ matrix.python-version }}
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: ${{ matrix.python-version }}
+  #     - name: Install dependencies
+  #       # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
+  #       # pyLDAvis 3.3.1 having an "sklearn" dependency
+  #       run: |
+  #         $env:SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL = 'True'
+  #         python -m pip install -U pip
+  #         python -m pip install -U pytest numpy
 
-          pip install ".[full, test]"
-          pip install -r requirements-prophet.txt
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: ${{ matrix.python-version }}"
-          python --version
-          which python
-          pip list
-      - name: Remove tests
-        run: |
-          remove-item tests/* -Include @('test_clustering.py', 'test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
-          remove-item tests/benchmarks/*
-      - name: Test with pytest
-        run: pytest --durations=0
+  #         pip install ".[full, test]"
+  #         pip install -r requirements-prophet.txt
+  #     - name: Python version and dependency list
+  #       run: |
+  #         echo "Python version expected: ${{ matrix.python-version }}"
+  #         python --version
+  #         which python
+  #         pip list
+  #     - name: Remove tests
+  #       run: |
+  #         remove-item tests/* -Include @('test_clustering.py', 'test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
+  #         remove-item tests/benchmarks/*
+  #     - name: Test with pytest
+  #       run: pytest --durations=0
 
   test_plots:
     runs-on: ubuntu-latest
