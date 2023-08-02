@@ -38,7 +38,6 @@ def _get_univar_noexo_data_with_index_index():
     # Pandas 2.0.x changed pd.Int64Index to np.int64
 
     return [
-        # [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, pd.Int64Index)],
         [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, np.int64)],
         ids,
     ]
@@ -118,7 +117,6 @@ def _get_univar_exo_data_with_index_index():
     # Pandas 2.0.x changed  pd.Int64Index to np.int64
 
     return [
-        # [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, pd.Int64Index)],
         [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, np.int64)],
         ids,
     ]
