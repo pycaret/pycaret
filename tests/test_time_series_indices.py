@@ -82,7 +82,6 @@ def _get_univar_noexo_data_with_index_column():
         [
             (data1, pd.PeriodIndex),
             (data2, pd.PeriodIndex),
-            # (data3, pd.Int64Index),
             (data3, np.int64),
             (data4, pd.PeriodIndex),
         ],
@@ -170,7 +169,6 @@ def _get_univar_exo_data_with_index_column():
         [
             (data1, pd.PeriodIndex),
             (data2, pd.PeriodIndex),
-            # (data3, pd.Int64Index),
             (data3, np.int64),
             (data4, pd.PeriodIndex),
         ],
