@@ -850,7 +850,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
             # Balance the classes in the target column
             if fix_imbalance:
-                self._balance(fix_imbalance_method)
+                self._balance(fix_imbalance_method, session_id)
 
             # Power transform the data to be more Gaussian-like
             if transformation:
