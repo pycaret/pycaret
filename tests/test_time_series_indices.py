@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from pandas import Index
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 
@@ -34,7 +33,7 @@ def _get_univar_noexo_data_with_index_index():
 
     # Int64Index
     data3 = data1.copy()
-    data3.index = Index(data3.index, dtype="int64")
+    data3.index = pd.Index(data3.index, dtype="int64")
 
     ids = ["Period", "Datetime", "Int"]
 
@@ -62,7 +61,7 @@ def _get_univar_noexo_data_with_index_column():
     # Int64Index column
     data3 = data1.copy()
     data3.reset_index(drop=True, inplace=True)
-    data3.index = Index(data3.index)
+    data3.index = pd.Index(data3.index)
 
     data1.reset_index(inplace=True)
     data2.reset_index(inplace=True)
@@ -114,7 +113,7 @@ def _get_univar_exo_data_with_index_index():
 
     # Int64Index
     data3 = data1.copy()
-    data3.index = Index(data3.index, dtype="int64")
+    data3.index = pd.Index(data3.index, dtype="int64")
 
     ids = ["Period", "Datetime", "Int"]
 
@@ -149,7 +148,7 @@ def _get_univar_exo_data_with_index_column():
     # Int64Index column
     data3 = data1.copy()
     data3.reset_index(drop=True, inplace=True)
-    data3.index = Index(data3.index, dtype="int64")
+    data3.index = pd.Index(data3.index, dtype="int64")
 
     data1.reset_index(inplace=True)
     data2.reset_index(inplace=True)
