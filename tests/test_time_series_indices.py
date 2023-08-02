@@ -1,8 +1,8 @@
 import os
 from typing import Any
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pytest
 
 from pycaret.datasets import get_data
