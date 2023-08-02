@@ -2,6 +2,7 @@ import os
 from typing import Any
 
 import pandas as pd
+import numpy as np
 import pytest
 
 from pycaret.datasets import get_data
@@ -33,8 +34,12 @@ def _get_univar_noexo_data_with_index_index():
     ids = ["Period", "Datetime", "Int"]
 
     # DateTimeIndex is coerced and returned as PeriodIndex in PyCaret
+
+    # Pandas 2.0.x changed pd.Int64Index to np.int64
+
     return [
-        [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, pd.Int64Index)],
+        # [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, pd.Int64Index)],
+        [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, np.int64)],
         ids,
     ]
 
@@ -69,11 +74,16 @@ def _get_univar_noexo_data_with_index_column():
 
     # DateTimeIndex & String index column is coerced and returned as PeriodIndex
     # in PyCaret
+
+    # Pandas 2.0.x changed pd.Int64Index to np.int64
+    # (https://github.com/pandas-dev/pandas/commit/2517199dc9d6174d967683eeb6ad7fe68a76df19)
+
     return [
         [
             (data1, pd.PeriodIndex),
             (data2, pd.PeriodIndex),
-            (data3, pd.Int64Index),
+            # (data3, pd.Int64Index),
+            (data3, np.int64),
             (data4, pd.PeriodIndex),
         ],
         ids,
@@ -105,8 +115,12 @@ def _get_univar_exo_data_with_index_index():
     ids = ["Period", "Datetime", "Int"]
 
     # DateTimeIndex is coerced and returned as PeriodIndex in PyCaret
+
+    # Pandas 2.0.x changed  pd.Int64Index to np.int64
+
     return [
-        [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, pd.Int64Index)],
+        # [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, pd.Int64Index)],
+        [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, np.int64)],
         ids,
     ]
 
@@ -148,11 +162,16 @@ def _get_univar_exo_data_with_index_column():
 
     # DateTimeIndex & String index column is coerced and returned as PeriodIndex
     # in PyCaret
+
+    # Pandas 2.0.x changed pd.Int64Index to np.int64
+    # (https://github.com/pandas-dev/pandas/commit/2517199dc9d6174d967683eeb6ad7fe68a76df19)
+
     return [
         [
             (data1, pd.PeriodIndex),
             (data2, pd.PeriodIndex),
-            (data3, pd.Int64Index),
+            # (data3, pd.Int64Index),
+            (data3, np.int64),
             (data4, pd.PeriodIndex),
         ],
         ids,
