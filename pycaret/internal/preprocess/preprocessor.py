@@ -815,7 +815,7 @@ class Preprocessor:
 
         self.pipeline.steps.append(("remove_outliers", outliers))
 
-    def _balance(self, fix_imbalance_method):
+    def _balance(self, fix_imbalance_method, session_id):
         """Balance the classes in the target column."""
         self.logger.info("Set up imbalanced handling.")
 
@@ -850,7 +850,12 @@ class Preprocessor:
                     "Invalid value for the strategy parameter, got "
                     f"{fix_imbalance_method}. Choose from: {', '.join(strategies)}."
                 )
-            balance_estimator = FixImbalancer(strategies[fix_imbalance_method]())
+            try:
+                balance_estimator = FixImbalancer(
+                    strategies[fix_imbalance_method](random_state=session_id)
+                )
+            except TypeError:
+                balance_estimator = FixImbalancer(strategies[fix_imbalance_method]())
         elif not hasattr(fix_imbalance_method, "fit_resample"):
             raise TypeError(
                 "Invalid value for the fix_imbalance_method parameter. "
