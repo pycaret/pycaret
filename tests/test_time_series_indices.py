@@ -2,10 +2,10 @@
 # Pandas 2.0.x changed pd.Int64Index to np.int64
 # (https://github.com/pandas-dev/pandas/commit/2517199dc9d6174d967683eeb6ad7fe68a76df19)
 
+import logging
 import os
 from typing import Any
 
-import logging
 import numpy as np
 import pandas as pd
 import pytest
