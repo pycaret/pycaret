@@ -402,7 +402,7 @@ def setup(
             per FPP (https://otexts.com/fpp2/seasonal-strength.html). NOTE:
             For Multiplicative, the denominator multiplies the seasonal and
             residual components instead of adding them. Rest of the
-            calculations remain the same. If seasonal decompositon fails for
+            calculations remain the same. If seasonal decomposition fails for
             any reason, then defaults to multiplicative seasonality.
         (4) Otherwise, seasonality_type is set to the user provided value.
 
@@ -532,7 +532,7 @@ def setup(
         renderer: The renderer used to display the plotly figure. Can be any value
             supported by Plotly (e.g. "notebook", "png", "svg", etc.). Note that certain
             renderers (like "svg") may need additional libraries to be installed. Users
-            will have to do this manually since they don't come preinstalled wit plotly.
+            will have to do this manually since they don't come preinstalled with plotly.
             When not provided, plots use plotly's default render when data is below a
             certain number of points (determined by `big_data_threshold`) otherwise it
             switches to a static "png" renderer.
@@ -1221,8 +1221,9 @@ def plot_model(
         * 'residuals' - Residuals Plot
 
 
-    return_fig: : bool, default = False
+    return_fig: bool, default = False
         When set to True, it returns the figure used for plotting.
+        When set to False (the default), it will print the plot, but not return it.
 
 
     return_data: bool, default = False
