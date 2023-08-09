@@ -677,7 +677,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
     def _check_and_set_seasonal_period(self) -> "TSForecastingExperiment":
         """
-        Derive the seasonal periods to use per teh following algorithm
+        Derive the seasonal periods to use per the following algorithm
         (1) Get the candidate seasonal periods
         (2) Perform seasonal checks to remove periods that do not indicate seasonality
         (3) Remove harmonics based on user settings
@@ -1178,7 +1178,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             (https://otexts.com/fpp2/seasonal-strength.html).
             NOTE: For Multiplicative, the denominator multiplies the seasonal and
             residual components instead of adding them. Rest of the calculations
-            remain the same. If seasonal decompositon fails for any reason, then
+            remain the same. If seasonal decomposition fails for any reason, then
             defaults to multiplicative seasonality.
         (4) Otherwise, seasonality_type is set to the user provided value.
 
@@ -1196,7 +1196,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         self._set_strictly_positive()
 
         # ---------------------------------------------------------------------#
-        # Override seasonality_type depending on various conditons
+        # Override seasonality_type depending on various conditions
         # ---------------------------------------------------------------------#
         if not self.seasonality_present:
             seasonality_type = None
@@ -1205,7 +1205,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             seasonality_type = "add"
         elif seasonality_type == "auto":
             if self.seasonality_present and self.strictly_positive:
-                # Try out additive and multiplicative seasonal decompostion
+                # Try out additive and multiplicative seasonal decomposition
                 # Check residuals and select the one with the least amount of variance
                 data_to_use = pd.DataFrame(
                     self._get_y_data(
@@ -1814,7 +1814,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 per FPP (https://otexts.com/fpp2/seasonal-strength.html). NOTE:
                 For Multiplicative, the denominator multiplies the seasonal and
                 residual components instead of adding them. Rest of the
-                calculations remain the same. If seasonal decompositon fails for
+                calculations remain the same. If seasonal decomposition fails for
                 any reason, then defaults to multiplicative seasonality.
             (4) Otherwise, seasonality_type is set to the user provided value.
 
@@ -1950,7 +1950,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             renderer: The renderer used to display the plotly figure. Can be any value
                 supported by Plotly (e.g. "notebook", "png", "svg", etc.). Note that certain
                 renderers (like "svg") may need additional libraries to be installed. Users
-                will have to do this manually since they don't come preinstalled wit plotly.
+                will have to do this manually since they don't come preinstalled with plotly.
                 When not provided, plots use plotly's default render when data is below a
                 certain number of points (determined by `big_data_threshold`) otherwise it
                 switches to a static "png" renderer.
@@ -3841,11 +3841,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         # Sometimes the plot is not successful, such as decomp with RangeIndex.
         # In such cases, plotting should be bypassed.
         if fig is not None:
-            plot_name = self._available_plots[plot]
-            plot_filename = f"{plot_name}.html"
-
             # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
             if save:
+                plot_name = self._available_plots[plot]
+                plot_filename = f"{plot_name}.html"
+
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_filename)
 
@@ -3855,7 +3855,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 # Add file name to return object ----
                 return_obj.append(plot_filename)
 
-            elif system:
+            elif system and not return_fig:
                 if display_format == "streamlit":
                     st.write(fig)
                 elif display_format == "plotly-widget":
@@ -3893,8 +3893,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                         fig.show(renderer=renderer)
                         self.logger.info("Visual Rendered Successfully")
                     except ValueError as exception:
-                        self.logger.info(exception)
-                        self.logger.info("Visual Rendered Unsuccessfully")
+                        self.logger.error("Visual met error during rendering")
+                        self.logger.error(exception)
                         if verbose:
                             print(exception)
                             print(
@@ -3922,6 +3922,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                                 "\t>>> plot_model(..., fig_kwargs={'renderer': 'colab'})\n"
                                 "Refer to the docstring in `setup` for more details."
                             )
+            elif system and return_fig:
+                self.logger.info("Visual not rendered because `return_fig=True`.")
 
         # Add figure and data to return object if required ----
         if return_fig:
@@ -3998,8 +4000,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             * 'residuals' - Residuals Plot
 
 
-        return_fig: : bool, default = False
+        return_fig: bool, default = False
             When set to True, it returns the figure used for plotting.
+            When set to False (the default), it will print the plot, but not return it.
 
 
         return_data: bool, default = False
@@ -4033,6 +4036,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
             To display plots in Streamlit (https://www.streamlit.io/), set this to
             'streamlit'.
+
 
         data_kwargs: dict, default = None
             Dictionary of arguments passed to the data for plotting.
