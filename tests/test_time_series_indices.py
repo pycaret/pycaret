@@ -1,8 +1,3 @@
-# Todo: solve assertion problems
-# Pandas 2.0.x changed pd.Int64Index to np.int64
-# (https://github.com/pandas-dev/pandas/commit/2517199dc9d6174d967683eeb6ad7fe68a76df19)
-
-import logging
 import os
 from typing import Any
 
@@ -34,14 +29,11 @@ def _get_univar_noexo_data_with_index_index():
 
     # Int64Index
     data3 = data1.copy()
-    data3.index = pd.Index(data3.index, dtype=np.int64)
+    data3.reset_index(drop=True, inplace=True)
 
     ids = ["Period", "Datetime", "Int"]
 
     # DateTimeIndex is coerced and returned as PeriodIndex in PyCaret
-
-    # Pandas 2.0.x changed pd.Int64Index to np.int64
-
     return [
         [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, np.int64)],
         ids,
@@ -62,7 +54,6 @@ def _get_univar_noexo_data_with_index_column():
     # Int64Index column
     data3 = data1.copy()
     data3.reset_index(drop=True, inplace=True)
-    data3.index = pd.Index(data3.index)
 
     data1.reset_index(inplace=True)
     data2.reset_index(inplace=True)
@@ -79,10 +70,6 @@ def _get_univar_noexo_data_with_index_column():
 
     # DateTimeIndex & String index column is coerced and returned as PeriodIndex
     # in PyCaret
-
-    # Pandas 2.0.x changed pd.Int64Index to np.int64
-    # (https://github.com/pandas-dev/pandas/commit/2517199dc9d6174d967683eeb6ad7fe68a76df19)
-
     return [
         [
             (data1, pd.PeriodIndex),
@@ -114,14 +101,11 @@ def _get_univar_exo_data_with_index_index():
 
     # Int64Index
     data3 = data1.copy()
-    data3.index = pd.Index(data3.index, dtype=np.int64)
+    data3.reset_index(drop=True, inplace=True)
 
     ids = ["Period", "Datetime", "Int"]
 
     # DateTimeIndex is coerced and returned as PeriodIndex in PyCaret
-
-    # Pandas 2.0.x changed  pd.Int64Index to np.int64
-
     return [
         [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, np.int64)],
         ids,
@@ -149,7 +133,6 @@ def _get_univar_exo_data_with_index_column():
     # Int64Index column
     data3 = data1.copy()
     data3.reset_index(drop=True, inplace=True)
-    data3.index = pd.Index(data3.index, dtype=np.int64)
 
     data1.reset_index(inplace=True)
     data2.reset_index(inplace=True)
@@ -166,10 +149,6 @@ def _get_univar_exo_data_with_index_column():
 
     # DateTimeIndex & String index column is coerced and returned as PeriodIndex
     # in PyCaret
-
-    # Pandas 2.0.x changed pd.Int64Index to np.int64
-    # (https://github.com/pandas-dev/pandas/commit/2517199dc9d6174d967683eeb6ad7fe68a76df19)
-
     return [
         [
             (data1, pd.PeriodIndex),
@@ -198,18 +177,17 @@ def _check_model_creation_and_indices(
         The model to create using the experiment provided
     expected_return_index_type: Any
         The expected return type of the index of the predictions dataframe
-    """
 
     if model in exp.models().index:
         model = exp.create_model(model)
         preds = exp.predict_model(model)
-        # ======= todo: remove logger variable and try & exception. this is an hack to pass tests ======
-        logger = logging.getLogger(__name__)
-        try:
-            assert isinstance(preds.index, expected_return_index_type)
-        except Exception as e:
-            logger.exception(e)
-        # ======= end of exception to pass tests =======================================================
+        assert isinstance(preds.index, expected_return_index_type)
+        exp.plot_model(model)
+    """
+    if model in exp.models().index:
+        model = exp.create_model(model)
+        preds = exp.predict_model(model)
+        assert isinstance(preds.index, expected_return_index_type)
         exp.plot_model(model)
 
 
