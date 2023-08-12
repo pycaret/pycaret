@@ -1,10 +1,10 @@
 import os
+import warnings
 from typing import Any
 
 import numpy as np
 import pandas as pd
 import pytest
-import warnings
 
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
@@ -204,7 +204,7 @@ def _check_model_creation_and_indices(
             warnings.warn(
                 f"Model: {model}"
                 f"Expected index type: {expected_return_index_type}"
-                f"Actual index type: {(preds.index.dtype)}"
+                f"Actual index type: {preds.index.dtype}"
             )
 
 
