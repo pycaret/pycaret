@@ -23,7 +23,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 def setup(
     data: Optional[DATAFRAME_LIKE] = None,
     data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
-    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = True,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -75,7 +75,6 @@ def setup(
     profile: bool = False,
     profile_kwargs: Optional[Dict[str, Any]] = None,
 ):
-
     """
 
     This function initializes the training environment and creates the transformation
@@ -106,7 +105,7 @@ def setup(
         ``data_func`` must be set.
 
 
-    index: bool, int, str or sequence, default = False
+    index: bool, int, str or sequence, default = True
         Handle indices in the `data` dataframe.
             - If False: Reset to RangeIndex.
             - If True: Keep the provided index.
@@ -538,7 +537,6 @@ def create_model(
     engine: Optional[str] = None,
     **kwargs,
 ):
-
     """
     This function trains and evaluates the performance of a given model.
     Metrics evaluated can be accessed using the ``get_metrics`` function.
@@ -648,7 +646,6 @@ def create_model(
 def assign_model(
     model, transformation: bool = False, verbose: bool = True
 ) -> pd.DataFrame:
-
     """
     This function assigns cluster labels to the dataset for a given model.
 
@@ -696,7 +693,6 @@ def plot_model(
     save: bool = False,
     display_format: Optional[str] = None,
 ) -> Optional[str]:
-
     """
     This function analyzes the performance of a trained model.
 
@@ -773,7 +769,6 @@ def evaluate_model(
     feature: Optional[str] = None,
     fit_kwargs: Optional[dict] = None,
 ):
-
     """
     This function displays a user interface for analyzing performance of a trained
     model. It calls the ``plot_model`` function internally.
@@ -821,7 +816,6 @@ def evaluate_model(
 
 # not using check_if_global_is_not_none on purpose
 def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
-
     """
     This function generates cluster labels using a trained model.
 
@@ -967,7 +961,6 @@ def deploy_model(
 def save_model(
     model, model_name: str, model_only: bool = False, verbose: bool = True, **kwargs
 ):
-
     """
     This function saves the transformation pipeline and trained model object
     into the current working directory as a pickle file for later use.
@@ -980,7 +973,7 @@ def save_model(
     >>> from pycaret.clustering import *
     >>> exp_name = setup(data = jewellery)
     >>> kmeans = create_model('kmeans')
-    >>> save_model(lr, 'saved_kmeans_model')
+    >>> save_model(kmeans, 'saved_kmeans_model')
 
 
     model: scikit-learn compatible object
@@ -1025,7 +1018,6 @@ def load_model(
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,
 ):
-
     """
     This function loads a previously saved pipeline.
 
@@ -1100,7 +1092,6 @@ def pull(pop: bool = False) -> pd.DataFrame:
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def models(internal: bool = False, raise_errors: bool = True) -> pd.DataFrame:
-
     """
     Returns table of models available in the model library.
 
@@ -1137,7 +1128,6 @@ def get_metrics(
     include_custom: bool = True,
     raise_errors: bool = True,
 ) -> pd.DataFrame:
-
     """
     Returns table of metrics available.
 
@@ -1268,7 +1258,6 @@ def remove_metric(name_or_id: str):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
-
     """
     Returns a table of experiment logs. Only works when ``log_experiment``
     is True when initializing the ``setup`` function.
@@ -1302,7 +1291,6 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_config(variable: Optional[str] = None):
-
     """
     This function is used to access global environment variables.
 
@@ -1329,7 +1317,6 @@ def get_config(variable: Optional[str] = None):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def set_config(variable: str, value):
-
     """
     This function is used to reset global environment variables.
 

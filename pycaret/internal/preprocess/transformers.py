@@ -3,11 +3,12 @@
 
 
 import re
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from inspect import signature
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 from scipy import stats
 from sklearn.base import BaseEstimator, TransformerMixin, clone
 from sklearn.covariance import EllipticEnvelope
@@ -81,7 +82,15 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
         # If columns were added or removed
         temp_cols = []
         for i, col in enumerate(array.T, start=2):
-            mask = df.apply(lambda c: np.array_equal(c, col, equal_nan=True))
+            # equal_nan=True fails for non-numeric arrays
+            mask = df.apply(
+                lambda c: np.array_equal(
+                    c,
+                    col,
+                    equal_nan=is_numeric_dtype(c)
+                    and np.issubdtype(col.dtype, np.number),
+                )
+            )
             if any(mask) and mask[mask].index.values[0] not in temp_cols:
                 temp_cols.append(mask[mask].index.values[0])
             else:
@@ -133,23 +142,28 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
             )
 
         # Define new column order
-        columns = []
+        # Use OrderedDict as ordered set (only keys matter)
+        # We want a set to avoid duplicate column names, which can happen
+        # if we have eg. COL_A and COL_A_2 encoded using OHE
+        columns = OrderedDict()
         for col in original_df:
             if col in df or col not in self._include:
-                columns.append(col)
+                columns[col] = None
 
             # Add all derivative columns: cols that originate from another
             # and start with its progenitor name, e.g. one-hot encoded columns
-            columns.extend(
+            columns.update(
                 [
-                    c
+                    (c, None)
                     for c in df.columns
                     if c.startswith(f"{col}_") and c not in original_df
                 ]
             )
 
         # Add remaining new columns (non-derivatives)
-        columns.extend([col for col in df if col not in columns])
+        columns.update([(col, None) for col in df if col not in columns])
+
+        columns = list(columns.keys())
 
         # Merge the new and old datasets keeping the newest columns
         new_df = df.merge(
@@ -167,14 +181,15 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
         """Convert to df and set correct column names and order."""
         # Convert to pandas and assign proper column names
         if not isinstance(out, pd.DataFrame):
-            if hasattr(self.transformer, "get_feature_names"):
-                columns = self.transformer.get_feature_names()
-            elif hasattr(self.transformer, "get_feature_names_out"):
+            if hasattr(self.transformer, "get_feature_names_out"):
                 try:  # Fails for some estimators in Python 3.7
                     # TODO: Remove try after dropping support of Python 3.7
                     columns = self.transformer.get_feature_names_out()
                 except AttributeError:
                     columns = self._name_cols(out, X)
+            elif hasattr(self.transformer, "get_feature_names"):
+                # Some estimators have legacy method, e.g. category_encoders
+                columns = self.transformer.get_feature_names()
             else:
                 columns = self._name_cols(out, X)
 
@@ -188,11 +203,13 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
 
     def fit(self, X=None, y=None, **fit_params):
         # Save the incoming feature names
+        self.target_name_ = None
         feature_names_in = []
         if hasattr(X, "columns"):
             feature_names_in += list(X.columns)
         if hasattr(y, "name"):
             feature_names_in += [y.name]
+            self.target_name_ = y.name
         if feature_names_in:
             self._feature_names_in = feature_names_in
 
@@ -218,7 +235,7 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
 
     def transform(self, X=None, y=None):
         X = to_df(X, index=getattr(y, "index", None))
-        y = to_series(y, index=getattr(X, "index", None))
+        y = to_series(y, index=getattr(X, "index", None), name=self.target_name_)
 
         args = []
         transform_params = signature(self.transformer.transform).parameters
@@ -258,7 +275,7 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
 
 class TransformerWrapperWithInverse(TransformerWrapper):
     def inverse_transform(self, y):
-        y = to_series(y, index=getattr(y, "index", None))
+        y = to_series(y, index=getattr(y, "index", None), name=self.target_name_)
         output = self.transformer.inverse_transform(y)
         return to_series(output, index=y.index, name=y.name)
 
@@ -322,29 +339,31 @@ class DropImputer(BaseEstimator, TransformerMixin):
 class EmbedTextFeatures(BaseEstimator, TransformerMixin):
     """Embed text features to an array representation."""
 
-    def __init__(self, method="tf-idf", **kwargs):
+    def __init__(self, method="tf-idf", kwargs=None):
         self.method = method
         self.kwargs = kwargs
-        self._estimators = {}
 
     def fit(self, X, y=None):
+        self.estimators_ = {}
+
+        kwargs = self.kwargs or {}
         if self.method.lower() == "bow":
-            estimator = CountVectorizer(**self.kwargs)
+            estimator = CountVectorizer(**kwargs)
         else:
-            estimator = TfidfVectorizer(**self.kwargs)
+            estimator = TfidfVectorizer(**kwargs)
 
         # Fit every text column in a separate estimator
         for col in X:
-            self._estimators[col] = clone(estimator).fit(X[col])
+            self.estimators_[col] = clone(estimator).fit(X[col])
 
         return self
 
     def transform(self, X, y=None):
         for col in X:
-            data = self._estimators[col].transform(X[col]).toarray()
+            data = self.estimators_[col].transform(X[col]).toarray()
             columns = [
                 f"{col}_{word}"
-                for word in self._estimators[col].get_feature_names_out()
+                for word in self.estimators_[col].get_feature_names_out()
             ]
 
             # Merge the new columns with the dataset
@@ -365,20 +384,20 @@ class RareCategoryGrouping(BaseEstimator, TransformerMixin):
     def __init__(self, rare_to_value, value="rare"):
         self.rare_to_value = rare_to_value
         self.value = value
-        self._to_other = defaultdict(list)
 
     def fit(self, X, y=None):
+        self.to_other_ = defaultdict(list)
         for name, column in X.items():
             for category, count in column.value_counts().items():
                 if count < self.rare_to_value * len(X):
-                    self._to_other[name].append(category)
+                    self.to_other_[name].append(category)
 
         return self
 
     def transform(self, X, y=None):
         for name, column in X.items():
-            if self._to_other[name]:
-                X[name] = column.replace(self._to_other[name], self.value)
+            if self.to_other_[name]:
+                X[name] = column.replace(self.to_other_[name], self.value)
 
         return X
 
@@ -391,31 +410,28 @@ class GroupFeatures(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, group_features, group_names=None):
+    def __init__(self, group_features, drop_groups=False):
         self.group_features = group_features
-        self.group_names = group_names
+        self.drop_groups = drop_groups
 
     def fit(self, X, y=None):
         return self
 
     def transform(self, X, y=None):
-        if not self.group_names:
-            self.group_names = [
-                f"group_{i}" for i in range(1, len(self.group_features) + 1)
-            ]
-
-        for name, group in zip(self.group_names, self.group_features):
+        for name, group in self.group_features.items():
             # Drop columns that are not in the dataframe (can be excluded)
-            group = [g for g in group if g in X]
+            group_df = X[[g for g in group if g in X]]
 
-            group_df = X[group]
-            X[f"min({name})"] = group_df.apply(np.min, axis=1)
-            X[f"max({name})"] = group_df.apply(np.max, axis=1)
-            X[f"mean({name})"] = group_df.apply(np.mean, axis=1)
-            X[f"std({name})"] = group_df.apply(np.std, axis=1)
-            X[f"median({name})"] = group_df.apply(np.median, axis=1)
-            X[f"mode({name})"] = stats.mode(group_df, axis=1)[0]
-            X = X.drop(group, axis=1)
+            if not group_df.empty:
+                X[f"min({name})"] = group_df.apply(np.min, axis=1)
+                X[f"max({name})"] = group_df.apply(np.max, axis=1)
+                X[f"mean({name})"] = group_df.apply(np.mean, axis=1)
+                X[f"std({name})"] = group_df.apply(np.std, axis=1)
+                X[f"median({name})"] = group_df.apply(np.median, axis=1)
+                X[f"mode({name})"] = stats.mode(group_df, axis=1)[0]
+
+            if self.drop_groups:
+                X = X.drop(group, axis=1)
 
         return X
 
@@ -425,7 +441,6 @@ class RemoveMulticollinearity(BaseEstimator, TransformerMixin):
 
     def __init__(self, threshold=1):
         self.threshold = threshold
-        self._drop = None
 
     def fit(self, X, y=None):
         # Get the Pearson correlation coefficient matrix
@@ -436,7 +451,7 @@ class RemoveMulticollinearity(BaseEstimator, TransformerMixin):
             corr_matrix = data.corr()
             corr_X, corr_y = corr_matrix.iloc[:-1, :-1], corr_matrix.iloc[:-1, -1]
 
-        self._drop = []
+        self.drop_ = []
         for col in corr_X:
             # Select columns that are corr
             corr = corr_X[col][corr_X[col] >= self.threshold]
@@ -445,16 +460,16 @@ class RemoveMulticollinearity(BaseEstimator, TransformerMixin):
             if len(corr) > 1:
                 if y is None:
                     # Drop all but the first one
-                    self._drop.extend(list(corr[1:].index))
+                    self.drop_.extend(list(corr[1:].index))
                 else:
                     # Keep feature with the highest correlation with y
                     keep = corr_y[corr.index].idxmax()
-                    self._drop.extend(list(corr.index.drop(keep)))
+                    self.drop_.extend(list(corr.index.drop(keep)))
 
         return self
 
     def transform(self, X):
-        return X.drop(set(self._drop), axis=1)
+        return X.drop(set(self.drop_), axis=1)
 
 
 class RemoveOutliers(BaseEstimator, TransformerMixin):

@@ -6,9 +6,9 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 from category_encoders.basen import BaseNEncoder
-from category_encoders.leave_one_out import LeaveOneOutEncoder
 from category_encoders.one_hot import OneHotEncoder
 from category_encoders.ordinal import OrdinalEncoder
+from category_encoders.target_encoder import TargetEncoder
 from imblearn.combine import SMOTEENN, SMOTETomek
 from imblearn.over_sampling import (
     ADASYN,
@@ -61,9 +61,11 @@ from sklearn.preprocessing import (
     StandardScaler,
 )
 
-from pycaret.containers.models import (
-    get_all_class_model_containers,
-    get_all_reg_model_containers,
+from pycaret.containers.models.classification import (
+    get_all_model_containers as get_all_class_model_containers,
+)
+from pycaret.containers.models.regression import (
+    get_all_model_containers as get_all_reg_model_containers,
 )
 from pycaret.internal.preprocess.iterative_imputer import IterativeImputer
 from pycaret.internal.preprocess.transformers import (
@@ -119,6 +121,10 @@ class Preprocessor:
         # Make copy to not overwrite mutable arguments
         X = to_df(deepcopy(X))
 
+        # No duplicate column names are allowed
+        if len(set(X.columns)) != len(X.columns):
+            raise ValueError("Duplicate column names found in X.")
+
         # Prepare target column
         if isinstance(y, (list, tuple, np.ndarray, pd.Series)):
             if not isinstance(y, pd.Series):
@@ -172,7 +178,7 @@ class Preprocessor:
         target = df.columns[-1]
 
         if getattr(self, "index", True) is True:  # True gets caught by isinstance(int)
-            return df
+            pass
         elif self.index is False:
             df = df.reset_index(drop=True)
         elif isinstance(self.index, int):
@@ -196,6 +202,12 @@ class Preprocessor:
             raise ValueError(
                 "Invalid value for the index parameter. The index column "
                 f"can not be the same as the target column, got {target}."
+            )
+
+        if df.index.duplicated().any():
+            raise ValueError(
+                "Invalid value for the index parameter. There are duplicate indices "
+                "in the dataset. Use index=False to reset the index to RangeIndex."
             )
 
         return df
@@ -280,7 +292,11 @@ class Preprocessor:
             check_features_exist(numeric_features, self.X)
             self._fxs["Numeric"] = numeric_features
         else:
-            self._fxs["Numeric"] = list(self.X.select_dtypes(include="number").columns)
+            self._fxs["Numeric"] = [
+                col
+                for col in self.X.select_dtypes(include="number").columns
+                if col not in (categorical_features or [])
+            ]
 
         # Date features
         if date_features:
@@ -673,6 +689,7 @@ class Preprocessor:
             if len(one_hot_cols) > 0:
                 onehot_estimator = TransformerWrapper(
                     transformer=OneHotEncoder(
+                        cols=one_hot_cols,
                         use_cat_names=True,
                         handle_missing="return_nan",
                         handle_unknown="value",
@@ -692,10 +709,9 @@ class Preprocessor:
                             handle_unknown="value",
                         )
                     else:
-                        encoding_method = LeaveOneOutEncoder(
+                        encoding_method = TargetEncoder(
                             handle_missing="return_nan",
                             handle_unknown="value",
-                            random_state=self.seed,
                         )
 
                 rest_estimator = TransformerWrapper(
@@ -737,27 +753,12 @@ class Preprocessor:
 
         self.pipeline.steps.append(("low_variance", variance_estimator))
 
-    def _group_features(self, group_features, group_names):
+    def _group_features(self, group_features, drop_groups):
         """Get statistical properties of a group of features."""
         self.logger.info("Set up feature grouping.")
 
-        # Convert a single group to sequence
-        if np.array(group_features).ndim == 1:
-            group_features = [group_features]
-
-        if group_names:
-            if isinstance(group_names, str):
-                group_names = [group_names]
-
-            if len(group_names) != len(group_features):
-                raise ValueError(
-                    "Invalid value for the group_names parameter. Length "
-                    f"({len(group_names)}) does not match with length of "
-                    f"group_features ({len(group_features)})."
-                )
-
         grouping_estimator = TransformerWrapper(
-            transformer=GroupFeatures(group_features, group_names),
+            transformer=GroupFeatures(group_features, drop_groups),
             exclude=self._fxs["Keep"],
         )
 
@@ -808,12 +809,13 @@ class Preprocessor:
             RemoveOutliers(
                 method=outliers_method,
                 threshold=outliers_threshold,
+                random_state=self.seed,
             ),
         )
 
         self.pipeline.steps.append(("remove_outliers", outliers))
 
-    def _balance(self, fix_imbalance_method):
+    def _balance(self, fix_imbalance_method, session_id):
         """Balance the classes in the target column."""
         self.logger.info("Set up imbalanced handling.")
 
@@ -848,7 +850,12 @@ class Preprocessor:
                     "Invalid value for the strategy parameter, got "
                     f"{fix_imbalance_method}. Choose from: {', '.join(strategies)}."
                 )
-            balance_estimator = FixImbalancer(strategies[fix_imbalance_method]())
+            try:
+                balance_estimator = FixImbalancer(
+                    strategies[fix_imbalance_method](random_state=session_id)
+                )
+            except TypeError:
+                balance_estimator = FixImbalancer(strategies[fix_imbalance_method]())
         elif not hasattr(fix_imbalance_method, "fit_resample"):
             raise TypeError(
                 "Invalid value for the fix_imbalance_method parameter. "
@@ -954,6 +961,8 @@ class Preprocessor:
                 "Invalid value for the feature_selection_estimator parameter. "
                 "The provided estimator does not adhere to sklearn's API."
             )
+        else:
+            fs_estimator = feature_selection_estimator
 
         if 0 < n_features_to_select < 1:
             n_features_to_select = int(n_features_to_select * self.X.shape[1])

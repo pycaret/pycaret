@@ -1,5 +1,6 @@
 import functools
 import inspect
+import traceback
 import warnings
 from collections.abc import Mapping
 from copy import deepcopy
@@ -111,7 +112,7 @@ def to_df(data, index=None, columns=None, dtypes=None):
     return data
 
 
-def to_series(data, index=None, name="target"):
+def to_series(data, index=None, name=None):
     """Convert a column to pd.Series.
 
     Parameters
@@ -122,8 +123,8 @@ def to_series(data, index=None, name="target"):
     index: sequence or Index, optional (default=None)
         Values for the indices.
 
-    name: string, optional (default="target")
-        Name of the target column.
+    name: string, optional (default=None)
+        Name of the target column. If None, defaults to "target".
 
     Returns
     -------
@@ -131,6 +132,7 @@ def to_series(data, index=None, name="target"):
         Transformed series.
 
     """
+    name = name or "target"
     if data is not None and not isinstance(data, pd.Series):
         if isinstance(data, pd.DataFrame):
             try:
@@ -198,7 +200,6 @@ def variable_return(X, y):
 
 
 def get_config(variable: str, globals_d: dict):
-
     """
     This function is used to access global environment variables.
 
@@ -239,7 +240,6 @@ def get_config(variable: str, globals_d: dict):
 
 
 def set_config(variable: str, value, globals_d: dict):
-
     """
     This function is used to reset global environment variables.
 
@@ -415,7 +415,7 @@ def get_model_name(
                     e = params["estimator"]
                 else:
                     break
-        if e is None:
+        if e is None or isinstance(e, str):
             e = old_e
         model_id = get_model_id(e, all_models)
 
@@ -498,7 +498,6 @@ def calculate_unsupervised_metrics(
     ground_truth: Optional[Any] = None,
     score_dict: Optional[Dict[str, np.array]] = None,
 ) -> Dict[str, np.array]:
-
     score_dict = []
 
     for k, v in metrics.items():
@@ -529,6 +528,7 @@ def _calculate_unsupervised_metric(
         try:
             calculated_metric = score_func(target, labels, **container.args)
         except Exception:
+            warnings.warn(traceback.format_exc())
             calculated_metric = 0
 
     return (display_name, calculated_metric)
@@ -547,7 +547,6 @@ def calculate_metrics(
     weights: Optional[list] = None,
     **additional_kwargs,
 ) -> Dict[str, np.array]:
-
     score_dict = []
 
     for k, v in metrics.items():
@@ -583,9 +582,11 @@ def _calculate_metric(
     try:
         calculated_metric = score_func(y_test, target, sample_weight=weights, **kwargs)
     except Exception:
+
         try:
             calculated_metric = score_func(y_test, target, **kwargs)
         except Exception:
+            warnings.warn(traceback.format_exc())
             calculated_metric = 0
 
     return display_name, calculated_metric
@@ -1073,7 +1074,6 @@ def check_metric(
     round: int = 4,
     train: Optional[pd.Series] = None,
 ):
-
     """
     Function to evaluate classification, regression and timeseries metrics.
 
@@ -1102,10 +1102,14 @@ def check_metric(
         float
 
     """
-    from pycaret.containers.metrics import (
-        get_all_class_metric_containers,
-        get_all_reg_metric_containers,
-        get_all_ts_metric_containers,
+    from pycaret.containers.metrics.classification import (
+        get_all_metric_containers as get_all_class_metric_containers,
+    )
+    from pycaret.containers.metrics.regression import (
+        get_all_metric_containers as get_all_reg_metric_containers,
+    )
+    from pycaret.containers.metrics.time_series import (
+        get_all_metric_containers as get_all_ts_metric_containers,
     )
 
     globals_dict = {"y": prediction}
@@ -1176,7 +1180,6 @@ def enable_colab():
 
 
 def get_system_logs():
-
     """
     Read and print 'logs.log' file from current active directory
     """

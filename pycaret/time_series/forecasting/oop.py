@@ -25,11 +25,12 @@ from sktime.forecasting.model_selection import (
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
 from sktime.utils.seasonality import autocorrelation_seasonality_test
+from statsmodels.tsa.seasonal import seasonal_decompose
 
-from pycaret.containers.metrics import get_all_ts_metric_containers
-from pycaret.containers.models import get_all_ts_model_containers
+from pycaret.containers.metrics.time_series import get_all_metric_containers
 from pycaret.containers.models.time_series import (
     ALL_ALLOWED_ENGINES,
+    get_all_model_containers,
     get_container_default_engines,
 )
 from pycaret.internal.display import CommonDisplay
@@ -186,6 +187,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
             ["Splits used for hyperparameters", self.hyperparameter_split],
+            ["User Defined Seasonal Period(s)", self.seasonal_period],
+            ["Ignore Seasonality Test", self.ignore_seasonality_test],
             ["Seasonality Detection Algo", self.sp_detection],
             ["Max Period to Consider", self.max_sp_to_consider],
             ["Seasonal Period(s) Tested", self.candidate_sps],
@@ -200,6 +203,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             ["All Seasonalities to Use", self.all_sps_to_use],
             ["Primary Seasonality", self.primary_sp_to_use],
             ["Seasonality Present", self.seasonality_present],
+            ["Seasonality Type", self.seasonality_type],
             ["Target Strictly Positive", self.strictly_positive],
             ["Target White Noise", self.white_noise],
             ["Recommended d", self.lowercase_d],
@@ -263,14 +267,12 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in get_all_ts_model_containers(
+            for k, v in get_all_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = get_all_ts_model_containers(
-            self, raise_errors=raise_errors
-        )
+        all_models_internal = get_all_model_containers(self, raise_errors=raise_errors)
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
@@ -286,7 +288,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         dict
             [description]
         """
-        return get_all_ts_metric_containers(self.variables, raise_errors=raise_errors)
+        return get_all_metric_containers(self.variables, raise_errors=raise_errors)
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["forecast", "residuals", "diagnostics"]
@@ -577,6 +579,10 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                     "\n>>> import numpy as np"
                     "\n>>> idx = pd.period_range(min(data.index), max(data.index))"
                     "\n>>> data = data.reindex(idx, fill_value=np.nan)"
+                    "\n\nAlternately, you can use this utility function:"
+                    "\n>>> from pycaret.utils.time_series import clean_time_index"
+                    ">>> # Provide the right frequency argument and index column name if necessary"
+                    ">>> cleaned = clean_time_index(data=data, index_col=index_col, freq=freq)"
                 )
 
         # Save index type so that we can disable certain models ----
@@ -671,7 +677,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
     def _check_and_set_seasonal_period(self) -> "TSForecastingExperiment":
         """
-        Derive the seasonal periods to use per teh following algorithm
+        Derive the seasonal periods to use per the following algorithm
         (1) Get the candidate seasonal periods
         (2) Perform seasonal checks to remove periods that do not indicate seasonality
         (3) Remove harmonics based on user settings
@@ -698,7 +704,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         """
         self.logger.info("Set up Seasonal Period.")
 
-        skip_autocorrelation_test = False
+        skip_autocorrelation_test = False or self.ignore_seasonality_test
 
         # We use the transformed dataset here instead of y for 2 reasons:
         # (1) Missing values in y will cause issues with this test (seasonality
@@ -1138,22 +1144,103 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         return self
 
-    def _set_multiplicative_components(self) -> "TSForecastingExperiment":
-        """Should multiplicative components be allowed in certain models?
-        These only work if the data is strictly positive.
+    def _set_strictly_positive(self) -> "TSForecastingExperiment":
+        """Sets parameter to indicate whether the data is strictly positive or not.
+        Useful for determining wherher multiplicative components should be allowed
+        in certain models or not.
 
         Returns
         -------
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
-        self.logger.info("Set up whether Multiplicative components allowed.")
+        self.logger.info("Checking if data is strictly positive.")
         # Should multiplicative components be allowed in models that support it
         # NOTE: This can still use all the data to determine if multiplicative
         # components should be potentially allowed, but when eventually deciding
         # they type of seasonality (multiplicative or additive), we should respect
         # the users choice in hyperparameter_split.
         self.strictly_positive = np.all(self.y_transformed > 0)
+        return self
+
+    def _set_seasonal_type(self, seasonality_type: str) -> "TSForecastingExperiment":
+        """Sets the seasonal type to be used in the models.
+
+        The detection flow sequence is as follows:
+        (1) If seasonality is not detected, then seasonality type is set to None.
+        (2) If seasonality is detected but data is not strictly positive, then
+        seasonality type is set to "add".
+        (3) If seasonality_type is "auto", then the type of seasonality is
+        determined using an internal algorithm as follows
+            - If seasonality is detected, then data is decomposed using additive
+            and multiplicative seasonal decomposition. Then seasonality type is
+            selected based on seasonality strength per FPP
+            (https://otexts.com/fpp2/seasonal-strength.html).
+            NOTE: For Multiplicative, the denominator multiplies the seasonal and
+            residual components instead of adding them. Rest of the calculations
+            remain the same. If seasonal decomposition fails for any reason, then
+            defaults to multiplicative seasonality.
+        (4) Otherwise, seasonality_type is set to the user provided value.
+
+        Parameters
+        ----------
+        seasonality_type : str
+            The type of seasonality to use. Allowed values are ["add", "mul" or "auto"]
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.logger.info("Setting the seasonal component type - 'add' or 'mul'.")
+        self._set_strictly_positive()
+
+        # ---------------------------------------------------------------------#
+        # Override seasonality_type depending on various conditions
+        # ---------------------------------------------------------------------#
+        if not self.seasonality_present:
+            seasonality_type = None
+        elif self.seasonality_present and not self.strictly_positive:
+            # Multiplicative components not allowed with non-strictly positive data
+            seasonality_type = "add"
+        elif seasonality_type == "auto":
+            if self.seasonality_present and self.strictly_positive:
+                # Try out additive and multiplicative seasonal decomposition
+                # Check residuals and select the one with the least amount of variance
+                data_to_use = pd.DataFrame(
+                    self._get_y_data(
+                        split=self.hyperparameter_split, data_type="transformed"
+                    )
+                )
+
+                decomp_add = seasonal_decompose(
+                    data_to_use, period=self.primary_sp_to_use, model="additive"
+                )
+                decomp_mult = seasonal_decompose(
+                    data_to_use, period=self.primary_sp_to_use, model="multiplicative"
+                )
+
+                if decomp_add is None or decomp_mult is None:
+                    # None is returned when decomposition fails
+                    # Default to "mul" since it gives better results in benchmarks
+                    seasonality_type = "mul"
+                else:
+                    var_r_add = (np.std(decomp_add.resid)) ** 2
+                    var_rs_add = (np.std(decomp_add.resid + decomp_add.seasonal)) ** 2
+                    var_r_mult = (np.std(decomp_mult.resid)) ** 2
+                    var_rs_mult = (
+                        np.std(decomp_mult.resid * decomp_mult.seasonal)
+                    ) ** 2
+
+                    Fs_add = np.maximum(1 - var_r_add / var_rs_add, 0)
+                    Fs_mult = np.maximum(1 - var_r_mult / var_rs_mult, 0)
+
+                    if Fs_mult > Fs_add:
+                        seasonality_type = "mul"
+                    else:
+                        seasonality_type = "add"
+
+        self.seasonality_type = seasonality_type
         return self
 
     def _set_is_white_noise(self) -> "TSForecastingExperiment":
@@ -1375,11 +1462,13 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
         hyperparameter_split: str = "all",
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
+        ignore_seasonality_test: bool = False,
         sp_detection: str = "auto",
         max_sp_to_consider: Optional[int] = 60,
         remove_harmonics: bool = False,
         harmonic_order_method: str = "harmonic_max",
         num_sps_to_use: int = 1,
+        seasonality_type: str = "mul",
         point_alpha: Optional[float] = None,
         coverage: Union[float, List[float]] = 0.9,
         enforce_exogenous: bool = True,
@@ -1625,8 +1714,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
 
         seasonal_period: list or int or str, default = None
-            Seasonal periods to check when performing seasonality checks (i.e. candidates).
-            If not provided, then candidates are detected per the sp_detection setting.
+            Seasonal periods to use when performing seasonality checks (i.e. candidates).
 
             Users can provide `seasonal_period` by passing it as an integer or a
             string corresponding to the keys below (e.g. 'W' for weekly data,
@@ -1646,6 +1734,21 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             accept multiple seasonal values (currently TBATS). For models that
             don't accept multiple seasonal values, the first value of the list
             will be used as the seasonal period.
+
+            NOTE:
+            (1) If seasonal_period is provided, whether the seasonality check is
+            performed or not depends on the ignore_seasonality_test setting.
+            (2) If seasonal_period is not provided, then the candidates are detected
+            per the sp_detection setting. If seasonal_period is provided,
+            sp_detection setting is ignored.
+
+
+        ignore_seasonality_test: bool = False
+            Whether to ignore the seasonality test or not. Applicable when seasonal_period
+            is provided. If False, then a seasonality tests is performed to determine
+            if the provided seasonal_period is valid or not. If it is found to be not
+            valid, no seasonal period is used for modeling. If True, then the the
+            provided seasonal_period is used as is.
 
 
         sp_detection: str, default = "auto"
@@ -1694,6 +1797,26 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             multiple seasonalities). If a model only allows one seasonal period
             and num_sps_to_use > 1, then the most dominant (primary) seasonal
             that is detected is used.
+
+
+        seasonality_type : str, default = "mul"
+            The type of seasonality to use. Allowed values are ["add", "mul" or "auto"]
+
+            The detection flow sequence is as follows:
+            (1) If seasonality is not detected, then seasonality type is set to None.
+            (2) If seasonality is detected but data is not strictly positive, then
+            seasonality type is set to "add".
+            (3) If seasonality_type is "auto", then the type of seasonality is
+            determined using an internal algorithm as follows
+                - If seasonality is detected, then data is decomposed using
+                additive and multiplicative seasonal decomposition. Then
+                seasonality type is selected based on seasonality strength
+                per FPP (https://otexts.com/fpp2/seasonal-strength.html). NOTE:
+                For Multiplicative, the denominator multiplies the seasonal and
+                residual components instead of adding them. Rest of the
+                calculations remain the same. If seasonal decomposition fails for
+                any reason, then defaults to multiplicative seasonality.
+            (4) Otherwise, seasonality_type is set to the user provided value.
 
 
         point_alpha: Optional[float], default = None
@@ -1827,7 +1950,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             renderer: The renderer used to display the plotly figure. Can be any value
                 supported by Plotly (e.g. "notebook", "png", "svg", etc.). Note that certain
                 renderers (like "svg") may need additional libraries to be installed. Users
-                will have to do this manually since they don't come preinstalled wit plotly.
+                will have to do this manually since they don't come preinstalled with plotly.
                 When not provided, plots use plotly's default render when data is below a
                 certain number of points (determined by `big_data_threshold`) otherwise it
                 switches to a static "png" renderer.
@@ -1926,12 +2049,16 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         # Variables related to seasonal period and detection ----
         self.seasonal_period = seasonal_period
+        self.ignore_seasonality_test = ignore_seasonality_test
         if sp_detection not in ["auto", "index"]:
             raise ValueError(
                 "sp_detection must be either 'auto' or 'index'. "
                 f"You provided {sp_detection}."
             )
-        self.sp_detection = sp_detection
+        if self.seasonal_period is not None:
+            self.sp_detection = "user_defined"
+        else:
+            self.sp_detection = sp_detection
         self.max_sp_to_consider = max_sp_to_consider
         self.remove_harmonics = remove_harmonics
         if harmonic_order_method not in [
@@ -1945,6 +2072,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             )
         self.harmonic_order_method = harmonic_order_method
         self.num_sps_to_use = num_sps_to_use
+        if seasonality_type not in ["mul", "add", "auto"]:
+            raise ValueError(
+                "seasonality_type must be either 'mul', 'add' or 'auto'. "
+                f"You provided {seasonality_type}."
+            )
 
         self.log_plots_param = log_plots
         if self.log_plots_param is True:
@@ -1991,7 +2123,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             # should also be derived from the transformed data.
             ##################################################################
             ._check_and_set_seasonal_period()
-            ._set_multiplicative_components()
+            ._set_seasonal_type(seasonality_type=seasonality_type)
             ._perform_setup_eda()
             ._setup_display_container()
             ._profile(profile, profile_kwargs)
@@ -2066,7 +2198,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ):
-
         """
         This function trains and evaluates performance of all estimators available in the
         model library using cross validation. The output of this function is a score grid
@@ -2220,7 +2351,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         verbose: bool = True,
         **kwargs,
     ):
-
         """
         This function trains and evaluates the performance of a given estimator
         using cross validation. The output of this function is a score grid with
@@ -2255,6 +2385,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
             * 'auto_arima' - Auto ARIMA
             * 'exp_smooth' - Exponential Smoothing
+            * 'stlf' - STL Forecaster
             * 'croston' - Croston Forecaster
             * 'ets' - ETS
             * 'theta' - Theta Forecaster
@@ -2265,11 +2396,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             * 'en_cds_dt' - Elastic Net w/ Cond. Deseasonalize & Detrending
             * 'ridge_cds_dt' - Ridge w/ Cond. Deseasonalize & Detrending
             * 'lasso_cds_dt' - Lasso w/ Cond. Deseasonalize & Detrending
-            * 'lar_cds_dt' -   Least Angular Regressor w/ Cond. Deseasonalize & Detrending
             * 'llar_cds_dt' - Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending
             * 'br_cds_dt' - Bayesian Ridge w/ Cond. Deseasonalize & Deseasonalize & Detrending
             * 'huber_cds_dt' - Huber w/ Cond. Deseasonalize & Detrending
-            * 'par_cds_dt' - Passive Aggressive w/ Cond. Deseasonalize & Detrending
             * 'omp_cds_dt' - Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending
             * 'knn_cds_dt' - K Neighbors w/ Cond. Deseasonalize & Detrending
             * 'dt_cds_dt' - Decision Tree w/ Cond. Deseasonalize & Detrending
@@ -2603,7 +2732,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         tuner_verbose: Union[int, bool] = True,
         **kwargs,
     ):
-
         """
         This function tunes the hyperparameters of a given estimator. The output of
         this function is a score grid with CV scores by fold of the best selected
@@ -2951,7 +3079,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         # with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
         if True:
-
             ###############################################
             # Add the correct model to the pipeline ####
             ###############################################
@@ -3114,7 +3241,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         # mlflow logging
         if self.logging_param:
-
             avgs_dict_log = {
                 k: v
                 for k, v in model_results.loc[
@@ -3169,13 +3295,10 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fit_kwargs: Optional[dict] = None,
         verbose: bool = True,
     ):
-
         """
         This function trains a EnsembleForecaster for select models passed in the
-        ``estimator_list`` param. The output of this function is a score grid with
-        CV scores by fold. Metrics evaluated during CV can be accessed using the
-        ``get_metrics`` function. Custom metrics can be added or removed using
-        ``add_metric`` and ``remove_metric`` function.
+        ``estimator_list`` param. Trains a sktime EnsembleForecaster under the hood.
+        Refer to it's documentation for more details.
 
 
         Example
@@ -3197,8 +3320,10 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             Available Methods:
 
             * 'mean' - Mean of individual predictions
+            * 'gmean' - Geometric Mean of individual predictions
             * 'median' - Median of individual predictions
-            * 'voting' - Vote individual predictions based on the provided weights.
+            * 'min' - Minimum of individual predictions
+            * 'max' - Maximum of individual predictions
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -3222,9 +3347,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
 
         weights: list, default = None
-            Sequence of weights (float or int) to weight the occurrences of predicted class
-            labels (hard voting) or class probabilities before averaging (soft voting). Uses
-            uniform weights when None.
+            Sequence of weights (float or int) to apply to the individual model
+            predictons. Uses uniform weights when None. Note that weights only
+            apply 'mean', 'gmean' and 'median' methods.
 
 
         fit_kwargs: dict, default = {} (empty dict)
@@ -3237,9 +3362,14 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         Returns:
             Trained Model
-
-
         """
+        msg = (
+            "method 'voting' is not supported from pycaret 3.0.1 onwards. "
+            "Please use method = 'mean' and pass the weights to mimic the "
+            "functionality of 'voting' blender from prior releases."
+        )
+        if method == "voting":
+            raise ValueError(msg)
 
         return super().blend_models(
             estimator_list=estimator_list,
@@ -3646,6 +3776,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                     # Disable Prediction Intervals if more than 1 estimator is provided.
                     return_pred_int = False
 
+                if X is not None:
+                    X = _reformat_dataframes_for_plots(
+                        data=[X], labels_suffix=["original"]
+                    )
+
             elif plot == "insample":
                 # Try to get insample forecasts if possible
                 model_results = [
@@ -3706,11 +3841,11 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         # Sometimes the plot is not successful, such as decomp with RangeIndex.
         # In such cases, plotting should be bypassed.
         if fig is not None:
-            plot_name = self._available_plots[plot]
-            plot_filename = f"{plot_name}.html"
-
             # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
             if save:
+                plot_name = self._available_plots[plot]
+                plot_filename = f"{plot_name}.html"
+
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_filename)
 
@@ -3720,7 +3855,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 # Add file name to return object ----
                 return_obj.append(plot_filename)
 
-            elif system:
+            elif system and not return_fig:
                 if display_format == "streamlit":
                     st.write(fig)
                 elif display_format == "plotly-widget":
@@ -3758,8 +3893,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                         fig.show(renderer=renderer)
                         self.logger.info("Visual Rendered Successfully")
                     except ValueError as exception:
-                        self.logger.info(exception)
-                        self.logger.info("Visual Rendered Unsuccessfully")
+                        self.logger.error("Visual met error during rendering")
+                        self.logger.error(exception)
                         if verbose:
                             print(exception)
                             print(
@@ -3787,6 +3922,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                                 "\t>>> plot_model(..., fig_kwargs={'renderer': 'colab'})\n"
                                 "Refer to the docstring in `setup` for more details."
                             )
+            elif system and return_fig:
+                self.logger.info("Visual not rendered because `return_fig=True`.")
 
         # Add figure and data to return object if required ----
         if return_fig:
@@ -3814,7 +3951,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fig_kwargs: Optional[Dict] = None,
         save: Union[str, bool] = False,
     ) -> Optional[Tuple[str, list]]:
-
         """
         This function analyzes the performance of a trained model on holdout set.
         When used without any estimator, this function generates plots on the
@@ -3864,8 +4000,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             * 'residuals' - Residuals Plot
 
 
-        return_fig: : bool, default = False
+        return_fig: bool, default = False
             When set to True, it returns the figure used for plotting.
+            When set to False (the default), it will print the plot, but not return it.
 
 
         return_data: bool, default = False
@@ -3899,6 +4036,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
             To display plots in Streamlit (https://www.streamlit.io/), set this to
             'streamlit'.
+
 
         data_kwargs: dict, default = None
             Dictionary of arguments passed to the data for plotting.
@@ -4354,7 +4492,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
-
         """
         This function forecast using a trained model. When ``fh`` is None,
         it forecasts using the same forecast horizon used during the
@@ -4473,7 +4610,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
-
         """
         This function trains a given estimator on the entire dataset including the
         holdout set.
@@ -4521,7 +4657,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         authentication: dict,
         platform: str = "aws",
     ):
-
         """
         This function deploys the transformation pipeline and trained model on cloud.
 
@@ -4609,7 +4744,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
     def save_model(
         self, model, model_name: str, model_only: bool = False, verbose: bool = True
     ):
-
         """
         This function saves the transformation pipeline and trained model object
         into the current working directory as a pickle file for later use.
@@ -4657,7 +4791,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
     ):
-
         """
         This function loads a previously saved pipeline/model.
 
@@ -4763,7 +4896,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         internal: bool = False,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of models available in the model library.
 
@@ -4834,7 +4966,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         include_custom: bool = True,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of available metrics used for CV.
 
@@ -4879,7 +5010,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         greater_is_better: bool = True,
         **kwargs,
     ) -> pd.Series:
-
         """
         Adds a custom metric to be used for CV.
 
@@ -4929,7 +5059,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         )
 
     def remove_metric(self, name_or_id: str):
-
         """
         Removes a metric from CV.
 
@@ -4956,7 +5085,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
     def get_logs(
         self, experiment_name: Optional[str] = None, save: bool = False
     ) -> pd.DataFrame:
-
         """
         Returns a table of experiment logs. Only works when ``log_experiment``
         is True when initializing the ``setup`` function.
@@ -4992,7 +5120,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fold: Optional[Union[int, Any]] = None,
         fold_strategy: Optional[str] = None,
     ) -> Union[ExpandingWindowSplitter, SlidingWindowSplitter]:
-
         """Returns the cv object based on number of folds and fold_strategy
 
         Parameters

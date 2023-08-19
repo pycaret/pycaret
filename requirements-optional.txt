@@ -2,23 +2,26 @@
 shap>=0.38.0
 interpret>=0.2.7
 umap-learn>=0.5.2
-pandas-profiling>=3.1.0
+ydata-profiling>=4.3.1
 explainerdashboard>=0.3.8  # For dashboard method
+Flask==2.2.3  # https://github.com/oegedijk/explainerdashboard/issues/259
+bokeh<3.0.0  # For autoviz
 autoviz>=0.1.36  # For EDA method
 fairlearn==0.7.0  # For check_fairness method
 deepchecks>=0.9.2  # For deep_check method
 
 # Models
 xgboost>=1.1.0
-catboost>=0.23.2
+catboost>=0.23.2; platform_system != "Darwin"
+catboost>=0.23.2,<1.2; platform_system == "Darwin"  # https://github.com/pycaret/pycaret/issues/3563
 kmodes>=0.11.1
 mlxtend>=0.19.0
 statsforecast>=0.5.5
 scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'
 
 # Tuners
-tune-sklearn>=0.2.1; platform_system != 'Windows'
-ray[tune]>=1.0.0; platform_system != 'Windows'
+tune-sklearn>=0.2.1
+ray[tune]>=1.0.0
 hyperopt>=0.2.7
 optuna>=3.0.0
 scikit-optimize>=0.9.0
@@ -30,8 +33,7 @@ boto3>=1.24.56  # For deploy_model method
 fastapi>=0.75.0  # For web api
 uvicorn>=0.17.6  # For web api
 m2cgen>=0.9.0  # For model conversion
-evidently>=0.1.45.dev0  # for drift reporting
-comet_ml>=3.31.22 #comet ml tracking
+evidently>=0.1.45.dev0,<0.3  # for drift reporting
 
 # Parallel
 fugue>=0.8.0

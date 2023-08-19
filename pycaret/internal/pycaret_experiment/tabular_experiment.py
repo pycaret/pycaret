@@ -213,11 +213,9 @@ class _TabularExperiment(_PyCaretExperiment):
             if self.verbose:
                 print("Loading profile... Please Wait!")
             try:
-                import pandas_profiling
+                import ydata_profiling
 
-                self.report = pandas_profiling.ProfileReport(
-                    self.data, **profile_kwargs
-                )
+                self.report = ydata_profiling.ProfileReport(self.data, **profile_kwargs)
             except Exception as ex:
                 print("Profiler Failed. No output to show, continue with modeling.")
                 self.logger.error(
@@ -357,7 +355,8 @@ class _TabularExperiment(_PyCaretExperiment):
             if cuml_version is None or not version.parse(cuml_version) >= version.parse(
                 "22.10"
             ):
-                message = f"cuML is outdated or not found. Required version is >=22.10, got {__version__}"
+                message = """cuML is outdated or not found. Required version is >=22.10.
+                Please visit https://rapids.ai/ for installation instructions."""
                 if use_gpu == "force":
                     raise ImportError(message)
                 else:
@@ -385,13 +384,11 @@ class _TabularExperiment(_PyCaretExperiment):
         groups: Optional[Union[str, Any]] = None,
         feature_name: Optional[str] = None,
         label: bool = False,
-        use_train_data: bool = False,
         verbose: bool = True,
         system: bool = True,
         display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
         display_format: Optional[str] = None,
     ) -> str:
-
         """Internal version of ``plot_model`` with ``system`` arg."""
         self._check_setup_ran()
 
@@ -485,9 +482,6 @@ class _TabularExperiment(_PyCaretExperiment):
         if type(label) is not bool:
             raise TypeError("Label parameter only accepts True or False.")
 
-        if type(use_train_data) is not bool:
-            raise TypeError("use_train_data parameter only accepts True or False.")
-
         if feature_name is not None and type(feature_name) is not str:
             raise TypeError(
                 "feature parameter must be string containing column name of dataset."
@@ -546,7 +540,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 _base_dpi = 100
 
                 def pipeline():
-
                     from schemdraw import Drawing
                     from schemdraw.flow import Arrow, Data, RoundBox, Subroutine
 
@@ -926,7 +919,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.logger.info("Rendering Visual")
 
                     if label:
-
                         fig = px.scatter_3d(
                             df,
                             x=0,
@@ -1124,7 +1116,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         raise TypeError("Plot Type not supported for this model.")
 
                 def residuals():
-
                     from yellowbrick.regressor import ResidualsPlot
 
                     visualizer = ResidualsPlot(estimator, **plot_kwargs)
@@ -1142,7 +1133,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def auc():
-
                     from yellowbrick.classifier import ROCAUC
 
                     visualizer = ROCAUC(estimator, **plot_kwargs)
@@ -1160,7 +1150,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def threshold():
-
                     from yellowbrick.classifier import DiscriminationThreshold
 
                     visualizer = DiscriminationThreshold(
@@ -1180,7 +1169,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def pr():
-
                     from yellowbrick.classifier import PrecisionRecallCurve
 
                     visualizer = PrecisionRecallCurve(
@@ -1200,7 +1188,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def confusion_matrix():
-
                     from yellowbrick.classifier import ConfusionMatrix
 
                     plot_kwargs.setdefault("fontsize", 15)
@@ -1223,7 +1210,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def error():
-
                     if self._ml_usecase == MLUsecase.CLASSIFICATION:
                         from yellowbrick.classifier import ClassPredictionError
 
@@ -1252,7 +1238,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def cooks():
-
                     from yellowbrick.regressor import CooksDistance
 
                     visualizer = CooksDistance()
@@ -1271,7 +1256,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def class_report():
-
                     from yellowbrick.classifier import ClassificationReport
 
                     visualizer = ClassificationReport(
@@ -1291,7 +1275,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def boundary():
-
                     from sklearn.decomposition import PCA
                     from sklearn.preprocessing import StandardScaler
                     from yellowbrick.contrib.classifier import DecisionViz
@@ -1332,7 +1315,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def rfe():
-
                     from yellowbrick.model_selection import RFECV
 
                     visualizer = RFECV(estimator, cv=cv, groups=groups, **plot_kwargs)
@@ -1351,7 +1333,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def learning():
-
                     from yellowbrick.model_selection import LearningCurve
 
                     sizes = np.linspace(0.3, 1.0, 10)
@@ -1378,7 +1359,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def lift():
-
                     self.logger.info("Generating predictions / predict_proba on X_test")
                     y_test__ = self.y_test_transformed
                     predict_proba__ = estimator.predict_proba(self.X_test_transformed)
@@ -1403,7 +1383,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     return plot_filename
 
                 def gain():
-
                     self.logger.info("Generating predictions / predict_proba on X_test")
                     y_test__ = self.y_test_transformed
                     predict_proba__ = estimator.predict_proba(self.X_test_transformed)
@@ -1428,7 +1407,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     return plot_filename
 
                 def manifold():
-
                     from yellowbrick.features import Manifold
 
                     data_X_transformed = self.X_train_transformed.select_dtypes(
@@ -1453,7 +1431,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def tree():
-
                     from sklearn.tree import plot_tree
 
                     is_stacked_model = False
@@ -1504,15 +1481,14 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.logger.info("Plotting decision trees")
                     trees = []
                     feature_names = list(self.X_train_transformed.columns)
+                    class_names = None
                     if self._ml_usecase == MLUsecase.CLASSIFICATION:
-                        class_names = {
-                            i: class_name
-                            for i, class_name in enumerate(
-                                get_label_encoder(self.pipeline).classes_
-                            )
-                        }
-                    else:
-                        class_names = None
+                        label_encoder = get_label_encoder(self.pipeline)
+                        if label_encoder:
+                            class_names = {
+                                i: class_name
+                                for i, class_name in enumerate(label_encoder.classes_)
+                            }
                     fitted_estimator = tree_estimator
                     if is_stacked_model:
                         stacked_feature_names = []
@@ -1578,7 +1554,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     return plot_filename
 
                 def calibration():
-
                     from sklearn.calibration import calibration_curve
 
                     plt.figure(figsize=(7, 6), dpi=_base_dpi * scale)
@@ -1607,7 +1582,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     ax1.legend(loc="lower right")
                     ax1.set_title("Calibration plots (reliability curve)")
                     ax1.set_facecolor("white")
-                    ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
+                    ax1.grid(True, color="grey", linewidth=0.5, linestyle="-")
                     plt.tight_layout()
                     # display.clear_output()
                     plot_filename = None
@@ -1626,7 +1601,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     return plot_filename
 
                 def vc():
-
                     self.logger.info("Determining param_name")
 
                     try:
@@ -1647,7 +1621,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     param_range = None
 
                     if self._ml_usecase == MLUsecase.CLASSIFICATION:
-
                         # Catboost
                         if "depth" in model_params:
                             param_name = "depth"
@@ -1705,7 +1678,6 @@ class _TabularExperiment(_PyCaretExperiment):
                             )
 
                     elif self._ml_usecase == MLUsecase.REGRESSION:
-
                         # Catboost
                         if "depth" in model_params:
                             param_name = "depth"
@@ -1796,7 +1768,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def dimension():
-
                     from sklearn.decomposition import PCA
                     from sklearn.preprocessing import StandardScaler
                     from yellowbrick.features import RadViz
@@ -1900,7 +1871,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     return plot_filename
 
                 def parameter():
-
                     try:
                         params = estimator.get_all_params()
                     except Exception:
@@ -1916,7 +1886,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.logger.info("Visual Rendered Successfully")
 
                 def ks():
-
                     self.logger.info("Generating predictions / predict_proba on X_test")
                     predict_proba__ = estimator.predict_proba(self.X_train_transformed)
                     # display.clear_output()
@@ -1973,11 +1942,9 @@ class _TabularExperiment(_PyCaretExperiment):
         groups: Optional[Union[str, Any]] = None,
         feature_name: Optional[str] = None,
         label: bool = False,
-        use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
     ) -> Optional[str]:
-
         """
         This function takes a trained model object and returns a plot based on the
         test / hold-out set. The process may require the model to be re-trained in
@@ -2086,7 +2053,6 @@ class _TabularExperiment(_PyCaretExperiment):
             groups=groups,
             feature_name=feature_name,
             label=label,
-            use_train_data=use_train_data,
             verbose=verbose,
             display_format=display_format,
         )
@@ -2099,9 +2065,7 @@ class _TabularExperiment(_PyCaretExperiment):
         plot_kwargs: Optional[dict] = None,
         feature_name: Optional[str] = None,
         groups: Optional[Union[str, Any]] = None,
-        use_train_data: bool = False,
     ):
-
         """
         This function displays a user interface for all of the available plots for
         a given estimator. It internally uses the plot_model() function.
@@ -2179,7 +2143,6 @@ class _TabularExperiment(_PyCaretExperiment):
             feature_name=fixed(feature_name),
             label=fixed(False),
             groups=fixed(groups),
-            use_train_data=fixed(use_train_data),
             system=fixed(True),
             display=fixed(None),
             display_format=fixed(None),
@@ -2203,7 +2166,6 @@ class _TabularExperiment(_PyCaretExperiment):
         internal: bool = False,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of models available in model library.
 
@@ -2256,7 +2218,6 @@ class _TabularExperiment(_PyCaretExperiment):
         authentication: dict,
         platform: str = "aws",  # added gcp and azure support in pycaret==2.1
     ):
-
         """
         (In Preview)
 
@@ -2427,7 +2388,6 @@ class _TabularExperiment(_PyCaretExperiment):
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
     ):
-
         """
         This function loads a previously saved transformation pipeline and model
         from the current active directory into the current python environment.
@@ -2562,7 +2522,6 @@ class _TabularExperiment(_PyCaretExperiment):
             )
 
     def create_api(self, estimator, api_name, host="127.0.0.1", port=8000):
-
         """
         This function takes an input ``estimator`` and creates a POST API for
         inference. It only creates the API and doesn't run it automatically.
@@ -2604,7 +2563,7 @@ class _TabularExperiment(_PyCaretExperiment):
         _check_soft_dependencies("pydantic", extra="mlops", severity="error")
 
         self.save_model(estimator, model_name=api_name, verbose=False)
-        target = f"{self.target_param}_prediction"
+        target = "prediction"
 
         query = f"""# -*- coding: utf-8 -*-
 

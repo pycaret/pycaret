@@ -54,11 +54,13 @@ def setup(
     fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
     hyperparameter_split: str = "all",
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
+    ignore_seasonality_test: bool = False,
     sp_detection: str = "auto",
     max_sp_to_consider: Optional[int] = 60,
     remove_harmonics: bool = False,
     harmonic_order_method: str = "harmonic_max",
     num_sps_to_use: int = 1,
+    seasonality_type: str = "mul",
     point_alpha: Optional[float] = None,
     coverage: Union[float, List[float]] = 0.9,
     enforce_exogenous: bool = True,
@@ -300,8 +302,7 @@ def setup(
 
 
     seasonal_period: list or int or str, default = None
-        Seasonal periods to check when performing seasonality checks (i.e. candidates).
-        If not provided, then candidates are detected per the sp_detection setting.
+        Seasonal periods to use when performing seasonality checks (i.e. candidates).
 
         Users can provide `seasonal_period` by passing it as an integer or a
         string corresponding to the keys below (e.g. 'W' for weekly data,
@@ -321,6 +322,21 @@ def setup(
         accept multiple seasonal values (currently TBATS). For models that
         don't accept multiple seasonal values, the first value of the list
         will be used as the seasonal period.
+
+        NOTE:
+        (1) If seasonal_period is provided, whether the seasonality check is
+        performed or not depends on the ignore_seasonality_test setting.
+        (2) If seasonal_period is not provided, then the candidates are detected
+        per the sp_detection setting. If seasonal_period is provided,
+        sp_detection setting is ignored.
+
+
+    ignore_seasonality_test: bool = False
+        Whether to ignore the seasonality test or not. Applicable when seasonal_period
+        is provided. If False, then a seasonality tests is performed to determine
+        if the provided seasonal_period is valid or not. If it is found to be not
+        valid, no seasonal period is used for modeling. If True, then the the
+        provided seasonal_period is used as is.
 
 
     sp_detection: str, default = "auto"
@@ -369,6 +385,26 @@ def setup(
         multiple seasonalities). If a model only allows one seasonal period
         and num_sps_to_use > 1, then the most dominant (primary) seasonal
         that is detected is used.
+
+
+    seasonality_type : str, default = "mul"
+        The type of seasonality to use. Allowed values are ["add", "mul" or "auto"]
+
+        The detection flow sequence is as follows:
+        (1) If seasonality is not detected, then seasonality type is set to None.
+        (2) If seasonality is detected but data is not strictly positive, then
+        seasonality type is set to "add".
+        (3) If seasonality_type is "auto", then the type of seasonality is
+        determined using an internal algorithm as follows
+            - If seasonality is detected, then data is decomposed using
+            additive and multiplicative seasonal decomposition. Then
+            seasonality type is selected based on seasonality strength
+            per FPP (https://otexts.com/fpp2/seasonal-strength.html). NOTE:
+            For Multiplicative, the denominator multiplies the seasonal and
+            residual components instead of adding them. Rest of the
+            calculations remain the same. If seasonal decomposition fails for
+            any reason, then defaults to multiplicative seasonality.
+        (4) Otherwise, seasonality_type is set to the user provided value.
 
 
     point_alpha: Optional[float], default = None
@@ -496,7 +532,7 @@ def setup(
         renderer: The renderer used to display the plotly figure. Can be any value
             supported by Plotly (e.g. "notebook", "png", "svg", etc.). Note that certain
             renderers (like "svg") may need additional libraries to be installed. Users
-            will have to do this manually since they don't come preinstalled wit plotly.
+            will have to do this manually since they don't come preinstalled with plotly.
             When not provided, plots use plotly's default render when data is below a
             certain number of points (determined by `big_data_threshold`) otherwise it
             switches to a static "png" renderer.
@@ -570,11 +606,13 @@ def setup(
         fh=fh,
         hyperparameter_split=hyperparameter_split,
         seasonal_period=seasonal_period,
+        ignore_seasonality_test=ignore_seasonality_test,
         sp_detection=sp_detection,
         max_sp_to_consider=max_sp_to_consider,
         remove_harmonics=remove_harmonics,
         harmonic_order_method=harmonic_order_method,
         num_sps_to_use=num_sps_to_use,
+        seasonality_type=seasonality_type,
         point_alpha=point_alpha,
         coverage=coverage,
         enforce_exogenous=enforce_exogenous,
@@ -613,7 +651,6 @@ def compare_models(
     verbose: bool = True,
     parallel: Optional[ParallelBackend] = None,
 ):
-
     """
     This function trains and evaluates performance of all estimators available in the
     model library using cross validation. The output of this function is a score grid
@@ -787,7 +824,6 @@ def create_model(
     verbose: bool = True,
     **kwargs,
 ):
-
     """
     This function trains and evaluates the performance of a given estimator
     using cross validation. The output of this function is a score grid with
@@ -822,6 +858,7 @@ def create_model(
         * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
         * 'auto_arima' - Auto ARIMA
         * 'exp_smooth' - Exponential Smoothing
+        * 'stlf' - STL Forecaster
         * 'croston' - Croston Forecaster
         * 'ets' - ETS
         * 'theta' - Theta Forecaster
@@ -832,11 +869,9 @@ def create_model(
         * 'en_cds_dt' - Elastic Net w/ Cond. Deseasonalize & Detrending
         * 'ridge_cds_dt' - Ridge w/ Cond. Deseasonalize & Detrending
         * 'lasso_cds_dt' - Lasso w/ Cond. Deseasonalize & Detrending
-        * 'lar_cds_dt' -   Least Angular Regressor w/ Cond. Deseasonalize & Detrending
         * 'llar_cds_dt' - Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending
         * 'br_cds_dt' - Bayesian Ridge w/ Cond. Deseasonalize & Deseasonalize & Detrending
         * 'huber_cds_dt' - Huber w/ Cond. Deseasonalize & Detrending
-        * 'par_cds_dt' - Passive Aggressive w/ Cond. Deseasonalize & Detrending
         * 'omp_cds_dt' - Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending
         * 'knn_cds_dt' - K Neighbors w/ Cond. Deseasonalize & Detrending
         * 'dt_cds_dt' - Decision Tree w/ Cond. Deseasonalize & Detrending
@@ -922,7 +957,6 @@ def tune_model(
     tuner_verbose: Union[int, bool] = True,
     **kwargs,
 ):
-
     """
     This function tunes the hyperparameters of a given estimator. The output of
     this function is a score grid with CV scores by fold of the best selected
@@ -1045,13 +1079,10 @@ def blend_models(
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
 ):
-
     """
     This function trains a EnsembleForecaster for select models passed in the
-    ``estimator_list`` param. The output of this function is a score grid with
-    CV scores by fold. Metrics evaluated during CV can be accessed using the
-    ``get_metrics`` function. Custom metrics can be added or removed using
-    ``add_metric`` and ``remove_metric`` function.
+    ``estimator_list`` param. Trains a sktime EnsembleForecaster under the hood.
+    Refer to it's documentation for more details.
 
 
     Example
@@ -1073,8 +1104,10 @@ def blend_models(
         Available Methods:
 
         * 'mean' - Mean of individual predictions
+        * 'gmean' - Geometric Mean of individual predictions
         * 'median' - Median of individual predictions
-        * 'voting' - Vote individual predictions based on the provided weights.
+        * 'min' - Minimum of individual predictions
+        * 'max' - Maximum of individual predictions
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -1098,9 +1131,9 @@ def blend_models(
 
 
     weights: list, default = None
-        Sequence of weights (float or int) to weight the occurrences of predicted class
-        labels (hard voting) or class probabilities before averaging (soft voting). Uses
-        uniform weights when None.
+        Sequence of weights (float or int) to apply to the individual model
+        predictons. Uses uniform weights when None. Note that weights only
+        apply 'mean', 'gmean' and 'median' methods.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1113,10 +1146,7 @@ def blend_models(
 
     Returns:
         Trained Model
-
-
     """
-
     return _CURRENT_EXPERIMENT.blend_models(
         estimator_list=estimator_list,
         fold=fold,
@@ -1142,7 +1172,6 @@ def plot_model(
     fig_kwargs: Optional[Dict] = None,
     save: Union[str, bool] = False,
 ) -> Optional[Tuple[str, list]]:
-
     """
     This function analyzes the performance of a trained model on holdout set.
     When used without any estimator, this function generates plots on the
@@ -1192,8 +1221,9 @@ def plot_model(
         * 'residuals' - Residuals Plot
 
 
-    return_fig: : bool, default = False
+    return_fig: bool, default = False
         When set to True, it returns the figure used for plotting.
+        When set to False (the default), it will print the plot, but not return it.
 
 
     return_data: bool, default = False
@@ -1390,7 +1420,6 @@ def predict_model(
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
-
     """
     This function forecast using a trained model. When ``fh`` is None,
     it forecasts using the same forecast horizon used during the
@@ -1476,7 +1505,6 @@ def predict_model(
 def finalize_model(
     estimator, fit_kwargs: Optional[dict] = None, model_only: bool = False
 ) -> Any:
-
     """
     This function trains a given estimator on the entire dataset including the
     holdout set.
@@ -1517,7 +1545,6 @@ def finalize_model(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def deploy_model(model, model_name: str, authentication: dict, platform: str = "aws"):
-
     """
     This function deploys the transformation pipeline and trained model on cloud.
 
@@ -1604,8 +1631,7 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_model(model, model_name: str, model_only: bool = True, verbose: bool = True):
-
+def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
     """
     This function saves the transformation pipeline and trained model object
     into the current working directory as a pickle file for later use.
@@ -1628,8 +1654,9 @@ def save_model(model, model_name: str, model_only: bool = True, verbose: bool = 
         Name of the model.
 
 
-    model_only: bool, default = True
-        Parameter not in use for now. Behavior may change in future.
+    model_only: bool, default = False
+        When set to True, only trained model object is saved instead of the
+        entire pipeline.
 
 
     verbose: bool, default = True
@@ -1653,7 +1680,6 @@ def load_model(
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,
 ):
-
     """
     This function loads a previously saved pipeline/model.
 
@@ -1729,7 +1755,6 @@ def pull(pop: bool = False) -> pd.DataFrame:
 def models(
     type: Optional[str] = None, internal: bool = False, raise_errors: bool = True
 ) -> pd.DataFrame:
-
     """
     Returns table of models available in the model library.
 
@@ -1772,7 +1797,6 @@ def models(
 def get_metrics(
     reset: bool = False, include_custom: bool = True, raise_errors: bool = True
 ) -> pd.DataFrame:
-
     """
     Returns table of available metrics used for CV.
 
@@ -1814,7 +1838,6 @@ def get_metrics(
 def add_metric(
     id: str, name: str, score_func: type, greater_is_better: bool = True, **kwargs
 ) -> pd.Series:
-
     """
     Adds a custom metric to be used for CV.
 
@@ -1865,7 +1888,6 @@ def add_metric(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def remove_metric(name_or_id: str):
-
     """
     Removes a metric from CV.
 
@@ -1892,7 +1914,6 @@ def remove_metric(name_or_id: str):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
-
     """
     Returns a table of experiment logs. Only works when ``log_experiment``
     is True when initializing the ``setup`` function.
@@ -1926,7 +1947,6 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_config(variable: Optional[str] = None):
-
     """
     This function retrieves the global variables created when initializing the
     ``setup`` function. Following variables are accessible:
@@ -1982,7 +2002,6 @@ def get_config(variable: Optional[str] = None):
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def set_config(variable: str, value):
-
     """
     This function resets the global variables. Following variables are
     accessible:
@@ -2069,7 +2088,6 @@ def load_experiment(
     preprocess_data: bool = True,
     **cloudpickle_kwargs,
 ) -> TSForecastingExperiment:
-
     """
     Load an experiment saved with ``save_experiment`` from path
     or file.

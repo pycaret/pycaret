@@ -10,7 +10,6 @@ import pandas as pd
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
-from pycaret import show_versions
 from pycaret.internal.logging import get_logger
 from pycaret.utils.constants import DATAFRAME_LIKE
 from pycaret.utils.generic import LazyExperimentMapping
@@ -116,6 +115,8 @@ class _PyCaretExperiment:
         self.logger.info(f"Physical Core: {psutil.cpu_count(logical=False)}")
         self.logger.info(f"Logical Core: {psutil.cpu_count(logical=True)}")
 
+        from pycaret.utils._show_versions import show_versions
+
         self.logger.info("Checking libraries")
         self.logger.info(show_versions(logger=self.logger))
 
@@ -165,7 +166,6 @@ class _PyCaretExperiment:
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
     ):
-
         """
         This function loads a previously saved transformation pipeline and model
         from the current active directory into the current python environment.
@@ -215,7 +215,6 @@ class _PyCaretExperiment:
     def get_logs(
         self, experiment_name: Optional[str] = None, save: bool = False
     ) -> pd.DataFrame:
-
         """
         Returns a table with experiment logs consisting
         run details, parameter, metrics and tags.
@@ -354,8 +353,13 @@ class _PyCaretExperiment:
             raise ValueError(
                 "variable parameter cannot be used together with keyword arguments."
             )
-
-        variables = kwargs if kwargs else {variable: value}
+        else:
+            if kwargs:
+                variables = kwargs
+            elif variable:
+                variables = {variable: value}
+            else:
+                variables = {}
 
         for k, v in variables.items():
             if k.startswith("_"):

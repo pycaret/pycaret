@@ -36,7 +36,6 @@ else:
 
 
 def get_kmeans():
-
     return KMeans
 
 
@@ -115,7 +114,6 @@ else:
 
 
 def get_ridge_classifier():
-
     return RidgeClassifier
 
 

@@ -10,7 +10,6 @@ from sklearn.pipeline import Pipeline
 
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import MLUsecase, get_logger
-from pycaret.utils.time_series.forecasting.pipeline import _add_model_to_pipeline
 
 
 def deploy_model(
@@ -131,7 +130,6 @@ def deploy_model(
     logger.info("SubProcess save_model() end ==================================")
 
     if platform == "aws":
-
         logger.info("Platform : AWS S3")
 
         # checking if boto3 is available
@@ -176,7 +174,6 @@ def deploy_model(
         logger.info(str(model))
 
     elif platform == "gcp":
-
         logger.info("Platform : GCP")
 
         _check_soft_dependencies(
@@ -210,7 +207,6 @@ def deploy_model(
         logger.info(str(model))
 
     elif platform == "azure":
-
         logger.info("Platform : Azure Blob Storage")
 
         _check_soft_dependencies(
@@ -297,39 +293,45 @@ def save_model(
     logger.info("Adding model into prep_pipe")
 
     if use_case == MLUsecase.TIME_SERIES:
-        model_ = deepcopy(model)
+        from pycaret.utils.time_series.forecasting.pipeline import (
+            _add_model_to_pipeline,
+        )
+
         if prep_pipe_:
             pipeline = deepcopy(prep_pipe_)
-            model_ = _add_model_to_pipeline(pipeline=pipeline, model=model_)
+            model = _add_model_to_pipeline(pipeline=pipeline, model=model)
         else:
             logger.warning(
                 "Only Model saved. Transformations in prep_pipe are ignored."
             )
     else:
         if isinstance(model, Pipeline):
-            model_ = deepcopy(model)
             logger.warning("Only Model saved as it was a pipeline.")
         elif not prep_pipe_:
-            model_ = deepcopy(model)
             logger.warning(
                 "Only Model saved. Transformations in prep_pipe are ignored."
             )
         else:
             model_ = deepcopy(prep_pipe_)
             model_.steps.append(("trained_model", model))
+            model = model_
 
     model_name = f"{model_name}.pkl"
-    joblib.dump(model_, model_name, **kwargs)
+    joblib.dump(model, model_name, **kwargs)
     if verbose:
-        print("Transformation Pipeline and Model Successfully Saved")
+        if prep_pipe_:
+            pipe_msg = "Transformation Pipeline and "
+        else:
+            pipe_msg = ""
+        print(f"{pipe_msg}Model Successfully Saved")
 
     logger.info(f"{model_name} saved in current working directory")
-    logger.info(str(model_))
+    logger.info(str(model))
     logger.info(
         "save_model() successfully completed......................................"
     )
     gc.collect()
-    return model_, model_name
+    return model, model_name
 
 
 def load_model(
@@ -395,7 +397,6 @@ def load_model(
 
     # cloud providers
     elif platform == "aws":
-
         import os
 
         # checking if boto3 is available
@@ -438,7 +439,6 @@ def load_model(
         return model
 
     elif platform == "gcp":
-
         bucket_name = authentication.get("bucket")
         project_name = authentication.get("project")
 
@@ -463,7 +463,6 @@ def load_model(
         return model
 
     elif platform == "azure":
-
         container_name = authentication.get("container")
 
         if container_name is None:

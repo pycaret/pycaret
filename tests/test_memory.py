@@ -11,9 +11,12 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.base import BaseEstimator
 from xxhash import xxh128
 
+from pycaret.datasets import get_data
 from pycaret.internal.memory import fast_hash as hash
+from pycaret.regression import RegressionExperiment
 
 
 @pytest.fixture(scope="function")
@@ -334,3 +337,23 @@ def test_hashes_stay_the_same_with_numpy_objects():
     finally:
         e1.shutdown()
         e2.shutdown()
+
+
+class MyOwnModel(BaseEstimator):
+    def fit(self, X, y):
+        self.mean_ = y.mean()
+        return self
+
+    def predict(self, X):
+        return np.array(X.shape[0] * [self.mean_])
+
+
+def test_using_custom_model():
+    insurance = get_data("insurance")
+
+    # init setup
+    reg1 = RegressionExperiment()
+    reg1 = reg1.setup(data=insurance, target="charges")
+
+    my_own_model = MyOwnModel()
+    reg1.create_model(my_own_model)

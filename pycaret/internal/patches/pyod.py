@@ -1,50 +1,30 @@
-from pyod.models.cof import COF
-from pyod.models.sod import SOD
-from pyod.models.sos import SOS
+import numpy as np
+import pandas as pd
+from pyod.models.cblof import CBLOF
 
 
-class COFPatched(COF):
-    # This attribute was missing from pyod causing it to fail on clone
-    @property
-    def n_neighbors(self):
-        return self.n_neighbors_
-
-    @n_neighbors.setter
-    def n_neighbors(self, value):
-        self.n_neighbors_ = value
-
-
-class SODPatched(SOD):
-    # Those attributes were missing from pyod causing it to fail on clone
-    @property
-    def n_neighbors(self):
-        return self.n_neighbors_
-
-    @n_neighbors.setter
-    def n_neighbors(self, value):
-        self.n_neighbors_ = value
-
-    @property
-    def ref_set(self):
-        return self.ref_set_
-
-    @ref_set.setter
-    def ref_set(self, value):
-        self.ref_set_ = value
-
-    @property
-    def alpha(self):
-        return self.alpha_
-
-    @alpha.setter
-    def alpha(self, value):
-        self.alpha_ = value
+def convert_to_fp64(X):
+    if isinstance(X, pd.DataFrame):
+        X = X.astype(
+            {
+                col: np.float64
+                for col in X.columns
+                if X.dtypes[col] in (np.float32, np.float16)
+            }
+        )
+    elif X.dtype == np.float32:
+        X = X.astype(np.float64)
+    return X
 
 
-class SOSPatched(SOS):
-    def __init__(
-        self, contamination=0.1, perplexity=4.5, metric="euclidean", eps=0.00001
-    ):
-        super().__init__(contamination, perplexity, metric, eps)
-        # This is modified in pyod, which causes cloning to fail
-        self.metric = metric
+# Fixes https://github.com/pycaret/pycaret/issues/3606
+class CBLOFForceToDouble(CBLOF):
+    """CBLOF with forced float32 -> float64 conversion"""
+
+    def fit(self, X, y=None):
+        X = convert_to_fp64(X)
+        return super().fit(X, y)
+
+    def decision_function(self, X):
+        X = convert_to_fp64(X)
+        return super().decision_function(X)

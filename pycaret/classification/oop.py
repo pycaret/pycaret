@@ -13,10 +13,10 @@ import sklearn
 from joblib.memory import Memory
 from scipy.optimize import shgo
 
-from pycaret.containers.metrics import get_all_class_metric_containers
-from pycaret.containers.models import get_all_class_model_containers
+from pycaret.containers.metrics.classification import get_all_metric_containers
 from pycaret.containers.models.classification import (
     ALL_ALLOWED_ENGINES,
+    get_all_model_containers,
     get_container_default_engines,
 )
 from pycaret.internal.display import CommonDisplay
@@ -81,20 +81,16 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in get_all_class_model_containers(
+            for k, v in get_all_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = get_all_class_model_containers(
-            self, raise_errors=raise_errors
-        )
+        all_models_internal = get_all_model_containers(self, raise_errors=raise_errors)
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return get_all_class_metric_containers(
-            self.variables, raise_errors=raise_errors
-        )
+        return get_all_metric_containers(self.variables, raise_errors=raise_errors)
 
     @property
     def is_multiclass(self) -> bool:
@@ -120,7 +116,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         data: Optional[DATAFRAME_LIKE] = None,
         data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
         target: TARGET_LIKE = -1,
-        index: Union[bool, int, str, SEQUENCE_LIKE] = False,
+        index: Union[bool, int, str, SEQUENCE_LIKE] = True,
         train_size: float = 0.7,
         test_data: Optional[DATAFRAME_LIKE] = None,
         ordinal_features: Optional[Dict[str, list]] = None,
@@ -146,8 +142,8 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
         low_variance_threshold: Optional[float] = None,
-        group_features: Optional[list] = None,
-        group_names: Optional[Union[str, list]] = None,
+        group_features: Optional[dict] = None,
+        drop_groups: bool = False,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
         bin_numeric_features: Optional[List[str]] = None,
@@ -194,7 +190,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
     ):
-
         """
         This function initializes the training environment and creates the transformation
         pipeline. Setup function must be called before executing any other function. It takes
@@ -231,7 +226,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             multiclass.
 
 
-        index: bool, int, str or sequence, default = False
+        index: bool, int, str or sequence, default = True
             Handle indices in the `data` dataframe.
                 - If False: Reset to RangeIndex.
                 - If True: Keep the provided index.
@@ -363,7 +358,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         encoding_method: category-encoders estimator, default = None
             A `category-encoders` estimator to encode the categorical columns
             with more than `max_encoding_ohe` unique values. If None,
-            `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+            `category_encoders.target_encoder.TargetEncoder` is used.
 
 
         rare_to_value: float or None, default=None
@@ -395,19 +390,17 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             this transformation step.
 
 
-        group_features: list, list of lists or None, default = None
+        group_features: dict or None, default = None
             When the dataset contains features with related characteristics,
-            replace those fetaures with the following statistical properties
-            of that group: min, max, mean, std, median and mode. The parameter
-            takes a list of feature names or a list of lists of feature names
-            to specify multiple groups.
+            add new fetaures with the following statistical properties of that
+            group: min, max, mean, std, median and mode. The parameter takes a
+            dict with the group name as key and a list of feature names
+            belonging to that group as value.
 
 
-        group_names: str, list, or None, default = None
-            Group names to be used when naming the new features. The length
-            should match with the number of groups specified in ``group_features``.
-            If None, new features are named using the default form, e.g. group_1,
-            group_2, etc... Ignored when ``group_features`` is None.
+        drop_groups: bool, default=False
+            Whether to drop the original features in the group. Ignored when
+            ``group_features`` is None.
 
 
         remove_multicollinearity: bool, default = False
@@ -794,10 +787,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
 
-            # Remove weird characters from column names
-            if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
-                self._clean_column_names()
-
             # Encode the target column
             y_unique = self.y.unique()
             if sorted(list(y_unique)) != list(range(len(y_unique))):
@@ -845,7 +834,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
             # Get statistical properties of a group of features
             if group_features:
-                self._group_features(group_features, group_names)
+                self._group_features(group_features, drop_groups)
 
             # Drop features that are collinear with other features
             if remove_multicollinearity:
@@ -861,7 +850,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
             # Balance the classes in the target column
             if fix_imbalance:
-                self._balance(fix_imbalance_method)
+                self._balance(fix_imbalance_method, session_id)
 
             # Power transform the data to be more Gaussian-like
             if transformation:
@@ -886,6 +875,12 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         # Add custom transformers to the pipeline
         if custom_pipeline:
             self._add_custom_pipeline(custom_pipeline, custom_pipeline_position)
+
+        # Remove weird characters from column names
+        # This has to be done right before the estimator, as modifying column
+        # names early messes self._fxs up
+        if any(re.search("[^A-Za-z0-9_]", col) for col in self.dataset):
+            self._clean_column_names()
 
         # Remove placeholder step
         if ("placeholder", None) in self.pipeline.steps and len(self.pipeline) > 1:
@@ -1047,7 +1042,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ) -> Union[Any, List[Any]]:
-
         """
         This function trains and evaluates performance of all estimators available in the
         model library using cross validation. The output of this function is a score grid
@@ -1226,7 +1220,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         return_train_score: bool = False,
         **kwargs,
     ) -> Any:
-
         """
         This function trains and evaluates the performance of a given estimator
         using cross validation. The output of this function is a score grid with
@@ -1392,7 +1385,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         return_train_score: bool = False,
         **kwargs,
     ) -> Any:
-
         """
         This function tunes the hyperparameters of a given estimator. The output of
         this function is a score grid with CV scores by fold of the best selected
@@ -1599,7 +1591,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         verbose: bool = True,
         return_train_score: bool = False,
     ) -> Any:
-
         """
         This function ensembles a given estimator. The output of this function is
         a score grid with CV scores by fold. Metrics evaluated during CV can be
@@ -1719,7 +1710,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         verbose: bool = True,
         return_train_score: bool = False,
     ) -> Any:
-
         """
         This function trains a Soft Voting / Majority Rule classifier for select
         models passed in the ``estimator_list`` param. The output of this function
@@ -1841,7 +1831,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         verbose: bool = True,
         return_train_score: bool = False,
     ) -> Any:
-
         """
         This function trains a meta model over select estimators passed in
         the ``estimator_list`` parameter. The output of this function is a
@@ -1974,11 +1963,9 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         plot_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
-        use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
     ) -> Optional[str]:
-
         """
         This function analyzes the performance of a trained model on holdout set.
         It may require re-training the model in certain cases.
@@ -2054,11 +2041,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             the column name in the dataset containing group labels.
 
 
-        use_train_data: bool, default = False
-            When set to true, train data will be used for plots, instead
-            of test data.
-
-
         verbose: bool, default = True
             When set to False, progress bar is not displayed.
 
@@ -2095,7 +2077,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             plot_kwargs=plot_kwargs,
             groups=groups,
             verbose=verbose,
-            use_train_data=use_train_data,
             display_format=display_format,
         )
 
@@ -2106,9 +2087,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         plot_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
-        use_train_data: bool = False,
     ):
-
         """
         This function displays a user interface for analyzing performance of a trained
         model. It calls the ``plot_model`` function internally.
@@ -2150,11 +2129,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             the column name in the dataset containing group labels.
 
 
-        use_train_data: bool, default = False
-            When set to true, train data will be used for plots, instead
-            of test data.
-
-
         Returns:
             None
 
@@ -2171,7 +2145,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             fit_kwargs=fit_kwargs,
             plot_kwargs=plot_kwargs,
             groups=groups,
-            use_train_data=use_train_data,
         )
 
     def interpret_model(
@@ -2186,7 +2159,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         save: Union[str, bool] = False,
         **kwargs,
     ):
-
         """
         This function takes a trained model object and returns an interpretation plot
         based on the test / hold-out set.
@@ -2297,7 +2269,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         verbose: bool = True,
         return_train_score: bool = False,
     ) -> Any:
-
         """
         This function calibrates the probability of a given estimator using isotonic
         or logistic regression. The output of this function is a score grid with CV
@@ -2572,7 +2543,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         plot_kwargs: Optional[dict] = None,
         **shgo_kwargs,
     ):
-
         """
         This function optimizes probability threshold for a trained classifier. It
         uses the SHGO optimizer from ``scipy`` to optimize for the given metric.
@@ -2770,7 +2740,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
-
         """
         This function predicts ``Label`` and ``Score`` (probability of predicted
         class) using a trained model. When ``data`` is None, it predicts label and
@@ -2851,7 +2820,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
-
         """
         This function trains a given estimator on the entire dataset including the
         holdout set.
@@ -2911,7 +2879,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         authentication: dict,
         platform: str = "aws",
     ):
-
         """
         This function deploys the transformation pipeline and trained model on cloud.
 
@@ -3005,7 +2972,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         verbose: bool = True,
         **kwargs,
     ):
-
         """
         This function saves the transformation pipeline and trained model object
         into the current working directory as a pickle file for later use.
@@ -3061,7 +3027,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
     ):
-
         """
         This function loads a previously saved pipeline.
 
@@ -3117,7 +3082,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         turbo: bool = True,
         return_train_score: bool = False,
     ) -> Any:
-
         """
         This function returns the best model out of all trained models in
         current session based on the ``optimize`` parameter. Metrics
@@ -3176,7 +3140,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         internal: bool = False,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of models available in the model library.
 
@@ -3216,7 +3179,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         include_custom: bool = True,
         raise_errors: bool = True,
     ) -> pd.DataFrame:
-
         """
         Returns table of available metrics used in the experiment.
 
@@ -3265,7 +3227,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         multiclass: bool = True,
         **kwargs,
     ) -> pd.Series:
-
         """
         Adds a custom metric to be used in the experiment.
 
@@ -3328,7 +3289,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         )
 
     def remove_metric(self, name_or_id: str):
-
         """
         Removes a metric from the experiment.
 
@@ -3356,7 +3316,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
     def get_logs(
         self, experiment_name: Optional[str] = None, save: bool = False
     ) -> pd.DataFrame:
-
         """
         Returns a table of experiment logs. Only works when ``log_experiment``
         is True when initializing the ``setup`` function.

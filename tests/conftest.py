@@ -6,7 +6,7 @@ import pycaret.classification.functional
 import pycaret.clustering.functional
 import pycaret.regression.functional
 import pycaret.time_series.forecasting.functional
-from pycaret.containers.models import get_all_ts_model_containers
+from pycaret.containers.models.time_series import get_all_model_containers
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 
@@ -132,7 +132,7 @@ def load_setup(load_pos_and_neg_data):
 def load_ts_models(load_setup):
     """Load all time series module models"""
     exp = load_setup
-    model_containers = get_all_ts_model_containers(exp)
+    model_containers = get_all_model_containers(exp)
 
     from time_series_test_utils import (  # TODO Put it back once preprocessing supports series as X
         _BLEND_TEST_MODELS,

@@ -40,7 +40,7 @@ extras_require["full"] = (
 
 setup(
     name="pycaret",
-    version="3.0.0.rc9",
+    version="3.0.4",
     description="PyCaret - An open source, low-code machine learning library in Python.",
     long_description=readme(),
     long_description_content_type="text/markdown",
@@ -50,7 +50,6 @@ setup(
     license="MIT",
     classifiers=[
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
@@ -63,5 +62,5 @@ setup(
     install_requires=required,
     extras_require=extras_require,
     tests_require=required_test,
-    python_requires=">=3.7",
+    python_requires=">=3.8",
 )

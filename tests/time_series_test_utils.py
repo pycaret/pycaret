@@ -3,10 +3,11 @@
 import random
 
 import numpy as np
+import pandas as pd
 from pandas.testing import assert_frame_equal
 from sktime.forecasting.base import ForecastingHorizon
 
-from pycaret.containers.models import get_all_ts_model_containers
+from pycaret.containers.models.time_series import get_all_model_containers
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series import SeasonalPeriod
@@ -146,7 +147,7 @@ def _return_model_names():
     data = get_data("airline")
     exp = TSForecastingExperiment()
     exp.setup(data=data, session_id=42)
-    model_containers = get_all_ts_model_containers(exp)
+    model_containers = get_all_model_containers(exp)
 
     models_to_ignore = (
         ["prophet", "ensemble_forecaster"]
@@ -327,6 +328,22 @@ def _return_data_big_small():
     data = data - 400
     data_small = data[:11]  # 11 data points
     datasets = [data, data_small]
+
+    return datasets
+
+
+def _return_data_seasonal_types_strictly_pos():
+    """Returns data with additive and multiplicative seasonal types
+    (with strictly positive values only)"""
+    # Create base data
+    N = 100
+    y_trend = np.arange(100, 100 + N)
+    y_season = 100 * (1 + np.sin(y_trend))  # No negative values when creating final y
+
+    y_add = pd.Series(y_trend + y_season)
+    y_mul = pd.Series(y_trend * y_season)
+
+    datasets = [y_add, y_mul]
 
     return datasets
 

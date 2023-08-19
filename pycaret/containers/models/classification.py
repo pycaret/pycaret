@@ -150,7 +150,6 @@ class ClassifierContainer(ModelContainer):
         is_soft_voting_supported: Optional[bool] = None,
         tunable: Optional[type] = None,
     ) -> None:
-
         self.shap = shap
         if not (isinstance(shap, bool) or shap in ["type1", "type2"]):
             raise ValueError("shap must be either bool or 'type1', 'type2'.")
@@ -1424,9 +1423,7 @@ class CatBoostClassifierContainer(ClassifierContainer):
         # suppress output
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
-        use_gpu = experiment.gpu_param == "force" or (
-            experiment.gpu_param and len(experiment.X_train) >= 50000
-        )
+        use_gpu = experiment.gpu_param
 
         args = {
             "random_state": experiment.seed,
@@ -1468,7 +1465,7 @@ class CatBoostClassifierContainer(ClassifierContainer):
 
         if use_gpu:
             tune_grid["depth"] = list(range(1, 9))
-            tune_distributions["depth"] = (IntUniformDistribution(1, 8),)
+            tune_distributions["depth"] = IntUniformDistribution(1, 8)
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 

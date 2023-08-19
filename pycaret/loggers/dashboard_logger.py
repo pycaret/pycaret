@@ -209,7 +209,9 @@ class DashboardLogger:
                 experiment.exp_name_log, f"{SETUP_TAG} {experiment.USI}", setup=True
             )
             logger.log_params(params, "setup")
-            logger.set_tags("setup", experiment_custom_tags, runtime)
+            logger.set_tags(
+                "setup", experiment_custom_tags, runtime, USI=experiment.USI
+            )
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Log the transformation pipeline

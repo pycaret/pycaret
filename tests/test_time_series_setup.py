@@ -8,6 +8,7 @@ import pytest
 from time_series_test_utils import (
     _get_seasonal_values,
     _get_seasonal_values_alphanumeric,
+    _return_data_seasonal_types_strictly_pos,
     _return_setup_args_raises,
     _return_splitter_args,
 )
@@ -26,6 +27,7 @@ from pycaret.time_series import TSForecastingExperiment
 
 _splitter_args = _return_splitter_args()
 _setup_args_raises = _return_setup_args_raises()
+_data_seasonal_types_strictly_pos = _return_data_seasonal_types_strictly_pos()
 
 
 ############################
@@ -183,8 +185,10 @@ def test_enforce_exogenous_exo_data(load_uni_exo_data_target):
     assert num_models1 < num_models2
 
 
-def test_sp_to_use_using_index():
-    """Seasonal Period detection using Indices (used before 3.0.0rc5)."""
+def test_sp_to_use_using_index_and_user_def():
+    """Seasonal Period detection using Indices (used before 3.0.0rc5). Also
+    tests the user defined seasonal periods when used in conjunction with "index".
+    """
 
     exp = TSForecastingExperiment()
     data = get_data("airline", verbose=False)
@@ -196,6 +200,9 @@ def test_sp_to_use_using_index():
         verbose=False,
         session_id=42,
     )
+    assert exp.seasonal_period is None
+    assert exp.sp_detection == "index"
+    assert exp.ignore_seasonality_test is False
     assert exp.candidate_sps == [12]
     assert exp.significant_sps == [12]
     assert exp.significant_sps_no_harmonics == [12]
@@ -211,6 +218,10 @@ def test_sp_to_use_using_index():
         seasonal_period=["M", 6],
         num_sps_to_use=-1,
     )
+    assert exp.seasonal_period == ["M", 6]
+    # overridden to user_defined even through we pass "index"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is False
     assert exp.candidate_sps == [12, 6]
     assert exp.significant_sps == [12, 6]
     assert exp.significant_sps_no_harmonics == [12]
@@ -228,15 +239,43 @@ def test_sp_to_use_using_index():
     )
 
     # Should get 1 even though we passed 12
+    assert exp.seasonal_period == 12
+    # overridden to user_defined even through we pass "index"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is False
     assert exp.candidate_sps == [12]
     assert exp.significant_sps == [1]
     assert exp.significant_sps_no_harmonics == [1]
     assert exp.all_sps_to_use == [1]
     assert exp.primary_sp_to_use == 1
 
+    # 1.4 White noise Data with seasonality of 12 and ignore_seasonality_test = True
+    data = get_data("1", folder="time_series/white_noise", verbose=False)
+    exp.setup(
+        data=data,
+        sp_detection="index",
+        seasonal_period=12,
+        ignore_seasonality_test=True,
+        verbose=False,
+        session_id=42,
+    )
 
-def test_sp_to_use_using_auto():
-    """Seasonal Period detection using Statistical tests (used on and after 3.0.0rc5)."""
+    # Should get 1 even though we passed 12
+    assert exp.seasonal_period == 12
+    # overridden to user_defined even through we pass "index"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is True
+    assert exp.candidate_sps == [12]
+    assert exp.significant_sps == [12]
+    assert exp.significant_sps_no_harmonics == [12]
+    assert exp.all_sps_to_use == [12]
+    assert exp.primary_sp_to_use == 12
+
+
+def test_sp_to_use_using_auto_and_user_def():
+    """Seasonal Period detection using Statistical tests (used on and after 3.0.0rc5).
+    Also tests the user defined seasonal periods when used in conjunction with "auto".
+    """
 
     exp = TSForecastingExperiment()
     data = get_data("airline", verbose=False)
@@ -297,6 +336,46 @@ def test_sp_to_use_using_auto():
     exp = TSForecastingExperiment()
     exp.setup(data=data.iloc[: 2 * sp])
     assert exp.primary_sp_to_use < sp
+
+    # 3.0 Overwritten by user defined seasonal period ----
+    sp = 19
+    # 3.1 ignore_seasonality_test = False (default)
+    exp.setup(
+        data=data,
+        seasonal_period=sp,
+        # ignore_seasonality_test=False,  # default
+        sp_detection="auto",
+        verbose=False,
+        session_id=42,
+    )
+    assert exp.seasonal_period == sp
+    # overridden to user_defined even through we pass "auto"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is False
+    assert exp.candidate_sps == [sp]
+    assert exp.significant_sps == [1]
+    assert exp.significant_sps_no_harmonics == [1]
+    assert exp.all_sps_to_use == [1]
+    assert exp.primary_sp_to_use == 1
+
+    # 3.2 ignore_seasonality_test = True
+    exp.setup(
+        data=data,
+        seasonal_period=sp,
+        ignore_seasonality_test=True,
+        sp_detection="auto",
+        verbose=False,
+        session_id=42,
+    )
+    assert exp.seasonal_period == sp
+    # overridden to user_defined even through we pass "auto"
+    assert exp.sp_detection == "user_defined"
+    assert exp.ignore_seasonality_test is True
+    assert exp.candidate_sps == [sp]
+    assert exp.significant_sps == [sp]
+    assert exp.significant_sps_no_harmonics == [sp]
+    assert exp.all_sps_to_use == [sp]
+    assert exp.primary_sp_to_use == sp
 
 
 def test_sp_to_use_upto_max_sp():
@@ -363,7 +442,6 @@ def test_sp_to_use_upto_max_sp():
 
 @pytest.mark.parametrize("seasonal_key, seasonal_value", _get_seasonal_values())
 def test_setup_seasonal_period_int(load_pos_and_neg_data, seasonal_key, seasonal_value):
-
     exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
@@ -909,3 +987,154 @@ def test_hyperparameter_splits():
     exp2.setup(data=data, hyperparameter_split="train", fh=FH, fold=FOLD)
 
     assert exp1.uppercase_d != exp2.uppercase_d
+
+
+@pytest.mark.parametrize("index", ["RangeIndex", "DatetimeIndex"])
+@pytest.mark.parametrize("seasonality_type", ["mul", "add", "auto"])
+def test_seasonality_type_no_season(index: str, seasonality_type: str):
+    """Tests the detection of the seasonality type with data that has no seasonality.
+
+    Parameters
+    ----------
+    index : str
+        Type of index. Options are: "RangeIndex" and "DatetimeIndex"
+    seasonality_type : str
+        The seasonality type to pass to setup
+    """
+    # Create base data without seasonality
+    N = 100
+    y = pd.Series(np.arange(100, 100 + N))  # No negative values when creating final y
+
+    # RangeIndex is default index
+    if index == "DatetimeIndex":
+        dates = pd.date_range(start="2020-01-01", periods=N, freq="MS")
+        y.index = dates
+
+    err_msg = "Expected seasonality_type = None, but got something else."
+    exp = TSForecastingExperiment()
+    exp.setup(data=y, seasonality_type=seasonality_type, session_id=42)
+    assert exp.seasonality_type is None, err_msg
+
+
+@pytest.mark.parametrize("index", ["RangeIndex", "DatetimeIndex"])
+@pytest.mark.parametrize("seasonality_type", ["mul", "add", "auto"])
+@pytest.mark.parametrize(
+    "y", _data_seasonal_types_strictly_pos, ids=["data_add", "data_mul"]
+)
+def test_seasonality_type_with_season_not_stricly_positive(
+    index: str, seasonality_type: str, y: pd.Series
+):
+    """Tests the detection of the seasonality type with user defined type and
+    data that has seasonality and is not strictly positive.
+
+    Parameters
+    ----------
+    index : str
+        Type of index. Options are: "RangeIndex" and "DatetimeIndex"
+    seasonality_type : str
+        The seasonality type to pass to setup
+    y : pd.Series
+        Dataset to use
+    """
+    # Make data not strictly positive
+    y = y - y.max()
+
+    # RangeIndex is default index
+    if index == "DatetimeIndex":
+        dates = pd.date_range(start="2020-01-01", periods=len(y), freq="MS")
+        y.index = dates
+
+    err_msg = "Expected 'additive' seasonality, got something else"
+    exp = TSForecastingExperiment()
+    exp.setup(data=y, seasonality_type=seasonality_type, session_id=42)
+    assert exp.seasonality_type == "add", err_msg
+
+
+@pytest.mark.parametrize("index", ["RangeIndex", "DatetimeIndex"])
+@pytest.mark.parametrize("seasonality_type", ["mul", "add"])
+@pytest.mark.parametrize(
+    "y", _data_seasonal_types_strictly_pos, ids=["data_add", "data_mul"]
+)
+def test_seasonality_type_user_def_with_season_strictly_pos(
+    index: str, seasonality_type: str, y: pd.Series
+):
+    """Tests the detection of the seasonality type with user defined type and
+    data that has seasonality and is strictly positive.
+
+    Parameters
+    ----------
+    index : str
+        Type of index. Options are: "RangeIndex" and "DatetimeIndex"
+    seasonality_type : str
+        The seasonality type to pass to setup
+    y : pd.Series
+        Dataset to use
+    """
+    # RangeIndex is default index
+    if index == "DatetimeIndex":
+        dates = pd.date_range(start="2020-01-01", periods=len(y), freq="MS")
+        y.index = dates
+
+    err_msg = f"Expected '{seasonality_type}' seasonality, got something else"
+    exp = TSForecastingExperiment()
+    exp.setup(data=y, seasonality_type=seasonality_type, session_id=42)
+    assert exp.seasonality_type == seasonality_type, err_msg
+
+
+@pytest.mark.parametrize("index", ["RangeIndex", "DatetimeIndex"])
+@pytest.mark.parametrize("seasonality_type", ["auto"])
+def test_seasonality_type_auto_with_season_strictly_pos(
+    index: str, seasonality_type: str
+):
+    """Tests the detection of the seasonality type using the internal auto algorithm
+    when data that has seasonality and is strictly positive.
+
+    Tests various index types and tests for both additive and multiplicative
+    seasonality.
+
+    Parameters
+    ----------
+    index : str
+        Type of index. Options are: "RangeIndex" and "DatetimeIndex"
+    seasonality_type : str
+        The seasonality type to pass to setup
+    """
+    # Create base data
+    N = 100
+    y_trend = np.arange(100, 100 + N)
+    y_season = 100 * (1 + np.sin(y_trend))  # No negative values when creating final y
+    y = pd.Series(y_trend + y_season)
+
+    # RangeIndex is default index
+    if index == "DatetimeIndex":
+        dates = pd.date_range(start="2020-01-01", periods=N, freq="MS")
+        y.index = dates
+
+    # -------------------------------------------------------------------------#
+    # Test 1: Additive Seasonality
+    # -------------------------------------------------------------------------#
+    err_msg = "Expected additive seasonality, got multiplicative"
+    exp = TSForecastingExperiment()
+    exp.setup(data=y, seasonality_type=seasonality_type, session_id=42)
+    assert exp.seasonality_type == "add", err_msg
+
+    # # -------------------------------------------------------------------------#
+    # # Test 2A: Multiplicative Seasonality (1)
+    # # -------------------------------------------------------------------------#
+    # y = pd.Series(y_trend * y_season)
+    # y.index = dates
+
+    # err_msg = "Expected multiplicative seasonality, got additive (1)"
+    # exp = TSForecastingExperiment()
+    # exp.setup(data=y, session_id=42)
+    # assert exp.seasonality_type == "mul", err_msg
+
+    # -------------------------------------------------------------------------#
+    # Test 2B: Multiplicative Seasonality (2)
+    # -------------------------------------------------------------------------#
+    y = get_data("airline", verbose=False)
+
+    err_msg = "Expected multiplicative seasonality, got additive (2)"
+    exp = TSForecastingExperiment()
+    exp.setup(data=y, seasonality_type=seasonality_type, session_id=42)
+    assert exp.seasonality_type == "mul", err_msg

@@ -122,7 +122,8 @@ class FugueBackend(ParallelBackend):
 
     def __getstate__(self) -> Dict[str, Any]:
         res = dict(self.__dict__)
-        del res["_engine"]
+        if "_engine" in res:
+            del res["_engine"]
         return res
 
     def compare_models(
