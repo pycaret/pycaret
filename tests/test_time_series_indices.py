@@ -197,15 +197,8 @@ def _check_model_creation_and_indices(
     if model in exp.models().index:
         model = exp.create_model(model)
         preds = exp.predict_model(model)
-        try:
-            assert isinstance(preds.index.dtype, expected_return_index_type)
-            exp.plot_model(model)
-        except AssertionError:
-            warnings.warn(
-                f"Model: {model}"
-                f"Expected index type: {expected_return_index_type}"
-                f"Actual index type: {preds.index.dtype}"
-            )
+        assert isinstance(preds.index, expected_return_index_type)
+        exp.plot_model(model)
 
 
 # =============================================================================#
