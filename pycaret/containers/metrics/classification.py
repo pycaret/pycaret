@@ -10,7 +10,6 @@
 
 from typing import Any, Dict, Optional, Union
 
-import numpy as np
 from sklearn import metrics
 from sklearn.metrics._scorer import _BaseScorer
 
