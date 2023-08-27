@@ -2234,6 +2234,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         is_stacked_model = False
 
+        # Strip loaded pipeline
+        if isinstance(estimator, Pipeline):
+            estimator = self._get_final_model_from_pipeline(estimator)
+
         if hasattr(estimator, "final_estimator"):
             self.logger.info("Model is stacked, using the definition of the meta-model")
             is_stacked_model = True
