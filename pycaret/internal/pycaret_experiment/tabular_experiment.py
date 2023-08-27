@@ -2434,7 +2434,7 @@ class _TabularExperiment(_PyCaretExperiment):
             model_name, platform, authentication, verbose
         )
         # set memory on pipeline
-        if hasattr(model, "memory"):
+        if hasattr(model, "memory") and hasattr(self, "memory"):
             model.memory = self.memory
         return model
 
