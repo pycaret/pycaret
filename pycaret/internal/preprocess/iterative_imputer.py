@@ -436,7 +436,6 @@ class IterativeImputer(SklearnIterativeImputer):
             )
             for col in X.select_dtypes("category").columns:
                 X[col] = X[col].cat.rename_categories(self.mappings_[col])
-        print(X.columns)
         Xt = super().transform(X)
         if self.mappings_:
             Xt = _inverse_map_pd(Xt, self.mappings_, self.feature_names_in_)
