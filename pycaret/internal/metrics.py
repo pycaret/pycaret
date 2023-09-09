@@ -5,6 +5,10 @@ from typing import Callable
 import numpy as np
 from sklearn.exceptions import FitFailedWarning
 from sklearn.metrics._scorer import _PredictScorer, _ProbaScorer, _ThresholdScorer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.utils import _safe_indexing
+
+from pycaret.utils.generic import get_label_encoder
 
 _fit_failed_message_warning = (
     "Metric '{0}' failed and error score {1} has been returned instead. "
@@ -12,6 +16,54 @@ _fit_failed_message_warning = (
     "in the metric code. "
     "Full exception below:\n{2}"
 )
+
+
+def get_pos_label(globals_dict: dict):
+    if globals_dict.get("pipeline"):
+        le = get_label_encoder(globals_dict["pipeline"])
+        if le:
+            return le.classes_
+    elif globals_dict.get("y") is not None:
+        known_classes = np.unique(globals_dict["y"].values)
+        return known_classes
+    return None
+
+
+class EncodedDecodedLabelsScoreFunc:
+    """Wrapper to handle both encoded and decoded labels."""
+
+    def __init__(self, score_func: Callable, labels: list):
+        self.score_func = score_func
+        self.labels = tuple(labels) if labels is not None else None
+        self.__name__ = score_func.__name__
+
+    def __call__(self, y_true, y_pred, **kwargs):
+        if self.labels and _safe_indexing(y_true, 0) in self.labels:
+            kwargs["labels"] = self.labels
+            kwargs["pos_label"] = self.labels[-1]
+        return self.score_func(y_true, y_pred, **kwargs)
+
+
+class EncodedDecodedLabelsReplaceScoreFunc:
+    """Wrapper to encode y_true and y_pred if necessary."""
+
+    def __init__(self, score_func: Callable, labels: list):
+        self.score_func = score_func
+        self.labels = np.array(labels) if labels is not None else None
+        self.__name__ = score_func.__name__
+
+    def __call__(self, y_true, y_pred, **kwargs):
+        try:
+            return self.score_func(y_true, y_pred, **kwargs)
+        except ValueError as e:
+            if self.labels is not None and "is not a valid label" in str(e):
+                encoder = LabelEncoder()
+                encoder.classes_ = self.labels
+                return self.score_func(
+                    encoder.transform(y_true), encoder.transform(y_pred), **kwargs
+                )
+            else:
+                raise
 
 
 class BinaryMulticlassScoreFunc:

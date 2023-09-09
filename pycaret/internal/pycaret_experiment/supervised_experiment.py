@@ -45,6 +45,7 @@ from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
+from pycaret.internal.metrics import EncodedDecodedLabelsReplaceScoreFunc, get_pos_label
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.patches.sklearn import fit_and_score as fs
 from pycaret.internal.pipeline import (
@@ -4564,7 +4565,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 pycaret.containers.metrics.classification.ClassificationMetricContainer(
                     id=id,
                     name=name,
-                    score_func=score_func,
+                    score_func=EncodedDecodedLabelsReplaceScoreFunc(
+                        score_func, get_pos_label(self.__dict__)
+                    ),
                     target=target,
                     args=kwargs,
                     display_name=name,
