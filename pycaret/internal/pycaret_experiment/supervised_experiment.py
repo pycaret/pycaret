@@ -1171,7 +1171,7 @@ class _SupervisedExperiment(_TabularExperiment):
             if hasattr(cv, "n_splits"):
                 fold = cv.n_splits
             elif hasattr(cv, "get_n_splits"):
-                fold = cv.get_n_splits()
+                fold = cv.get_n_splits(groups=groups)
             else:
                 raise ValueError(
                     "The cross validation class should implement a n_splits "
