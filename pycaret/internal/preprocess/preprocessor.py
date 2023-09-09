@@ -325,7 +325,9 @@ class Preprocessor:
         # Features to keep during all preprocessing
         self._fxs["Keep"] = keep_features or []
 
-    def _prepare_folds(self, fold_strategy, fold, fold_shuffle, fold_groups):
+    def _prepare_folds(
+        self, fold_strategy, fold, fold_shuffle, fold_groups, data_split_shuffle
+    ):
         """Assign the fold strategy."""
         self.logger.info("Set up folding strategy.")
         allowed_fold_strategy = ["kfold", "stratifiedkfold", "groupkfold", "timeseries"]
@@ -344,11 +346,11 @@ class Preprocessor:
                 )
 
         if fold_strategy == "timeseries" or isinstance(fold_strategy, TimeSeriesSplit):
-            if fold_shuffle:
+            if fold_shuffle or data_split_shuffle:
                 raise ValueError(
                     "Invalid value for the fold_strategy parameter. 'timeseries' "
-                    "requires 'data_split_shuffle' to be False as it can lead to "
-                    "unexpected data split."
+                    "requires 'data_split_shuffle' and 'fold_shuffle' to be False "
+                    "as it can lead to unexpected data split."
                 )
 
         if isinstance(fold_groups, str):
