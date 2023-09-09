@@ -559,19 +559,24 @@ class Preprocessor:
                 return estimator, fit_params
             if isinstance(estimator, estimators_dict["lightgbm"].class_def):
                 return "fit_params_categorical_feature"
-            elif isinstance(estimator, estimators_dict["catboost"].class_def):
+            elif "catboost" in estimators_dict and isinstance(
+                estimator, estimators_dict["catboost"].class_def
+            ):
                 return "params_cat_features"
+            elif "xgboost" in estimators_dict and isinstance(
+                estimator, estimators_dict["xgboost"].class_def
+            ):
+                return "ordinal"
             elif isinstance(
                 estimator,
                 (
-                    estimators_dict["xgboost"].class_def,
                     estimators_dict["rf"].class_def,
                     estimators_dict["et"].class_def,
                     estimators_dict["dt"].class_def,
                     estimators_dict["ada"].class_def,
                     estimators_dict.get(
                         "gbr",
-                        estimators_dict.get("gbc", estimators_dict["xgboost"]),
+                        estimators_dict.get("gbc", estimators_dict["rf"]),
                     ).class_def,
                 ),
             ):
