@@ -47,7 +47,15 @@ def prepare_estimator_for_categoricals(
                 (
                     "encoder",
                     ColumnTransformer(
-                        [("encoder", SklearnOrdinalEncoder(), categorical_indices)],
+                        [
+                            (
+                                "encoder",
+                                SklearnOrdinalEncoder(
+                                    handle_unknown="use_encoded_value", unknown_value=-1
+                                ),
+                                categorical_indices,
+                            )
+                        ],
                         remainder="passthrough",
                     ),
                 ),
@@ -60,7 +68,13 @@ def prepare_estimator_for_categoricals(
                 (
                     "encoder",
                     ColumnTransformer(
-                        [("encoder", SklearnOneHotEncoder(), categorical_indices)],
+                        [
+                            (
+                                "encoder",
+                                SklearnOneHotEncoder(handle_unknown="ignore"),
+                                categorical_indices,
+                            )
+                        ],
                         remainder="passthrough",
                     ),
                 ),
