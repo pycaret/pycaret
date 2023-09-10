@@ -2627,6 +2627,13 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             raise ValueError("shgo_kwargs cannot contain 'func', 'bounds' or 'args'.")
 
         shgo_kwargs.setdefault("sampling_method", "sobol")
+        shgo_kwargs.setdefault("options", {})
+        shgo_kwargs.setdefault("minimizer_kwargs", {})
+        shgo_kwargs["minimizer_kwargs"].setdefault("options", {})
+        shgo_kwargs["minimizer_kwargs"]["options"].setdefault("ftol", 1e-4)
+        shgo_kwargs.setdefault("n", 8)
+        shgo_kwargs["options"].setdefault("maxiter", 4)
+        shgo_kwargs["options"].setdefault("f_tol", 1e-4)
 
         # checking optimize parameter
         optimize = self._get_metric_by_name_or_id(optimize)
