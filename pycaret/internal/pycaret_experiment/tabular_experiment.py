@@ -2430,9 +2430,13 @@ class _TabularExperiment(_PyCaretExperiment):
 
         """
 
-        return pycaret.internal.persistence.load_model(
+        model = pycaret.internal.persistence.load_model(
             model_name, platform, authentication, verbose
         )
+        # set memory on pipeline
+        if hasattr(model, "memory") and hasattr(self, "memory"):
+            model.memory = self.memory
+        return model
 
     @staticmethod
     def convert_model(estimator, language: str = "python") -> str:

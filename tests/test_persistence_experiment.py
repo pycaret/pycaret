@@ -18,6 +18,12 @@ from pycaret.time_series import TSForecastingExperiment
 
 def check_experiment_equality(exp, new_exp):
     for key, value in exp.variables.items():
+        if key == "memory":
+            continue
+        # Reset memory as it will never be equal
+        if key == "pipeline":
+            value.memory = None
+            new_exp.variables[key].memory = None
         try:
             assert value == new_exp.variables[key]
         except Exception:
