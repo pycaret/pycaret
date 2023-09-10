@@ -5518,51 +5518,6 @@ class _SupervisedExperiment(_TabularExperiment):
             "explainerdashboard", extra="analysis", severity="error"
         )
 
-    def deep_check(self, estimator, check_kwargs: Optional[dict]):
-        """
-        This function runs a full suite check over a trained model
-        using deepchecks library.
-
-
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> from pycaret.classification import *
-        >>> exp_name = setup(data = juice,  target = 'Purchase')
-        >>> lr = create_model('lr')
-        >>> deep_check(lr)
-
-
-        estimator: scikit-learn compatible object
-            Trained model object
-
-
-        check_kwargs: dict, default = {} (empty dict)
-            arguments to be passed to deepchecks full_suite class.
-
-
-        Returns:
-            Results of deepchecks.suites.full_suite.run
-        """
-
-        _check_soft_dependencies("deepchecks", extra="analysis", severity="error")
-        check_kwargs = check_kwargs or {}
-
-        from deepchecks import Dataset
-
-        ds_train = Dataset(
-            self.X_train_transformed, label=self.y_train_transformed, cat_features=[]
-        )
-        ds_test = Dataset(
-            self.X_test_transformed, label=self.y_test_transformed, cat_features=[]
-        )
-
-        from deepchecks.tabular.suites import full_suite
-
-        suite = full_suite(**check_kwargs)
-        return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)
-
     def check_drift(
         self,
         reference_data: Optional[pd.DataFrame] = None,

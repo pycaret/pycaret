@@ -2612,46 +2612,6 @@ if __name__ == "__main__":
             f"command --> !python {api_name}.py"
         )
 
-    def eda(self, display_format: str = "bokeh", **kwargs):
-        """
-        This function generates AutoEDA using AutoVIZ library. You must
-        install Autoviz separately ``pip install autoviz`` to use this
-        function.
-
-
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> from pycaret.classification import *
-        >>> exp_name = setup(data = juice,  target = 'Purchase')
-        >>> eda(display_format = 'bokeh')
-
-        display_format: str, default = 'bokeh'
-            When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static
-            plots that are generated using matplotlib and seaborn.
-
-
-        **kwargs:
-            Additional keyword arguments to pass to the AutoVIZ class.
-
-
-        Returns:
-            None
-        """
-
-        _check_soft_dependencies("autoviz", extra="mlops", severity="error")
-        from autoviz.AutoViz_Class import AutoViz_Class
-
-        AV = AutoViz_Class()
-        AV.AutoViz(
-            filename="",
-            dfte=self.dataset_transformed,
-            depVar=self.target_param,
-            chart_format=display_format,
-            **kwargs,
-        )
-
     def create_docker(
         self,
         api_name: str,
