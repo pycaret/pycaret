@@ -276,6 +276,21 @@ def test_iterative_imputer(dtypes_to_select, imputer):
     assert all(categories[col] == set(df[col].unique()) for col in categories)
 
 
+def test_iterative_imputer_many_categories():
+    """Test iterative imputer with a dataset wiht many categories"""
+    # tests for pycaret/pycaret/issues/3636
+    data = pycaret.datasets.get_data("titanic")
+    pycaret.classification.setup(
+        data,
+        target="Survived",
+        session_id=123,
+        ignore_features=["PassengerId", "Name", "Ticket"],
+        imputation_type="iterative",
+        numeric_iterative_imputer="rf",
+        categorical_iterative_imputer="rf",
+    )
+
+
 @pytest.mark.parametrize("embedding_method", ["bow", "tf-idf"])
 def test_text_embedding(embedding_method):
     """Assert that text columns are embedded."""

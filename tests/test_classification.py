@@ -3,6 +3,7 @@ import uuid
 import pandas as pd
 import pytest
 from mlflow.tracking.client import MlflowClient
+from sklearn.metrics import recall_score
 
 import pycaret.classification
 import pycaret.datasets
@@ -138,6 +139,32 @@ def test_classification_predict_on_unseen(juice_dataframe):
     # load model
     model = exp.load_model("best_model_23122019")
     exp.predict_model(model, juice_dataframe)
+
+
+def test_classification_custom_metric(juice_dataframe):
+    exp = pycaret.classification.ClassificationExperiment()
+    # init setup
+    exp.setup(
+        juice_dataframe,
+        target="Purchase",
+        log_experiment=True,
+        html=False,
+        session_id=123,
+        n_jobs=1,
+    )
+
+    # create a custom function
+    def specificity(y_true, y_pred):
+        return recall_score(y_true, y_pred, pos_label=0, zero_division=1)
+
+    # add metric to PyCaret
+    exp.add_metric("specificity", "specificity", specificity, greater_is_better=True)
+
+    lr = exp.create_model("lr")
+    assert exp.pull()["specificity"].sum() != 0
+
+    exp.predict_model(lr)
+    assert exp.pull()["specificity"].sum() != 0
 
 
 class TestClassificationExperimentCustomTags:

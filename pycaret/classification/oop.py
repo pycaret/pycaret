@@ -747,18 +747,19 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         self.data_split_stratify = data_split_stratify
         self.data_split_shuffle = data_split_shuffle
 
-        self._prepare_train_test(
-            train_size=train_size,
-            test_data=test_data,
-            data_split_stratify=data_split_stratify,
-            data_split_shuffle=data_split_shuffle,
-        )
-
         self._prepare_folds(
             fold_strategy=fold_strategy,
             fold=fold,
             fold_shuffle=fold_shuffle,
             fold_groups=fold_groups,
+            data_split_shuffle=data_split_shuffle,
+        )
+
+        self._prepare_train_test(
+            train_size=train_size,
+            test_data=test_data,
+            data_split_stratify=data_split_stratify,
+            data_split_shuffle=data_split_shuffle,
         )
 
         self._prepare_column_types(
