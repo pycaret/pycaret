@@ -11,7 +11,7 @@ In order to avoid potential conflicts with other packages, it is strongly recomm
 .. code-block:: python
 
     # create a conda environment
-    conda create --name yourenvname python=3.8
+    conda create --name yourenvname python=3.10
 
     # activate conda environment
     conda activate yourenvname
