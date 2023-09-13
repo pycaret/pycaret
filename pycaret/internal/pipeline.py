@@ -125,7 +125,11 @@ class Pipeline(imblearn.pipeline.Pipeline):
             state = super().__getstate__()
             state.update(self.__dict__)
         except AttributeError:
-            state = self.__dict__.copy()
+            state = self.__dict__
+
+        state = state.copy()
+        # Remove memory to avoid pickling issues
+        state["_memory"] = None
 
         return dict(state.items(), _pycaret_versions=self._pycaret_versions)
 
@@ -143,6 +147,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
             pass
 
         self.__dict__.update(state)
+        # Restore memory
+        # This will be replaced with setup-defined value in exp.load_model
+        self.memory = state["_memory"]
 
     @property
     def _pycaret_versions(self):
