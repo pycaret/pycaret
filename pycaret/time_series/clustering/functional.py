@@ -22,11 +22,9 @@ from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.time_series.clustering.oop import TSClusteringExperiment
 from pycaret.utils.generic import check_if_global_is_not_none
 
-if TYPE_CHECKING:
-    from sktime.forecasting.base import ForecastingHorizon
 
 _EXPERIMENT_CLASS = TSClusteringExperiment
-_CURRENT_EXPERIMENT: Optional[TSClusteringERxperiment] = None
+_CURRENT_EXPERIMENT: Optional[TSClusteringExperiment] = None
 _CURRENT_EXPERIMENT_EXCEPTION = (
     "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
 )
@@ -87,8 +85,8 @@ def setup(
     -------
     >>> from pycaret.datasets import get_data
     >>> airline = get_data('airline')
-    >>> from pycaret.time_series import *
-    >>> exp_name = setup(data = airline,  fh = 12)
+    >>> from pycaret.time_series.clustering import *
+    >>> exp_name = setup(data = airline)
 
 
     data : pandas.Series or pandas.DataFrame = None

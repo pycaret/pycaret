@@ -14,16 +14,8 @@ import pandas as pd
 from IPython.display import display as ipython_display
 from plotly_resampler import FigureResampler, FigureWidgetResampler
 from sklearn.base import clone
-from sktime.forecasting.base import BaseForecaster, ForecastingHorizon
-from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
-from sktime.forecasting.model_selection import (
-    ExpandingWindowSplitter,
-    SlidingWindowSplitter,
-    temporal_train_test_split,
-)
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
-from sktime.utils.seasonality import autocorrelation_seasonality_test
 
 from pycaret.containers.metrics import get_all_ts_metric_containers
 from pycaret.containers.models import get_all_ts_model_containers
@@ -66,17 +58,6 @@ from pycaret.utils.time_series import (
     auto_detect_sp,
     get_sp_from_str,
     remove_harmonics_from_sp,
-)
-from pycaret.utils.time_series.forecasting import (
-    PyCaretForecastingHorizonTypes,
-    _check_and_clean_coverage,
-    get_predictions_with_intervals,
-    update_additional_scorer_kwargs,
-)
-from pycaret.utils.time_series.forecasting.model_selection import (
-    ForecastingGridSearchCV,
-    ForecastingRandomizedSearchCV,
-    cross_validate,
 )
 from pycaret.utils.time_series.forecasting.models import DummyForecaster
 from pycaret.utils.time_series.forecasting.pipeline import (
