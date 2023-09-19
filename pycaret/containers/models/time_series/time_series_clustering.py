@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np  # type: ignore
 import pandas as pd
 from packaging import version
+from sktime.clustering.k_means import TimeSeriesKMeans
 from sktime.forecasting.base import BaseForecaster  # type: ignore
 from sktime.forecasting.compose import (  # type: ignore
     TransformedTargetForecaster,
@@ -276,21 +277,22 @@ class TimeSeriesKMeansContainer(TimeSeriesClusteringContainer):
 
     def __init__(self, experiment) -> None:
         """
-        For Naive Forecaster,
-          - `sp` must always be 1
-          - `strategy` can be either 'last' or 'drift' but not 'mean'
-             'mean' is reserved for Grand Means Model
-        `sp` is hard coded to 1 irrespective of the `sp` value or whether
-        seasonality is detected or not.
+        For TimeSeriesClustering here are the inputs,
+            n_clusters=5,  # Number of desired centers
+            init_algorithm="forgy",  # Center initialisation technique
+            max_iter=10,  # Maximum number of iterations for refinement on training set
+            metric="dtw",  # Distance metric to use
+            averaging_method="mean",  # Averaging technique to use
+            random_state=1,
         """
         self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
-        from sktime.forecasting.naive import NaiveForecaster  # type: ignore
+        from sktime.clustering.k_means import TimeSeriesKMeans # type: ignore
 
         # Disable container if certain features are not supported but enforced ----
-        dummy = NaiveForecaster()
+        dummy = TimeSeriesKMeans()
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
             return
@@ -302,15 +304,15 @@ class TimeSeriesKMeansContainer(TimeSeriesClusteringContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         eq_function = (
-            lambda x: type(x) is NaiveForecaster
+            lambda x: type(x) is TimeSeriesKMeans
             and x.sp == 1
             and (x.strategy == "last" or x.strategy == "drift")
         )
 
         super().__init__(
             id="naive",
-            name="Naive Forecaster",
-            class_def=NaiveForecaster,
+            name="Time Series KMeans",
+            class_def=TimeSeriesKMeans,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
@@ -332,6 +334,7 @@ class TimeSeriesKMeansContainer(TimeSeriesClusteringContainer):
         }
         return tune_grid
 
+
 class TimeSeriesKMeansDBAContainer(TimeSeriesClusteringContainer):
     model_type = TSModelTypes.BASELINE
 
@@ -348,37 +351,7 @@ class TimeSeriesKMeansDBAContainer(TimeSeriesClusteringContainer):
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
-        from sktime.forecasting.naive import NaiveForecaster  # type: ignore
-
-        # Disable container if certain features are not supported but enforced ----
-        dummy = NaiveForecaster()
-        self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
-        if not self.active:
-            return
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is NaiveForecaster
-            and x.sp == 1
-            and (x.strategy == "last" or x.strategy == "drift")
-        )
-
-        super().__init__(
-            id="naive",
-            name="Naive Forecaster",
-            class_def=NaiveForecaster,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
+        super().__init__(experiment)
 
     @property
     def _set_args(self) -> Dict[str, Any]:
