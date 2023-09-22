@@ -1244,13 +1244,13 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             in the model library (ID - Name):
 
             * 'lr' - Logistic Regression
-            * 'knn' - K Neighbors Classifier
+            * 'knn' - K Nearest Neighbors Classifier
             * 'nb' - Naive Bayes
             * 'dt' - Decision Tree Classifier
-            * 'svm' - SVM - Linear Kernel
-            * 'rbfsvm' - SVM - Radial Kernel
+            * 'svm' - Support Vector Machine - Linear Kernel
+            * 'rbfsvm' - Support Vector Machine - Radial Kernel
             * 'gpc' - Gaussian Process Classifier
-            * 'mlp' - MLP Classifier
+            * 'mlp' - Multi-layer Perceptron Classifier
             * 'ridge' - Ridge Classifier
             * 'rf' - Random Forest Classifier
             * 'qda' - Quadratic Discriminant Analysis
