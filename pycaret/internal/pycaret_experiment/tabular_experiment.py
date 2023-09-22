@@ -1743,6 +1743,17 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.model_selection import ValidationCurve
 
+                    if 'param_name' in plot_kwargs:
+                        param_name = plot_kwargs['param_name']
+                        plot_kwargs.pop('param_name')
+                    if 'param_range' in plot_kwargs:
+                        param_range = plot_kwargs['param_range']
+                        plot_kwargs.pop('param_range')
+
+                    # ignore explicit arguments
+                    for arg in ['cv', 'groups', 'random_state', 'n_jobs']:
+                        plot_kwargs.pop(arg, None)
+                        
                     viz = ValidationCurve(
                         estimator,
                         param_name=param_name,
@@ -1751,6 +1762,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         groups=groups,
                         random_state=self.seed,
                         n_jobs=self.gpu_n_jobs_param,
+                        **plot_kwargs
                     )
                     return show_yellowbrick_plot(
                         visualizer=viz,
