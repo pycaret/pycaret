@@ -3052,37 +3052,6 @@ def convert_model(estimator, language: str = "python") -> str:
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def eda(display_format: str = "bokeh", **kwargs):
-    """
-    This function generates AutoEDA using AutoVIZ library. You must
-    install Autoviz separately ``pip install autoviz`` to use this
-    function.
-
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> eda(display_format = 'bokeh')
-
-    display_format: str, default = 'bokeh'
-        When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static
-        plots that are generated using matplotlib and seaborn.
-
-
-    **kwargs:
-        Additional keyword arguments to pass to the AutoVIZ class.
-
-
-    Returns:
-        None
-    """
-    return _CURRENT_EXPERIMENT.eda(display_format=display_format, **kwargs)
-
-
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
     """
     There are many approaches to conceptualizing fairness. This function follows
@@ -3240,39 +3209,6 @@ def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
         None
     """
     return _CURRENT_EXPERIMENT.create_app(estimator=estimator, app_kwargs=app_kwargs)
-
-
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
-    """
-    This function runs a full suite check over a trained model
-    using deepchecks library.
-
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> deep_check(lr)
-
-
-    estimator: scikit-learn compatible object
-        Trained model object
-
-
-    check_kwargs: dict, default = {} (empty dict)
-        arguments to be passed to deepchecks full_suite class.
-
-
-    Returns:
-        Results of deepchecks.suites.full_suite.run
-    """
-    return _CURRENT_EXPERIMENT.deep_check(
-        estimator=estimator, check_kwargs=check_kwargs
-    )
 
 
 def check_drift(

@@ -45,6 +45,7 @@ from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
+from pycaret.internal.metrics import EncodedDecodedLabelsReplaceScoreFunc, get_pos_label
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.patches.sklearn import fit_and_score as fs
 from pycaret.internal.pipeline import (
@@ -2233,6 +2234,10 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Checking base model")
 
         is_stacked_model = False
+
+        # Strip loaded pipeline
+        if isinstance(estimator, Pipeline):
+            estimator = self._get_final_model_from_pipeline(estimator)
 
         if hasattr(estimator, "final_estimator"):
             self.logger.info("Model is stacked, using the definition of the meta-model")
@@ -4564,7 +4569,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 pycaret.containers.metrics.classification.ClassificationMetricContainer(
                     id=id,
                     name=name,
-                    score_func=score_func,
+                    score_func=EncodedDecodedLabelsReplaceScoreFunc(
+                        score_func, get_pos_label(self.__dict__)
+                    ),
                     target=target,
                     args=kwargs,
                     display_name=name,
@@ -5510,51 +5517,6 @@ class _SupervisedExperiment(_TabularExperiment):
         _check_soft_dependencies(
             "explainerdashboard", extra="analysis", severity="error"
         )
-
-    def deep_check(self, estimator, check_kwargs: Optional[dict]):
-        """
-        This function runs a full suite check over a trained model
-        using deepchecks library.
-
-
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> from pycaret.classification import *
-        >>> exp_name = setup(data = juice,  target = 'Purchase')
-        >>> lr = create_model('lr')
-        >>> deep_check(lr)
-
-
-        estimator: scikit-learn compatible object
-            Trained model object
-
-
-        check_kwargs: dict, default = {} (empty dict)
-            arguments to be passed to deepchecks full_suite class.
-
-
-        Returns:
-            Results of deepchecks.suites.full_suite.run
-        """
-
-        _check_soft_dependencies("deepchecks", extra="analysis", severity="error")
-        check_kwargs = check_kwargs or {}
-
-        from deepchecks import Dataset
-
-        ds_train = Dataset(
-            self.X_train_transformed, label=self.y_train_transformed, cat_features=[]
-        )
-        ds_test = Dataset(
-            self.X_test_transformed, label=self.y_test_transformed, cat_features=[]
-        )
-
-        from deepchecks.tabular.suites import full_suite
-
-        suite = full_suite(**check_kwargs)
-        return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)
 
     def check_drift(
         self,

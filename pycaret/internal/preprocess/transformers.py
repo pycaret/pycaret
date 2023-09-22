@@ -182,11 +182,7 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
         # Convert to pandas and assign proper column names
         if not isinstance(out, pd.DataFrame):
             if hasattr(self.transformer, "get_feature_names_out"):
-                try:  # Fails for some estimators in Python 3.7
-                    # TODO: Remove try after dropping support of Python 3.7
-                    columns = self.transformer.get_feature_names_out()
-                except AttributeError:
-                    columns = self._name_cols(out, X)
+                columns = self.transformer.get_feature_names_out()
             elif hasattr(self.transformer, "get_feature_names"):
                 # Some estimators have legacy method, e.g. category_encoders
                 columns = self.transformer.get_feature_names()
