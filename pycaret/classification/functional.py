@@ -911,7 +911,7 @@ def create_model(
         * 'nb' - Naive Bayes
         * 'dt' - Decision Tree Classifier
         * 'svm' - Support Vector Machine - Linear Kernel
-        * 'rbfsvm' - SVM - Radial Kernel
+        * 'rbfsvm' - Support Vector Machine - Radial Kernel
         * 'gpc' - Gaussian Process Classifier
         * 'mlp' - Multi-layer Perceptron Classifier
         * 'ridge' - Ridge Classifier
