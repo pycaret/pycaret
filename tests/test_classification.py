@@ -2,7 +2,7 @@ import uuid
 
 import pandas as pd
 import pytest
-from mlflow.tracking.client import MlflowClient
+from mlflow.tracking import MlflowClient
 from sklearn.metrics import recall_score
 
 import pycaret.classification
@@ -17,7 +17,6 @@ def juice_dataframe():
 
 @pytest.mark.parametrize("return_train_score", [True, False])
 def test_classification(juice_dataframe, return_train_score):
-
     assert isinstance(juice_dataframe, pd.core.frame.DataFrame)
 
     # init setup

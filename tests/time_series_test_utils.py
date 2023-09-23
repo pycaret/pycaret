@@ -157,7 +157,6 @@ def _return_model_names():
 
     model_names_ = []
     for model_name in model_containers.keys():
-
         if model_name not in models_to_ignore:
             model_names_.append(model_name)
 

@@ -2,7 +2,7 @@ import uuid
 
 import pandas as pd
 import pytest
-from mlflow.tracking.client import MlflowClient
+from mlflow.tracking import MlflowClient
 
 import pycaret.clustering
 import pycaret.datasets
