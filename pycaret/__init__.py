@@ -8,9 +8,19 @@ __version__ = version_
 
 __all__ = ["show_versions", "__version__"]
 
-# Pycaret only supports python 3.8.x up to 3.10.x
-if not ((3, 8) <= sys.version_info < (3, 11)):
+# Pycaret only supports python 3.8, 3.9, 3.10
+# This code is to avoid issues with python 3.7 or other not supported versions
+# example (see package versions): https://github.com/pycaret/pycaret/issues/3746
+
+if sys.version_info < (3, 8):
     raise Exception(
-        f"PyCaret requires Python 3.8 to 3.10. Please upgrade your Python version."
-        f"Actual Python version: {sys.version_info}"
+        f"Pycaret only supports python 3.8, 3.9, 3.10" f"Your actual Python version: ",
+        sys.version_info,
+        "Please UPGRADE your Python version.",
+    )
+elif sys.version_info >= (3, 11):
+    raise Exception(
+        f"Pycaret only supports python 3.8, 3.9, 3.10" f"Your actual Python version: ",
+        sys.version_info,
+        "Please DOWNGRADE your Python version.",
     )
