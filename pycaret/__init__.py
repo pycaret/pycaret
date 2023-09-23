@@ -14,13 +14,13 @@ __all__ = ["show_versions", "__version__"]
 
 if sys.version_info < (3, 8):
     raise Exception(
-        f"Pycaret only supports python 3.8, 3.9, 3.10" f"Your actual Python version: ",
-        sys.version_info,
+        "Pycaret only supports python 3.8, 3.9, 3.10. Your actual Python version: ",
+        {sys.version_info},
         "Please UPGRADE your Python version.",
     )
 elif sys.version_info >= (3, 11):
     raise Exception(
-        f"Pycaret only supports python 3.8, 3.9, 3.10" f"Your actual Python version: ",
-        sys.version_info,
+        "Pycaret only supports python 3.8, 3.9, 3.10. Your actual Python version: ",
+        {sys.version_info},
         "Please DOWNGRADE your Python version.",
     )
