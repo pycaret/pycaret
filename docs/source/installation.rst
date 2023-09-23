@@ -51,18 +51,14 @@ PyCaret >= 2.2 provides the option to use GPU for select model training and hype
 
 * Extreme Gradient Boosting (requires no further installation)
 * CatBoost (requires no further installation)
-* Light Gradient Boosting Machine (requires GPU installation: https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
+* Light Gradient Boosting Machine (requires GPU installation on some platforms: https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
 * Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier, K Neighbors Regressor, Support Vector Machine, Linear Regression, Ridge Regression, Lasso Regression (requires cuML >= 0.15 https://github.com/rapidsai/cuml)
 
-If you are using Google Colab you can install Light Gradient Boosting Machine for GPU but first you have to uninstall LightGBM on CPU. Use the below command to do that:
+If you are using Google Colab, run the following in a cell to use Light Gradient Boosting Machine with GPU support.
 
-.. code-block:: python
+.. code-block:: shell
 
-    # uninstall lightgbm CPU
-    pip uninstall lightgbm -y
-
-    # install lightgbm GPU
-    pip install lightgbm --install-option=--gpu --install-option="--opencl-include-dir=/usr/local/cuda/include/" --install-option="--opencl-library=/usr/local/cuda/lib64/libOpenCL.so"
+    !mkdir -p /etc/OpenCL/vendors && echo "libnvidia-opencl.so.1" > /etc/OpenCL/vendors/nvidia.icd
 
 CatBoost is only enabled on GPU when dataset has > 50,000 rows.
 
