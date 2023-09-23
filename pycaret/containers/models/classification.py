@@ -1147,8 +1147,15 @@ class XGBClassifierContainer(ClassifierContainer):
             "n_jobs": experiment.n_jobs_param,
             "verbosity": 0,
             "booster": "gbtree",
-            "tree_method": "gpu_hist" if experiment.gpu_param else "auto",
         }
+
+        # If XGBoost >= 2 change and add new parameters
+        if version.parse(xgboost.__version__) >= version.parse("2.0.0"):
+            args["tree_method"] = "hist"
+            args["device"] = "cuda"
+        else:
+            args["tree_method"] = "gpu_hist" if experiment.gpu_param else "auto"
+
         tune_args = {}
         tune_grid = {
             "learning_rate": [
