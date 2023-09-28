@@ -152,8 +152,8 @@ def test_classification_custom_metric(juice_dataframe):
         n_jobs=1,
     )
 
-    # create a custom function
-    def specificity(y_true, y_pred):
+    # create a custom function (sklearn >=1.3.0 requires kwargs in func def)
+    def specificity(y_true, y_pred, **kwargs):
         return recall_score(y_true, y_pred, pos_label=0, zero_division=1)
 
     # add metric to PyCaret
