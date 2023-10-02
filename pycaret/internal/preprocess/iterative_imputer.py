@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 from time import time
 from typing import List, Optional
@@ -87,9 +89,9 @@ def prepare_estimator_for_categoricals(
 
 
 def _inverse_map_pd(
-    Xt: pd.DataFrame, mappings: dict, feature_name_in: list
+    Xt: pd.DataFrame, mappings: dict, feature_name_in: list, index: pd.Index | None
 ) -> pd.DataFrame:
-    Xt = pd.DataFrame(Xt, columns=feature_name_in)
+    Xt = pd.DataFrame(Xt, columns=feature_name_in, index=index)
     Xt = Xt.astype({col: "category" for col in mappings})
     for col in Xt.select_dtypes("category").columns:
         inverse_mapping = {i: k for k, i in mappings[col].items()}
@@ -315,6 +317,8 @@ class IterativeImputer(SklearnIterativeImputer):
         else:
             self._cat_estimator = clone(self.cat_estimator)
 
+        index = getattr(X, "index", None)
+
         self.mappings_ = {}
         if isinstance(X, pd.DataFrame):
             cat_indices = self.categorical_indices or []
@@ -419,8 +423,8 @@ class IterativeImputer(SklearnIterativeImputer):
                 )
         Xt[~mask_missing_values] = X[~mask_missing_values]
         if self.mappings_:
-            Xt = _inverse_map_pd(Xt, self.mappings_, self.feature_names_in_)
-        # return super()._concatenate_indicator(Xt, X_indicator)
+            Xt = _inverse_map_pd(Xt, self.mappings_, self.feature_names_in_, index)
+
         return Xt
 
     def transform(self, X):
@@ -436,9 +440,15 @@ class IterativeImputer(SklearnIterativeImputer):
             )
             for col in X.select_dtypes("category").columns:
                 X[col] = X[col].cat.rename_categories(self.mappings_[col])
+
         Xt = super().transform(X)
         if self.mappings_:
-            Xt = _inverse_map_pd(Xt, self.mappings_, self.feature_names_in_)
+            Xt = _inverse_map_pd(
+                Xt=Xt,
+                mappings=self.mappings_,
+                feature_name_in=self.feature_names_in_,
+                index=getattr(X, "index", None),
+            )
         return Xt
 
     def _impute_one_feature(
