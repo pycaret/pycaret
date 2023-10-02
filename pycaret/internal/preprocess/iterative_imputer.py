@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 from time import time
 from typing import List, Optional
