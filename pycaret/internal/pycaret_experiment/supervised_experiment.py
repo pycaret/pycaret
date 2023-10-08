@@ -786,12 +786,31 @@ class _SupervisedExperiment(_TabularExperiment):
                 groups=groups,
                 probability_threshold=probability_threshold,
                 refit=False,
+                error_score="raise" if errors == "raise" else 0.0,
             )
             results_columns_to_ignore = ["Object", "runtime", "cutoff"]
-            if errors == "raise":
+
+            try:
                 model, model_fit_time = self._create_model(**create_model_args)
                 model_results = self.pull(pop=True)
-            else:
+                assert (
+                    np.sum(
+                        model_results.drop(
+                            results_columns_to_ignore, axis=1, errors="ignore"
+                        ).iloc[0]
+                    )
+                    != 0.0
+                )
+            except Exception as ex:
+                if errors == "raise":
+                    raise RuntimeError(
+                        f"create_model() failed for model {model}. {type(ex).__name__}: {ex}"
+                    )
+
+                self.logger.warning(
+                    f"create_model() for {model} raised an exception or returned all 0.0, trying without fit_kwargs:"
+                )
+                self.logger.warning(traceback.format_exc())
                 try:
                     model, model_fit_time = self._create_model(**create_model_args)
                     model_results = self.pull(pop=True)
@@ -804,27 +823,12 @@ class _SupervisedExperiment(_TabularExperiment):
                         != 0.0
                     )
                 except Exception:
-                    self.logger.warning(
-                        f"create_model() for {model} raised an exception or returned all 0.0, trying without fit_kwargs:"
+                    self.logger.error(
+                        f"create_model() for {model} raised an exception or returned all 0.0:"
                     )
-                    self.logger.warning(traceback.format_exc())
-                    try:
-                        model, model_fit_time = self._create_model(**create_model_args)
-                        model_results = self.pull(pop=True)
-                        assert (
-                            np.sum(
-                                model_results.drop(
-                                    results_columns_to_ignore, axis=1, errors="ignore"
-                                ).iloc[0]
-                            )
-                            != 0.0
-                        )
-                    except Exception:
-                        self.logger.error(
-                            f"create_model() for {model} raised an exception or returned all 0.0:"
-                        )
-                        self.logger.error(traceback.format_exc())
-                        continue
+                    self.logger.error(traceback.format_exc())
+                    continue
+
             self.logger.info(
                 "SubProcess create_model() end =================================="
             )
@@ -1080,6 +1084,7 @@ class _SupervisedExperiment(_TabularExperiment):
         refit,
         system,
         display,
+        error_score,
         return_train_score: bool = False,
     ):
         """
@@ -1128,7 +1133,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         fit_params=fit_kwargs,
                         n_jobs=n_jobs,
                         return_train_score=return_train_score,
-                        error_score=0,
+                        error_score=error_score,
                     )
 
             model_fit_end = time.time()
@@ -1301,6 +1306,7 @@ class _SupervisedExperiment(_TabularExperiment):
         display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
         model_only: bool = True,
         return_train_score: bool = False,
+        error_score: Union[str, float] = 0.0,
         **kwargs,
     ) -> Any:
         """
@@ -1536,6 +1542,7 @@ class _SupervisedExperiment(_TabularExperiment):
             refit,
             system,
             display,
+            error_score,
             return_train_score=return_train_score,
         )
 
