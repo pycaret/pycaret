@@ -29,6 +29,7 @@ from sktime.transformations.series.detrend import (  # type: ignore
     Detrender,
 )
 from sktime.transformations.series.summarize import WindowSummarizer
+import xgboost
 
 import pycaret.containers.base_container
 from pycaret.containers.models.base_model import (
@@ -2359,8 +2360,13 @@ class XGBCdsDtContainer(CdsDtContainer):
     def _set_regressor_args(self) -> Dict[str, Any]:
         regressor_args = super()._set_regressor_args
         regressor_args["verbosity"] = 0
-        regressor_args["booster"] = "gbtree"
-        regressor_args["tree_method"] = "gpu_hist" if self.gpu_param else "auto"
+        regressor_args["booster"] = "gbtree"        
+        # If using XGBoost version 2.0 or higher
+        if version.parse(xgboost.__version__) >= version.parse("2.0.0"):
+            regressor_args["tree_method"] = "hist" if self.gpu_param else "auto"
+            regressor_args["device"] = "gpu" if self.gpu_param else "cpu"
+        else:
+            regressor_args["tree_method"] = "gpu_hist" if self.gpu_param else "auto"
         return regressor_args
 
     @property

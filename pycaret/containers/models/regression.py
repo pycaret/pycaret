@@ -1527,10 +1527,10 @@ class XGBRegressorContainer(RegressorContainer):
             "booster": "gbtree",
         }
 
-        # If XGBoost >= 2 change and add new parameters
+        # If using XGBoost version 2.0 or higher
         if version.parse(xgboost.__version__) >= version.parse("2.0.0"):
-            args["tree_method"] = "hist"
-            args["device"] = "cuda"
+            args["tree_method"] = "hist" if experiment.gpu_param else "auto"
+            args["device"] = "gpu" if experiment.gpu_param else "cpu"
         else:
             args["tree_method"] = "gpu_hist" if experiment.gpu_param else "auto"
 
