@@ -2360,7 +2360,7 @@ class XGBCdsDtContainer(CdsDtContainer):
     def _set_regressor_args(self) -> Dict[str, Any]:
         regressor_args = super()._set_regressor_args
         regressor_args["verbosity"] = 0
-        regressor_args["booster"] = "gbtree"        
+        regressor_args["booster"] = "gbtree"
         # If using XGBoost version 2.0 or higher
         if version.parse(xgboost.__version__) >= version.parse("2.0.0"):
             regressor_args["tree_method"] = "hist" if self.gpu_param else "auto"
