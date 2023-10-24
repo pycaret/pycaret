@@ -2457,7 +2457,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
     def automl(
         self,
-        optimize: str = "Accuracy",
+        optimize: str = "R2",
         use_holdout: bool = False,
         turbo: bool = True,
         return_train_score: bool = False,
