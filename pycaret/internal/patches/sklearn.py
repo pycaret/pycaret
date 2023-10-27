@@ -135,7 +135,9 @@ def score(f: Callable) -> Callable:
     def wrapper(*args, **kwargs):
         args = list(args)  # Convert to list for item assignment
         if len(args[0]) > 1:  # Has transformers
-            args[1], y_transformed = args[0].transform(args[1], args[2])
+            args[1], y_transformed = args[0]._memory_full_transform(
+                args[0], args[1], args[2], with_final=False
+            )
             args[2] = args[2][args[2].index.isin(y_transformed.index)]
 
         with pipeline_predict_inverse_only():
