@@ -2541,7 +2541,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         system,
         display: CommonDisplay,
         model_only: bool = False,
-        return_train_score: bool = False,  # unused, added for compat
+        **kwargs,  # Catch unused args such as `return_train_score`
     ):
         # fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
         self.logger.info("Cross validation set to False")
@@ -2600,12 +2600,10 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         fit_kwargs,
         round,
         cv,
-        groups,  # TODO: See if we can remove groups
         metrics,
         refit,
-        system,
         display,
-        return_train_score: bool = False,  # unused, added for compat
+        **kwargs,  # Catch unused args such as `groups`, `system`, `return_train_score`
     ):
         """
         MONITOR UPDATE STARTS
