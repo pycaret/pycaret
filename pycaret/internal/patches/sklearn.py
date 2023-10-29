@@ -5,6 +5,8 @@ import numpy as np
 from sklearn.model_selection._validation import _fit_and_score, _score
 from sklearn.utils import check_random_state
 
+from pycaret.internal.pipeline import pipeline_predict_inverse_only
+
 # Monkey patching sklearn.model_selection._search to avoid overflows on windows.
 
 
@@ -133,9 +135,12 @@ def score(f: Callable) -> Callable:
     def wrapper(*args, **kwargs):
         args = list(args)  # Convert to list for item assignment
         if len(args[0]) > 1:  # Has transformers
-            args[1], args[2] = args[0][:-1].transform(args[1], args[2])
+            args[1], y_transformed = args[0]._memory_full_transform(
+                args[0], args[1], args[2], with_final=False
+            )
+            args[2] = args[2][args[2].index.isin(y_transformed.index)]
 
-        # Return f(final_estimator, X_transformed, y_transformed, ...)
-        return f(args[0][-1], *tuple(args[1:]), **kwargs)
+        with pipeline_predict_inverse_only():
+            return f(args[0], *tuple(args[1:]), **kwargs)
 
     return wrapper

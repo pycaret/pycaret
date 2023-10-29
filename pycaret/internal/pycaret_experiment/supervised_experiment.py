@@ -5038,8 +5038,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if encoded_labels:
             label[LABEL_COLUMN] = encode_labels(label_encoder, label[LABEL_COLUMN])
-        else:
-            y_test_untransformed = y_test_
         old_index = X_test_untransformed.index
         X_test_ = pd.concat([X_test_untransformed, y_test_untransformed, label], axis=1)
         X_test_.index = old_index
