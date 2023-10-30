@@ -23,6 +23,8 @@ from sklearn.utils.validation import check_memory
 from pycaret.utils._show_versions import _get_deps_info
 from pycaret.utils.generic import get_all_object_vars_and_properties, variable_return
 
+INVERSE_ONLY = False
+
 
 def _copy_estimator_state(source, target) -> None:
     """Copy the state of source to target."""
@@ -109,6 +111,10 @@ def _full_transform(pipeline: "Pipeline", X, y, **kwargs):
     return X, y
 
 
+def _noop_transform(pipeline: "Pipeline", X, y, **kwargs):
+    return X, y
+
+
 class Pipeline(imblearn.pipeline.Pipeline):
     def __init__(self, steps, *, memory=None, verbose=False):
         super().__init__(steps, memory=memory, verbose=verbose)
@@ -179,6 +185,8 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
     @property
     def _memory_full_transform(self):
+        if INVERSE_ONLY:
+            return _noop_transform
         if self._cache_full_transform:
             return self.__memory_full_transform
         else:
@@ -538,6 +546,20 @@ class estimator_pipeline(object):
         return self.pipeline
 
     def __exit__(self, type, value, traceback):
+        return
+
+
+class pipeline_predict_inverse_only(object):
+    def __init__(self) -> None:
+        pass
+
+    def __enter__(self):
+        global INVERSE_ONLY
+        INVERSE_ONLY = True
+
+    def __exit__(self, type, value, traceback):
+        global INVERSE_ONLY
+        INVERSE_ONLY = False
         return
 
 

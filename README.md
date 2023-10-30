@@ -42,7 +42,7 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
 
 ## 🌐 Option 1: Install via PyPi
 PyCaret is tested and supported on 64-bit systems with:
-- Python 3.7, 3.8, 3.9, and 3.10
+- Python 3.8, 3.9, and 3.10
 - Ubuntu 16.04 or later
 - Windows 7 or later
 
