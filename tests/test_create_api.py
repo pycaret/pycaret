@@ -1,6 +1,13 @@
+import sys
+
+import pytest
+
 import pycaret.classification
 import pycaret.datasets
 import pycaret.regression
+
+if sys.platform == "win32":
+    pytest.skip("Skipping test module on Windows", allow_module_level=True)
 
 
 def test_classification_create_api():

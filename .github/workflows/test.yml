@@ -17,6 +17,7 @@ concurrency:
 jobs:
   code_quality:
     runs-on: ubuntu-latest
+    name: Code quality checks
     steps:
       - name: Check out source repository
         uses: actions/checkout@v3
@@ -39,6 +40,7 @@ jobs:
   # JOBS MUST START WITH test !!!!
   test_notebooks:
     runs-on: ubuntu-latest
+    name: Test notebooks
     steps:
       - name: Check out source repository
         uses: actions/checkout@v3
@@ -60,13 +62,19 @@ jobs:
       - name: Run notebooks
         run: pytest --nbmake --nbmake-kernel=cikernel -n=auto --nbmake-timeout=3000 --ignore=./tutorials/translations ./tutorials/
 
-  test_linux:
-    runs-on: ubuntu-latest
+  test:
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.8, 3.9, "3.10", "3.11"]
+        os: [ 'ubuntu-latest', 'windows-latest' ]
+        python-version: [ '3.8', '3.9', '3.10', '3.11' ]
 
+    defaults:
+      run:
+        shell: bash
+
+    name: Python ${{ matrix.python-version }} on OS ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -89,132 +97,8 @@ jobs:
           python --version
           which python
           pip list
-      - name: Remove tests
-        run: |
-          rm tests/test_classification_tuning.py
-          rm tests/test_classification_plots.py
-          rm tests/test_regression_plots.py
-          rm tests/test_regression_tuning.py
-          rm tests/test_time_series_tune_grid.py
-          rm tests/test_time_series_tune_random.py
-          rm tests/test_time_series_plots.py
-          rm tests/test_time_series_utils_plots.py
-          rm tests/benchmarks/*.py
       - name: Test with pytest
-        run: pytest --durations=0
-
-  # test_linux_3p11:
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       python-version: ["3.11"]
-
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Set up Python ${{ matrix.python-version }}
-  #       uses: actions/setup-python@v3
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-  #     - name: Install dependencies
-  #       # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-  #       # pyLDAvis 3.3.1 having an "sklearn" dependency
-  #       run: |
-  #         export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
-  #         python -m pip install -U pip
-  #         python -m pip install -U pytest numpy
-
-  #         pip install ".[full, test]"
-  #         if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-  #     - name: Python version and dependency list
-  #       run: |
-  #         echo "Python version expected: ${{ matrix.python-version }}"
-  #         python --version
-  #         which python
-  #         pip list
-  #     - name: Remove tests
-  #       run: |
-  #         rm tests/test_classification_tuning.py
-  #         rm tests/test_classification_plots.py
-  #         rm tests/test_regression_plots.py
-  #         rm tests/test_regression_tuning.py
-  #         rm tests/test_time_series_tune_grid.py
-  #         rm tests/test_time_series_tune_random.py
-  #         rm tests/test_time_series_plots.py
-  #         rm tests/test_time_series_utils_plots.py
-  #         rm tests/benchmarks/*.py
-  #     - name: Test with pytest
-  #       run: pytest --durations=0
-
-  test_windows:
-    runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.8, 3.9, "3.10", "3.11"]
-
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-        # pyLDAvis 3.3.1 having an "sklearn" dependency
-        run: |
-          $env:SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL = 'True'
-          python -m pip install -U pip
-          python -m pip install -U pytest numpy
-
-          pip install ".[full, test]"
-          pip install -r requirements-prophet.txt
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: ${{ matrix.python-version }}"
-          python --version
-          which python
-          pip list
-      - name: Remove tests
-        run: |
-          remove-item tests/* -Include @('test_clustering.py', 'test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
-          remove-item tests/benchmarks/*
-      - name: Test with pytest
-        run: pytest --durations=0
-
-  # test_windows_3p11:
-  #   runs-on: windows-latest
-  #   strategy:
-  #     matrix:
-  #       python-version: ["3.11"]
-
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Set up Python ${{ matrix.python-version }}
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-  #     - name: Install dependencies
-  #       # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-  #       # pyLDAvis 3.3.1 having an "sklearn" dependency
-  #       run: |
-  #         $env:SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL = 'True'
-  #         python -m pip install -U pip
-  #         python -m pip install -U pytest numpy
-
-  #         pip install ".[full, test]"
-  #         pip install -r requirements-prophet.txt
-  #     - name: Python version and dependency list
-  #       run: |
-  #         echo "Python version expected: ${{ matrix.python-version }}"
-  #         python --version
-  #         which python
-  #         pip list
-  #     - name: Remove tests
-  #       run: |
-  #         remove-item tests/* -Include @('test_clustering.py', 'test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
-  #         remove-item tests/benchmarks/*
-  #     - name: Test with pytest
-  #       run: pytest --durations=0
+        run: pytest --durations=0 -m "not (benchmark or plotting or tuning_random)"
 
   test_plots:
     runs-on: ubuntu-latest
@@ -223,6 +107,7 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11"]
 
+    name: Test plotting
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -243,11 +128,8 @@ jobs:
           python --version
           which python
           pip list
-      - name: Remove tests
-        run: |
-          find tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_plots.py' -not -name 'test_time_series_utils_plots.py' -delete
       - name: Test with pytest
-        run: pytest --durations=0
+        run: pytest --durations=0 -m "plotting"
 
   test_ts_tune_random:
     runs-on: ubuntu-latest
@@ -256,6 +138,7 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11"]
 
+    name: Test random tuning
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -278,11 +161,8 @@ jobs:
           python --version
           which python
           pip list
-      - name: Remove tests
-        run: |
-          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_random.py' -delete
       - name: Test with pytest
-        run: pytest --durations=0
+        run: pytest --durations=0 -m "tuning_random"
 
   test_ts_tune_grid:
     runs-on: ubuntu-latest
@@ -291,6 +171,7 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11"]
 
+    name: Test grid tuning
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -313,11 +194,8 @@ jobs:
           python --version
           which python
           pip list
-      - name: Remove tests
-        run: |
-          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_grid.py' -delete
       - name: Test with pytest
-        run: pytest --durations=0
+        run: pytest --durations=0 -m "tuning_grid"
 
   test_benchmarks:
     runs-on: ubuntu-latest
@@ -326,6 +204,7 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11"]
 
+    name: Benchmark tests
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -349,5 +228,4 @@ jobs:
           which python
           pip list
       - name: Run benchmarks
-        run: pytest tests/benchmarks --durations=0
-
+        run: pytest --durations=0 -m "benchmark"

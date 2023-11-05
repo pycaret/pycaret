@@ -5,6 +5,11 @@ import pytest
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 
+pytestmark = [
+    pytest.mark.benchmark,
+]
+
+
 ids = ["raw_strength", "harmonic_max", "harmonic_strength"]
 params = [
     (ids[0], 0.9211, 0.9307, 0.1230, 0.8365),

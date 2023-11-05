@@ -1,9 +1,14 @@
+import sys
+
 import pandas as pd
 import pytest
 
 import pycaret.datasets
 import pycaret.regression
 from pycaret.utils.generic import can_early_stop
+
+if sys.platform == "linux":
+    pytest.skip("Skipping test module on Linux", allow_module_level=True)
 
 
 @pytest.mark.skip(reason="no way of currently testing this")

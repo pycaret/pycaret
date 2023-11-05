@@ -11,6 +11,10 @@ os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
 os.environ["TUNE_MAX_LEN_IDENTIFIER"] = "1"
 
 
+if "CI" in os.environ:
+    pytest.skip("Skipping test module on CI", allow_module_level=True)
+
+
 @pytest.mark.skip(reason="no way of currently testing this")
 def test_classification_tuning():
     # loading dataset

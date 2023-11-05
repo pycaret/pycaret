@@ -1,3 +1,4 @@
+import sys
 import uuid
 
 import pandas as pd
@@ -6,6 +7,9 @@ from mlflow.tracking import MlflowClient
 
 import pycaret.clustering
 import pycaret.datasets
+
+if sys.platform == "win32":
+    pytest.skip("Skipping test module on Windows", allow_module_level=True)
 
 
 @pytest.fixture(scope="module")
