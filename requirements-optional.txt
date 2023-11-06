@@ -8,7 +8,7 @@ Flask==2.2.3  # https://github.com/oegedijk/explainerdashboard/issues/259
 fairlearn==0.7.0  # For check_fairness method
 
 # Models
-xgboost>=1.1.0
+xgboost>=1.1.0; python_version != "3.11" or platform_system != "Windows"
 catboost>=0.23.2; platform_system != "Darwin"
 catboost>=0.23.2,<1.2; platform_system == "Darwin"  # https://github.com/pycaret/pycaret/issues/3563
 kmodes>=0.11.1
