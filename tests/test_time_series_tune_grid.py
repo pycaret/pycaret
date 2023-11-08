@@ -7,8 +7,10 @@ from time_series_test_utils import _return_model_names
 
 from pycaret.time_series import TSForecastingExperiment
 
-pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
-
+pytestmark = [
+    pytest.mark.filterwarnings("ignore::UserWarning"),
+    pytest.mark.tuning_grid,
+]
 
 ##############################
 # Functions Start Here ####

@@ -1,9 +1,11 @@
 import pandas as pd
+import pytest
 
 import pycaret.classification
 import pycaret.datasets
 
 
+@pytest.mark.plotting
 def test_plot():
     # loading dataset
     data = pycaret.datasets.get_data("juice")

@@ -15,7 +15,10 @@ from pycaret.internal.plots.utils.time_series import (
     _reformat_dataframes_for_plots,
 )
 
-pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
+pytestmark = [
+    pytest.mark.filterwarnings("ignore::UserWarning"),
+    pytest.mark.plotting,
+]
 
 
 ##########################

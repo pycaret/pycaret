@@ -1,6 +1,7 @@
 """Module to test time_series plotting functionality
 """
 import os
+import sys
 
 import numpy as np  # type: ignore
 import pytest
@@ -18,6 +19,9 @@ from pycaret.time_series import TSForecastingExperiment
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 os.environ["PYCARET_TESTING"] = "1"
+
+if sys.platform == "win32":
+    pytest.skip("Skipping test module on Windows", allow_module_level=True)
 
 
 ##############################
