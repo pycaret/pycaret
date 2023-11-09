@@ -14,13 +14,13 @@ __all__ = ["show_versions", "__version__"]
 
 if sys.version_info < (3, 8):
     raise RuntimeError(
-        "Pycaret only supports python 3.8, 3.9, 3.10. Your actual Python version: ",
+        "Pycaret only supports python 3.8, 3.9, 3.10, 3.11. Your actual Python version: ",
         sys.version_info,
         "Please UPGRADE your Python version.",
     )
-elif sys.version_info >= (3, 11):
+elif sys.version_info >= (3, 12):
     raise RuntimeError(
-        "Pycaret only supports python 3.8, 3.9, 3.10. Your actual Python version: ",
+        "Pycaret only supports python 3.8, 3.9, 3.10, 3.11. Your actual Python version: ",
         sys.version_info,
         "Please DOWNGRADE your Python version.",
     )
