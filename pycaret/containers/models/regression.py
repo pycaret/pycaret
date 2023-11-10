@@ -1525,8 +1525,15 @@ class XGBRegressorContainer(RegressorContainer):
             "n_jobs": experiment.n_jobs_param,
             "verbosity": 0,
             "booster": "gbtree",
-            "tree_method": "gpu_hist" if experiment.gpu_param else "auto",
         }
+
+        # If using XGBoost version 2.0 or higher
+        if version.parse(xgboost.__version__) >= version.parse("2.0.0"):
+            args["tree_method"] = "hist" if experiment.gpu_param else "auto"
+            args["device"] = "gpu" if experiment.gpu_param else "cpu"
+        else:
+            args["tree_method"] = "gpu_hist" if experiment.gpu_param else "auto"
+
         tune_args = {}
         tune_grid = {
             "learning_rate": [
