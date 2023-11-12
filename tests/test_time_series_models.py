@@ -64,7 +64,7 @@ def test_custom_models(load_pos_data):
     # Test Create Custom Model ----
     ##################################
     my_custom_model = exp.create_model(forecaster)
-    assert type(my_custom_model) == type(forecaster)
+    assert type(my_custom_model) is type(forecaster)
 
     ################################
     # Test Tune Custom Model ----
@@ -76,7 +76,7 @@ def test_custom_models(load_pos_data):
         custom_grid=my_grid,
         return_tuner=True,
     )
-    assert type(tuned_model) == type(forecaster)
+    assert type(tuned_model) is type(forecaster)
     assert "param_forecaster__model__impute__method" in pd.DataFrame(tuner.cv_results_)
     for index, method in enumerate(
         tuner.cv_results_.get("param_forecaster__model__impute__method")

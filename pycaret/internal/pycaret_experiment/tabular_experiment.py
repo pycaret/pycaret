@@ -303,7 +303,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # Global attrs
         self.USI = secrets.token_hex(nbytes=2)
-        self.seed = random.randint(150, 9000) if session_id is None else session_id
+        self.seed = int(random.randint(150, 9000) if session_id is None else session_id)
         np.random.seed(self.seed)
 
         # Initialization =========================================== >>

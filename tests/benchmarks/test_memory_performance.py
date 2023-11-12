@@ -18,6 +18,11 @@ from pycaret.datasets import get_data
 from pycaret.internal.memory import fast_hash  # noqa
 from pycaret.regression import RegressionExperiment
 
+pytestmark = [
+    pytest.mark.benchmark,
+]
+
+
 data_df = get_data(verbose=False)
 supervised_datasets_df = data_df.copy()
 supervised_datasets_df["Items"] = (

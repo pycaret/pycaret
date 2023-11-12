@@ -8,7 +8,7 @@ Flask==2.2.3  # https://github.com/oegedijk/explainerdashboard/issues/259
 fairlearn==0.7.0  # For check_fairness method
 
 # Models
-xgboost>=1.1.0
+xgboost>=1.1.0; python_version != "3.11" or platform_system != "Windows"
 catboost>=0.23.2; platform_system != "Darwin"
 catboost>=0.23.2,<1.2; platform_system == "Darwin"  # https://github.com/pycaret/pycaret/issues/3563
 kmodes>=0.11.1
@@ -18,8 +18,8 @@ statsforecast>=0.5.5,<1.6.0
 scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'
 
 # Tuners
-tune-sklearn>=0.2.1
-ray[tune]>=1.0.0
+tune-sklearn>=0.2.1; python_version != "3.11" or platform_system != "Windows"
+ray[tune]>=1.0.0; python_version != "3.11" or platform_system != "Windows"
 hyperopt>=0.2.7
 optuna>=3.0.0
 scikit-optimize>=0.9.0
@@ -37,3 +37,4 @@ evidently>=0.1.45.dev0,<0.3  # for drift reporting
 fugue>=0.8.0
 flask>=2.0.3
 Werkzeug>=2.2,<3.0
+triad<=0.9.1

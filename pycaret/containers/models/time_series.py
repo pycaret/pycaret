@@ -17,7 +17,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
-import xgboost
 from packaging import version
 from sktime.forecasting.base import BaseForecaster  # type: ignore
 from sktime.forecasting.compose import (  # type: ignore
@@ -2362,11 +2361,14 @@ class XGBCdsDtContainer(CdsDtContainer):
         regressor_args["verbosity"] = 0
         regressor_args["booster"] = "gbtree"
         # If using XGBoost version 2.0 or higher
-        if version.parse(xgboost.__version__) >= version.parse("2.0.0"):
-            regressor_args["tree_method"] = "hist" if self.gpu_param else "auto"
-            regressor_args["device"] = "gpu" if self.gpu_param else "cpu"
-        else:
-            regressor_args["tree_method"] = "gpu_hist" if self.gpu_param else "auto"
+        if self.active:
+            import xgboost
+
+            if version.parse(xgboost.__version__) >= version.parse("2.0.0"):
+                regressor_args["tree_method"] = "hist" if self.gpu_param else "auto"
+                regressor_args["device"] = "gpu" if self.gpu_param else "cpu"
+            else:
+                regressor_args["tree_method"] = "gpu_hist" if self.gpu_param else "auto"
         return regressor_args
 
     @property

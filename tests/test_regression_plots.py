@@ -1,9 +1,11 @@
 import pandas as pd
+import pytest
 
 import pycaret.datasets
 import pycaret.regression
 
 
+@pytest.mark.plotting
 def test_plot():
     # loading dataset
     data = pycaret.datasets.get_data("boston")
