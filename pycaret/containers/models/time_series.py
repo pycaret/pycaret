@@ -17,7 +17,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
-import xgboost
 from packaging import version
 from sktime.forecasting.base import BaseForecaster  # type: ignore
 from sktime.forecasting.compose import (  # type: ignore
