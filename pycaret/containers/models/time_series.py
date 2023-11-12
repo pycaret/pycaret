@@ -2363,6 +2363,7 @@ class XGBCdsDtContainer(CdsDtContainer):
         # If using XGBoost version 2.0 or higher
         if self.active:
             import xgboost
+
             if version.parse(xgboost.__version__) >= version.parse("2.0.0"):
                 regressor_args["tree_method"] = "hist" if self.gpu_param else "auto"
                 regressor_args["device"] = "gpu" if self.gpu_param else "cpu"
