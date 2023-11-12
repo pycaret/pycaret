@@ -8,7 +8,7 @@ __version__ = version_
 
 __all__ = ["show_versions", "__version__"]
 
-# Pycaret only supports python 3.8, 3.9, 3.10
+# Pycaret only supports python 3.8, 3.9, 3.10, 3.11
 # This code is to avoid issues with python 3.7 or other not supported versions
 # example (see package versions): https://github.com/pycaret/pycaret/issues/3746
 
