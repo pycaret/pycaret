@@ -98,7 +98,7 @@ jobs:
           which python
           pip list
       - name: Test with pytest
-        run: pytest --durations=0 -m "not (benchmark or plotting or tuning_random)"
+        run: pytest --durations=0 -m "not (benchmark or plotting or tuning_random or tuning_grid)"
 
   test_plots:
     runs-on: ubuntu-latest
