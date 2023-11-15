@@ -104,6 +104,11 @@ docker run -p 8888:8888 pycaret/slim
 docker run -p 8888:8888 pycaret/full
 ```
 
+## ☁️ Option 4: Self-Host in the Cloud
+Deploy in one-click with [Dome](https://app.trydome.io/signup?package=pycaret):
+
+[![Deploy to Dome](https://trydome.io/button.svg)](https://app.trydome.io/signup?package=pycaret)
+
 ## 🏃‍♂️ Quickstart
 
 ### 1. Functional API
