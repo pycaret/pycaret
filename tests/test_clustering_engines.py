@@ -112,4 +112,6 @@ def test_all_sklearnex_models(algo: str):
 
     model = exp.create_model(algo, engine="sklearnex")
     parent_library = model.__module__
-    assert parent_library.startswith("daal4py")
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
+    )
