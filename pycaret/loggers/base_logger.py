@@ -1,6 +1,8 @@
 from abc import ABC
 from copy import deepcopy
 
+import pandas as pd
+
 from sklearn.pipeline import Pipeline
 
 SETUP_TAG = "Session Initialized"
@@ -32,7 +34,10 @@ class BaseLogger(ABC):
         """If model is a pipeline, return it, else append model to copy of prep_pipe."""
         if not isinstance(model, Pipeline):
             prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained_model", model])
+            # prep_pipe_temp.steps.append(["trained_model", model])
+            prep_pipe_temp = pd.concat(
+                [prep_pipe_temp, pd.DataFrame({"trained_model": [model]})], axis=1
+            )
         else:
             prep_pipe_temp = model
         return prep_pipe_temp
