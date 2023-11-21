@@ -3,6 +3,7 @@
 # License: MIT
 
 import inspect
+import pandas as pd
 from typing import Any, Dict, Optional
 
 import pycaret.utils.generic
@@ -118,14 +119,18 @@ def get_all_containers(
                 continue
             instance = obj(experiment)
             if instance.active:
-                model_containers.append(instance)
+                model_containers = pd.concat(
+                    [pd.DataFrame(instance)], ignore_index=True
+                )
         else:
             try:
                 if hasattr(obj, "active") and not obj.active:
                     continue
                 instance = obj(experiment)
                 if instance.active:
-                    model_containers.append(instance)
+                    model_containers = pd.concat(
+                        [pd.DataFrame(instance)], ignore_index=True
+                    )
             except Exception:
                 pass
 
