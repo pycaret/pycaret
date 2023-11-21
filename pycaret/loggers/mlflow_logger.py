@@ -1,3 +1,5 @@
+import pandas as pd
+
 import secrets
 from contextlib import contextmanager
 
@@ -18,7 +20,10 @@ except ImportError:
 def set_active_mlflow_run(run):
     """Set active MLFlow run to ``run`` and then back to what it was."""
     global _active_run_stack
-    _active_run_stack.append(run)
+    # _active_run_stack.append(run)
+    _active_run_stack = pd.concat(
+        [_active_run_stack, pd.Series([run])], ignore_index=True
+    )
     yield
     try:
         _active_run_stack.remove(run)
@@ -36,7 +41,10 @@ def clean_active_mlflow_run():
     active_run = _active_run_stack[-1]
     _active_run_stack.clear()
     _active_run_stack.extend(old_run_stack)
-    _active_run_stack.append(active_run)
+    # _active_run_stack.append(active_run)
+    _active_run_stack = pd.concat(
+        [_active_run_stack, pd.Series([active_run])], ignore_index=True
+    )
 
 
 class MlflowLogger(BaseLogger):
