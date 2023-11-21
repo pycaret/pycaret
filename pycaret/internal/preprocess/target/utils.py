@@ -1,3 +1,4 @@
+import pandas as pd
 from pycaret.utils.generic import get_all_object_vars_and_properties, is_fit_var
 
 
@@ -39,7 +40,7 @@ class TargetTransformerMixin:
                 if all or var not in get_all_object_vars_and_properties(
                     fitted_estimator
                 ):
-                    vars_to_remove.append(var)
+                    vars_to_remove = pd.concat([pd.DataFrame(var)], ignore_index=True)
             for var in vars_to_remove:
                 try:
                     delattr(self, var)
