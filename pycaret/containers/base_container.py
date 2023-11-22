@@ -5,6 +5,8 @@
 import inspect
 from typing import Any, Dict, Optional
 
+import pandas as pd
+
 import pycaret.utils.generic
 
 
@@ -110,7 +112,7 @@ def get_all_containers(
         and type_var in tuple(x for x in inspect.getmro(obj) if x != obj)
     ]
 
-    model_containers = []
+    model_containers_df = pd.DataFrame()
 
     for obj in model_container_classes:
         if raise_errors:
@@ -118,15 +120,21 @@ def get_all_containers(
                 continue
             instance = obj(experiment)
             if instance.active:
-                model_containers = model_containers.concat([instance])
+                # Transforma a instância em um DataFrame e concatena
+                model_containers_df = pd.concat(
+                    [model_containers_df, pd.DataFrame(instance.get_dict())]
+                )
         else:
             try:
                 if hasattr(obj, "active") and not obj.active:
                     continue
                 instance = obj(experiment)
                 if instance.active:
-                    model_containers = model_containers.concat([instance])
+                    # Transforma a instância em um DataFrame e concatena
+                    model_containers_df = pd.concat(
+                        [model_containers_df, pd.DataFrame(instance.get_dict())]
+                    )
             except Exception:
                 pass
 
-    return {container.id: container for container in model_containers}
+    return {container.id: container for container in model_containers_df}
