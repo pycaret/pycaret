@@ -859,25 +859,87 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         self.logger.info("Creating final display dataframe.")
 
         container = []
-        container.append(["Session id", self.seed])
-        container.append(["Target", self.target_param])
-        container.append(["Target type", "Regression"])
-        container.append(["Original data shape", self.data.shape])
-        container.append(["Transformed data shape", self.dataset_transformed.shape])
-        container.append(["Transformed train set shape", self.train_transformed.shape])
-        container.append(["Transformed test set shape", self.test_transformed.shape])
+        container = pd.concat(
+            [
+                pd.DataFrame(
+                    [["Session id", self.seed]], columns=["Description", "Value"]
+                ),
+                pd.DataFrame(
+                    [["Target", self.target_param]], columns=["Description", "Value"]
+                ),
+                pd.DataFrame(
+                    [["Target type", "Regression"]], columns=["Description", "Value"]
+                ),
+                pd.DataFrame(
+                    [["Original data shape", self.data.shape]],
+                    columns=["Description", "Value"],
+                ),
+                pd.DataFrame(
+                    [["Transformed data shape", self.dataset_transformed.shape]],
+                    columns=["Description", "Value"],
+                ),
+                pd.DataFrame(
+                    [["Transformed train set shape", self.train_transformed.shape]],
+                    columns=["Description", "Value"],
+                ),
+                pd.DataFrame(
+                    [["Transformed test set shape", self.test_transformed.shape]],
+                    columns=["Description", "Value"],
+                ),
+            ],
+            ignore_index=True,
+        )
+
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
-                container.append([f"{fx} features", len(cols)])
+                container = pd.concat(
+                    pd.DataFrame(
+                        [[f"{fx} features", len(cols)]],
+                        columns=["Description", "Value"],
+                    ),
+                    ignore_index=True,
+                )
+
         if self.data.isna().sum().sum():
             n_nans = 100 * self.data.isna().any(axis=1).sum() / len(self.data)
-            container.append(["Rows with missing values", f"{round(n_nans, 1)}%"])
+            container = pd.concat(
+                pd.DataFrame(
+                    [["Rows with missing values", f"{round(n_nans, 1)}%"]],
+                    columns=["Description", "Value"],
+                ),
+                ignore_index=True,
+            )
+
         if preprocess:
-            container.append(["Preprocess", preprocess])
-            container.append(["Imputation type", imputation_type])
+            container = pd.concat(
+                [
+                    container,
+                    pd.DataFrame(
+                        [["Preprocess", preprocess]], columns=["Description", "Value"]
+                    ),
+                    pd.DataFrame(
+                        [["Imputation type", imputation_type]],
+                        columns=["Description", "Value"],
+                    ),
+                ],
+                ignore_index=True,
+            )
+
             if imputation_type == "simple":
-                container.append(["Numeric imputation", numeric_imputation])
-                container.append(["Categorical imputation", categorical_imputation])
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Numeric imputation", numeric_imputation]],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [["Categorical imputation", categorical_imputation]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
+                )
             elif imputation_type == "iterative":
                 if isinstance(numeric_iterative_imputer, str):
                     num_imputer = numeric_iterative_imputer
@@ -889,60 +951,245 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
                 else:
                     cat_imputer = categorical_iterative_imputer.__class__.__name__
 
-                container.append(
-                    ["Iterative imputation iterations", iterative_imputation_iters]
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [
+                                [
+                                    "Iterative imputation iterations",
+                                    iterative_imputation_iters,
+                                ]
+                            ],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [["Numeric iterative imputer", num_imputer]],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [["Categorical iterative imputer", cat_imputer]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
                 )
-                container.append(["Numeric iterative imputer", num_imputer])
-                container.append(["Categorical iterative imputer", cat_imputer])
             if self._fxs["Text"]:
-                container.append(
-                    ["Text features embedding method", text_features_method]
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Text features embedding method", text_features_method]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
                 )
             if self._fxs["Categorical"]:
-                container.append(["Maximum one-hot encoding", max_encoding_ohe])
-                container.append(["Encoding method", encoding_method])
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Maximum one-hot encoding", max_encoding_ohe]],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [["Encoding method", encoding_method]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
+                )
             if polynomial_features:
-                container.append(["Polynomial features", polynomial_features])
-                container.append(["Polynomial degree", polynomial_degree])
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Polynomial features", polynomial_features]],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [["Polynomial degree", polynomial_degree]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
+                )
             if low_variance_threshold is not None:
-                container.append(["Low variance threshold", low_variance_threshold])
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Low variance threshold", low_variance_threshold]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
+                )
             if remove_multicollinearity:
-                container.append(["Remove multicollinearity", remove_multicollinearity])
-                container.append(
-                    ["Multicollinearity threshold", multicollinearity_threshold]
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Remove multicollinearity", remove_multicollinearity]],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [
+                                [
+                                    "Multicollinearity threshold",
+                                    multicollinearity_threshold,
+                                ]
+                            ],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
                 )
             if remove_outliers:
-                container.append(["Remove outliers", remove_outliers])
-                container.append(["Outliers threshold", outliers_threshold])
-            if transformation:
-                container.append(["Transformation", transformation])
-                container.append(["Transformation method", transformation_method])
-            if normalize:
-                container.append(["Normalize", normalize])
-                container.append(["Normalize method", normalize_method])
-            if pca:
-                container.append(["PCA", pca])
-                container.append(["PCA method", pca_method])
-                container.append(["PCA components", pca_components])
-            if feature_selection:
-                container.append(["Feature selection", feature_selection])
-                container.append(["Feature selection method", feature_selection_method])
-                container.append(
-                    ["Feature selection estimator", feature_selection_estimator]
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Remove outliers", remove_outliers]],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [["Outliers threshold", outliers_threshold]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
                 )
-                container.append(["Number of features selected", n_features_to_select])
+            if transformation:
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Transformation", transformation]],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [["Transformation method", transformation_method]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
+                )
+            if normalize:
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Normalize", normalize]], columns=["Description", "Value"]
+                        ),
+                        pd.DataFrame(
+                            [["Normalize method", normalize_method]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
+                )
+            if pca:
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame([["PCA", pca]], columns=["Description", "Value"]),
+                        pd.DataFrame(
+                            [["PCA method", pca_method]],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [["PCA components", pca_components]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
+                )
+            if feature_selection:
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Feature selection", feature_selection]],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [["Feature selection method", feature_selection_method]],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [
+                                [
+                                    "Feature selection estimator",
+                                    feature_selection_estimator,
+                                ]
+                            ],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [["Number of features selected", n_features_to_select]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
+                )
             if transform_target:
-                container.append(["Transform target", transform_target])
-                container.append(["Transform target method", transform_target_method])
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Transform target", transform_target]],
+                            columns=["Description", "Value"],
+                        ),
+                        pd.DataFrame(
+                            [["Transform target method", transform_target_method]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
+                )
             if custom_pipeline:
-                container.append(["Custom pipeline", "Yes"])
-            container.append(["Fold Generator", self.fold_generator.__class__.__name__])
-            container.append(["Fold Number", fold])
-            container.append(["CPU Jobs", self.n_jobs_param])
-            container.append(["Use GPU", self.gpu_param])
-            container.append(["Log Experiment", self.logging_param])
-            container.append(["Experiment Name", self.exp_name_log])
-            container.append(["USI", self.USI])
+                container = pd.concat(
+                    [
+                        container,
+                        pd.DataFrame(
+                            [["Custom pipeline", "Yes"]],
+                            columns=["Description", "Value"],
+                        ),
+                    ],
+                    ignore_index=True,
+                )
+
+            container = pd.concat(
+                [
+                    container,
+                    pd.DataFrame(
+                        [["Fold Generator", self.fold_generator.__class__.__name__]],
+                        columns=["Description", "Value"],
+                    ),
+                    pd.DataFrame(
+                        [["Fold Number", fold]], columns=["Description", "Value"]
+                    ),
+                    pd.DataFrame(
+                        [["CPU Jobs", self.n_jobs_param]],
+                        columns=["Description", "Value"],
+                    ),
+                    pd.DataFrame(
+                        [["Use GPU", self.gpu_param]], columns=["Description", "Value"]
+                    ),
+                    pd.DataFrame(
+                        [["Log Experiment", self.logging_param]],
+                        columns=["Description", "Value"],
+                    ),
+                    pd.DataFrame(
+                        [["Experiment Name", self.exp_name_log]],
+                        columns=["Description", "Value"],
+                    ),
+                    pd.DataFrame([["USI", self.USI]], columns=["Description", "Value"]),
+                ],
+                ignore_index=True,
+            )
 
         self._display_container = [
             pd.DataFrame(container, columns=["Description", "Value"])

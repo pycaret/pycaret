@@ -318,8 +318,8 @@ def plot_cv(
         train_windows = []
         test_windows = []
         for i, (train, test) in enumerate(cv.split(y)):
-            train_windows.append(train)
-            test_windows.append(test)
+            train_windows = train_windows.concat([train])
+            test_windows = test_windows.concat([test])
         return train_windows, test_windows
 
     def plot_windows(data, train_windows, test_windows):

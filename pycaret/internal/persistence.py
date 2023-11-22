@@ -313,7 +313,7 @@ def save_model(
             )
         else:
             model_ = deepcopy(prep_pipe_)
-            model_.steps.append(("trained_model", model))
+            model_.steps = model_.steps.concat([("trained_model", model)])
             model = model_
 
     model_name = f"{model_name}.pkl"

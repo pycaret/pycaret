@@ -46,8 +46,12 @@ def _reconcile_order_and_lags(
         return return_lags, return_names
     elif order_list is not None:
         for order in order_list:
-            return_lags.append([1] * order)
-            return_names.append(f"Order={order}")
+            return_lags_df = pd.DataFrame([[1] * order])
+            return_names_df = pd.DataFrame([f"Order={order}"])
+
+            return_lags = pd.concat([return_lags, return_lags_df], ignore_index=True)
+            return_names = pd.concat([return_names, return_names_df], ignore_index=True)
+
     elif lags_list is not None:
         return_lags = lags_list
         for lags in lags_list:

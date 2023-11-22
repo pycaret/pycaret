@@ -658,58 +658,105 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         self.logger.info("Creating final display dataframe.")
 
         container = []
-        container.append(["Session id", self.seed])
-        container.append(["Original data shape", self.data.shape])
-        container.append(["Transformed data shape", self.dataset_transformed.shape])
+        container = container.concat(
+            [
+                ["Session id", self.seed],
+                ["Original data shape", self.data.shape],
+                ["Transformed data shape", self.dataset_transformed.shape],
+            ]
+        )
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
-                container.append([f"{fx} features", len(cols)])
+                container = container.concat([[f"{fx} features", len(cols)]])
         if self.data.isna().sum().sum():
             n_nans = 100 * self.data.isna().any(axis=1).sum() / len(self.data)
-            container.append(["Rows with missing values", f"{round(n_nans, 1)}%"])
+            container = container.concat(
+                [["Rows with missing values", f"{round(n_nans, 1)}%"]]
+            )
         if preprocess:
-            container.append(["Preprocess", preprocess])
-            container.append(["Imputation type", imputation_type])
+            container = container.concat(
+                [["Preprocess", preprocess], ["Imputation type", imputation_type]]
+            )
             if imputation_type == "simple":
-                container.append(["Numeric imputation", numeric_imputation])
-                container.append(["Categorical imputation", categorical_imputation])
+                container = container.concat(
+                    [
+                        ["Numeric imputation", numeric_imputation],
+                        ["Categorical imputation", categorical_imputation],
+                    ]
+                )
             if self._fxs["Text"]:
-                container.append(
+                container = container.concat(
                     ["Text features embedding method", text_features_method]
                 )
             if self._fxs["Categorical"]:
-                container.append(["Maximum one-hot encoding", max_encoding_ohe])
-                container.append(["Encoding method", encoding_method])
-            if polynomial_features:
-                container.append(["Polynomial features", polynomial_features])
-                container.append(["Polynomial degree", polynomial_degree])
-            if low_variance_threshold is not None:
-                container.append(["Low variance threshold", low_variance_threshold])
-            if remove_multicollinearity:
-                container.append(["Remove multicollinearity", remove_multicollinearity])
-                container.append(
-                    ["Multicollinearity threshold", multicollinearity_threshold]
+                container = container.concat(
+                    [
+                        ["Maximum one-hot encoding", max_encoding_ohe],
+                        ["Encoding method", encoding_method],
+                    ]
                 )
-            if remove_outliers:
-                container.append(["Remove outliers", remove_outliers])
-                container.append(["Outliers threshold", outliers_threshold])
-            if transformation:
-                container.append(["Transformation", transformation])
-                container.append(["Transformation method", transformation_method])
-            if normalize:
-                container.append(["Normalize", normalize])
-                container.append(["Normalize method", normalize_method])
-            if pca:
-                container.append(["PCA", pca])
-                container.append(["PCA method", pca_method])
-                container.append(["PCA components", pca_components])
-            if custom_pipeline:
-                container.append(["Custom pipeline", "Yes"])
-            container.append(["CPU Jobs", self.n_jobs_param])
-            container.append(["Use GPU", self.gpu_param])
-            container.append(["Log Experiment", self.logging_param])
-            container.append(["Experiment Name", self.exp_name_log])
-            container.append(["USI", self.USI])
+                if polynomial_features:
+                    container = container.concat(
+                        [
+                            ["Polynomial features", polynomial_features],
+                            ["Polynomial degree", polynomial_degree],
+                        ]
+                    )
+                if low_variance_threshold is not None:
+                    container = container.concat(
+                        [["Low variance threshold", low_variance_threshold]]
+                    )
+                if remove_multicollinearity:
+                    container = container.concat(
+                        [
+                            ["Remove multicollinearity", remove_multicollinearity],
+                            [
+                                "Multicollinearity threshold",
+                                multicollinearity_threshold,
+                            ],
+                        ]
+                    )
+                if remove_outliers:
+                    container = container.concat(
+                        [
+                            ["Remove outliers", remove_outliers],
+                            ["Outliers threshold", outliers_threshold],
+                        ]
+                    )
+                if transformation:
+                    container = container.concat(
+                        [
+                            ["Transformation", transformation],
+                            ["Transformation method", transformation_method],
+                        ]
+                    )
+                if normalize:
+                    container = container.concat(
+                        [
+                            ["Normalize", normalize],
+                            ["Normalize method", normalize_method],
+                        ]
+                    )
+                if pca:
+                    container = container.concat(
+                        [
+                            ["PCA", pca],
+                            ["PCA method", pca_method],
+                            ["PCA components", pca_components],
+                        ]
+                    )
+                if custom_pipeline:
+                    container = container.concat([["Custom pipeline", "Yes"]])
+
+            container = container.concat(
+                [
+                    ["CPU Jobs", self.n_jobs_param],
+                    ["Use GPU", self.gpu_param],
+                    ["Log Experiment", self.logging_param],
+                    ["Experiment Name", self.exp_name_log],
+                    ["USI", self.USI],
+                ]
+            )
 
         self._display_container = [
             pd.DataFrame(container, columns=["Description", "Value"])
@@ -1150,15 +1197,15 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         if metrics:
             model_results = pd.DataFrame(metrics, index=[0])
             model_results = model_results.round(round)
-            self._display_container.append(model_results)
+            self._display_container = self._display_container.concat([model_results])
         else:
             model_results = None
 
         if add_to_model_list:
             # storing results in _master_model_container
             self.logger.info("Uploading model into container now")
-            self._master_model_container.append(
-                {"model": model, "scores": model_results, "cv": None}
+            self._master_model_container = self._master_model_container.concat(
+                [{"model": model, "scores": model_results, "cv": None}]
             )
 
         if model_results is not None and system:

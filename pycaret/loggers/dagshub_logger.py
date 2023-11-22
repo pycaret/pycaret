@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+import pandas as pd
+
 from pycaret.loggers.mlflow_logger import MlflowLogger
 
 try:
@@ -91,7 +93,10 @@ class DagshubLogger(MlflowLogger):
                 )
                 self._dvc_commit(commit="added new trained model")
         elif type == "data":
-            self.__commit_data_type.append(file.split(os.sep)[-1].lower())
+            new_data = pd.DataFrame([file.split(os.sep)[-1].lower()])
+            self.__commit_data_type = pd.concat(
+                [self.__commit_data_type, new_data], ignore_index=True
+            )
             remote_dir = (
                 self.paths["processed_data"]
                 if "transform" in self.__commit_data_type[-1]

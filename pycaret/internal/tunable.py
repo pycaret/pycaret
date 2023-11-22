@@ -381,7 +381,7 @@ class TunableMLPClassifier(MLPClassifier, TunableMixin):
             if k.startswith("hidden_layer_size_") and int(k.split("_")[3]) >= len(
                 self.hidden_layer_sizes
             ):
-                to_delete.append(k)
+                to_delete.concat([k])
         for k in to_delete:
             delattr(self, k)
         for i, w in enumerate(self.hidden_layer_sizes):
@@ -799,7 +799,7 @@ class TunableMLPRegressor(MLPRegressor, TunableMixin):
             if k.startswith("hidden_layer_size_") and int(k.split("_")[3]) >= len(
                 self.hidden_layer_sizes
             ):
-                to_delete.append(k)
+                to_delete.concat([k])
         for k in to_delete:
             delattr(self, k)
         for i, w in enumerate(self.hidden_layer_sizes):

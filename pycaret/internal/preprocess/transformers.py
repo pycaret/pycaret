@@ -92,14 +92,18 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
                 )
             )
             if any(mask) and mask[mask].index.values[0] not in temp_cols:
-                temp_cols.append(mask[mask].index.values[0])
+                temp_cols_df = pd.DataFrame([mask[mask].index.values[0]])
+                temp_cols = pd.concat([temp_cols, temp_cols_df], ignore_index=True)
             else:
                 # If the column is new, use a default name
                 counter = 1
                 while True:
                     n = f"feature {i + counter + df.shape[1] - len(self._include)}"
                     if (n not in df or n in self._include) and n not in temp_cols:
-                        temp_cols.append(n)
+                        temp_cols_df = pd.DataFrame([n])
+                        temp_cols = pd.concat(
+                            [temp_cols, temp_cols_df], ignore_index=True
+                        )
                         break
                     else:
                         counter += 1

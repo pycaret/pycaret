@@ -166,7 +166,9 @@ class FugueBackend(ParallelBackend):
         res = pd.concat(cloudpickle.loads(x[0]) for x in outputs)
         res = res.sort_values(sort_col, ascending=asc)
         top = res.head(self._params.get("n_select", 1))
-        instance._display_container.append(res.iloc[:, :-1])
+        instance._display_container = instance._display_container.concat(
+            [res.iloc[:, :-1]]
+        )
         top_models = [cloudpickle.loads(x) for x in top._model]
         du.finish(res.iloc[:, :-1])
         return top_models[0] if len(top_models) == 1 else top_models
@@ -194,11 +196,13 @@ class FugueBackend(ParallelBackend):
             res = instance.pull()[:top]
             if report is not None:
                 report(res)
-            results.append(
+            results = results.concat(
                 [
-                    cloudpickle.dumps(
-                        res.assign(_model=[cloudpickle.dumps(x) for x in m])
-                    )
+                    [
+                        cloudpickle.dumps(
+                            res.assign(_model=[cloudpickle.dumps(x) for x in m])
+                        )
+                    ]
                 ]
             )
 

@@ -713,13 +713,13 @@ class InteractiveResidualsPlot:
             predictions, residuals, split_origin=split_origin
         )
         logger.info("Calculated Tunkey-Anscombe Plot")
-        self.figures.append(tukey_anscombe_widget)
+        self.figures = self.figures.concat([tukey_anscombe_widget])
 
         qq_plot_widget = QQPlotWidget(
             predictions, y, split_origin=split_origin, featuresize=x.shape[1]
         )
         logger.info("Calculated Normal QQ Plot")
-        self.figures.append(qq_plot_widget)
+        self.figures = self.figures.concat([qq_plot_widget])
 
         standardized_residuals = helper.calculate_standardized_residual(
             predictions, y, None
@@ -729,7 +729,7 @@ class InteractiveResidualsPlot:
             predictions, model_norm_residuals_abs_sqrt, split_origin=split_origin
         )
         logger.info("Calculated Scale-Location Plot")
-        self.figures.append(scale_location_widget)
+        self.figures = self.figures.concat([scale_location_widget])
 
         leverage = helper.leverage_statistic(np.array(x))
 
@@ -745,7 +745,7 @@ class InteractiveResidualsPlot:
             split_origin=split_origin,
         )
         logger.info("Calculated Residual vs Leverage Plot inc. Cook's distance")
-        self.figures.append(cooks_distance_widget)
+        self.figures = self.figures.concat([cooks_distance_widget])
 
         items_layout = Layout(width="1000px")
         h0 = widgets.HBox(self.figures[:2], layout=items_layout)

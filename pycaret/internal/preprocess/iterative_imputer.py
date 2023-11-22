@@ -393,7 +393,10 @@ class IterativeImputer(SklearnIterativeImputer):
                 estimator_triplet = _ImputerTriplet(
                     feat_idx, neighbor_feat_idx, estimator
                 )
-                self.imputation_sequence_.append(estimator_triplet)
+                # self.imputation_sequence_.append(estimator_triplet)
+                self.imputation_sequence_ = self.imputation_sequence_.concat(
+                    [self.imputation_sequence_, estimator_triplet]
+                )
 
             if self.verbose > 1:
                 print(
@@ -477,7 +480,10 @@ class IterativeImputer(SklearnIterativeImputer):
             if is_categorical_feat:
                 estimator = clone(self._cat_estimator)
                 if self.cat_estimator_prepare_for_categoricals_type:
-                    (estimator, prep_fit_params,) = prepare_estimator_for_categoricals(
+                    (
+                        estimator,
+                        prep_fit_params,
+                    ) = prepare_estimator_for_categoricals(
                         estimator,
                         categorical_indices,
                         preparation_type=self.cat_estimator_prepare_for_categoricals_type,
@@ -485,7 +491,10 @@ class IterativeImputer(SklearnIterativeImputer):
             else:
                 estimator = clone(self._num_estimator)
                 if self.num_estimator_prepare_for_categoricals_type:
-                    (estimator, prep_fit_params,) = prepare_estimator_for_categoricals(
+                    (
+                        estimator,
+                        prep_fit_params,
+                    ) = prepare_estimator_for_categoricals(
                         estimator,
                         categorical_indices,
                         preparation_type=self.num_estimator_prepare_for_categoricals_type,

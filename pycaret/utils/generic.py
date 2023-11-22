@@ -163,7 +163,7 @@ def check_features_exist(features: List[str], X: pd.DataFrame):
     missing_features = []
     for fx in features:
         if fx not in X.columns:
-            missing_features.append(fx)
+            missing_features.concat([fx])
 
     if len(missing_features) != 0:
         raise ValueError(
@@ -579,7 +579,6 @@ def _calculate_metric(
     try:
         calculated_metric = score_func(y_test, target, sample_weight=weights, **kwargs)
     except Exception:
-
         try:
             calculated_metric = score_func(y_test, target, **kwargs)
         except Exception:

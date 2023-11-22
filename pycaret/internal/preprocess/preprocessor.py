@@ -655,9 +655,9 @@ class Preprocessor:
             if n_unique == 2:
                 self._fxs["Ordinal"][name] = list(sorted(column.dropna().unique()))
             elif max_encoding_ohe < 0 or n_unique <= max_encoding_ohe:
-                one_hot_cols.append(name)
+                one_hot_cols = one_hot_cols.concat([name])
             else:
-                rest_cols.append(name)
+                rest_cols = rest_cols.concat([name])
 
         if self._fxs["Ordinal"]:
             self.logger.info("Set up encoding of ordinal features.")
