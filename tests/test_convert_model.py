@@ -4,7 +4,6 @@ import pycaret.regression
 
 
 def test_classification_convert_model():
-
     # loading dataset
     data = pycaret.datasets.get_data("blood")
 
@@ -25,7 +24,6 @@ def test_classification_convert_model():
 
 
 def test_regression_convert_model():
-
     # loading dataset
     data = pycaret.datasets.get_data("boston")
 
