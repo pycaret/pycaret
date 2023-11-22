@@ -5,8 +5,6 @@
 import inspect
 from typing import Any, Dict, Optional
 
-import pandas as pd
-
 import pycaret.utils.generic
 
 
