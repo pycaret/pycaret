@@ -1,7 +1,7 @@
-import pandas as pd
-
 import secrets
 from contextlib import contextmanager
+
+import pandas as pd
 
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.generic import mlflow_remove_bad_chars

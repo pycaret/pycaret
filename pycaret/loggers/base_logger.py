@@ -2,7 +2,6 @@ from abc import ABC
 from copy import deepcopy
 
 import pandas as pd
-
 from sklearn.pipeline import Pipeline
 
 SETUP_TAG = "Session Initialized"

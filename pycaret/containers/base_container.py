@@ -3,8 +3,9 @@
 # License: MIT
 
 import inspect
-import pandas as pd
 from typing import Any, Dict, Optional
+
+import pandas as pd
 
 import pycaret.utils.generic
 
