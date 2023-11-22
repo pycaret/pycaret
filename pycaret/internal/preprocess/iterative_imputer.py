@@ -395,7 +395,7 @@ class IterativeImputer(SklearnIterativeImputer):
                 )
                 # self.imputation_sequence_.append(estimator_triplet)
                 self.imputation_sequence_ = self.imputation_sequence_.concat(
-                    [self.imputation_sequence_, estimator_triplet]
+                    [estimator_triplet]
                 )
 
             if self.verbose > 1:
