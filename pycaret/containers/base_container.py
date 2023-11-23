@@ -122,7 +122,13 @@ def get_all_containers(
             if instance.active:
                 # Transforma a instância em um DataFrame e concatena
                 model_containers = pd.concat(
-                    [model_containers, pd.DataFrame(instance.get_dict())]
+                    [
+                        model_containers,
+                        pd.DataFrame(
+                            [instance.get_dict()],
+                            columns=["ID", "Name", "Reference", "Class", "Args"],
+                        ),
+                    ]
                 )
         else:
             try:
@@ -132,7 +138,13 @@ def get_all_containers(
                 if instance.active:
                     # Transforma a instância em um DataFrame e concatena
                     model_containers = pd.concat(
-                        [model_containers, pd.DataFrame(instance.get_dict())]
+                        [
+                            model_containers,
+                            pd.DataFrame(
+                                [instance.get_dict()],
+                                columns=["ID", "Name", "Reference", "Class", "Args"],
+                            ),
+                        ]
                     )
             except Exception:
                 pass
