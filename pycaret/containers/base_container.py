@@ -120,32 +120,14 @@ def get_all_containers(
                 continue
             instance = obj(experiment)
             if instance.active:
-                # Transforma a instância em um DataFrame e concatena
-                model_containers = pd.concat(
-                    [
-                        model_containers,
-                        pd.DataFrame(
-                            [instance.get_dict()],
-                            columns=["ID", "Name", "Reference", "Class", "Args"],
-                        ),
-                    ]
-                )
+                model_containers = pd.concat([model_containers, instance])
         else:
             try:
                 if hasattr(obj, "active") and not obj.active:
                     continue
                 instance = obj(experiment)
                 if instance.active:
-                    # Transforma a instância em um DataFrame e concatena
-                    model_containers = pd.concat(
-                        [
-                            model_containers,
-                            pd.DataFrame(
-                                [instance.get_dict()],
-                                columns=["ID", "Name", "Reference", "Class", "Args"],
-                            ),
-                        ]
-                    )
+                    model_containers = pd.concat([model_containers, instance])
             except Exception:
                 pass
 
