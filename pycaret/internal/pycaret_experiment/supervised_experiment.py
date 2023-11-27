@@ -870,7 +870,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 master_display = pd.concat(
                     [master_display, compare_models_], ignore_index=False
                 )
-            master_display = master_display.round(round)
             if self._ml_usecase != MLUsecase.TIME_SERIES:
                 master_display = master_display.sort_values(
                     by=sort, ascending=sort_ascending
@@ -943,15 +942,13 @@ class _SupervisedExperiment(_TabularExperiment):
                     )
                     if errors == "raise":
                         model, model_fit_time = self._create_model(**create_model_args)
-                        # sorted_models.append(model)
-                        sorted_models = sorted_models.concat([model])
+                        sorted_models += model
                     else:
                         try:
                             model, model_fit_time = self._create_model(
                                 **create_model_args
                             )
-                            # sorted_models.append(model)
-                            sorted_models = sorted_models.concat([model])
+                            sorted_models += model
                             assert (
                                 np.sum(
                                     model_results.drop(
@@ -997,8 +994,7 @@ class _SupervisedExperiment(_TabularExperiment):
         pd.reset_option("display.max_columns")
 
         # store in display container
-        # self._display_container.append(compare_models_.data)
-        self._display_container = self._display_container.concat([compare_models_.data])
+        self._display_container += compare_models_.data
 
         self.logger.info(
             f"_master_model_container: {len(self._master_model_container)}"
@@ -1060,10 +1056,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 if train_results is not None:
                     model_results = pd.concat([model_results, train_results])
 
-                # self._display_container.append(model_results)
-                self._display_container = self._display_container.concat(
-                    [model_results]
-                )
+                self._display_container += model_results
 
                 model_results = model_results.style.format(precision=round)
 
@@ -1584,12 +1577,12 @@ class _SupervisedExperiment(_TabularExperiment):
             model_results.drop("cutoff", axis=1, inplace=True, errors="ignore")
 
         # self._display_container.append(model_results)
-        self._display_container = self._display_container.concat([model_results])
+        self._display_container += model_results
 
         # storing results in _master_model_container
         if add_to_model_list:
             self.logger.info("Uploading model into container now")
-            self._master_model_container = self._master_model_container.concat(
+            self._master_model_container.extend(
                 [{"model": model, "scores": model_results, "cv": cv}]
             )
 
@@ -2377,7 +2370,7 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(
                 "Stacked model passed, will tune meta model hyperparameters"
             )
-            suffixes = suffixes.concat(["final_estimator"])
+            suffixes += ["final_estimator"]
 
         gc.collect()
 
@@ -2388,8 +2381,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
             actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
 
-            # suffixes.append(actual_estimator_label)
-            suffixes = suffixes.concat([actual_estimator_label])
+            suffixes += actual_estimator_label
 
             suffixes = "__".join(reversed(suffixes))
 
@@ -4964,8 +4956,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     y=(target if preprocess != "features" else None),
                 )
                 if final_step:
-                    # pipeline.steps.append(final_step)
-                    pipeline.steps = pipeline.steps.concat([final_step])
+                    pipeline.steps += final_step
 
                 if isinstance(X_test_, tuple):
                     X_test_, y_test_ = X_test_
@@ -5081,7 +5072,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # store predictions on hold-out in _display_container
         if df_score is not None:
-            self._display_container = self._display_container.concat([df_score])
+            self._display_container += df_score
 
         gc.collect()
         return X_test_
@@ -5161,8 +5152,8 @@ class _SupervisedExperiment(_TabularExperiment):
                     pipeline.steps = pipeline.steps.concat(["trained_model", model])
                     model = pipeline
             display.move_progress()
-            finalized_models = finalized_models.concat([model])
-            result_container_mean = result_container_mean.concat([mean_scores])
+            finalized_models += model
+            result_container_mean += mean_scores
 
         display.update_monitor(1, "Creating dataframe")
         results = pd.concat(result_container_mean)
@@ -5451,13 +5442,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
         for i in self.X.columns:
             if i in self._fxs["Categorical"] or i in self._fxs["Ordinal"]:
-                # all_inputs.append(gr.inputs.Dropdown(list(self.X[i].unique()), label=i))
-                all_inputs = all_inputs.concat(
+                all_inputs.extend(
                     [gr.inputs.Dropdown(list(self.X[i].unique()), label=i)]
                 )
             else:
-                # all_inputs.append(gr.inputs.Textbox(label=i))
-                all_inputs = all_inputs.concat([gr.inputs.Textbox(label=i)])
+                all_inputs += [gr.inputs.Textbox(label=i)]
 
         def predict(*dict_input):
             input_df = pd.DataFrame.from_dict([dict_input])
