@@ -30,7 +30,7 @@ class BaseContainer:
 
     Attributes
     ----------
-    id : str
+    id : int
         ID used as index.
     name : str
         Full display name.
@@ -45,7 +45,7 @@ class BaseContainer:
 
     def __init__(
         self,
-        id: str,
+        id: int,
         name: str,
         class_def: type,
         args: Optional[Dict[str, Any]] = None,
@@ -120,14 +120,18 @@ def get_all_containers(
                 continue
             instance = obj(experiment)
             if instance.active:
-                model_containers = pd.concat([model_containers, instance])
+                model_containers = pd.concat(
+                    [model_containers, instance], ignore_index=True
+                )
         else:
             try:
                 if hasattr(obj, "active") and not obj.active:
                     continue
                 instance = obj(experiment)
                 if instance.active:
-                    model_containers = pd.concat([model_containers, instance])
+                    model_containers = pd.concat(
+                        [model_containers, instance], ignore_index=True
+                    )
             except Exception:
                 pass
 
