@@ -5,8 +5,6 @@
 import inspect
 from typing import Any, Dict, Optional
 
-import pandas as pd
-
 import pycaret.utils.generic
 
 
@@ -30,7 +28,7 @@ class BaseContainer:
 
     Attributes
     ----------
-    id : int
+    id : str
         ID used as index.
     name : str
         Full display name.
@@ -112,7 +110,7 @@ def get_all_containers(
         and type_var in tuple(x for x in inspect.getmro(obj) if x != obj)
     ]
 
-    model_containers = pd.DataFrame()
+    model_containers = []
 
     for obj in model_container_classes:
         if raise_errors:
@@ -120,18 +118,14 @@ def get_all_containers(
                 continue
             instance = obj(experiment)
             if instance.active:
-                model_containers = pd.concat(
-                    [model_containers, instance], ignore_index=True
-                )
+                model_containers += [instance]
         else:
             try:
                 if hasattr(obj, "active") and not obj.active:
                     continue
                 instance = obj(experiment)
                 if instance.active:
-                    model_containers = pd.concat(
-                        [model_containers, instance], ignore_index=True
-                    )
+                    model_containers += [instance]
             except Exception:
                 pass
 
