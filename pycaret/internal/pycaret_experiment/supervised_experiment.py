@@ -994,7 +994,7 @@ class _SupervisedExperiment(_TabularExperiment):
         pd.reset_option("display.max_columns")
 
         # store in display container
-        self._display_container += compare_models_.data
+        self._display_container.extend(compare_models_.data)
 
         self.logger.info(
             f"_master_model_container: {len(self._master_model_container)}"
