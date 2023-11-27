@@ -43,7 +43,7 @@ class BaseContainer:
 
     def __init__(
         self,
-        id: int,
+        id: str,
         name: str,
         class_def: type,
         args: Optional[Dict[str, Any]] = None,
