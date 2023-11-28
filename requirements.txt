@@ -26,7 +26,8 @@ xxhash  # for faster hashing
 wurlitzer; platform_system != 'Windows'
 
 # Plotting
-matplotlib>=3.3.0,<=3.6.1;
+matplotlib==3.6.1; pandas >= "2.0"
+matplotlib>=3.3.0,<3.6.1; pandas < "2.0"
 scikit-plot>=0.3.7
 yellowbrick>=1.4
 plotly>=5.0.0
