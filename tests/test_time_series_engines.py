@@ -1,9 +1,6 @@
 """Module to test setting of engines in time series
 """
 
-from daal4py.sklearn.linear_model._linear import (
-    LinearRegression as SklearnexLinearRegression,
-)
 from sklearn.linear_model import LinearRegression as SklearnLinearRegression
 from sktime.forecasting.arima import AutoARIMA as PmdAutoARIMA
 from sktime.forecasting.statsforecast import StatsForecastAutoARIMA
@@ -58,7 +55,10 @@ def test_engines_setup_global_args(load_pos_and_neg_data):
     # B. Regression Models
     assert exp.get_engine("lr_cds_dt") == "sklearnex"
     model = exp.create_model("lr_cds_dt", cross_validation=False)
-    assert isinstance(model.regressor, SklearnexLinearRegression)
+    parent_library = model.regressor.__module__
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
+    )
     # Original engine should remain the same
     assert exp.get_engine("lr_cds_dt") == "sklearnex"
 
@@ -140,7 +140,10 @@ def test_create_model_engines_local_args(load_pos_and_neg_data):
 
     # B. Regression Models
     model = exp.create_model("lr_cds_dt", engine="sklearnex", cross_validation=False)
-    assert isinstance(model.regressor, SklearnexLinearRegression)
+    parent_library = model.regressor.__module__
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
+    )
     # Original engine should remain the same
     assert exp.get_engine("lr_cds_dt") == "sklearn"
     model = exp.create_model("lr_cds_dt")
@@ -191,7 +194,10 @@ def test_compare_models_engines_local_args(load_pos_and_neg_data):
 
     # B. Regression Models
     model = exp.compare_models(include=["lr_cds_dt"], engine={"lr_cds_dt": "sklearnex"})
-    assert isinstance(model.regressor, SklearnexLinearRegression)
+    parent_library = model.regressor.__module__
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
+    )
     # Original engine should remain the same
     assert exp.get_engine("lr_cds_dt") == "sklearn"
     model = exp.compare_models(include=["lr_cds_dt"])
