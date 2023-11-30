@@ -579,7 +579,6 @@ def _calculate_metric(
     try:
         calculated_metric = score_func(y_test, target, sample_weight=weights, **kwargs)
     except Exception:
-
         try:
             calculated_metric = score_func(y_test, target, **kwargs)
         except Exception:
@@ -1168,10 +1167,10 @@ def _get_metrics_dict(
 
 
 def enable_colab():
-    # TODO: Remove with pycaret v3.2.0
+    # TODO: Remove with pycaret v3.2.1
     warnings.warn(
         "This function is no longer necessary in pycaret>=3.0 "
-        "and will be removed with release 3.2.0",
+        "and will be removed with release 3.2.1",
         DeprecationWarning,
     )
 

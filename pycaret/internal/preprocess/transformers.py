@@ -585,7 +585,8 @@ class FixImbalancer(BaseEstimator, TransformerMixin):
             y_new.index = new_index
 
             # Add the new samples to the old dataframe
-            X, y = X.append(X_new), y.append(y_new)
+            X = pd.concat([X, X_new], ignore_index=True)
+            y = pd.concat([y, y_new], ignore_index=True)
 
         return X, y
 

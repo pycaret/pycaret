@@ -34,7 +34,7 @@ def _get_univar_noexo_data_with_index_index():
 
     # DateTimeIndex is coerced and returned as PeriodIndex in PyCaret
     return [
-        [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, pd.Int64Index)],
+        [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, pd.Index)],
         ids,
     ]
 
@@ -73,7 +73,7 @@ def _get_univar_noexo_data_with_index_column():
         [
             (data1, pd.PeriodIndex),
             (data2, pd.PeriodIndex),
-            (data3, pd.Int64Index),
+            (data3, pd.Index),
             (data4, pd.PeriodIndex),
         ],
         ids,
@@ -106,7 +106,7 @@ def _get_univar_exo_data_with_index_index():
 
     # DateTimeIndex is coerced and returned as PeriodIndex in PyCaret
     return [
-        [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, pd.Int64Index)],
+        [(data1, pd.PeriodIndex), (data2, pd.PeriodIndex), (data3, pd.Index)],
         ids,
     ]
 
@@ -152,7 +152,7 @@ def _get_univar_exo_data_with_index_column():
         [
             (data1, pd.PeriodIndex),
             (data2, pd.PeriodIndex),
-            (data3, pd.Int64Index),
+            (data3, pd.Index),
             (data4, pd.PeriodIndex),
         ],
         ids,
