@@ -248,7 +248,7 @@ def test_iterative_imputer(dtypes_to_select, imputer):
             continue
         if col in ("Purchase", "Store7"):
             categories[col] = set(data[col].unique())
-        data.loc[data.sample(frac=0.1, random_state=i).index, col] = pd.np.nan
+        data.loc[data.sample(frac=0.1, random_state=i).index, col] = np.nan
 
     if dtypes_to_select == "num_only":
         data_subset = data.select_dtypes(include="float")
