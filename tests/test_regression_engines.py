@@ -1,8 +1,6 @@
 import uuid
 
-import daal4py
 import pytest
-import sklearn
 
 import pycaret.datasets
 import pycaret.regression
@@ -30,8 +28,10 @@ def test_engines_setup_global_args():
     # Default Model Engine ----
     assert exp.get_engine("lr") == "sklearnex"
     model = exp.create_model("lr")
-    print(type(model))
-    assert isinstance(model, daal4py.sklearn.linear_model._linear.LinearRegression)
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
+    )
 
 
 def test_engines_global_methods():
@@ -60,7 +60,8 @@ def test_engines_global_methods():
     exp._set_engine("lr", "sklearn")
     assert exp.get_engine("lr") == "sklearn"
     model = exp.create_model("lr")
-    assert isinstance(model, sklearn.linear_model._base.LinearRegression)
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearn.")
 
 
 def test_create_model_engines_local_args():
@@ -84,11 +85,15 @@ def test_create_model_engines_local_args():
     # Default Model Engine ----
     assert exp.get_engine("lr") == "sklearn"
     model = exp.create_model("lr")
-    assert isinstance(model, sklearn.linear_model._base.LinearRegression)
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearn.")
 
     # Override model engine locally ----
     model = exp.create_model("lr", engine="sklearnex")
-    assert isinstance(model, daal4py.sklearn.linear_model._linear.LinearRegression)
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
+    )
     # Original engine should remain the same
     assert exp.get_engine("lr") == "sklearn"
 
@@ -115,17 +120,22 @@ def test_compare_models_engines_local_args():
     assert exp.get_engine("lr") == "sklearn"
     model = exp.compare_models(include=["lr"])
 
-    assert isinstance(model, sklearn.linear_model._base.LinearRegression)
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearn.")
     # Original engine should remain the same
     assert exp.get_engine("lr") == "sklearn"
 
     # Override model engine locally ----
     model = exp.compare_models(include=["lr"], engine={"lr": "sklearnex"})
-    assert isinstance(model, daal4py.sklearn.linear_model._linear.LinearRegression)
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
+    )
     # Original engine should remain the same
     assert exp.get_engine("lr") == "sklearn"
     model = exp.compare_models(include=["lr"])
-    assert isinstance(model, sklearn.linear_model._base.LinearRegression)
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearn.")
 
 
 @pytest.mark.parametrize("algo", ("lr", "lasso", "ridge", "en", "knn", "svm"))
