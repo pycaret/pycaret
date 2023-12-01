@@ -25,8 +25,7 @@ deprecation>=2.1.0
 xxhash  # for faster hashing
 wurlitzer; platform_system != 'Windows'
 
-setuptools<60 #fix erros from cython
-cython<3  #requested by statsmodels
+
 
 
 # Plotting
@@ -39,7 +38,10 @@ schemdraw==0.15  # 0.16 only supports Python >3.8
 plotly-resampler>=0.9
 
 # Time-series
+setuptools<60 #fix erros from cython
+cython<3  #requested by statsmodels
 statsmodels>=0.12.1
+
 # Can not be ==0.17.1 due to this bug in 0.17.1: https://github.com/sktime/sktime/issues/4468
 # Can not be >=0.17.2 due to this bug (fixed in 0.18.1): https://github.com/sktime/sktime/issues/4587
 # Can't >=0.22.0 because of legacy_interface default will switch to False in 0.22.0
