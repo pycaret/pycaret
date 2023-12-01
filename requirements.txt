@@ -24,7 +24,10 @@ cloudpickle
 deprecation>=2.1.0
 xxhash  # for faster hashing
 wurlitzer; platform_system != 'Windows'
+
+setuptools<60 #fix erros from cython
 cython<3  #requested by statsmodels
+
 
 # Plotting
 matplotlib>=3.3.0,<=3.6.1
