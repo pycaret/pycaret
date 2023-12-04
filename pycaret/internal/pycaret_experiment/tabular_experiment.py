@@ -2654,6 +2654,8 @@ if __name__ == "__main__":
 pycaret
 fastapi
 uvicorn
+pydantic==1.10.0
+
 """
         print("Writing requirements.txt")
         f = open("requirements.txt", "w")
@@ -2669,13 +2671,17 @@ WORKDIR /app
 
 ADD . /app
 
-RUN apt-get update && apt-get install -y libgomp1
+RUN apt-get update \
+    && apt-get install -y libgomp1 \
+    && apt-get clean
 
 RUN pip install -r requirements.txt
 
 EXPOSE {PORT}
 
 CMD ["python", "{API_NAME}.py"]
+CMD ["uvicorn", "{API_NAME}:app", "--host", "0.0.0.0", "--port", "{PORT}"]
+
 """.format(
             BASE_IMAGE=base_image, PORT=expose_port, API_NAME=api_name
         )
