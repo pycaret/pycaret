@@ -2679,7 +2679,6 @@ RUN pip install -r requirements.txt
 
 EXPOSE {PORT}
 
-CMD ["python", "{API_NAME}.py"]
 CMD ["uvicorn", "{API_NAME}:app", "--host", "0.0.0.0", "--port", "{PORT}"]
 
 """.format(
