@@ -71,8 +71,8 @@ def test_anomaly(data):
     # Assert the custom tags are created
     client = MlflowClient()
     experiment = client.get_experiment_by_name(experiment_name)
-    for experiment_run in client.list_run_infos(experiment.experiment_id):
-        run = client.get_run(experiment_run.run_id)
+    for experiment_run in client.search_runs(experiment.experiment_id):
+        run = client.get_run(experiment_run.info.run_id)
         assert run.data.tags.get("tag") == "1"
 
     # save model

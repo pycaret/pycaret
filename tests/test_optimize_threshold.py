@@ -6,7 +6,6 @@ from pycaret.internal.meta_estimators import CustomProbabilityThresholdClassifie
 
 
 def test_optimize_threshold():
-
     # loading dataset
     data = pycaret.datasets.get_data("blood")
 
