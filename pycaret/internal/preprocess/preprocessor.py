@@ -318,7 +318,9 @@ class Preprocessor:
             # Default should exclude datetime and text columns
             self._fxs["Categorical"] = [
                 col
-                for col in self.X.select_dtypes(include=["object", "category"]).columns
+                for col in self.X.select_dtypes(
+                    include=["string", "object", "category"]
+                ).columns
                 if col not in self._fxs["Date"] + self._fxs["Text"]
             ]
 
@@ -649,22 +651,24 @@ class Preprocessor:
             X_transformed = self.X_train
 
         # Select columns for different encoding types
-        one_hot_cols, rest_cols = [], []
+        ord_cols, one_hot_cols, rest_cols = {}, [], []
         for name, column in X_transformed[self._fxs["Categorical"]].items():
             n_unique = column.nunique()
             if n_unique == 2:
-                self._fxs["Ordinal"][name] = list(sorted(column.dropna().unique()))
+                ord_cols[name] = list(sorted(column.dropna().unique()))
             elif max_encoding_ohe < 0 or n_unique <= max_encoding_ohe:
                 one_hot_cols.append(name)
             else:
                 rest_cols.append(name)
 
-        if self._fxs["Ordinal"]:
+        if self._fxs["Ordinal"] or ord_cols:
             self.logger.info("Set up encoding of ordinal features.")
+
+            ord_cols = {**ord_cols, **self._fxs["Ordinal"]}
 
             # Check provided features and levels are correct
             mapping = {}
-            for key, value in self._fxs["Ordinal"].items():
+            for key, value in ord_cols.items():
                 if self.X[key].nunique() != len(value):
                     self.logger.warning(
                         f"The number of classes passed to feature {key} in the "
@@ -679,13 +683,11 @@ class Preprocessor:
             ord_estimator = TransformerWrapper(
                 transformer=OrdinalEncoder(
                     mapping=[{"col": k, "mapping": val} for k, val in mapping.items()],
-                    cols=list(
-                        self._fxs["Ordinal"].keys()
-                    ),  # Specify to not skip bool columns
+                    cols=list(ord_cols),  # Specify to not skip bool columns
                     handle_missing="return_nan",
                     handle_unknown="value",
                 ),
-                include=list(self._fxs["Ordinal"].keys()),
+                include=list(ord_cols),
             )
 
             self.pipeline.steps.append(("ordinal_encoding", ord_estimator))
