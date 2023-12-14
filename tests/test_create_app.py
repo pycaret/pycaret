@@ -4,7 +4,6 @@ import pycaret.regression
 
 
 def test_classification_create_app():
-
     # loading dataset
     data = pycaret.datasets.get_data("blood")
 
@@ -25,7 +24,6 @@ def test_classification_create_app():
 
 
 def test_regression_create_app():
-
     # loading dataset
     data = pycaret.datasets.get_data("boston")
 

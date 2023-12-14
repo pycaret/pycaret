@@ -477,7 +477,7 @@ class IterativeImputer(SklearnIterativeImputer):
             if is_categorical_feat:
                 estimator = clone(self._cat_estimator)
                 if self.cat_estimator_prepare_for_categoricals_type:
-                    (estimator, prep_fit_params,) = prepare_estimator_for_categoricals(
+                    (estimator, prep_fit_params) = prepare_estimator_for_categoricals(
                         estimator,
                         categorical_indices,
                         preparation_type=self.cat_estimator_prepare_for_categoricals_type,
@@ -485,7 +485,7 @@ class IterativeImputer(SklearnIterativeImputer):
             else:
                 estimator = clone(self._num_estimator)
                 if self.num_estimator_prepare_for_categoricals_type:
-                    (estimator, prep_fit_params,) = prepare_estimator_for_categoricals(
+                    (estimator, prep_fit_params) = prepare_estimator_for_categoricals(
                         estimator,
                         categorical_indices,
                         preparation_type=self.num_estimator_prepare_for_categoricals_type,
