@@ -226,14 +226,12 @@ class TestClassificationExperimentCustomTags:
 
         # get experiment data
         tracking_api = MlflowClient()
-        experiment = [
-            e for e in tracking_api.list_experiments() if e.name == experiment_name
-        ][0]
+        experiment = tracking_api.get_experiment_by_name(experiment_name)
         experiment_id = experiment.experiment_id
         # get run's info
-        experiment_run = tracking_api.list_run_infos(experiment_id)[0]
+        experiment_run = tracking_api.search_runs(experiment_id)[0]
         # get run id
-        run_id = experiment_run.run_id
+        run_id = experiment_run.info.run_id
         # get run data
         run_data = tracking_api.get_run(run_id)
         # assert that custom tag was inserted

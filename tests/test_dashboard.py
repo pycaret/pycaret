@@ -5,7 +5,6 @@
 
 
 def test_classification_dashboard():
-
     # loading dataset
     # data = pycaret.datasets.get_data("blood")
 
