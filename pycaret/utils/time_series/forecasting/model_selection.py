@@ -9,7 +9,7 @@ import pandas as pd
 from joblib import Parallel, delayed  # type: ignore
 from scipy.stats import rankdata
 from sklearn.base import clone  # type: ignore
-from sklearn.metrics._scorer import _PredictScorer  # type: ignore
+from sklearn.metrics._scorer import _Scorer  # type: ignore
 from sklearn.model_selection import (  # type: ignore
     ParameterGrid,
     ParameterSampler,
@@ -48,7 +48,7 @@ def _fit_and_score(
     pipeline: ForecastingPipeline,
     y: pd.Series,
     X: Optional[Union[pd.Series, pd.DataFrame]],
-    scoring: Dict[str, Union[str, _PredictScorer]],
+    scoring: Dict[str, Union[str, _Scorer]],
     train: np.ndarray,
     test: np.ndarray,
     parameters: Optional[Dict[str, Any]],
@@ -233,7 +233,7 @@ def cross_validate(
     y: pd.Series,
     X: Optional[Union[pd.Series, pd.DataFrame]],
     cv: Union[ExpandingWindowSplitter, SlidingWindowSplitter],
-    scoring: Dict[str, Union[str, _PredictScorer]],
+    scoring: Dict[str, Union[str, _Scorer]],
     fit_params: Dict[str, Any],
     n_jobs: Optional[int],
     return_train_score: bool,
