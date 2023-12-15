@@ -11,7 +11,6 @@ if sys.platform == "win32":
 
 
 def test_classification_create_api():
-
     # loading dataset
     data = pycaret.datasets.get_data("blood")
 
@@ -32,7 +31,6 @@ def test_classification_create_api():
 
 
 def test_regression_create_api():
-
     # loading dataset
     data = pycaret.datasets.get_data("boston")
 
