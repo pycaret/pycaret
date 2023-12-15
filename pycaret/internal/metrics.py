@@ -4,7 +4,7 @@ from typing import Callable
 
 import numpy as np
 from sklearn.exceptions import FitFailedWarning
-from sklearn.metrics._scorer import _PredictScorer, _ProbaScorer, _ThresholdScorer
+from sklearn.metrics._scorer import _Scorer
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import _safe_indexing
 
@@ -87,7 +87,7 @@ class BinaryMulticlassScoreFunc:
         return self.score_func(y_true, y_pred, **kwargs)
 
 
-class _ThresholdScorerWithErrorScore(_ThresholdScorer):
+class _ThresholdScorerWithErrorScore(_Scorer):
     def __init__(self, score_func, sign, kwargs, error_score=np.nan):
         super().__init__(score_func=score_func, sign=sign, kwargs=kwargs)
         self.error_score = error_score
@@ -144,7 +144,7 @@ class _ThresholdScorerWithErrorScore(_ThresholdScorer):
         return f", needs_threshold=True, error_score={self.error_score}"
 
 
-class _ProbaScorerWithErrorScore(_ProbaScorer):
+class _ProbaScorerWithErrorScore(_Scorer):
     def __init__(self, score_func, sign, kwargs, error_score=np.nan):
         super().__init__(score_func=score_func, sign=sign, kwargs=kwargs)
         self.error_score = error_score
@@ -199,7 +199,7 @@ class _ProbaScorerWithErrorScore(_ProbaScorer):
         return f", needs_proba=True, error_score={self.error_score}"
 
 
-class _PredictScorerWithErrorScore(_PredictScorer):
+class _PredictScorerWithErrorScore(_Scorer):
     def __init__(self, score_func, sign, kwargs, error_score=np.nan):
         super().__init__(score_func=score_func, sign=sign, kwargs=kwargs)
         self.error_score = error_score
