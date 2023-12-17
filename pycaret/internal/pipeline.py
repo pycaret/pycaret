@@ -67,7 +67,7 @@ def _fit_one(transformer, X=None, y=None, message=None, params=None):
                 args.append(X)
             if "y" in signature(transformer.fit).parameters:
                 args.append(y)
-            transformer.fit(*args, params["fit"])
+            transformer.fit(*args)
     return transformer
 
 
