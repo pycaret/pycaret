@@ -2457,7 +2457,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
         calibrated_model_definition = self._all_models_internal["CalibratedCV"]
         model = calibrated_model_definition.class_def(
-            base_estimator=estimator,
+            estimator=estimator,
             method=method,
             cv=calibrate_fold,
             **calibrated_model_definition.args,
