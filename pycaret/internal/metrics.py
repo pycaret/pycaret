@@ -149,7 +149,7 @@ class _ProbaScorerWithErrorScore(_Scorer):
         super().__init__(score_func=score_func, sign=sign, kwargs=kwargs)
         self.error_score = error_score
 
-    def _score(self, method_caller, clf, X, y, sample_weight=None):
+    def _score(self, method_caller, estimator, X, y, sample_weight=None):
         """Evaluate predicted probabilities for X relative to y_true.
 
         Parameters
@@ -158,14 +158,13 @@ class _ProbaScorerWithErrorScore(_Scorer):
             Returns predictions given an estimator, method name, and other
             arguments, potentially caching results.
 
-        clf : object
-            Trained classifier to use for scoring. Must have a predict_proba
-            method; the output of that is used to compute the score.
+        estimator : object
+            Trained estimator to use for scoring
 
         X : array-like or sparse matrix
             Test data that will be fed to clf.predict_proba.
 
-        y : array-like
+        y_true : array-like
             Gold standard target values for X. These must be class labels,
             not probabilities.
 
@@ -181,9 +180,9 @@ class _ProbaScorerWithErrorScore(_Scorer):
         try:
             return super()._score(
                 method_caller=method_caller,
-                clf=clf,
+                estimator=estimator,
                 X=X,
-                y=y,
+                y_true=y,
                 sample_weight=sample_weight,
             )
         except Exception:
