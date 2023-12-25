@@ -1130,7 +1130,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         cv=cv,
                         groups=groups,
                         scoring=metrics_dict,
-                        fit_params=fit_kwargs,
+                        params=fit_kwargs,
                         n_jobs=n_jobs,
                         return_train_score=return_train_score,
                         error_score=error_score,
