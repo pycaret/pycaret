@@ -101,9 +101,7 @@ def _inverse_transform_one(transformer, y=None):
 
 def _fit_transform_one(transformer, X=None, y=None, message=None, params=None):
     """Fit and transform the data using one transformer."""
-    transformer = _fit_one(
-        transformer, X, y, message, **params.get("fit_transform", {})
-    )
+    transformer = _fit_one(transformer, X, y, message, **params.get("fit", {}))
     X, y = _transform_one(transformer, X, y)
 
     return X, y, transformer
