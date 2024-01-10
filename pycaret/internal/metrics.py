@@ -69,14 +69,20 @@ class EncodedDecodedLabelsReplaceScoreFunc:
 class BinaryMulticlassScoreFunc:
     """Wrapper to replace call kwargs with preset values if target is binary."""
 
-    def __init__(self, score_func: Callable, kwargs_if_binary: dict):
+    def __init__(self, score_func: Callable, kwargs_if_binary: dict, pos_label=None):
         self.score_func = score_func
         self.kwargs_if_binary = kwargs_if_binary
+        self.pos_label = pos_label
         self.__name__ = score_func.__name__
 
     def __call__(self, y_true, y_pred, **kwargs):
         if self.kwargs_if_binary:
             labels = kwargs.get("labels", None)
+            if self.pos_label is None:
+                # Use get_pos_label to obtain pos_label if not already defined
+                self.pos_label = get_pos_label(kwargs.get("globals_dict", {}))
+            if self.pos_label is not None:
+                kwargs["pos_label"] = self.pos_label
             is_binary = (
                 len(labels) <= 2
                 if labels is not None
