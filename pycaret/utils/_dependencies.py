@@ -1,6 +1,7 @@
 # Adapted from
 # https://github.com/sktime/sktime/blob/v0.11.0/sktime/utils/validation/_dependencies.py
 
+import platform
 import sys
 from distutils.version import LooseVersion
 from importlib import import_module
@@ -144,6 +145,7 @@ def _check_soft_dependencies(
             f"\n'{package}' is a soft dependency and not included in the "
             f"pycaret installation. Please run: `pip install {install_name}` to install."
         )
+
         if extra is not None:
             msg += f"\nAlternately, you can install this by running `pip install pycaret[{extra}]`"
 
@@ -151,8 +153,9 @@ def _check_soft_dependencies(
             logger.exception(f"{msg}")
             raise ModuleNotFoundError(msg)
         elif severity == "warning":
-            logger.warning(f"{msg}")
-            package_available = False
+            if not (platform.system().lower() == "windows" and package == "cuml"):
+                logger.warning(f"{msg}")
+                package_available = False
         else:
             raise RuntimeError(
                 "Error in calling _check_soft_dependencies, severity "
