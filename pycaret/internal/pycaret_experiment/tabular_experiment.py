@@ -1,6 +1,7 @@
 import gc
 import logging
 import os
+import platform
 import random
 import secrets
 import traceback
@@ -337,31 +338,34 @@ class _TabularExperiment(_PyCaretExperiment):
 
         cuml_version = None
         if self.gpu_param:
-            self.logger.info("Set up GPU usage.")
+            if platform.system().lower() != "windows":
+                self.logger.info("Set up GPU usage.")
 
-            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml import __version__
+                if _check_soft_dependencies("cuml", extra=None, severity="warning"):
+                    from cuml import __version__
 
-                cuml_version = __version__
-                self.logger.info(f"cuml=={cuml_version}")
+                    cuml_version = __version__
+                    self.logger.info(f"cuml=={cuml_version}")
 
-                try:
-                    import cuml.internals.memory_utils
+                    try:
+                        import cuml.internals.memory_utils
 
-                    cuml.internals.memory_utils.set_global_output_type("numpy")
-                except Exception:
-                    self.logger.exception("Couldn't set cuML global output type")
+                        cuml.internals.memory_utils.set_global_output_type("numpy")
+                    except Exception:
+                        self.logger.exception("Couldn't set cuML global output type")
 
-            if cuml_version is None or not version.parse(cuml_version) >= version.parse(
-                "23.08"
-            ):
-                message = """cuML is outdated or not found. Required version is >=23.08.
-                Please visit https://rapids.ai/install for installation instructions."""
-                if use_gpu == "force":
-                    raise ImportError(message)
-                else:
-                    self.logger.warning(message)
-
+                if cuml_version is None or not version.parse(
+                    cuml_version
+                ) >= version.parse("23.08"):
+                    message = """cuML is outdated or not found. Required version is >=23.08.
+                    Please visit https://rapids.ai/install for installation instructions."""
+                    if use_gpu == "force":
+                        raise ImportError(message)
+                    else:
+                        self.logger.warning(message)
+            else:
+                # maybe year 2050 cuml will support windows systems
+                self.logger.info("GPU: True, SO: Windows, GPU-Cuml: NotSupported!")
         return self
 
     @staticmethod
