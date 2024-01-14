@@ -1433,7 +1433,7 @@ def stack_models(
     meta_model_fold: Optional[Union[int, Any]] = 5,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
-    restack: bool = True,
+    restack: bool = False,
     choose_better: bool = False,
     optimize: str = "R2",
     fit_kwargs: Optional[dict] = None,
