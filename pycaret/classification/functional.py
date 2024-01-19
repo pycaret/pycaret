@@ -1476,7 +1476,7 @@ def stack_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     method: str = "auto",
-    restack: bool = True,
+    restack: bool = False,
     choose_better: bool = False,
     optimize: str = "Accuracy",
     fit_kwargs: Optional[dict] = None,
