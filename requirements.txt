@@ -3,7 +3,8 @@ ipython>=5.5.0
 ipywidgets>=7.6.5
 tqdm>=4.62.0
 numpy>=1.21, <1.27
-pandas>=2.1.0, <2.2.0
+pandas>=2.1.0, <2.2.0; python_version > "3.8"
+pandas>=2.0.0, <2.1.0; python_version < "3.9"
 jinja2>=3
 scipy~=1.10.1  # Can't >=2.0.0 due to sktime, optimization breaks with >1.10.1
 joblib>=1.2.0  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution (https://github.com/advisories/GHSA-6hrg-qmvc-2xh8)
