@@ -93,10 +93,13 @@ class BinaryMulticlassScoreFunc:
         return self.score_func(y_true, y_pred, **kwargs)
 
 
-class _ThresholdScorerWithErrorScore(_Scorer):
-    def __init__(self, score_func, sign, kwargs, error_score=np.nan):
+class ScorerWithErrorScore(_Scorer):
+    def __init__(
+        self, score_func, sign, kwargs, error_score=np.nan, response_method=None
+    ):
         super().__init__(score_func=score_func, sign=sign, kwargs=kwargs)
         self.error_score = error_score
+        self._response_method = response_method
 
     def _score(self, method_caller, clf, X, y, sample_weight=None):
         """Evaluate decision function output for X relative to y_true.
@@ -136,6 +139,7 @@ class _ThresholdScorerWithErrorScore(_Scorer):
                 X=X,
                 y=y,
                 sample_weight=sample_weight,
+                response_method=self._response_method,
             )
         except Exception:
             warnings.warn(
@@ -147,112 +151,9 @@ class _ThresholdScorerWithErrorScore(_Scorer):
             return self.error_score
 
     def _factory_args(self):
-        return f", needs_threshold=True, error_score={self.error_score}"
-
-
-class _ProbaScorerWithErrorScore(_Scorer):
-    def __init__(self, score_func, sign, kwargs, error_score=np.nan):
-        super().__init__(score_func=score_func, sign=sign, kwargs=kwargs)
-        self.error_score = error_score
-
-    def _score(self, method_caller, estimator, X, y, sample_weight=None):
-        """Evaluate predicted probabilities for X relative to y_true.
-
-        Parameters
-        ----------
-        method_caller : callable
-            Returns predictions given an estimator, method name, and other
-            arguments, potentially caching results.
-
-        estimator : object
-            Trained estimator to use for scoring
-
-        X : array-like or sparse matrix
-            Test data that will be fed to clf.predict_proba.
-
-        y_true : array-like
-            Gold standard target values for X. These must be class labels,
-            not probabilities.
-
-        sample_weight : array-like, optional (default=None)
-            Sample weights.
-
-        Returns
-        -------
-        score : float
-            Score function applied to prediction of estimator on X.
-        """
-
-        try:
-            return super()._score(
-                method_caller=method_caller,
-                estimator=estimator,
-                X=X,
-                y_true=y,
-                sample_weight=sample_weight,
-            )
-        except Exception:
-            warnings.warn(
-                _fit_failed_message_warning.format(
-                    repr(self), self.error_score, traceback.format_exc()
-                ),
-                FitFailedWarning,
-            )
-            return self.error_score
-
-    def _factory_args(self):
-        return f", needs_proba=True, error_score={self.error_score}"
-
-
-class _PredictScorerWithErrorScore(_Scorer):
-    def __init__(self, score_func, sign, kwargs, error_score=np.nan):
-        super().__init__(score_func=score_func, sign=sign, kwargs=kwargs)
-        self.error_score = error_score
-
-    def _score(self, method_caller, estimator, X, y_true, sample_weight=None):
-        """Evaluate predicted target values for X relative to y_true.
-
-        Parameters
-        ----------
-        method_caller : callable
-            Returns predictions given an estimator, method name, and other
-            arguments, potentially caching results.
-
-        estimator : object
-            Trained estimator to use for scoring. Must have a predict_proba
-            method; the output of that is used to compute the score.
-
-        X : array-like or sparse matrix
-            Test data that will be fed to estimator.predict.
-
-        y_true : array-like
-            Gold standard target values for X.
-
-        sample_weight : array-like, optional (default=None)
-            Sample weights.
-
-        Returns
-        -------
-        score : float
-            Score function applied to prediction of estimator on X.
-        """
-
-        try:
-            return super()._score(
-                method_caller=method_caller,
-                estimator=estimator,
-                X=X,
-                y_true=y_true,
-                sample_weight=sample_weight,
-            )
-        except Exception:
-            warnings.warn(
-                _fit_failed_message_warning.format(
-                    repr(self), self.error_score, traceback.format_exc()
-                ),
-                FitFailedWarning,
-            )
-            return self.error_score
+        return (
+            f", response_method={self._response_method}, error_score={self.error_score}"
+        )
 
 
 def make_scorer_with_error_score(
@@ -333,15 +234,17 @@ def make_scorer_with_error_score(
     `needs_threshold=True`, the score function is supposed to accept the
     output of :term:`decision_function`.
     """
+
     sign = 1 if greater_is_better else -1
-    if needs_proba and needs_threshold:
-        raise ValueError(
-            "Set either needs_proba or needs_threshold to True," " but not both."
-        )
+    # Determine the response_method based on needs_proba and needs_threshold
     if needs_proba:
-        cls = _ProbaScorerWithErrorScore
+        response_method = "predict_proba"
     elif needs_threshold:
-        cls = _ThresholdScorerWithErrorScore
-    else:
-        cls = _PredictScorerWithErrorScore
-    return cls(score_func, sign, kwargs, error_score)
+        response_method = ["decision_function", "predict_proba"]
+
+    # Create an instance of ScorerWithErrorScore
+    scorer = ScorerWithErrorScore(
+        score_func, sign, kwargs, error_score, response_method
+    )
+
+    return scorer
