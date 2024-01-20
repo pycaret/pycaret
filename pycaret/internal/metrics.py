@@ -236,7 +236,9 @@ def make_scorer_with_error_score(
     """
 
     sign = 1 if greater_is_better else -1
+
     # Determine the response_method based on needs_proba and needs_threshold
+    response_method = None
     if needs_proba:
         response_method = "predict_proba"
     elif needs_threshold:
