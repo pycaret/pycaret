@@ -81,7 +81,7 @@ class BinaryMulticlassScoreFunc:
             if self.pos_label is None:
                 # Use get_pos_label to obtain pos_label if not already defined
                 self.pos_label = get_pos_label(kwargs.get("globals_dict", {}))
-            if self.pos_label is not None:
+            if self.pos_label is not None and len(labels) <= 2:
                 kwargs["pos_label"] = self.pos_label
             is_binary = (
                 len(labels) <= 2
@@ -101,7 +101,7 @@ class ScorerWithErrorScore(_Scorer):
         self.error_score = error_score
         self._response_method = response_method
 
-    def _score(self, method_caller, clf, X, y, sample_weight=None):
+    def _score(self, method_caller, estimator, X, y_true, sample_weight=None):
         """Evaluate decision function output for X relative to y_true.
 
         Parameters
@@ -110,16 +110,14 @@ class ScorerWithErrorScore(_Scorer):
             Returns predictions given an estimator, method name, and other
             arguments, potentially caching results.
 
-        clf : object
-            Trained classifier to use for scoring. Must have either a
-            decision_function method or a predict_proba method; the output of
-            that is used to compute the score.
+        estimator : object
+            Trained estimator to use for scoring.
 
         X : array-like or sparse matrix
             Test data that will be fed to clf.decision_function or
             clf.predict_proba.
 
-        y : array-like
+        y_true : array-like
             Gold standard target values for X. These must be class labels,
             not decision function values.
 
@@ -135,9 +133,9 @@ class ScorerWithErrorScore(_Scorer):
         try:
             return super()._score(
                 method_caller=method_caller,
-                clf=clf,
+                estimator=estimator,
                 X=X,
-                y=y,
+                y_true=y_true,
                 sample_weight=sample_weight,
                 response_method=self._response_method,
             )
