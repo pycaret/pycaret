@@ -253,7 +253,7 @@ def make_scorer_with_error_score(
     if needs_proba:
         response_method = "predict_proba"
     elif needs_threshold:
-        response_method = ["decision_function", "predict_proba"]
+        response_method = ("decision_function", "predict_proba")
 
     # Create an instance of ScorerWithErrorScore
     scorer = ScorerWithErrorScore(
