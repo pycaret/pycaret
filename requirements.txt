@@ -11,7 +11,7 @@ joblib>=1.2.0  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution (https:/
 scikit-learn>=1.4.0,<1.5.0
 #pyod is temporary commented until support scikit-learn1.4
 #pyod>1.1.2 #to support scikit-learn 1.4
-git+https://github.com/scikit-learn-contrib/imbalanced-learn.git #Test if can get directly from source
+git+https://github.com/scikit-learn-contrib/imbalanced-learn.git@master #Test if can get directly from source
 #imbalanced-learn>0.11.0 #fix scikit-learn 1.4 compatibility
 category-encoders>=2.4.0
 lightgbm>=3.0.0
