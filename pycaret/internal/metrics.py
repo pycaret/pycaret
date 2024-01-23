@@ -69,20 +69,14 @@ class EncodedDecodedLabelsReplaceScoreFunc:
 class BinaryMulticlassScoreFunc:
     """Wrapper to replace call kwargs with preset values if target is binary."""
 
-    def __init__(self, score_func: Callable, kwargs_if_binary: dict, pos_label=None):
+    def __init__(self, score_func: Callable, kwargs_if_binary: dict):
         self.score_func = score_func
         self.kwargs_if_binary = kwargs_if_binary
-        self.pos_label = pos_label
         self.__name__ = score_func.__name__
 
     def __call__(self, y_true, y_pred, **kwargs):
         if self.kwargs_if_binary:
             labels = kwargs.get("labels", None)
-            if self.pos_label is None:
-                # Use get_pos_label to obtain pos_label if not already defined
-                self.pos_label = get_pos_label(kwargs.get("globals_dict", {}))
-            if self.pos_label is not None and len(labels) <= 2:
-                kwargs["pos_label"] = self.pos_label
             is_binary = (
                 len(labels) <= 2
                 if labels is not None
@@ -95,7 +89,7 @@ class BinaryMulticlassScoreFunc:
 
 class ScorerWithErrorScore(_Scorer):
     def __init__(
-        self, score_func, sign, kwargs, error_score=np.nan, response_method=None
+        self, score_func, sign, kwargs, error_score=np.nan, response_method="predict"
     ):
         super().__init__(score_func=score_func, sign=sign, kwargs=kwargs)
         self.error_score = error_score
@@ -157,54 +151,83 @@ class ScorerWithErrorScore(_Scorer):
 def make_scorer_with_error_score(
     score_func,
     *,
+    response_method=None,
     greater_is_better=True,
-    needs_proba=False,
-    needs_threshold=False,
+    needs_proba="deprecated",
+    needs_threshold="deprecated",
     error_score=np.nan,
     **kwargs,
 ):
     """Make a scorer from a performance metric or loss function.
 
-    This factory function wraps scoring functions for use in GridSearchCV
-    and cross_val_score. It takes a score function, such as ``accuracy_score``,
-    ``mean_squared_error``, ``adjusted_rand_index`` or ``average_precision``
-    and returns a callable that scores an estimator's output.
+    A scorer is a wrapper around an arbitrary metric or loss function that is called
+    with the signature `scorer(estimator, X, y_true, **kwargs)`.
+
+    It is accepted in all scikit-learn estimators or functions allowing a `scoring`
+    parameter.
+
+    The parameter `response_method` allows to specify which method of the estimator
+    should be used to feed the scoring/loss function.
 
     Read more in the :ref:`User Guide <scoring>`.
 
     Parameters
     ----------
-    score_func : callable,
+    score_func : callable
         Score function (or loss function) with signature
         ``score_func(y, y_pred, **kwargs)``.
 
-    greater_is_better : boolean, default=True
-        Whether score_func is a score function (default), meaning high is good,
-        or a loss function, meaning low is good. In the latter case, the
-        scorer object will sign-flip the outcome of the score_func.
+    response_method : {"predict_proba", "decision_function", "predict"} or \
+            list/tuple of such str, default=None
 
-    needs_proba : boolean, default=False
-        Whether score_func requires predict_proba to get probability estimates
-        out of a classifier.
+        Specifies the response method to use get prediction from an estimator
+        (i.e. :term:`predict_proba`, :term:`decision_function` or
+        :term:`predict`). Possible choices are:
+
+        - if `str`, it corresponds to the name to the method to return;
+        - if a list or tuple of `str`, it provides the method names in order of
+          preference. The method returned corresponds to the first method in
+          the list and which is implemented by `estimator`.
+        - if `None`, it is equivalent to `"predict"`.
+
+        .. versionadded:: 1.4
+
+    greater_is_better : bool, default=True
+        Whether `score_func` is a score function (default), meaning high is
+        good, or a loss function, meaning low is good. In the latter case, the
+        scorer object will sign-flip the outcome of the `score_func`.
+
+    needs_proba : bool, default=False
+        Whether `score_func` requires `predict_proba` to get probability
+        estimates out of a classifier.
 
         If True, for binary `y_true`, the score function is supposed to accept
         a 1D `y_pred` (i.e., probability of the positive class, shape
         `(n_samples,)`).
 
-    needs_threshold : boolean, default=False
-        Whether score_func takes a continuous decision certainty.
+        .. deprecated:: 1.4
+           `needs_proba` is deprecated in version 1.4 and will be removed in
+           1.6. Use `response_method="predict_proba"` instead.
+
+    needs_threshold : bool, default=False
+        Whether `score_func` takes a continuous decision certainty.
         This only works for binary classification using estimators that
-        have either a decision_function or predict_proba method.
+        have either a `decision_function` or `predict_proba` method.
 
         If True, for binary `y_true`, the score function is supposed to accept
         a 1D `y_pred` (i.e., probability of the positive class or the decision
         function, shape `(n_samples,)`).
 
-        For example ``average_precision`` or the area under the roc curve
+        For example `average_precision` or the area under the roc curve
         can not be computed using discrete predictions alone.
 
+        .. deprecated:: 1.4
+           `needs_threshold` is deprecated in version 1.4 and will be removed
+           in 1.6. Use `response_method=("decision_function", "predict_proba")`
+           instead to preserve the same behaviour.
+
     **kwargs : additional arguments
-        Additional parameters to be passed to score_func.
+        Additional parameters to be passed to `score_func`.
 
     Returns
     -------
@@ -216,21 +239,11 @@ def make_scorer_with_error_score(
     >>> from sklearn.metrics import fbeta_score, make_scorer
     >>> ftwo_scorer = make_scorer(fbeta_score, beta=2)
     >>> ftwo_scorer
-    make_scorer(fbeta_score, beta=2)
+    make_scorer(fbeta_score, response_method='predict', beta=2)
     >>> from sklearn.model_selection import GridSearchCV
     >>> from sklearn.svm import LinearSVC
     >>> grid = GridSearchCV(LinearSVC(), param_grid={'C': [1, 10]},
     ...                     scoring=ftwo_scorer)
-
-    Notes
-    -----
-    If `needs_proba=False` and `needs_threshold=False`, the score
-    function is supposed to accept the output of :term:`predict`. If
-    `needs_proba=True`, the score function is supposed to accept the
-    output of :term:`predict_proba` (For binary `y_true`, the score function is
-    supposed to accept probability of the positive class). If
-    `needs_threshold=True`, the score function is supposed to accept the
-    output of :term:`decision_function`.
     """
 
     sign = 1 if greater_is_better else -1
