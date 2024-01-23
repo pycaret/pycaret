@@ -8,8 +8,8 @@ jinja2>=3
 scipy~=1.10.1  # Can't >=2.0.0 due to sktime, optimization breaks with >1.10.1
 joblib>=1.2.0  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution (https://github.com/advisories/GHSA-6hrg-qmvc-2xh8)
 scikit-learn>=1.4.0,<1.5.0
-pyod>1.1.2 #to support scikit-learn 1.4
-imbalanced-learn>0.11.0 #fix scikit-learn 1.4 compatibility
+pyod>=1.1.2 # >1.1.2 to support scikit-learn 1.4
+imbalanced-learn>=0.11.0 # >0.11.0 to support scikit-learn 1.4
 category-encoders>=2.4.0
 lightgbm>=3.0.0
 numba>=0.55.0
