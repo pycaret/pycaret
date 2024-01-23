@@ -37,4 +37,4 @@ evidently>=0.1.45.dev0,<0.3  # for drift reporting
 fugue>=0.8.0
 flask>=2.0.3
 Werkzeug>=2.2,<3.0
-triad #latest 0.9.3 fixes makedirs
+triad>=0.9.3 #0.9.3 fixes makedirs
