@@ -27,7 +27,7 @@ wurlitzer; platform_system != 'Windows'
 matplotlib>=3.8.2
 scikit-plot>=0.3.7
 yellowbrick>=1.4
-plotly>=5.0.0
+plotly>=5.14.0
 kaleido>=0.2.1
 schemdraw==0.15  # 0.16 only supports Python >3.8
 plotly-resampler>=0.8.3.1
