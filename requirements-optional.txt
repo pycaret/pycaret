@@ -34,6 +34,6 @@ evidently>=0.1.45.dev0,<0.3  # for drift reporting
 
 # Parallel
 fugue>=0.8.2
-flask>=2.0.3
+flask
 Werkzeug>=2.2,<3.0
 triad>=0.9.3 #0.9.3 fixes makedirs
