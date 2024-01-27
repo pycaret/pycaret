@@ -4,10 +4,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from sktime.forecasting.model_selection import (
-    ExpandingWindowSplitter,
-    SlidingWindowSplitter,
-)
+from sktime.split import ExpandingWindowSplitter, SlidingWindowSplitter
 
 from pycaret.internal.plots.utils.time_series import (
     PlotReturnType,

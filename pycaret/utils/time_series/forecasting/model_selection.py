@@ -17,10 +17,7 @@ from sklearn.model_selection import (  # type: ignore
 )
 from sklearn.model_selection._validation import _aggregate_score_dicts  # type: ignore
 from sktime.forecasting.compose import ForecastingPipeline
-from sktime.forecasting.model_selection import (
-    ExpandingWindowSplitter,
-    SlidingWindowSplitter,
-)
+from sktime.split import ExpandingWindowSplitter, SlidingWindowSplitter
 from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 
 from pycaret.internal.logging import get_logger
