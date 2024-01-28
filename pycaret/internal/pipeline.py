@@ -8,8 +8,6 @@
 
 # This pipeline is only to be used internally.
 
-# Version updated to Scikit-learn 1.4 (https://github.com/scikit-learn/scikit-learn/pull/26789/files)
-
 import platform
 import warnings
 from copy import deepcopy
