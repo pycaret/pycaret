@@ -202,8 +202,8 @@ def make_scorer_with_error_score(
     *,
     response_method=None,
     greater_is_better=True,
-    needs_proba="deprecated",
-    needs_threshold="deprecated",
+    needs_proba=False,
+    needs_threshold=False,
     error_score=np.nan,
     **kwargs,
 ):
