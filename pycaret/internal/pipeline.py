@@ -330,22 +330,22 @@ class Pipeline(imblearn.pipeline.Pipeline):
         return y
 
     @available_if(_final_estimator_has("predict_proba"))
-    def predict_proba(self, X):
+    def predict_proba(self, X, **params):
         X, _ = self._memory_full_transform(self, X, None, with_final=False)
 
-        return self.steps[-1][-1].predict_proba(X)
+        return self.steps[-1][-1].predict_proba(X, **params)
 
     @available_if(_final_estimator_has("predict_log_proba"))
-    def predict_log_proba(self, X):
+    def predict_log_proba(self, X, **params):
         X, _ = self._memory_full_transform(self, X, None, with_final=False)
 
-        return self.steps[-1][-1].predict_log_proba(X)
+        return self.steps[-1][-1].predict_log_proba(X, **params)
 
     @available_if(_final_estimator_has("decision_function"))
-    def decision_function(self, X):
+    def decision_function(self, X, **params):
         X, _ = self._memory_full_transform(self, X, None, with_final=False)
 
-        return self.steps[-1][-1].decision_function(X)
+        return self.steps[-1][-1].decision_function(X, **params)
 
     @available_if(_final_estimator_has("score"))
     def score(self, X, y, sample_weight=None):
