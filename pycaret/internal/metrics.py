@@ -140,11 +140,23 @@ class ScorerWithErrorScore(_Scorer):
     def __init__(
         self, score_func, sign, kwargs, error_score=np.nan, response_method="predict"
     ):
-        super().__init__(score_func=score_func, sign=sign, kwargs=kwargs)
+        super().__init__(
+            score_func=score_func,
+            sign=sign,
+            kwargs=kwargs,
+            response_method=response_method,
+        )
         self.error_score = error_score
-        self._response_method = response_method
+        self.response_method = response_method
 
-    def _score(self, method_caller, estimator, X, y_true, sample_weight=None):
+    def _score(
+        self,
+        method_caller,
+        estimator,
+        X,
+        y_true,
+        sample_weight=None,
+    ):
         """Evaluate decision function output for X relative to y_true.
 
         Parameters
