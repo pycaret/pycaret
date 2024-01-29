@@ -147,7 +147,6 @@ class ScorerWithErrorScore(_Scorer):
             response_method=response_method,
         )
         self.error_score = error_score
-        self.response_method = response_method
 
     def _score(
         self,
@@ -192,7 +191,6 @@ class ScorerWithErrorScore(_Scorer):
                 X=X,
                 y_true=y_true,
                 sample_weight=sample_weight,
-                response_method=self._response_method,
             )
         except Exception:
             warnings.warn(
