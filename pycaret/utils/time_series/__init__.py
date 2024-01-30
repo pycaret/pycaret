@@ -458,30 +458,36 @@ class SeasonalPeriod(IntEnum):
     N        nanoseconds
     """
 
+    """
+    Updated in 2024-01-30 by Celestino Laranjeira (celestinoxp@hotmail.com) to Pycaret 3.3.0
+    Description: pandas frequencies changed in version 2.0 and higer, so we can check directly:
+    https://github.com/pandas-dev/pandas/blob/main/pandas/tseries/frequencies.py
+    """
+
     B = 5
-    C = 5
+    # C = 5
     D = 7
     W = 52
     M = 12
-    SM = 24
-    BM = 12
-    CBM = 12
-    MS = 12
-    SMS = 24
-    BMS = 12
-    CBMS = 12
+    # SM = 24
+    # BM = 12
+    # CBM = 12
+    # MS = 12
+    # SMS = 24
+    # BMS = 12
+    # CBMS = 12
     Q = 4
-    BQ = 4
-    QS = 4
-    BQS = 4
+    # BQ = 4
+    # QS = 4
+    # BQS = 4
     A = 1
     Y = 1
-    BA = 1
-    BY = 1
-    AS = 1
-    YS = 1
-    BAS = 1
-    BYS = 1
+    # BA = 1
+    # BY = 1
+    # AS = 1
+    # YS = 1
+    # BAS = 1
+    # BYS = 1
     # BH = ??
     H = 24
     T = 60
