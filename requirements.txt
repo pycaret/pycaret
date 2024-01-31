@@ -26,6 +26,8 @@ wurlitzer; platform_system != 'Windows'
 # Plotting
 matplotlib>=3.8.2
 scikit-plot>=0.3.7
+# yellowbrick<=1.5, have conflict with recent matplotlib by use_line_collection error
+# should use yellowbrick>1.5 when fixed (https://github.com/DistrictDataLabs/yellowbrick/issues/1312)
 yellowbrick>=1.4
 plotly>=5.14.0
 kaleido>=0.2.1

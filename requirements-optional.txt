@@ -1,6 +1,5 @@
 # Analysis
-# some dependency uses use_line_collection, so in shap 0.44.0 a use_line_collection error appears
-shap<0.44.0 # fix use_line_collection error/removed
+shap>=0.44.0 # 0.44.0 fixes matplotlib use_line_collection error
 interpret>=0.2.7
 umap-learn>=0.5.2
 # pyyaml 5.3.1 to fix ydata-profiling requirements pyyaml 5.4.1 can't build
