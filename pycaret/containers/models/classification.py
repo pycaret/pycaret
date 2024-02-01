@@ -918,7 +918,7 @@ class AdaBoostClassifierContainer(ClassifierContainer):
                 0.4,
                 0.5,
             ],
-            "algorithm": "SAMME",
+            "algorithm": ["SAMME"],
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 300),
