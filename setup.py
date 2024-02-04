@@ -1,5 +1,7 @@
-# Copyright (C) 2019-2020 Moez Ali <moez.ali@queensu.ca>
-# License: MIT, moez.ali@queensu.ca
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
 
 from setuptools import find_packages, setup
 
