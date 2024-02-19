@@ -2519,9 +2519,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 from tune_sklearn import TuneGridSearchCV, TuneSearchCV
 
-                with true_warm_start(
-                    pipeline_with_model
-                ) if do_early_stop else nullcontext():
+                with (
+                    true_warm_start(pipeline_with_model)
+                    if do_early_stop
+                    else nullcontext()
+                ):
                     if search_algorithm == "grid":
                         self.logger.info("Initializing tune_sklearn.TuneGridSearchCV")
                         model_grid = TuneGridSearchCV(
