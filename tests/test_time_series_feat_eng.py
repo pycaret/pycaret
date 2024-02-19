@@ -56,7 +56,7 @@ def test_fe_target(load_pos_and_neg_data):
     assert_frame_not_equal(metrics1, metrics2)
 
 
-# TODO: check why naive fails, i'm no sure if is necessary, then temporary comment...
+# TODO: Ensure 'naive' works with this test.
 # "model, expected_equal", [("arima", False), ("lr_cds_dt", False), ("naive", True)]
 @pytest.mark.parametrize(
     "model, expected_equal", [("arima", False), ("lr_cds_dt", False)]

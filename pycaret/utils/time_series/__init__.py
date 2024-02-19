@@ -460,8 +460,8 @@ class SeasonalPeriod(IntEnum):
 
     """
     Updated in 2024-01-30 by Celestino Laranjeira (celestinoxp@hotmail.com) to Pycaret 3.3.0
-    Description: pandas frequencies changed in version 2.0 and higer, so we can check directly:
-    https://github.com/pandas-dev/pandas/blob/main/pandas/tseries/frequencies.py
+    Description: pandas frequencies changed in version 2.0 and higher, so we can check directly:
+    https://github.com/pandas-dev/pandas/blob/4d3964edd1fcfadbc853bcc25bb6dec430ea6aac/pandas/tseries/frequencies.py
     """
 
     B = 5
