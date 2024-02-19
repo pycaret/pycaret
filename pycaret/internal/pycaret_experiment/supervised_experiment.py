@@ -5450,9 +5450,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         for i in self.X.columns:
             if i in self._fxs["Categorical"] or i in self._fxs["Ordinal"]:
-                all_inputs.append(gr.inputs.Dropdown(list(self.X[i].unique()), label=i))
+                all_inputs.append(gr.Dropdown(list(self.X[i].unique()), label=i))
             else:
-                all_inputs.append(gr.inputs.Textbox(label=i))
+                all_inputs.append(gr.Textbox(label=i))
 
         def predict(*dict_input):
             input_df = pd.DataFrame.from_dict([dict_input])
