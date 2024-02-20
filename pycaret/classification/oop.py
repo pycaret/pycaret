@@ -2457,7 +2457,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
         calibrated_model_definition = self._all_models_internal["CalibratedCV"]
         model = calibrated_model_definition.class_def(
-            base_estimator=estimator,
+            estimator=estimator,
             method=method,
             cv=calibrate_fold,
             **calibrated_model_definition.args,
@@ -2542,6 +2542,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         optimize: str = "Accuracy",
         return_data: bool = False,
         plot_kwargs: Optional[dict] = None,
+        verbose: bool = True,
         **shgo_kwargs,
     ):
         """
@@ -2577,6 +2578,10 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
         plot_kwargs :  dict, default = {} (empty dict)
             Dictionary of arguments passed to the visualizer class.
+
+
+        verbose: bool, default = True
+            Whether to print out messages at end of every iteration or not.
 
 
         **shgo_kwargs:
@@ -2630,10 +2635,10 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         shgo_kwargs.setdefault("options", {})
         shgo_kwargs.setdefault("minimizer_kwargs", {})
         shgo_kwargs["minimizer_kwargs"].setdefault("options", {})
-        shgo_kwargs["minimizer_kwargs"]["options"].setdefault("ftol", 1e-4)
+        shgo_kwargs["minimizer_kwargs"]["options"].setdefault("ftol", 1e-3)
         shgo_kwargs.setdefault("n", 8)
         shgo_kwargs["options"].setdefault("maxiter", 4)
-        shgo_kwargs["options"].setdefault("f_tol", 1e-4)
+        shgo_kwargs["options"].setdefault("f_tol", 1e-3)
 
         # checking optimize parameter
         optimize = self._get_metric_by_name_or_id(optimize)
@@ -2681,7 +2686,12 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             model_results["probability_threshold"] = probability_threshold
             model_results["model"] = model[0]
             results_df.append(model_results)
-            return model_results[optimize] * direction
+            value = model_results[optimize].values[0]
+            msg = f"Threshold: {probability_threshold}. {optimize}: {value}"
+            if verbose:
+                print(msg)
+            self.logger.info(msg)
+            return value * direction
 
         # This is necessary to make sure the sampler has a
         # deterministic seed.
@@ -2696,7 +2706,8 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             "optimization loop finished successfully. "
             f"Best threshold: {result.x[0]} with {optimize}={result.fun*direction}"
         )
-        print(message)
+        if verbose:
+            print(message)
         self.logger.info(message)
 
         results_concat = pd.concat(results_df, axis=0)

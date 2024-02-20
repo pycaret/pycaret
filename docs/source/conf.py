@@ -23,7 +23,7 @@ copyright = "2020, Moez Ali"
 author = "Moez Ali"
 
 # The full version, including alpha/beta/rc tags
-release = "3.2.1"
+release = "3.3.0"
 
 
 # -- General configuration ---------------------------------------------------

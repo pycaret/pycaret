@@ -2027,6 +2027,7 @@ def optimize_threshold(
     optimize: str = "Accuracy",
     return_data: bool = False,
     plot_kwargs: Optional[dict] = None,
+    verbose: bool = True,
     **shgo_kwargs,
 ):
     """
@@ -2064,6 +2065,10 @@ def optimize_threshold(
         Dictionary of arguments passed to the visualizer class.
 
 
+        verbose: bool, default = True
+            Whether to print out messages at end of every iteration or not.
+
+
     **shgo_kwargs:
         Kwargs to pass to ``scipy.optimize.shgo``.
 
@@ -2083,6 +2088,7 @@ def optimize_threshold(
         optimize=optimize,
         return_data=return_data,
         plot_kwargs=plot_kwargs,
+        verbose=verbose,
         **shgo_kwargs,
     )
 
