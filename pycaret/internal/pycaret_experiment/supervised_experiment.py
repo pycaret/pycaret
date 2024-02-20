@@ -1130,7 +1130,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         cv=cv,
                         groups=groups,
                         scoring=metrics_dict,
-                        fit_params=fit_kwargs,
+                        params=fit_kwargs,
                         n_jobs=n_jobs,
                         return_train_score=return_train_score,
                         error_score=error_score,
@@ -2519,9 +2519,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 from tune_sklearn import TuneGridSearchCV, TuneSearchCV
 
-                with true_warm_start(
-                    pipeline_with_model
-                ) if do_early_stop else nullcontext():
+                with (
+                    true_warm_start(pipeline_with_model)
+                    if do_early_stop
+                    else nullcontext()
+                ):
                     if search_algorithm == "grid":
                         self.logger.info("Initializing tune_sklearn.TuneGridSearchCV")
                         model_grid = TuneGridSearchCV(
@@ -5448,9 +5450,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         for i in self.X.columns:
             if i in self._fxs["Categorical"] or i in self._fxs["Ordinal"]:
-                all_inputs.append(gr.inputs.Dropdown(list(self.X[i].unique()), label=i))
+                all_inputs.append(gr.Dropdown(list(self.X[i].unique()), label=i))
             else:
-                all_inputs.append(gr.inputs.Textbox(label=i))
+                all_inputs.append(gr.Textbox(label=i))
 
         def predict(*dict_input):
             input_df = pd.DataFrame.from_dict([dict_input])

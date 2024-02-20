@@ -12,7 +12,7 @@ import pandas as pd
 import pandas.io.formats.style
 from scipy import sparse
 from sklearn.metrics import get_scorer
-from sklearn.metrics._scorer import _PredictScorer
+from sklearn.metrics._scorer import _Scorer
 from sklearn.model_selection import BaseCrossValidator, KFold, StratifiedKFold
 from sklearn.model_selection._split import _BaseKFold
 
@@ -1145,8 +1145,8 @@ def check_metric(
 
 
 def _get_metrics_dict(
-    metrics_dict: Dict[str, Union[str, _PredictScorer]]
-) -> Dict[str, _PredictScorer]:
+    metrics_dict: Dict[str, Union[str, _Scorer]]
+) -> Dict[str, _Scorer]:
     """Returns a metrics dictionary in which all values are callables
     of type _PredictScorer
 
