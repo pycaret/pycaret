@@ -40,3 +40,6 @@ fugue
 flask
 Werkzeug>=2.2,<3.0
 triad<0.9.2 # fix pandas enforce_type error (https://github.com/fugue-project/fugue/issues/526)
+
+#Dataframe
+polars
