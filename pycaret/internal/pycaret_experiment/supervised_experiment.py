@@ -5630,7 +5630,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 .difference(categorical_features)
                 .difference(date_features)
             )
-        """
+
+        # Todo: use new api from evidently
+        # old evidently version brokes other dependencies of pycaret
         from evidently.dashboard import Dashboard
         from evidently.pipeline.column_mapping import ColumnMapping
         from evidently.tabs import CatTargetDriftTab, DataDriftTab
@@ -5655,32 +5657,6 @@ class _SupervisedExperiment(_TabularExperiment):
             filename or f"{self.exp_name_log}_{int(time.time())}_Drift_Report.html"
         )
         dashboard.save(filename)
-        return filename
-        """
-        from evidently.pipeline.column_mapping import ColumnMapping
-        from evidently.report import Report
-        from evidently.tabs import CatTargetDriftTab, DataDriftTab
-
-        column_mapping = ColumnMapping()
-        column_mapping.target = target
-        column_mapping.prediction = None
-        column_mapping.datetime = None
-        column_mapping.numerical_features = numeric_features
-        column_mapping.categorical_features = categorical_features
-        column_mapping.datetime_features = date_features
-
-        if target not in reference_data.columns or target not in current_data.columns:
-            raise ValueError(
-                f"Both dataset must contain a label column {target} "
-                "in order to create a drift report."
-            )
-
-        report = Report(presets=[DataDriftTab(), CatTargetDriftTab()])
-        report.calculate(reference_data, current_data, column_mapping=column_mapping)
-        filename = (
-            filename or f"{self.exp_name_log}_{int(time.time())}_Drift_Report.html"
-        )
-        report.save(filename)
         return filename
 
     @classmethod
