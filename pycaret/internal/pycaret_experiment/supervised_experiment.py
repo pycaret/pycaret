@@ -5631,8 +5631,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 .difference(date_features)
             )
 
-        # Todo: use new api from evidently
-        # old evidently version brokes other dependencies of pycaret
         from evidently.dashboard import Dashboard
         from evidently.pipeline.column_mapping import ColumnMapping
         from evidently.tabs import CatTargetDriftTab, DataDriftTab
