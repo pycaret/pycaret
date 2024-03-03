@@ -4,7 +4,7 @@ interpret>=0.2.7
 umap-learn>=0.5.2
 # pyyaml 5.3.1 to fix ydata-profiling requirements pyyaml 5.4.1 can't build
 # (https://github.com/yaml/pyyaml/issues/736)
-pyyaml >= 5.4 
+pyyaml == 5.4.1 
 ydata-profiling>=4.3.1
 explainerdashboard>=0.3.8  # For dashboard method
 fairlearn==0.7.0  # For check_fairness method
