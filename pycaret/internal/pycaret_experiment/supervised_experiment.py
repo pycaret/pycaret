@@ -5630,7 +5630,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 .difference(categorical_features)
                 .difference(date_features)
             )
-
+        """
         from evidently.dashboard import Dashboard
         from evidently.pipeline.column_mapping import ColumnMapping
         from evidently.tabs import CatTargetDriftTab, DataDriftTab
@@ -5655,6 +5655,31 @@ class _SupervisedExperiment(_TabularExperiment):
             filename or f"{self.exp_name_log}_{int(time.time())}_Drift_Report.html"
         )
         dashboard.save(filename)
+        return filename
+        """
+
+        # Todo: test if works correctly and remove commented (backup) code above
+        from evidently import ColumnMapping
+        from evidently.metric_preset import DataDriftPreset, TargetDriftPreset
+        from evidently.report import Report
+
+        column_mapping = ColumnMapping()
+        column_mapping.target = target
+        column_mapping.prediction = None
+        column_mapping.datetime = None
+        column_mapping.numerical_features = numeric_features
+        column_mapping.categorical_features = categorical_features
+        column_mapping.datetime_features = date_features
+
+        report = Report(metrics=[DataDriftPreset(), TargetDriftPreset()])
+
+        # Generate the report filename
+        filename = f"{self.exp_name_log}_{int(time.time())}_Drift_Report.html"
+
+        # Save the report as an HTML file
+        report.save(filename)
+
+        # Return the filename
         return filename
 
     @classmethod
