@@ -138,7 +138,9 @@ def create_logger(
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    path = "logs.log" if isinstance(log, bool) else log
+    # custom path for logging, if not given, will use local logs.log
+    logPath = os.getenv("PYCARET_CUSTOM_LOGGING_PATH", "logs.log")
+    path = logPath if isinstance(log, bool) else log
     ch: Optional[Union[logging.FileHandler, logging.NullHandler]] = None
     try:
         ch = logging.FileHandler(path)
