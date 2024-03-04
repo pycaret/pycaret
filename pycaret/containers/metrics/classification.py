@@ -115,8 +115,9 @@ class ClassificationMetricContainer(MetricContainer):
             if scorer
             else pycaret.internal.metrics.make_scorer_with_error_score(
                 score_func,
-                needs_proba=target == "pred_proba",
-                needs_threshold=target == "threshold",
+                response_method=None,
+                needs_proba="deprecated",
+                needs_threshold="deprecated",
                 greater_is_better=greater_is_better,
                 error_score=0.0,
                 **args,
