@@ -834,7 +834,7 @@ class RANSACRegressorContainer(RegressorContainer):
             "max_skips": np_list_arange(1, 20, 1, inclusive=True),
             "stop_n_inliers": np_list_arange(1, 25, 1, inclusive=True),
             "stop_probability": np_list_arange(0, 1, 0.01, inclusive=True),
-            "loss": ["absolute_loss", "squared_loss"],
+            "loss": ["absolute_error", "squared_error"],
         }
         tune_distributions = {
             "min_samples": UniformDistribution(0, 1),
