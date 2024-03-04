@@ -1,7 +1,9 @@
 import pandas as pd
+import polars as pl
 import pytest
 
 from pycaret.datasets import get_data
+from pycaret.internal.preprocess import Preprocessor
 
 
 def test_datasets():
@@ -35,6 +37,28 @@ def test_datasets():
     assert rows == 24000
     assert cols == 24
     assert data.size == 576000
+
+    ################################
+    # Conversion from Polars to Pandas ####
+    ################################
+
+    # creating a Polars DataFrame manually
+    df = pl.DataFrame(
+        {
+            "A": [1, 2, 3, 4, 5],
+            "fruits": ["banana", "banana", "apple", "apple", "banana"],
+            "B": [5, 4, 3, 2, 1],
+            "cars": ["beetle", "audi", "beetle", "beetle", "beetle"],
+        }
+    )
+
+    # testing conversion
+    preprocessor = Preprocessor()
+    data_converted = preprocessor._prepare_dataset(df)
+    assert isinstance(data_converted, pd.DataFrame)
+    rows, cols = data_converted.shape
+    assert rows == 5
+    assert cols == 4
 
     ################################
     # GitHub Specific folder ####
