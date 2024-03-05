@@ -13,6 +13,7 @@
 
 from typing import Any, Dict, Optional, Union
 
+import numpy as np
 from sklearn import metrics
 from sklearn.metrics._scorer import _BaseScorer
 
@@ -116,10 +117,10 @@ class ClassificationMetricContainer(MetricContainer):
             else pycaret.internal.metrics.make_scorer_with_error_score(
                 score_func,
                 response_method=None,
+                greater_is_better=greater_is_better,
                 needs_proba="deprecated",
                 needs_threshold="deprecated",
-                greater_is_better=greater_is_better,
-                error_score=0.0,
+                error_score=np.nan,
                 **args,
             )
         )
