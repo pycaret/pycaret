@@ -4,6 +4,7 @@ from typing import Callable
 
 import numpy as np
 from sklearn.exceptions import FitFailedWarning
+from sklearn.metrics import roc_auc_score
 from sklearn.metrics._scorer import _Scorer
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import _safe_indexing
@@ -118,10 +119,13 @@ class EncodedDecodedLabelsReplaceScoreFunc:
 class BinaryMulticlassScoreFunc:
     """Wrapper to replace call kwargs with preset values if target is binary."""
 
-    def __init__(self, score_func: Callable, kwargs_if_binary: dict):
+    def __init__(
+        self, score_func: Callable, kwargs_if_binary: dict, response_method=None
+    ):
         self.score_func = score_func
         self.kwargs_if_binary = kwargs_if_binary
         self.__name__ = score_func.__name__
+        self.response_method = response_method
 
     def __call__(self, y_true, y_pred, **kwargs):
         if self.kwargs_if_binary:
@@ -133,6 +137,11 @@ class BinaryMulticlassScoreFunc:
             )
             if is_binary:
                 kwargs = {**kwargs, **self.kwargs_if_binary}
+
+        # Use the provided response_method if available
+        if self.response_method:
+            kwargs["response_method"] = self.response_method
+
         return self.score_func(y_true, y_pred, **kwargs)
 
 
@@ -214,7 +223,7 @@ def make_scorer_with_error_score(
     greater_is_better=True,
     needs_proba="deprecated",
     needs_threshold="deprecated",
-    error_score=np.nan,
+    error_score=0.0,
     **kwargs,
 ):
     """Make a scorer from a performance metric or loss function.
