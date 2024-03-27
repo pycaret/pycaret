@@ -1160,6 +1160,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         engine: Optional[str] = None,
         verbose: bool = True,
         return_train_score: bool = False,
+        train_model: bool = True,
         **kwargs,
     ):
         """
@@ -1260,6 +1261,9 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
             This is useful when the user wants to do bias-variance tradeoff. A high CV
             training score with a low corresponding CV validation score indicates overfitting.
 
+        train_model: bool, default = True
+            If True, train the model
+            If False, do not train the model
 
         **kwargs:
             Additional keyword arguments to pass to the estimator.
@@ -1292,6 +1296,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
                 experiment_custom_tags=experiment_custom_tags,
                 verbose=verbose,
                 return_train_score=return_train_score,
+                train_model=train_model,
                 **kwargs,
             )
         finally:
