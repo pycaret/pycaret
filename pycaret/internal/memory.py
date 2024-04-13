@@ -27,7 +27,6 @@ from joblib.memory import (
     MemorizedResult,
     Memory,
     NotMemorizedResult,
-    _format_load_msg,
     filter_args,
     format_call,
     format_signature,
@@ -35,6 +34,8 @@ from joblib.memory import (
     get_func_name,
 )
 from xxhash import xxh128 as xxh
+
+from pycaret.utils.compat import joblib_format_load_msg as _format_load_msg
 
 try:
     from math import prod
