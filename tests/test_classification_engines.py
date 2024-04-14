@@ -1,4 +1,3 @@
-import daal4py
 import pytest
 import sklearn
 
