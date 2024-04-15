@@ -21,7 +21,7 @@ scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine
 
 # Tuners
 tune-sklearn>=0.2.1; python_version != "3.11" or platform_system != "Windows"
-ray[tune]>=1.0.0,<2.10.0; python_version != "3.11" or platform_system != "Windows"
+ray[tune]~=2.9.0; python_version != "3.11" or platform_system != "Windows"
 hyperopt>=0.2.7
 optuna>=3.0.0
 scikit-optimize>=0.9.0
@@ -38,7 +38,7 @@ evidently~=0.4.16
 # Parallel
 dask>=2024.4.1            # Python 3.11.9 breaks Dask (https://github.com/dask/dask/issues/11038)
 distributed>=2024.4.1     # Python 3.11.9 breaks Dask (https://github.com/dask/dask/issues/11038)
-fugue
+fugue>=0.8.6
 flask
 Werkzeug>=2.2,<3.0
 triad<0.9.2 # fix pandas enforce_type error (https://github.com/fugue-project/fugue/issues/526)
