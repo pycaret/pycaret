@@ -17,7 +17,7 @@ import imblearn.pipeline
 import sklearn.pipeline
 from sklearn.base import clone
 from sklearn.utils import _print_elapsed_time
-from sklearn.utils.metadata_routing import _routing_enabled, process_routing
+from sklearn.utils.metadata_routing import _routing_enabled
 from sklearn.utils.metaestimators import available_if
 from sklearn.utils.validation import check_memory
 
