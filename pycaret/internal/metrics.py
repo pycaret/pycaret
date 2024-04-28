@@ -223,7 +223,7 @@ def make_scorer_with_error_score(
     greater_is_better=True,
     needs_proba="deprecated",
     needs_threshold="deprecated",
-    error_score=0.0,
+    error_score=np.nan,
     **kwargs,
 ):
     """Make a scorer from a performance metric or loss function.

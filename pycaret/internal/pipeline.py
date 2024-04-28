@@ -118,6 +118,8 @@ def _noop_transform(pipeline: "Pipeline", X, y, **kwargs):
 
 class Pipeline(imblearn.pipeline.Pipeline):
     def __init__(self, steps, *, memory=None, verbose=False):
+        if _routing_enabled():
+            raise RuntimeError("PyCaret Pipeline does not support metadata routing.")
         super().__init__(steps, memory=memory, verbose=verbose)
         self._fit_vars = set()
         self._feature_names_in = None
@@ -332,22 +334,8 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
     @available_if(_final_estimator_has("predict_proba"))
     def predict_proba(self, X, **params):
-        # X, _ = self._memory_full_transform(self, X, None, with_final=False)
-
-        Xt = X
-
-        if not _routing_enabled():
-            for _, name, transform in self._iter(with_final=False):
-                Xt = transform.transform(Xt)
-            return self.steps[-1][1].predict_proba(Xt, **params)
-
-        # metadata routing enabled
-        routed_params = process_routing(self, "predict_proba", **params)
-
-        # return self.steps[-1][-1].predict_proba(X, **params)
-        return self.steps[-1][1].predict_proba(
-            Xt, **routed_params[self.steps[-1][0]].predict_proba
-        )
+        Xt, _ = self._memory_full_transform(self, X, None, with_final=False)
+        return self.steps[-1][1].predict_proba(Xt, **params)
 
     @available_if(_final_estimator_has("predict_log_proba"))
     def predict_log_proba(self, X, **params):

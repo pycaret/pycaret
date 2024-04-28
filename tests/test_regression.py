@@ -39,6 +39,18 @@ def test_regression(boston_dataframe, return_train_score):
         errors="raise",
     )[:3]
     assert isinstance(top3, list)
+    metrics = pycaret.regression.pull()
+    # no metric should be 0
+    assert (
+        (
+            metrics.loc[[i for i in metrics.index if i not in ("dummy")]][
+                [c for c in metrics.columns if c not in ("Model", "TT (Sec)")]
+            ]
+            != 0
+        )
+        .all()
+        .all()
+    )
 
     # tune model
     tuned_top3 = [
