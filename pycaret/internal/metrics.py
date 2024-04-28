@@ -4,7 +4,6 @@ from typing import Callable
 
 import numpy as np
 from sklearn.exceptions import FitFailedWarning
-from sklearn.metrics import roc_auc_score
 from sklearn.metrics._scorer import _Scorer
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import _safe_indexing
