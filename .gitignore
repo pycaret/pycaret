@@ -32,7 +32,7 @@ trained_models/
 mlflow_backend.py
 demo4.py
 dask*/
-/.venv
+/.venv*
 /.devcontainer
 tmp/
 nbtest1.ipynb
