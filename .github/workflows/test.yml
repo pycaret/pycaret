@@ -50,6 +50,7 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: |
+          pip install --upgrade pip
           pip install -U pytest pytest-xdist nbmake
 
           # https://github.com/yaml/pyyaml/issues/736
@@ -81,9 +82,9 @@ jobs:
 
     name: Python ${{ matrix.python-version }} on OS ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
