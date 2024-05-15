@@ -69,6 +69,7 @@ from pycaret.utils.generic import (
     nullcontext,
     true_warm_start,
 )
+from pycaret.internal.display.display_backend import _is_in_jupyter_notebook
 
 try:
     from collections.abc import Iterable
@@ -3992,15 +3993,18 @@ class _SupervisedExperiment(_TabularExperiment):
             * 'pdp' - Partial Dependence Plot
             * 'msa' - Morris Sensitivity Analysis
             * 'pfi' - Permutation Feature Importance
+            * 'ice' - Individual Conditional Expectation
+            * 'lime' - Local Interpretable Model-Agnostic Explanations
+            * 'anchors' - Scoped Rules
 
         feature: str, default = None
-            This parameter is only needed when plot = 'correlation' or 'pdp'.
+            This parameter is only needed when plot = 'correlation', 'pdp' or 'ice'.
             By default feature is set to None which means the first column of the
             dataset will be used as a variable. A feature parameter must be passed
             to change this.
 
         observation: integer, default = None
-            This parameter only comes into effect when plot is set to 'reason'. If no
+            This parameter only comes into effect when plot is set to 'reason', 'lime' and 'anchors'. If no
             observation number is provided, it will return an analysis of all observations
             with the option to select the feature on x and y axes through drop down
             interactivity. For analysis at the sample level, an observation parameter must
@@ -4068,6 +4072,19 @@ class _SupervisedExperiment(_TabularExperiment):
                 install_name="interpret-community",
             )
 
+        # checking lime is available
+        if plot == "lime":
+            _check_soft_dependencies("lime", extra=None, severity="error")
+            import lime
+
+        # checking anchor_exp is available
+        if plot == "anchors":
+            if not _check_soft_dependencies("anchor", extra=None, severity="warning"):
+                raise ModuleNotFoundError("""'anchor_exp' is a soft dependency and not included
+                                          in the pycaret installation. Please run: `pip install anchor_exp`
+                                          to install.""")
+            from anchor import anchor_tabular
+
         # get estimator from meta estimator
         estimator = get_estimator_from_meta_estimator(estimator)
 
@@ -4081,11 +4098,13 @@ class _SupervisedExperiment(_TabularExperiment):
             model_id not in shap_models_ids
         ):
             raise TypeError(
-                f"This function only supports tree based models for binary classification: {', '.join(shap_models_ids)}."
+                f"""This function only supports shap.Explainer, shap.KernelExplainer
+                or shap.TreeExplainer models for binary classification:
+                {', '.join(shap_models_ids)}."""
             )
 
         # plot type
-        allowed_types = ["summary", "correlation", "reason", "pdp", "msa", "pfi"]
+        allowed_types = ["summary", "correlation", "reason", "pdp", "msa", "pfi", "ice", "lime", "anchors"]
         if plot not in allowed_types:
             raise ValueError(
                 f"type parameter only accepts {', '.join(list(allowed_types) + str(None))}."
@@ -4096,12 +4115,19 @@ class _SupervisedExperiment(_TabularExperiment):
                 "Specifying 'X_new_sample' and ('observation' or 'use_train_data') is ambiguous."
             )
 
+        local_types = ["lime", "anchors"]
+        if plot in local_types and observation is None:
+            raise ValueError(
+                f"Observation set to None but {', '.join(list(allowed_types))} require one"
+            )
+
         """
         Error Checking Ends here
 
         """
 
         # Storing X_train and y_train in data_X and data_y parameter
+        train_X = self.X_train_transformed
         if X_new_sample is not None:
             test_X = self.pipeline.transform(X_new_sample)
             if plot == "pfi":
@@ -4112,7 +4138,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 test_X = self.X_train_transformed
             else:
                 test_X = self.X_test_transformed
-            if plot == "pfi":
+            if plot in ["pfi", "anchors"]:
                 if use_train_data:
                     test_y = self.y_train_transformed
                 else:
@@ -4126,14 +4152,23 @@ class _SupervisedExperiment(_TabularExperiment):
         # defining type of classifier
         shap_models_type1 = {k for k, v in shap_models.items() if v.shap == "type1"}
         shap_models_type2 = {k for k, v in shap_models.items() if v.shap == "type2"}
+        shap_models_general = {k for k, v in shap_models.items() if v.shap == "general"}
+        shap_models_kernel = {k for k, v in shap_models.items() if v.shap == "kernel"}
 
         self.logger.info(f"plot type: {plot}")
 
         shap_plot = None
 
         def summary(show: bool = True):
-            self.logger.info("Creating TreeExplainer")
-            explainer = shap.TreeExplainer(model)
+            if model_id in shap_models_general:
+                self.logger.info("Creating Explainer")
+                explainer = shap.Explainer(model, train_X)
+            elif model_id in shap_models_kernel:
+                self.logger.info("Creating KernelExplainer")
+                explainer = shap.KernelExplainer(model.predict_proba, train_X)
+            else:
+                self.logger.info("Creating TreeExplainer")
+                explainer = shap.TreeExplainer(model)
             self.logger.info("Compiling shap values")
             shap_values = explainer.shap_values(test_X)
             try:
@@ -4165,8 +4200,15 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
                 dependence = feature
 
-            self.logger.info("Creating TreeExplainer")
-            explainer = shap.TreeExplainer(model)
+            if model_id in shap_models_general:
+                self.logger.info("Creating Explainer")
+                explainer = shap.Explainer(model, train_X)
+            elif model_id in shap_models_kernel:
+                self.logger.info("Creating KernelExplainer")
+                explainer = shap.KernelExplainer(model.predict_proba, train_X)
+            else:
+                self.logger.info("Creating TreeExplainer")
+                explainer = shap.TreeExplainer(model)
             self.logger.info("Compiling shap values")
             shap_values = explainer.shap_values(test_X)
 
@@ -4177,6 +4219,11 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
             elif model_id in shap_models_type2:
                 self.logger.info("model type detected: type 2")
+                shap.dependence_plot(
+                    dependence, shap_values, test_X, show=show, **kwargs
+                )
+            elif model_id in shap_models_general:
+                self.logger.info("model type detected: general")
                 shap.dependence_plot(
                     dependence, shap_values, test_X, show=show, **kwargs
                 )
@@ -4369,6 +4416,77 @@ class _SupervisedExperiment(_TabularExperiment):
                 self.logger.info(f"Saving '{plot_filename}'")
                 pio.write_html(pfi_plot, plot_filename)
             return pfi_plot
+
+        def ice(show: bool = True):
+            self.logger.info("Checking feature parameter passed")
+            if feature is None:
+                self.logger.warning(
+                    f"No feature passed. Default value of feature used for ice : {test_X.columns[0]}"
+                )
+                ice_feature = test_X.columns[0]
+            else:
+                self.logger.info(
+                    f"feature value passed. Feature used for correlation plot: {feature}"
+                )
+                ice_feature = feature
+
+            from sklearn.inspection import PartialDependenceDisplay
+            ice_plot = PartialDependenceDisplay.from_estimator(model, test_X, [ice_feature], kind='both')
+            if save:
+                import plotly.io as pio
+
+                plot_filename = f"ICE {plot}.html"
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                self.logger.info(f"Saving '{plot_filename}'")
+                pio.write_html(ice_plot, plot_filename)
+            return ice_plot
+
+        def lime(show: bool = True):
+            from lime.lime_tabular import LimeTabularExplainer
+
+            explainer = LimeTabularExplainer(
+                test_X.to_numpy(),
+                feature_names=test_X.columns,
+                discretize_continuous=True
+            )
+            exp = explainer.explain_instance(observation.to_numpy().flatten(), model.predict_proba)
+            if _is_in_jupyter_notebook:
+                lime_plot = exp.show_in_notebook(show_table=True, show_all=False)
+            else:
+                lime_plot = exp.as_pyplot_figure()
+            if save:
+                import plotly.io as pio
+
+                plot_filename = f"LIME {plot}.html"
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                self.logger.info(f"Saving '{plot_filename}'")
+                pio.write_html(lime_plot, plot_filename)
+            return lime_plot
+
+        def anchors(show: bool = True):
+            explainer = anchor_tabular.AnchorTabularExplainer(
+                np.sort(np.unique(test_y)),
+                test_X.columns,
+                test_X.to_numpy(),
+            )
+
+            exp = explainer.explain_instance(np.array(observation).flatten(), model.predict, threshold=0.95)
+
+            if _is_in_jupyter_notebook:
+                anchor_plot = exp.show_in_notebook()
+            else:
+                anchor_plot = exp.as_html()
+            if save:
+                import plotly.io as pio
+
+                plot_filename = f"LIME {plot}.html"
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                self.logger.info(f"Saving '{plot_filename}'")
+                pio.write_html(anchor_plot, plot_filename)
+            return anchor_plot
 
         shap_plot = locals()[plot](show=not save)
 
