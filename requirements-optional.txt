@@ -2,7 +2,7 @@
 shap~=0.44.0 # 0.44.0 fixes matplotlib use_line_collection error
 interpret>=0.2.7
 umap-learn>=0.5.2
-pyyaml
+pyyaml>=6.0.1
 ydata-profiling>=4.3.1
 explainerdashboard>=0.3.8  # For dashboard method
 fairlearn==0.7.0  # For check_fairness method
@@ -26,11 +26,11 @@ optuna-integration
 scikit-optimize>=0.9.0
 
 # MLOps
-mlflow>=2.0.0
+mlflow>=2.13.2
 gradio>=3.50.2
 boto3>=1.24.56  # For deploy_model method
-fastapi  # For web api
-uvicorn>=0.17.6  # For web api
+fastapi>=0.111.0  # For web api
+uvicorn>=0.30.1  # For web api
 m2cgen>=0.9.0  # For model conversion
 evidently~=0.4.16
 
@@ -38,5 +38,5 @@ evidently~=0.4.16
 dask>=2024.4.1            # Python 3.11.9 breaks Dask (https://github.com/dask/dask/issues/11038)
 distributed>=2024.4.1     # Python 3.11.9 breaks Dask (https://github.com/dask/dask/issues/11038)
 fugue~=0.8.0
-flask
+flask>=3.0.3
 Werkzeug>=2.2,<3.0
