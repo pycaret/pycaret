@@ -30,12 +30,12 @@ jobs:
         uses: jamescurtin/isort-action@master
         with:
           sort-paths: pycaret tests
-          isort-version: 5.11.4
+          isort-version: 5.13.2
       - name: Run flake8
         uses: py-actions/flake8@v2
         with:
           path: pycaret tests
-          flake8-version: 6.0.0
+          flake8-version: 7.1.0
 
   # JOBS MUST START WITH test !!!!
   test_notebooks:
