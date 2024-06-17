@@ -37,6 +37,7 @@ evidently~=0.4.16
 # Parallel
 dask>=2024.4.1            # Python 3.11.9 breaks Dask (https://github.com/dask/dask/issues/11038)
 distributed>=2024.4.1     # Python 3.11.9 breaks Dask (https://github.com/dask/dask/issues/11038)
+prometheus_client,
 fugue~=0.8.0
 flask
 Werkzeug>=2.2,<3.0
