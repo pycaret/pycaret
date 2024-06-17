@@ -48,6 +48,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         run: |
           pip install --upgrade pip
@@ -87,6 +88,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
         # pyLDAvis 3.3.1 having an "sklearn" dependency
@@ -124,6 +126,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
         # pyLDAvis 3.3.1 having an "sklearn" dependency
@@ -160,6 +163,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
         # pyLDAvis 3.3.1 having an "sklearn" dependency
@@ -197,6 +201,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
         # pyLDAvis 3.3.1 having an "sklearn" dependency
@@ -234,6 +239,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
         # pyLDAvis 3.3.1 having an "sklearn" dependency
