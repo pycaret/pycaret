@@ -2,7 +2,7 @@ import sys
 
 from pycaret.utils._show_versions import show_versions
 
-version_ = "3.3.2"
+version_ = "3.4"
 
 __version__ = version_
 
