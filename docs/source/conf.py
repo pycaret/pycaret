@@ -24,7 +24,7 @@ author = "Moez Ali"
 contributors = "https://github.com/pycaret/pycaret/graphs/contributors"
 
 # The full version, including alpha/beta/rc tags
-release = "3.4"
+release = "3.4.0"
 
 
 # -- General configuration ---------------------------------------------------
