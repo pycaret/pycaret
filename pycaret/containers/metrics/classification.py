@@ -1,5 +1,8 @@
+# Copyright (C) 2019-2024 PyCaret
+#
 # Module: containers.metrics.classification
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
 # License: MIT
 
 # The purpose of this module is to serve as a central repository of classification metrics. The `classification` module will
@@ -107,16 +110,21 @@ class ClassificationMetricContainer(MetricContainer):
         if not isinstance(args, dict):
             raise TypeError("args needs to be a dictionary.")
 
+        if target == "pred":
+            response_method = "predict"
+        elif target == "pred_proba":
+            response_method = "predict_proba"
+        else:  # threshold
+            response_method = "decision_function"
+
         scorer = (
             scorer
             if scorer
             else pycaret.internal.metrics.make_scorer_with_error_score(
                 score_func,
-                needs_proba=target == "pred_proba",
-                needs_threshold=target == "threshold",
+                response_method=response_method,
                 greater_is_better=greater_is_better,
                 error_score=0.0,
-                **args,
             )
         )
 
@@ -188,7 +196,10 @@ class ROCAUCMetricContainer(ClassificationMetricContainer):
             name="AUC",
             score_func=score_func,
             scorer=pycaret.internal.metrics.make_scorer_with_error_score(
-                score_func, needs_proba=True, error_score=0.0, **args
+                score_func,
+                response_method=("decision_function", "predict_proba"),
+                error_score=0.0,
+                **args,
             ),
             target="pred_proba",
             args=args,

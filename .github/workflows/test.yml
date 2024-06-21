@@ -51,6 +51,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pytest pytest-xdist nbmake
+
+          # https://github.com/yaml/pyyaml/issues/736
+          echo 'Cython < 3.0' > /tmp/constraint.txt
+          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
+
           pip install ".[full]"
           python -m ipykernel install --user --name cikernel
       - name: Python version and dependency list
@@ -68,7 +73,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ 'ubuntu-latest', 'windows-latest' ]
-        python-version: [ '3.8', '3.9', '3.10', '3.11' ]
+        python-version: [ '3.9', '3.10', '3.11' ]
 
     defaults:
       run:
@@ -88,6 +93,10 @@ jobs:
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
           python -m pip install -U pytest numpy
+
+          # https://github.com/yaml/pyyaml/issues/736
+          echo 'Cython < 3.0' > /tmp/constraint.txt
+          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
 
           pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
@@ -121,6 +130,11 @@ jobs:
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install --upgrade pip
           python -m pip install -U pytest numpy
+
+          # https://github.com/yaml/pyyaml/issues/736
+          echo 'Cython < 3.0' > /tmp/constraint.txt
+          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
+
           pip install ".[full, test]"
       - name: Python version and dependency list
         run: |
@@ -152,6 +166,10 @@ jobs:
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
           python -m pip install -U pytest numpy
+
+          # https://github.com/yaml/pyyaml/issues/736
+          echo 'Cython < 3.0' > /tmp/constraint.txt
+          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
 
           pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
@@ -186,6 +204,10 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest numpy
 
+          # https://github.com/yaml/pyyaml/issues/736
+          echo 'Cython < 3.0' > /tmp/constraint.txt
+          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
+
           pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
@@ -218,6 +240,10 @@ jobs:
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
           python -m pip install -U pytest numpy
+
+          # https://github.com/yaml/pyyaml/issues/736
+          echo 'Cython < 3.0' > /tmp/constraint.txt
+          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
 
           pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi

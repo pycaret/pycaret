@@ -44,10 +44,7 @@ _data_seasonal_types_strictly_pos = _return_data_seasonal_types_strictly_pos()
 def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_data):
     """Tests the splitter creation using fold, fh and a string value for fold_strategy."""
 
-    from sktime.forecasting.model_selection._split import (
-        ExpandingWindowSplitter,
-        SlidingWindowSplitter,
-    )
+    from sktime.split import ExpandingWindowSplitter, SlidingWindowSplitter
 
     from pycaret.time_series import setup
 
@@ -80,7 +77,7 @@ def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_da
 def test_splitter_pass_cv_object(load_pos_and_neg_data):
     """Tests the passing of a `sktime` cv splitter to fold_strategy"""
 
-    from sktime.forecasting.model_selection._split import ExpandingWindowSplitter
+    from sktime.split import ExpandingWindowSplitter
 
     from pycaret.time_series import setup
 

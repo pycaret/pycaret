@@ -2,6 +2,7 @@ from typing import Any, Callable
 from unittest.mock import patch
 
 import numpy as np
+from sklearn.metrics._scorer import _MultimetricScorer
 from sklearn.model_selection._validation import _fit_and_score, _score
 from sklearn.utils import check_random_state
 
@@ -108,6 +109,18 @@ def _mp_ParameterGrid_getitem(self, ind):
     raise IndexError("ParameterGrid index out of range")
 
 
+class MultimetricScorerPatched(_MultimetricScorer):
+    # Patch use_cache to supress exception if an estimator
+    # doesn't have the required method (this can happen
+    # with PyCaret as we just default to error score
+    # in that case).
+    def _use_cache(self, estimator):
+        try:
+            return super()._use_cache(estimator)
+        except AttributeError:
+            return True
+
+
 def fit_and_score(*args, **kwargs) -> dict:
     """Wrapper for sklearn's _fit_and_score function.
 
@@ -118,7 +131,10 @@ def fit_and_score(*args, **kwargs) -> dict:
     """
 
     def wrapper(*args, **kwargs) -> dict:
-        with patch("sklearn.model_selection._validation._score", score(_score)):
+        with patch(
+            "sklearn.model_selection._validation._MultimetricScorer",
+            MultimetricScorerPatched,
+        ), patch("sklearn.model_selection._validation._score", score(_score)):
             return _fit_and_score(*args, **kwargs)
 
     return wrapper(*args, **kwargs)
