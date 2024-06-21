@@ -74,6 +74,9 @@ pip install pycaret[parallel]
 # install test extras
 pip install pycaret[test]
 
+# install dev extras
+pip install pycaret[dev]
+
 ##
 
 # install multiple extras together
