@@ -1,0 +1,133 @@
+import logging
+import time
+import pandas as pd
+import plotly.express as px
+import seaborn as sns
+from memory_profiler import memory_usage
+from pycaret.clustering import ClusteringExperiment
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import LabelEncoder
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
+def widen_dataset(df, num_columns):
+    original_num_columns = df.shape[1]
+    repeat_times = num_columns // original_num_columns
+    df_repeated = pd.concat([df.add_suffix(f"_{i}") for i in range(repeat_times)], axis=1)
+    remaining_columns = num_columns % original_num_columns
+    if remaining_columns > 0:
+        df_remaining = df[df.columns[:remaining_columns]].add_suffix(f"_{repeat_times}")
+        df_repeated = pd.concat([df_repeated, df_remaining], axis=1)
+    return df_repeated
+
+def lengthen_dataset(df, num_rows):
+    while len(df) < num_rows:
+        df = pd.concat([df, df])
+    df = df.iloc[:num_rows].reset_index(drop=True)
+    return df
+
+def fit_kmeans(df):
+    kmeans = KMeans(n_clusters=4, random_state=42)
+    kmeans.fit(df)
+
+def fit_kmeans_pycaret(df):
+    s = ClusteringExperiment()
+    s.setup(
+        data=df,
+        verbose=False,
+        normalize=False,
+        index=False,
+        transformation=False,
+        pca=False,
+        preprocess=False,
+        remove_outliers=False,
+        system_log=False,
+        log_experiment=False,
+        log_plots=False,
+        log_profile=False,
+        log_data=False,
+        memory=False,
+        profile=False,
+    )
+    s.create_model("kmeans")
+
+def create_memory_df(row_numbers, model_memory, libraries, processing_times):
+    df = pd.DataFrame({
+        "Number of Rows": row_numbers,
+        "Memory Consumption": model_memory,
+        "Library": libraries,
+        "Processing Time": processing_times,
+    })
+    return df
+
+def plot_memory_consumption(df):
+    df_melted = df.melt(
+        id_vars=["Number of Rows", "Library"],
+        var_name="Process",
+        value_name="Value",
+    )
+    fig = px.line(
+        df_melted,
+        x="Number of Rows",
+        y="Value",
+        color="Library",
+        facet_row="Process",
+        markers=True,
+    )
+    fig.update_yaxes(title_text="Processing Time (s)", row=1, col=1)
+    fig.update_yaxes(title_text="Memory Consumption (MiB)", row=2, col=1)
+    fig.update_yaxes(matches=None)
+    fig.write_image("memory_consumption.png", scale=2)
+
+def label_encode_columns(df, columns):
+    le = LabelEncoder()
+    for column in columns:
+        if column in df.columns:
+            df[column] = le.fit_transform(df[column])
+    return df
+
+def get_mock_data(num_rows):
+    iris = sns.load_dataset("iris")
+    iris_wide = widen_dataset(iris, 15)
+    iris_long = lengthen_dataset(iris_wide, num_rows)
+    iris_long = label_encode_columns(iris_long, ["species_0", "species_1", "species_2"])
+    return iris_long
+
+def collect_memory_data():
+    model_memory = []
+    row_numbers = []
+    libraries = []
+    processing_times = []
+
+    for num_rows in range(1000000, 4000001, 100000):
+        for library in ["scikit", "pycaret"]:
+            iris_long = get_mock_data(num_rows)
+
+            def fit_model():
+                if library == "scikit":
+                    return fit_kmeans(iris_long)
+                elif library == "pycaret":
+                    return fit_kmeans_pycaret(iris_long)
+
+            start_time = time.time()
+            mem_usage_model = max(memory_usage(proc=(fit_model,)))
+            end_time = time.time()
+            processing_time = end_time - start_time
+
+            processing_times.append(processing_time)
+            model_memory.append(mem_usage_model)
+            row_numbers.append(num_rows)
+            libraries.append(library)
+
+            logging.info(
+                f"Step completed. Rows: {num_rows}, Library: {library}, "
+                f"Model Memory: {mem_usage_model} MiB, Processing Time: {processing_time} s"
+            )
+
+    return row_numbers, model_memory, libraries, processing_times
+
+if __name__ == "__main__":
+    row_numbers, model_memory, libraries, processing_times = collect_memory_data()
+    df = create_memory_df(row_numbers, model_memory, libraries, processing_times)
+    plot_memory_consumption(df)
