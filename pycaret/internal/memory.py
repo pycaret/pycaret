@@ -27,7 +27,6 @@ from joblib.memory import (
     MemorizedResult,
     Memory,
     NotMemorizedResult,
-    _format_load_msg,
     filter_args,
     format_call,
     format_signature,
@@ -364,11 +363,6 @@ class FastMemorizedFunc(MemorizedFunc):
         else:
             try:
                 t0 = time.time()
-                if self._verbose:
-                    msg = _format_load_msg(
-                        func_id, args_id, timestamp=self.timestamp, metadata=metadata
-                    )
-
                 if not shelving:
                     # When shelving, we do not need to load the output
                     out = self.store_backend.load_item(
@@ -400,10 +394,6 @@ class FastMemorizedFunc(MemorizedFunc):
                 # PYCARET CHANGES END
                 # Memmap the output at the first call to be consistent with
                 # later calls
-                if self._verbose:
-                    msg = _format_load_msg(
-                        func_id, args_id, timestamp=self.timestamp, metadata=metadata
-                    )
                 out = self.store_backend.load_item(
                     [func_id, args_id], msg=msg, verbose=self._verbose
                 )
