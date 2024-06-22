@@ -1,10 +1,13 @@
+# Copyright (C) 2019-2024 PyCaret
 # Author: Mavs (m.524687@gmail.com)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
 # License: MIT
 
 from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+import polars as pl
 from category_encoders.basen import BaseNEncoder
 from category_encoders.one_hot import OneHotEncoder
 from category_encoders.ordinal import OrdinalEncoder
@@ -117,6 +120,10 @@ class Preprocessor:
 
         """
         self.logger.info("Set up data.")
+
+        # Convert Polars DataFrame to Pandas DataFrame if it's Polars
+        if isinstance(X, pl.DataFrame):
+            X = X.to_pandas()
 
         # Make copy to not overwrite mutable arguments
         X = to_df(deepcopy(X))
