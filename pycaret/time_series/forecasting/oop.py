@@ -1232,8 +1232,17 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                         np.std(decomp_mult.resid * decomp_mult.seasonal)
                     ) ** 2
 
-                    Fs_add = np.maximum(1 - var_r_add / var_rs_add, 0)
-                    Fs_mult = np.maximum(1 - var_r_mult / var_rs_mult, 0)
+                    # added if conditions to avoid division by zero (https://github.com/pycaret/pycaret/issues/3997)
+                    Fs_add = (
+                        np.maximum(1 - var_r_add / var_rs_add, 0)
+                        if var_rs_add != 0
+                        else 0
+                    )
+                    Fs_mult = (
+                        np.maximum(1 - var_r_mult / var_rs_mult, 0)
+                        if var_rs_mult != 0
+                        else 0
+                    )
 
                     if Fs_mult > Fs_add:
                         seasonality_type = "mul"
