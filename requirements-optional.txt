@@ -18,8 +18,8 @@ statsforecast>=0.5.5,<1.6.0
 scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'
 
 # Tuners
-tune-sklearn>=0.2.1; python_version != "3.11" and platform_system != "Windows"
-ray[tune]>=1.0.0; python_version != "3.11" and platform_system != "Windows"
+tune-sklearn
+ray[tune]
 hyperopt>=0.2.7
 optuna>=3.0.0
 optuna-integration
