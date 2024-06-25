@@ -858,7 +858,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
                     values=(
                         ["add", "mul", None]
                         if self.strictly_positive
-                       else ["add", None]
+                        else ["add", None]
                     ),
                 ),
                 # "damped_trend": [True, False],
