@@ -118,7 +118,7 @@ class _TabularExperiment(_PyCaretExperiment):
             shuffle=self.fold_shuffle_param,
             int_default=(
                 "stratifiedkfold" if ml_usecase == MLUsecase.CLASSIFICATION else "kfold"
-            )
+            ),
         )
 
     def _is_unsupervised(self) -> bool:
