@@ -1,5 +1,6 @@
 """Helper functions for time series tests
 """
+
 import random
 
 import numpy as np

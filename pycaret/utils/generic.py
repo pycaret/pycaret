@@ -474,13 +474,13 @@ def np_list_arange(
     stop = stop + (step if inclusive else 0)
     range_ = list(np.arange(start, stop, step))
     range_ = [
-        start
-        if x < start
-        else stop
-        if x > stop
-        else float(round(x, 15))
-        if isinstance(x, float)
-        else x
+        (
+            start
+            if x < start
+            else (
+                stop if x > stop else float(round(x, 15)) if isinstance(x, float) else x
+            )
+        )
         for x in range_
     ]
     range_[0] = start
