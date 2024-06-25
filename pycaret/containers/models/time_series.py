@@ -809,9 +809,9 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
         if self.seasonality_present:
             tune_grid = {
-                "trend": ["add", "mul", None]
-                if self.strictly_positive
-                else ["add", None],
+                "trend": (
+                    ["add", "mul", None] if self.strictly_positive else ["add", None]
+                ),
                 # "damped_trend": [True, False],
                 "seasonal": ["add", "mul"] if self.strictly_positive else ["add"],
                 "use_boxcox": [True, False] if self.strictly_positive else [False],
@@ -819,9 +819,9 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             }
         else:
             tune_grid = {
-                "trend": ["add", "mul", None]
-                if self.strictly_positive
-                else ["add", None],
+                "trend": (
+                    ["add", "mul", None] if self.strictly_positive else ["add", None]
+                ),
                 # "damped_trend": [True, False],
                 "seasonal": [None],
                 "use_boxcox": [True, False] if self.strictly_positive else [False],
@@ -834,9 +834,11 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         if self.seasonality_present:
             tune_distributions = {
                 "trend": CategoricalDistribution(
-                    values=["add", "mul", None]
-                    if self.strictly_positive
-                    else ["add", None],
+                    values=(
+                        ["add", "mul", None]
+                        if self.strictly_positive
+                        else ["add", None]
+                    ),
                 ),
                 # "damped_trend": [True, False],
                 "seasonal": CategoricalDistribution(
@@ -853,9 +855,11 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         else:
             tune_distributions = {
                 "trend": CategoricalDistribution(
-                    values=["add", "mul", None]
-                    if self.strictly_positive
-                    else ["add", None],
+                    values=(
+                        ["add", "mul", None]
+                        if self.strictly_positive
+                       else ["add", None]
+                    ),
                 ),
                 # "damped_trend": [True, False],
                 "seasonal": CategoricalDistribution(values=[None]),
@@ -920,9 +924,9 @@ class ETSContainer(TimeSeriesContainer):
         if self.seasonality_present:
             tune_grid = {
                 "error": ["add", "mul"] if self.strictly_positive else ["add"],
-                "trend": ["add", "mul", None]
-                if self.strictly_positive
-                else ["add", None],
+                "trend": (
+                    ["add", "mul", None] if self.strictly_positive else ["add", None]
+                ),
                 # "damped_trend": [True, False],
                 "seasonal": ["add", "mul"] if self.strictly_positive else ["add"],
                 "sp": [self.sp],
@@ -930,9 +934,9 @@ class ETSContainer(TimeSeriesContainer):
         else:
             tune_grid = {
                 "error": ["add", "mul"] if self.strictly_positive else ["add"],
-                "trend": ["add", "mul", None]
-                if self.strictly_positive
-                else ["add", None],
+                "trend": (
+                    ["add", "mul", None] if self.strictly_positive else ["add", None]
+                ),
                 # "damped_trend": [True, False],
                 "seasonal": [None],
                 "sp": [1],
@@ -1526,9 +1530,11 @@ class LinearCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1583,9 +1589,11 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1641,9 +1649,11 @@ class RidgeCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1699,9 +1709,11 @@ class LassoCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1784,9 +1796,11 @@ class LassoLarsCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1831,9 +1845,11 @@ class BayesianRidgeCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1892,9 +1908,11 @@ class HuberCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1988,9 +2006,11 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -2100,9 +2120,11 @@ class DecisionTreeCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -2150,9 +2172,11 @@ class RandomForestCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -2203,9 +2227,11 @@ class ExtraTreesCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -2268,9 +2294,11 @@ class GradientBoostingCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -2319,9 +2347,11 @@ class AdaBoostCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -2393,9 +2423,11 @@ class XGBCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -2469,9 +2501,11 @@ class LGBMCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -2563,9 +2597,11 @@ class CatBoostCdsDtContainer(CdsDtContainer):
                 values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-                if self.strictly_positive
-                else ["additive"]
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
