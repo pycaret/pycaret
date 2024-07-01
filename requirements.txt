@@ -3,7 +3,7 @@ ipython>=5.5.0
 ipywidgets>=7.6.5
 tqdm>=4.62.0
 numpy>=1.21, <1.27
-pandas<2.2.0 #test_check_fairness_regression fails with pandas 2.2.0
+pandas>=2.2.0 #latest sktime makes tests fail if pandas 2.1
 jinja2>=3
 scipy>=1.6.1,<=1.11.4 #to fix later (https://github.com/mljar/mljar-supervised/issues/691)
 joblib>=1.2.0,<1.4  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution (https://github.com/advisories/GHSA-6hrg-qmvc-2xh8)  # joblib 1.4.0 breaks PyCaret
