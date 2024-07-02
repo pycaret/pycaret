@@ -316,6 +316,9 @@ def test_pipeline_works_no_exo(load_pos_and_neg_data_missing, model_name):
     assert isinstance(plot_data, dict)
 
 
+@pytest.mark.skip(
+    reason="Temporarily ignoring due to an issue with sktime. This line should be removed once sktime 0.31 is released. Ref: https://github.com/sktime/sktime/issues/6701"
+)
 @pytest.mark.parametrize("model_name", _model_names_for_missing_data)
 def test_pipeline_works_exo(load_uni_exo_data_target_missing, model_name):
     """Tests that the pipeline works for various operations for Univariate
