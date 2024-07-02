@@ -1,5 +1,6 @@
 """Module to test time_series forecasting utils
 """
+
 import pytest
 
 from pycaret.utils.time_series.forecasting import _check_and_clean_coverage

@@ -1,5 +1,6 @@
 """Module to test the datetime utility functions
 """
+
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 

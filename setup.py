@@ -21,6 +21,9 @@ with open("requirements-optional.txt") as f:
 with open("requirements-test.txt") as f:
     required_test = f.read().splitlines()
 
+with open("requirements-dev.txt") as f:
+    required_dev = f.read().splitlines()
+
 
 extras_require = {
     "analysis": required_optional.split("\n\n")[0].splitlines(),
@@ -29,6 +32,7 @@ extras_require = {
     "mlops": required_optional.split("\n\n")[3].splitlines(),
     "parallel": required_optional.split("\n\n")[4].splitlines(),
     "test": required_test,
+    "dev": required_dev,
 }
 
 extras_require["full"] = (
@@ -38,11 +42,12 @@ extras_require["full"] = (
     + extras_require["mlops"]
     + extras_require["parallel"]
     + extras_require["test"]
+    + extras_require["dev"]
 )
 
 setup(
     name="pycaret",
-    version="3.3.2",
+    version="3.4.0",
     description="PyCaret - An open source, low-code machine learning library in Python.",
     long_description=readme(),
     long_description_content_type="text/markdown",
@@ -65,4 +70,9 @@ setup(
     extras_require=extras_require,
     tests_require=required_test,
     python_requires=">=3.9",
+    project_urls={
+        "Contributors": "https://github.com/pycaret/pycaret/graphs/contributors",
+        "Documentation": "https://pycaret.gitbook.io/docs",
+        "Source": "https://github.com/pycaret/pycaret",
+    },
 )

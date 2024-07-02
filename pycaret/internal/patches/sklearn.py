@@ -2,9 +2,11 @@ from typing import Any, Callable
 from unittest.mock import patch
 
 import numpy as np
+from sklearn.base import is_regressor
 from sklearn.metrics._scorer import _MultimetricScorer
 from sklearn.model_selection._validation import _fit_and_score, _score
 from sklearn.utils import check_random_state
+from sklearn.utils.validation import _check_response_method
 
 from pycaret.internal.pipeline import pipeline_predict_inverse_only
 
@@ -119,6 +121,26 @@ class MultimetricScorerPatched(_MultimetricScorer):
             return super()._use_cache(estimator)
         except AttributeError:
             return True
+
+    def _score(self, method_caller, estimator, X, y_true, **kwargs):
+
+        self._warn_overlap(
+            message=(
+                "There is an overlap between set kwargs of this scorer instance and"
+                " passed metadata. Please pass them either as kwargs to `make_scorer`"
+                " or metadata, but not both."
+            ),
+            kwargs=kwargs,
+        )
+
+        pos_label = None if is_regressor(estimator) else self._get_pos_label()
+        response_method = _check_response_method(estimator, self._response_method)
+        y_pred = method_caller(
+            estimator, response_method.__name__, X, pos_label=pos_label
+        )
+
+        scoring_kwargs = {**self._kwargs, **kwargs}
+        return self._sign * self._score_func(y_true, y_pred, **scoring_kwargs)
 
 
 def fit_and_score(*args, **kwargs) -> dict:

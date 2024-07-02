@@ -1,5 +1,6 @@
 """Module to test time_series functionality
 """
+
 import numpy as np
 import pytest
 from pandas.testing import assert_frame_equal

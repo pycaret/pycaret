@@ -1,5 +1,6 @@
 """Module to test time_series forecasting pipeline utils
 """
+
 import numpy as np
 import pytest
 from sktime.forecasting.naive import NaiveForecaster
