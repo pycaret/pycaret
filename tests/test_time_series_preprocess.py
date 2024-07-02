@@ -324,22 +324,60 @@ def test_pipeline_works_exo(load_uni_exo_data_target_missing, model_name):
 
     exp = TSForecastingExperiment()
     FH = 12
-    exp.setup(
-        data=data,
-        target=target,
-        fh=FH,
-        numeric_imputation_target="drift",
-        numeric_imputation_exogenous="drift",
-        enforce_exogenous=False,
-    )
 
-    assert exp.get_config("y").isna().sum() > 0
-    assert exp.get_config("X").isna().sum().sum() > 0
-    assert exp.get_config("y_transformed").isna().sum() == 0
-    assert exp.get_config("X_transformed").isna().sum().sum() == 0
+    try:
+        exp.setup(
+            data=data,
+            target=target,
+            fh=FH,
+            numeric_imputation_target="drift",
+            numeric_imputation_exogenous="drift",
+            enforce_exogenous=False,
+        )
+    except Exception as e:
+        print("Error in setup:", e)
+        print("Data:", data)
+        print("Target:", target)
+        raise
 
-    model = exp.create_model(model_name)
-    preds = exp.predict_model(model)
+    try:
+        y = exp.get_config("y")
+        X = exp.get_config("X")
+        y_transformed = exp.get_config("y_transformed")
+        X_transformed = exp.get_config("X_transformed")
+
+        print("y:", y)
+        print("X:", X)
+        print("y_transformed:", y_transformed)
+        print("X_transformed:", X_transformed)
+
+        assert y.isna().sum() > 0
+        assert X.isna().sum().sum() > 0
+        assert y_transformed.isna().sum() == 0
+        assert X_transformed.isna().sum().sum() == 0
+    except Exception as e:
+        print("Error in configuration checks:", e)
+        raise
+
+    try:
+        model = exp.create_model(model_name)
+    except Exception as e:
+        print("Error in create_model:", e)
+        print("Model name:", model_name)
+        raise
+
+    try:
+        # Print the value of X before calling predict_model
+        print("X before predict_model:", exp.get_config("X"))
+
+        preds = exp.predict_model(model)
+        print("Predictions:", preds)
+    except Exception as e:
+        print("Error in predict_model:", e)
+        print("Model:", model)
+        print("X passed to predict:", exp.get_config("X"))
+        raise
+
     assert len(preds) == FH
     plot_data = exp.plot_model(model, return_data=True)
     assert isinstance(plot_data, dict)
