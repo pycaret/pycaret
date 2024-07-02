@@ -13,8 +13,7 @@ catboost>=0.23.2; platform_system != "Darwin"
 catboost>=0.23.2,<1.2; platform_system == "Darwin"  # https://github.com/pycaret/pycaret/issues/3563
 kmodes>=0.11.1
 mlxtend>=0.19.0
-# Can not be 1.6.0 since parallel argument in AutoARIMA was deprecated and this is not fixed in sktime
-statsforecast>=0.5.5,<1.6.0
+statsforecast<1.8.0,>1.6
 scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'
 
 # Tuners
