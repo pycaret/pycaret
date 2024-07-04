@@ -105,9 +105,9 @@ def setup(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> insurance = get_data('insurance')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = insurance,  target = 'charges')
 
 
     data: dataframe-like = None
@@ -2670,9 +2670,9 @@ def dashboard(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> insurance = get_data('insurance')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = insurance,  target = 'charges')
     >>> lr = create_model('lr')
     >>> dashboard(lr)
 
