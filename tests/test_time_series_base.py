@@ -1,5 +1,6 @@
 """Module to test time_series functionality
 """
+
 import numpy as np
 import pandas as pd
 import pytest
