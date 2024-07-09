@@ -12,13 +12,12 @@ xgboost>=2.0.0
 catboost>=1.2.5
 kmodes>=0.11.1
 mlxtend>=0.19.0
-# Can not be 1.6.0 since parallel argument in AutoARIMA was deprecated and this is not fixed in sktime
-statsforecast>=0.5.5,<1.6.0
+statsforecast<1.8.0,>1.6
 scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'
 
 # Tuners
-tune-sklearn>=0.2.1; python_version != "3.11" and platform_system != "Windows"
-ray[tune]>=1.0.0; python_version != "3.11" and platform_system != "Windows"
+tune-sklearn
+ray[tune]
 hyperopt>=0.2.7
 optuna>=3.0.0
 optuna-integration
@@ -31,7 +30,7 @@ boto3>=1.24.56  # For deploy_model method
 fastapi  # For web api
 uvicorn>=0.17.6  # For web api
 m2cgen>=0.9.0  # For model conversion
-evidently~=0.4.16
+evidently<0.4.30 #test_check_drift fails with 0.4.30
 
 # Parallel
 dask>=2024.4.1            # Python 3.11.9 breaks Dask (https://github.com/dask/dask/issues/11038)

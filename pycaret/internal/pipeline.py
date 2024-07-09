@@ -16,13 +16,17 @@ from inspect import signature
 import imblearn.pipeline
 import sklearn.pipeline
 from sklearn.base import clone
-from sklearn.utils import _print_elapsed_time
 from sklearn.utils.metadata_routing import _routing_enabled
 from sklearn.utils.metaestimators import available_if
 from sklearn.utils.validation import check_memory
 
 from pycaret.utils._show_versions import _get_deps_info
 from pycaret.utils.generic import get_all_object_vars_and_properties, variable_return
+
+try:
+    from sklearn.utils import _print_elapsed_time
+except ImportError:
+    from sklearn.utils._user_interface import _print_elapsed_time
 
 INVERSE_ONLY = False
 
