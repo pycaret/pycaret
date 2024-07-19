@@ -163,7 +163,12 @@ class FugueBackend(ParallelBackend):
             as_fugue=True,
             as_local=True,
         ).as_array()
-        res = pd.concat(cloudpickle.loads(x[0]) for x in outputs)
+
+        pd_dataframe_for_models = [cloudpickle.loads(x[0]) for x in outputs]
+        if all(pd_dataframe_for_model.empty for pd_dataframe_for_model in pd_dataframe_for_models):
+            return []
+
+        res = pd.concat(pd_dataframe_for_models)
         res = res.sort_values(sort_col, ascending=asc)
         top = res.head(self._params.get("n_select", 1))
         instance._display_container.append(res.iloc[:, :-1])
