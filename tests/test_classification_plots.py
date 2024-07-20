@@ -1,8 +1,13 @@
+import matplotlib
 import pandas as pd
 import pytest
 
 import pycaret.classification
 import pycaret.datasets
+
+# Configure matplotlib to use 'Agg' backend that does not require GUI
+# this line fixes possible errors about tkinter interface
+matplotlib.use("Agg")
 
 
 @pytest.mark.plotting

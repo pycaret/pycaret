@@ -1,5 +1,6 @@
 """Module to test time_series "setup" functionality
 """
+
 import math
 
 import numpy as np
