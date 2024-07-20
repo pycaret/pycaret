@@ -1,19 +1,16 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
 """Functional API for Time Series Forecasting Experiment
 """
 
 import logging
 import os
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    BinaryIO,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union,
-)
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd

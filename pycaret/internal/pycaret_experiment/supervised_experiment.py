@@ -1,3 +1,9 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
 import datetime
 import gc
 import os
@@ -5,9 +11,10 @@ import time
 import traceback
 import warnings
 from abc import abstractmethod
+from collections.abc import Callable
 from copy import copy, deepcopy
 from functools import partial
-from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, BinaryIO, Dict, List, Optional, Set, Tuple, Union
 from unittest.mock import patch
 
 import matplotlib.pyplot as plt
