@@ -392,7 +392,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
         group_features: dict or None, default = None
             When the dataset contains features with related characteristics,
-            add new fetaures with the following statistical properties of that
+            add new features with the following statistical properties of that
             group: min, max, mean, std, median and mode. The parameter takes a
             dict with the group name as key and a list of feature names
             belonging to that group as value.
@@ -538,7 +538,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
 
         custom_pipeline_position: int, default = -1
-            Position of the custom pipeline in the overal preprocessing pipeline.
+            Position of the custom pipeline in the overall preprocessing pipeline.
             The default value adds the custom pipeline last.
 
 
@@ -2275,7 +2275,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         or logistic regression. The output of this function is a score grid with CV
         scores by fold. Metrics evaluated during CV can be accessed using the
         ``get_metrics`` function. Custom metrics can be added or removed using
-        ``add_metric`` and ``remove_metric`` function. The ouput of the original estimator
+        ``add_metric`` and ``remove_metric`` function. The output of the original estimator
         and the calibrated estimator (created using this function) might not differ much.
         In order to see the calibration differences, use 'calibration' plot in ``plot_model``
         to see the difference before and after.

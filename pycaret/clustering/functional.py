@@ -333,7 +333,7 @@ def setup(
 
 
     custom_pipeline_position: int, default = -1
-        Position of the custom pipeline in the overal preprocessing pipeline.
+        Position of the custom pipeline in the overall preprocessing pipeline.
         The default value adds the custom pipeline last.
 
 
