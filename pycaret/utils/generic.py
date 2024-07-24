@@ -1169,15 +1169,6 @@ def _get_metrics_dict(
     return return_metrics_dict
 
 
-# def enable_colab():
-#    warnings.warn(
-#        "This function is no longer necessary in pycaret>=3.0 "
-#        "and will be removed with release 3.0.0",
-#        DeprecationWarning,
-#        stacklevel=2,
-#    )
-
-
 def get_system_logs():
     """
     Read and print 'logs.log' file from current active directory
