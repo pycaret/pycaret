@@ -74,7 +74,7 @@ def run_test(
             alpha=alpha,
             verbose=True,
             data_kwargs=data_kwargs,
-            **kwargs,
+            *kwargs,
         )[1]
     elif test == "stationarity":
         results = _is_stationary(
