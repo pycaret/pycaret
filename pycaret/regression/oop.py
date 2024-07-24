@@ -494,7 +494,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
         custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
             Addidiotnal custom transformers. If passed, they are applied to the
-            pipeline last, after all the build-in transformers.
+            pipeline last, after all the built-in transformers.
 
 
         custom_pipeline_position: int, default = -1
@@ -2779,7 +2779,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
         from explainerdashboard import ExplainerDashboard, RegressionExplainer
 
-        # Replaceing chars which dash doesnt accept for column name `.` , `{`, `}`
+        # Replacing chars which dash doesnt accept for column name `.` , `{`, `}`
         X_test_df = self.X_test_transformed.copy()
         X_test_df.columns = [
             col.replace(".", "__").replace("{", "__").replace("}", "__")

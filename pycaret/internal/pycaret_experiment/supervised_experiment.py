@@ -1265,7 +1265,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     df_score = pd.concat([df_score, metrics], axis=1)
                     df_score.set_index(["Split", "Fold"], inplace=True)
 
-                    # concatenating train results to cross-validation socre dataframe
+                    # concatenating train results to cross-validation score dataframe
                     model_results = pd.concat([model_results, df_score])
 
                 model_fit_time = np.array(model_fit_end - model_fit_start).round(2)

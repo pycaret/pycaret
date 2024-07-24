@@ -90,7 +90,7 @@ class FugueBackend(ParallelBackend):
         Batch size to partition the tasks. For example if there are 16 tasks,
         and with ``batch_size=3`` we will have 6 batches to be processed
         distributedly. Smaller batch sizes will have better load balance but
-        worse overhead, and vise versa.
+        worse overhead, and vice versa.
 
     display_remote: bool, default = False
         Whether show progress bar and metrics table when using a distributed

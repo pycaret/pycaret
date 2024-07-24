@@ -338,7 +338,7 @@ def setup(
 
     custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Addidiotnal custom transformers. If passed, they are applied to the
-        pipeline last, after all the build-in transformers.
+        pipeline last, after all the built-in transformers.
 
 
     custom_pipeline_position: int, default = -1
