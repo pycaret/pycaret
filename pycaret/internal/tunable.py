@@ -377,7 +377,12 @@ class TunableMLPClassifier(MLPClassifier, TunableMixin):
 
     def _hidden_layer_sizes_to_hidden_layer_size_kwargs(self):
         to_delete = []
-        for k, v in self.__dict__.items():
+        for (
+            k,
+            _v,
+        ) in (
+            self.__dict__.items()
+        ):  # Renamed 'v' to '_v'. B007 Loop control variable 'v' not used within the loop body. If this is intended, start the name with an underscore.
             if k.startswith("hidden_layer_size_") and int(k.split("_")[3]) >= len(
                 self.hidden_layer_sizes
             ):
@@ -795,7 +800,12 @@ class TunableMLPRegressor(MLPRegressor, TunableMixin):
 
     def _hidden_layer_sizes_to_hidden_layer_size_kwargs(self):
         to_delete = []
-        for k, v in self.__dict__.items():
+        for (
+            k,
+            _v,
+        ) in (
+            self.__dict__.items()
+        ):  # Renamed 'v' to '_v'. B007 Loop control variable 'v' not used within the loop body. If this is intended, start the name with an underscore.
             if k.startswith("hidden_layer_size_") and int(k.split("_")[3]) >= len(
                 self.hidden_layer_sizes
             ):

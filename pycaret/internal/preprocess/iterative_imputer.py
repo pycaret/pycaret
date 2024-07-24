@@ -10,7 +10,12 @@ from sklearn.base import BaseEstimator, clone
 from sklearn.compose import ColumnTransformer
 from sklearn.dummy import DummyClassifier
 from sklearn.exceptions import ConvergenceWarning
-from sklearn.experimental import enable_iterative_imputer
+
+# explicitly require this experimental feature
+# (https://scikit-learn.org/stable/modules/generated/sklearn.experimental.enable_iterative_imputer.html)
+from sklearn.experimental import enable_iterative_imputer  # noqa
+
+# now you can import normally from impute
 from sklearn.impute import IterativeImputer as SklearnIterativeImputer
 from sklearn.impute import SimpleImputer
 from sklearn.impute._iterative import (

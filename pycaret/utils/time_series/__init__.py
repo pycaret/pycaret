@@ -42,7 +42,7 @@ def _reconcile_order_and_lags(
 
     if order_list is not None and lags_list is not None:
         msg = "ERROR: Can not specify both 'order_list' and 'lags_list'. Please specify only one."
-        warnings.warn(msg)  # print on screen
+        warnings.warn(msg, stacklevel=2)  # print on screen
         return return_lags, return_names
     elif order_list is not None:
         for order in order_list:

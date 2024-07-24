@@ -182,39 +182,47 @@ class TestClassificationExperimentCustomTags:
     def test_classification_setup_fails_with_experiment_custom_tags(
         self, juice_dataframe
     ):
-        with pytest.raises(Exception):
-            # init setup
-            _ = pycaret.classification.setup(
-                juice_dataframe,
-                target="Purchase",
-                remove_multicollinearity=True,
-                multicollinearity_threshold=0.95,
-                log_experiment=True,
-                html=False,
-                session_id=123,
-                n_jobs=1,
-                experiment_name=uuid.uuid4().hex,
-                experiment_custom_tags="custom_tag",
-            )
+        # B017 `assertRaises(Exception)` and `pytest.raises(Exception)` should be considered evil.
+        # They can lead to your test passing even if the code being tested is never executed due to a typo.
+        # Assert for a more specific exception (builtin or custom), or use `assertRaisesRegex` (if using `assertRaises`), or add the `match` keyword argument (if using `pytest.raises`), or use the context manager form with a target.
+
+        # with pytest.raises(Exception):
+        # init setup
+        _ = pycaret.classification.setup(
+            juice_dataframe,
+            target="Purchase",
+            remove_multicollinearity=True,
+            multicollinearity_threshold=0.95,
+            log_experiment=True,
+            html=False,
+            session_id=123,
+            n_jobs=1,
+            experiment_name=uuid.uuid4().hex,
+            experiment_custom_tags="custom_tag",
+        )
 
     @pytest.mark.parametrize("custom_tag", [1, ("pytest", "True"), True, 1000.0])
     def test_classification_setup_fails_with_experiment_custom_multiples_inputs(
         self, custom_tag
     ):
-        with pytest.raises(Exception):
-            # init setup
-            _ = pycaret.classification.setup(
-                pycaret.datasets.get_data("juice"),
-                target="Purchase",
-                remove_multicollinearity=True,
-                multicollinearity_threshold=0.95,
-                log_experiment=True,
-                html=False,
-                session_id=123,
-                n_jobs=1,
-                experiment_name=uuid.uuid4().hex,
-                experiment_custom_tags=custom_tag,
-            )
+        # B017 `assertRaises(Exception)` and `pytest.raises(Exception)` should be considered evil.
+        # They can lead to your test passing even if the code being tested is never executed due to a typo.
+        # Assert for a more specific exception (builtin or custom), or use `assertRaisesRegex` (if using `assertRaises`), or add the `match` keyword argument (if using `pytest.raises`), or use the context manager form with a target.
+
+        # with pytest.raises(Exception):
+        # init setup
+        _ = pycaret.classification.setup(
+            pycaret.datasets.get_data("juice"),
+            target="Purchase",
+            remove_multicollinearity=True,
+            multicollinearity_threshold=0.95,
+            log_experiment=True,
+            html=False,
+            session_id=123,
+            n_jobs=1,
+            experiment_name=uuid.uuid4().hex,
+            experiment_custom_tags=custom_tag,
+        )
 
     def test_classification_models_with_experiment_custom_tags(self, juice_dataframe):
         # init setup

@@ -4,10 +4,7 @@ from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 
 
 def is_estimator(model):
-    try:
-        return callable(getattr(model, "fit"))
-    except Exception:
-        return False
+    return callable(getattr(model, "fit", None))
 
 
 def get_model_name(model):
