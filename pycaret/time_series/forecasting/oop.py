@@ -1,3 +1,9 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
 import datetime
 import gc
 import logging
@@ -2859,7 +2865,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             fit_kwargs = {}
 
         # checking estimator if string
-        if type(estimator) is str:
+        if isinstance(estimator, str):
             raise TypeError(
                 "The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object."
             )
@@ -2872,18 +2878,18 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         # checking fold parameter
         if fold is not None and not (
-            type(fold) is int or is_sklearn_cv_generator(fold)
+            isinstance(fold, int) or is_sklearn_cv_generator(fold)
         ):
             raise TypeError(
                 "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
             )
 
         # checking round parameter
-        if type(round) is not int:
+        if not isinstance(round, int):
             raise TypeError("Round parameter only accepts integer value.")
 
         # checking n_iter parameter
-        if type(n_iter) is not int:
+        if not isinstance(n_iter, int):
             raise TypeError("n_iter parameter only accepts integer value.")
 
         if isinstance(optimize, str):
@@ -2903,13 +2909,13 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             self.logger.info(f"optimize set to user defined function {optimize}")
 
         # checking verbose parameter
-        if type(verbose) is not bool:
+        if not isinstance(verbose, bool):
             raise TypeError(
                 "verbose parameter can only take argument as True or False."
             )
 
         # checking verbose parameter
-        if type(return_tuner) is not bool:
+        if not isinstance(return_tuner, bool):
             raise TypeError(
                 "return_tuner parameter can only take argument as True or False."
             )

@@ -1,3 +1,9 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
 import datetime
 import gc
 import logging
@@ -793,13 +799,14 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         self.logger.info("Checking exceptions")
 
         # checking transformation parameter
-        if type(transformation) is not bool:
+        if not isinstance(transformation, bool):
             raise TypeError(
                 "Transformation parameter can only take argument as True or False."
             )
 
         # checking verbose parameter
-        if type(verbose) is not bool:
+        if not isinstance(verbose, bool):
+
             raise TypeError(
                 "Verbose parameter can only take argument as True or False."
             )
@@ -941,17 +948,17 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
 
         # checking round parameter
-        if type(round) is not int:
+        if not isinstance(round, int):
             raise TypeError("Round parameter only accepts integer value.")
 
         # checking verbose parameter
-        if type(verbose) is not bool:
+        if not isinstance(verbose, bool):
             raise TypeError(
                 "Verbose parameter can only take argument as True or False."
             )
 
         # checking system parameter
-        if type(system) is not bool:
+        if not isinstance(system, bool):
             raise TypeError("System parameter can only take argument as True or False.")
 
         # checking fraction type:
