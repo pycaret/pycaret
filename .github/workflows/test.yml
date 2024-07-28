@@ -47,7 +47,7 @@ jobs:
       - name: Set up Python environment
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         run: |
@@ -63,7 +63,7 @@ jobs:
           python -m ipykernel install --user --name cikernel
       - name: Python version and dependency list
         run: |
-          echo "Python version expected: 3.11"
+          echo "Python version expected: 3.12"
           python --version
           which python
           pip list
@@ -76,7 +76,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ 'ubuntu-latest', 'windows-latest' ]
-        python-version: [ '3.9', '3.10', '3.11' ]
+        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
 
     defaults:
       run:
@@ -119,7 +119,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     name: Test plotting
     steps:
@@ -157,7 +157,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     name: Test random tuning
     steps:
@@ -196,7 +196,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     name: Test grid tuning
     steps:
@@ -235,7 +235,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     name: Benchmark tests
     steps:
