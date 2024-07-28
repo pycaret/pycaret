@@ -1,5 +1,6 @@
 """Module to test time_series plotting functionality
 """
+
 import os
 import sys
 

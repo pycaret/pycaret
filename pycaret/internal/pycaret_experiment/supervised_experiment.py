@@ -1143,14 +1143,26 @@ class _SupervisedExperiment(_TabularExperiment):
             for k, v in metrics.items():
                 score_dict[v.display_name] = []
                 if return_train_score:
-                    train_score = scores[f"train_{k}"] * (
-                        1 if v.greater_is_better else -1
+                    train_key = f"train_{k}"
+                    if train_key in scores:
+                        train_score = scores[train_key] * (
+                            1 if v.greater_is_better else -1
+                        )
+                        train_score = train_score.tolist()
+                        score_dict[v.display_name] = train_score
+                    else:
+                        self.logger.warning(
+                            f"Train scores for {k} not found in cross-validation results."
+                        )
+                test_key = f"test_{k}"
+                if test_key in scores:
+                    test_score = scores[test_key] * (1 if v.greater_is_better else -1)
+                    test_score = test_score.tolist()
+                    score_dict[v.display_name] += test_score
+                else:
+                    self.logger.warning(
+                        f"Test scores for {k} not found in cross-validation results."
                     )
-                    train_score = train_score.tolist()
-                    score_dict[v.display_name] = train_score
-                test_score = scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
-                test_score = test_score.tolist()
-                score_dict[v.display_name] += test_score
 
             self.logger.info("Calculating mean and std")
 
@@ -1158,17 +1170,32 @@ class _SupervisedExperiment(_TabularExperiment):
             for k, v in metrics.items():
                 avgs_dict[v.display_name] = []
                 if return_train_score:
-                    train_score = scores[f"train_{k}"] * (
-                        1 if v.greater_is_better else -1
-                    )
-                    train_score = train_score.tolist()
-                    avgs_dict[v.display_name] = [
-                        np.mean(train_score),
-                        np.std(train_score),
+                    train_key = f"train_{k}"
+                    if train_key in scores:
+                        train_score = scores[train_key] * (
+                            1 if v.greater_is_better else -1
+                        )
+                        train_score = train_score.tolist()
+                        avgs_dict[v.display_name] = [
+                            np.mean(train_score),
+                            np.std(train_score),
+                        ]
+                    else:
+                        self.logger.warning(
+                            f"Train scores for {k} not found in cross-validation results."
+                        )
+                test_key = f"test_{k}"
+                if test_key in scores:
+                    test_score = scores[test_key] * (1 if v.greater_is_better else -1)
+                    test_score = test_score.tolist()
+                    avgs_dict[v.display_name] += [
+                        np.mean(test_score),
+                        np.std(test_score),
                     ]
-                test_score = scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
-                test_score = test_score.tolist()
-                avgs_dict[v.display_name] += [np.mean(test_score), np.std(test_score)]
+                else:
+                    self.logger.warning(
+                        f"Test scores for {k} not found in cross-validation results."
+                    )
 
             display.move_progress()
 
