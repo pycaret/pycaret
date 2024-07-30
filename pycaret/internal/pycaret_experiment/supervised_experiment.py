@@ -336,7 +336,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         if x in greater_is_worse_columns
                     ],
                 )
-                .applymap(highlight_cols, subset=["TT (Sec)"])
+                .map(highlight_cols, subset=["TT (Sec)"])
             )
         else:
             return pd.DataFrame().style
