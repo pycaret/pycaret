@@ -1,6 +1,13 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
 import logging
 import os
-from typing import Any, BinaryIO, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any, BinaryIO, Dict, List, Optional, Union
 
 import pandas as pd
 from joblib.memory import Memory
