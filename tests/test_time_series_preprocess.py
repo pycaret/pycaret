@@ -208,7 +208,7 @@ def test_preprocess_setup_raises_missing_exo(load_uni_exo_data_target_missing):
 @pytest.mark.parametrize("method", _TRANSFORMATION_METHODS_NO_NEG)
 def test_preprocess_setup_raises_negative_no_exo(load_pos_and_neg_data, method):
     """Tests setup conditions that raise errors due to negative values before
-    transformatons. Univariate without exogenous variables"""
+    transformations. Univariate without exogenous variables"""
 
     continue_ = _continue_negative_value_checks(method=method)
     if continue_:

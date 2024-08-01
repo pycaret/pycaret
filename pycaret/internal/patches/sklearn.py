@@ -112,7 +112,7 @@ def _mp_ParameterGrid_getitem(self, ind):
 
 
 class MultimetricScorerPatched(_MultimetricScorer):
-    # Patch use_cache to supress exception if an estimator
+    # Patch use_cache to suppress exception if an estimator
     # doesn't have the required method (this can happen
     # with PyCaret as we just default to error score
     # in that case).

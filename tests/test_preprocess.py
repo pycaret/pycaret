@@ -277,7 +277,7 @@ def test_iterative_imputer(dtypes_to_select, imputer):
 
 
 def test_iterative_imputer_many_categories():
-    """Test iterative imputer with a dataset wiht many categories"""
+    """Test iterative imputer with a dataset with many categories"""
     # tests for pycaret/pycaret/issues/3636
     data = pycaret.datasets.get_data("titanic")
     pycaret.classification.setup(
