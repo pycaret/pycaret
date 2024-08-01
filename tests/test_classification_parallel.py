@@ -1,5 +1,6 @@
 import pycaret.classification as pc
 from pycaret.datasets import get_data
+from pycaret.parallel import FugueBackend
 
 
 def _score_dummy(y_true, y_prob, axis=0):
@@ -7,8 +8,6 @@ def _score_dummy(y_true, y_prob, axis=0):
 
 
 def test_classification_parallel():
-    from pycaret.parallel import FugueBackend
-
     pc.setup(
         data_func=lambda: get_data("juice", verbose=False),
         target="Purchase",
@@ -46,3 +45,24 @@ def test_classification_parallel():
 
     pc.compare_models(n_select=2, sort="DUMMY", parallel=be)
     pc.pull()
+
+
+def test_classification_parallel_returns_empty_models_list_when_no_model_is_trained():
+    pc.setup(
+        data_func=lambda: get_data("juice", verbose=False),
+        target="Purchase",
+        session_id=0,
+        n_jobs=1,
+        verbose=False,
+        html=False,
+    )
+
+    fconf = {
+        "fugue.rpc.server": "fugue.rpc.flask.FlaskRPCServer",
+        "fugue.rpc.flask_server.host": "localhost",
+        "fugue.rpc.flask_server.port": "3333",
+        "fugue.rpc.flask_server.timeout": "2 sec",
+    }
+
+    res = pc.compare_models(include=[], parallel=FugueBackend("dask", fconf, display_remote=True, batch_size=3, top_only=False))
+    assert (len(res) == 0)
