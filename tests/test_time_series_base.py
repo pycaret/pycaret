@@ -59,7 +59,7 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     #########################
     # Expected Values ####
     #########################
-    # Only forcasted values
+    # Only forecasted values
     fh_index = fh if isinstance(fh, int) else len(fh)
     # Full forecasting window
     fh_max_window = fh if isinstance(fh, int) else max(fh)

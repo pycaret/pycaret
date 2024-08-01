@@ -525,7 +525,7 @@ def _is_white_noise(
         )
         is_white_noise = False if results[test_category].all() is False else True
         results.rename(
-            columns={"lb_stat": "Test Statictic", "lb_pvalue": "p-value"},
+            columns={"lb_stat": "Test Statistic", "lb_pvalue": "p-value"},
             inplace=True,
         )
         results["Data"] = name_

@@ -1132,7 +1132,7 @@ def blend_models(
 
     weights: list, default = None
         Sequence of weights (float or int) to apply to the individual model
-        predictons. Uses uniform weights when None. Note that weights only
+        predictions. Uses uniform weights when None. Note that weights only
         apply 'mean', 'gmean' and 'median' methods.
 
 
