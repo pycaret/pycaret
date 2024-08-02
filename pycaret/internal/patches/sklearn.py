@@ -1,4 +1,11 @@
-from typing import Any, Callable
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
+from collections.abc import Callable
+from typing import Any
 from unittest.mock import patch
 
 import numpy as np
@@ -112,7 +119,7 @@ def _mp_ParameterGrid_getitem(self, ind):
 
 
 class MultimetricScorerPatched(_MultimetricScorer):
-    # Patch use_cache to supress exception if an estimator
+    # Patch use_cache to suppress exception if an estimator
     # doesn't have the required method (this can happen
     # with PyCaret as we just default to error score
     # in that case).

@@ -1,5 +1,8 @@
+# Copyright (C) 2019-2024 PyCaret
+
 # Module: containers.metrics.clustering
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
 # License: MIT
 
 # The purpose of this module is to serve as a central repository of clustering metrics. The `clustering` module will

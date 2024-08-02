@@ -117,7 +117,7 @@ def _transformations_present_y(pipeline: ForecastingPipeline) -> bool:
 
 def _are_pipeline_tansformations_empty(pipeline: ForecastingPipeline) -> bool:
     """Returns whether the pipeline has transformations for either the target
-    or exogenous variables or whether there are no transformatons for either.
+    or exogenous variables or whether there are no transformations for either.
 
     Reminder: The pipeline structure is as follows:
     ForecastingPipeline

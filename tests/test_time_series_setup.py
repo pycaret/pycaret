@@ -1019,7 +1019,7 @@ def test_seasonality_type_no_season(index: str, seasonality_type: str):
 @pytest.mark.parametrize(
     "y", _data_seasonal_types_strictly_pos, ids=["data_add", "data_mul"]
 )
-def test_seasonality_type_with_season_not_stricly_positive(
+def test_seasonality_type_with_season_not_strictly_positive(
     index: str, seasonality_type: str, y: pd.Series
 ):
     """Tests the detection of the seasonality type with user defined type and

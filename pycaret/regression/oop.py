@@ -1,7 +1,14 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
 import logging
 import re
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from collections.abc import Callable
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
@@ -165,9 +172,9 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> from pycaret.classification import *
-        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> insurance = get_data('insurance')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = insurance,  target = 'charges')
 
 
         data: dataframe-like = None
@@ -358,7 +365,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
         group_features: dict or None, default = None
             When the dataset contains features with related characteristics,
-            add new fetaures with the following statistical properties of that
+            add new features with the following statistical properties of that
             group: min, max, mean, std, median and mode. The parameter takes a
             dict with the group name as key and a list of feature names
             belonging to that group as value.
@@ -498,11 +505,11 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
         custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
             Addidiotnal custom transformers. If passed, they are applied to the
-            pipeline last, after all the build-in transformers.
+            pipeline last, after all the built-in transformers.
 
 
         custom_pipeline_position: int, default = -1
-            Position of the custom pipeline in the overal preprocessing pipeline.
+            Position of the custom pipeline in the overall preprocessing pipeline.
             The default value adds the custom pipeline last.
 
 
@@ -2735,9 +2742,9 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> from pycaret.classification import *
-        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> insurance = get_data('insurance')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = insurance,  target = 'charges')
         >>> lr = create_model('lr')
         >>> dashboard(lr)
 
@@ -2783,7 +2790,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
         from explainerdashboard import ExplainerDashboard, RegressionExplainer
 
-        # Replaceing chars which dash doesnt accept for column name `.` , `{`, `}`
+        # Replacing chars which dash doesnt accept for column name `.` , `{`, `}`
         X_test_df = self.X_test_transformed.copy()
         X_test_df.columns = [
             col.replace(".", "__").replace("{", "__").replace("}", "__")

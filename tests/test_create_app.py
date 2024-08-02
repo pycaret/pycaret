@@ -19,7 +19,7 @@ def test_classification_create_app():
     pycaret.classification.create_model("lr")
 
     # create app
-    # pycaret.classification.create_app(lr) #disabling test because it get stucked on git
+    # pycaret.classification.create_app(lr) #disabling test because it get stuck on git
     assert 1 == 1
 
 
@@ -39,7 +39,7 @@ def test_regression_create_app():
     pycaret.regression.create_model("lr")
 
     # create app
-    # pycaret.regression.create_app(lr) #disabling test because it get stucked on git
+    # pycaret.regression.create_app(lr) #disabling test because it get stuck on git
     assert 1 == 1
 
 

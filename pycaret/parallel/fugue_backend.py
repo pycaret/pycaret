@@ -1,7 +1,13 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
 import random
+from collections.abc import Callable
 from math import ceil
 from threading import RLock
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import cloudpickle
 import pandas as pd
@@ -90,7 +96,7 @@ class FugueBackend(ParallelBackend):
         Batch size to partition the tasks. For example if there are 16 tasks,
         and with ``batch_size=3`` we will have 6 batches to be processed
         distributedly. Smaller batch sizes will have better load balance but
-        worse overhead, and vise versa.
+        worse overhead, and vice versa.
 
     display_remote: bool, default = False
         Whether show progress bar and metrics table when using a distributed
@@ -163,7 +169,12 @@ class FugueBackend(ParallelBackend):
             as_fugue=True,
             as_local=True,
         ).as_array()
-        res = pd.concat(cloudpickle.loads(x[0]) for x in outputs)
+
+        pd_dataframe_for_models = [cloudpickle.loads(x[0]) for x in outputs]
+        if all(pd_dataframe_for_model.empty for pd_dataframe_for_model in pd_dataframe_for_models):
+            return []
+
+        res = pd.concat(pd_dataframe_for_models)
         res = res.sort_values(sort_col, ascending=asc)
         top = res.head(self._params.get("n_select", 1))
         instance._display_container.append(res.iloc[:, :-1])
