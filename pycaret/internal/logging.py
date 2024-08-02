@@ -1,13 +1,17 @@
+# Copyright (C) 2019-2024 PyCaret
+
 # Module: internal.logging
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
 # License: MIT
 
 import logging
 import os
 import traceback
 import warnings
+from collections.abc import Callable
 from contextlib import redirect_stderr, redirect_stdout
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 try:
     from wurlitzer import pipes

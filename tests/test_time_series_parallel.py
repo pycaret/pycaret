@@ -22,7 +22,7 @@ def test_ts_parallel():
     fconf = {
         "fugue.rpc.server": "fugue.rpc.flask.FlaskRPCServer",  # keep this value
         "fugue.rpc.flask_server.host": "localhost",  # the driver ip address workers can access
-        "fugue.rpc.flask_server.port": "3333",  # the open port on the dirver
+        "fugue.rpc.flask_server.port": "3333",  # the open port on the driver
         "fugue.rpc.flask_server.timeout": "2 sec",  # the timeout for worker to talk to driver
     }
 

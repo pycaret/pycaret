@@ -1,6 +1,12 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
 import traceback
 import warnings
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 from sklearn.exceptions import FitFailedWarning
