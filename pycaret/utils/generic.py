@@ -8,10 +8,10 @@ import functools
 import inspect
 import traceback
 import warnings
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from copy import deepcopy
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -335,7 +335,7 @@ def save_config(file_name: str, globals_d: dict):
 
 def load_config(file_name: str, globals_d: dict):
     """
-    This function is used to load enviroment variables from file created with save_config(),
+    This function is used to load environment variables from file created with save_config(),
     allowing to later resume modeling without rerunning setup().
 
 
@@ -343,7 +343,7 @@ def load_config(file_name: str, globals_d: dict):
     -------
     >>> load_config('myvars.pkl')
 
-    This will load all enviroment variables from 'myvars.pkl'.
+    This will load all environment variables from 'myvars.pkl'.
 
     """
 

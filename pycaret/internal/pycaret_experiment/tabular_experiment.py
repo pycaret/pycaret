@@ -725,7 +725,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                     label = pd.DataFrame(b["Anomaly"])
-                    b.dropna(axis=0, inplace=True)  # droping rows with NA's
+                    b.dropna(axis=0, inplace=True)  # dropping rows with NA's
                     b.drop(["Anomaly"], axis=1, inplace=True)
 
                     _check_soft_dependencies(
@@ -802,7 +802,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         "SubProcess assign_model() end =================================="
                     )
                     cluster = b["Anomaly"].values
-                    b.dropna(axis=0, inplace=True)  # droping rows with NA's
+                    b.dropna(axis=0, inplace=True)  # dropping rows with NA's
                     b.drop("Anomaly", axis=1, inplace=True)
 
                     self.logger.info("Getting dummies to cast categorical variables")
@@ -2266,7 +2266,7 @@ class _TabularExperiment(_PyCaretExperiment):
         https://cloud.google.com/docs/authentication/production
 
         - Google Cloud Project
-        - Service Account Authetication
+        - Service Account Authentication
 
         For Azure users:
         ---------------

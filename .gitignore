@@ -1,5 +1,6 @@
 venv/
 .ipynb_checkpoints/
+.mypy_cache/
 .pytest_cache/
 __pycache__/
 mlruns/

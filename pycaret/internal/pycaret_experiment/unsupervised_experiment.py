@@ -9,7 +9,8 @@ import gc
 import logging
 import time
 import traceback
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
@@ -307,7 +308,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         group_features: dict or None, default = None
             When the dataset contains features with related characteristics,
-            add new fetaures with the following statistical properties of that
+            add new features with the following statistical properties of that
             group: min, max, mean, std, median and mode. The parameter takes a
             dict with the group name as key and a list of feature names
             belonging to that group as value.
@@ -410,11 +411,11 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
             Addidiotnal custom transformers. If passed, they are applied to the
-            pipeline last, after all the build-in transformers.
+            pipeline last, after all the built-in transformers.
 
 
         custom_pipeline_position: int, default = -1
-            Position of the custom pipeline in the overal preprocessing pipeline.
+            Position of the custom pipeline in the overall preprocessing pipeline.
             The default value adds the custom pipeline last.
 
 
