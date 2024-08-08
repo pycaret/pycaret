@@ -23,7 +23,7 @@ deprecation>=2.1.0
 xxhash
 wurlitzer; platform_system != 'Windows'
 trio>=0.22.0,<0.25.0 #fixes problems about third-party packages, remove after httpcore 1.05
-setuptool>=65.5.1
+setuptools; python_version>='3.12'
 
 # Plotting
 matplotlib<3.8.0 #stem(..., use_line_collection=False) is no longer supported. 
