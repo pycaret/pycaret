@@ -20,7 +20,7 @@
 | Overview | |
 |---|---|
 | **CI/CD** | ![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) |
-| **Code** |  [![!pypi](https://img.shields.io/pypi/v/pycaret?color=orange)](https://pypi.org/project/pycaret/) [![!python-versions](https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11-blue)](https://badge.fury.io/py/pycaret) [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+| **Code** |  [![!pypi](https://img.shields.io/pypi/v/pycaret?color=orange)](https://pypi.org/project/pycaret/) [![!python-versions](https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://badge.fury.io/py/pycaret) [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 | **Downloads**| [![Downloads](https://static.pepy.tech/personalized-badge/pycaret?period=week&units=international_system&left_color=grey&right_color=blue&left_text=weekly%20(pypi))](https://pepy.tech/project/pycaret) [![Downloads](https://static.pepy.tech/personalized-badge/pycaret?period=month&units=international_system&left_color=grey&right_color=blue&left_text=monthly%20(pypi))](https://pepy.tech/project/pycaret) [![Downloads](https://static.pepy.tech/personalized-badge/pycaret?period=total&units=international_system&left_color=grey&right_color=blue&left_text=cumulative%20(pypi))](https://pepy.tech/project/pycaret) |
 | **License** | [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg)
 | **Community** | [![Slack](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://join.slack.com/t/pycaret/shared_invite/zt-20gl4zb8k-L~ZQDyi9LtrV4dWxYpLE7A) |
@@ -42,7 +42,7 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
 
 ## 🌐 Option 1: Install via PyPi
 PyCaret is tested and supported on 64-bit systems with:
-- Python 3.9, 3.10 and 3.11
+- Python 3.9, 3.10, 3.11 and 3.12
 - Ubuntu 16.04 or later
 - Windows 7 or later
 

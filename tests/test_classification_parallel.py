@@ -64,5 +64,10 @@ def test_classification_parallel_returns_empty_models_list_when_no_model_is_trai
         "fugue.rpc.flask_server.timeout": "2 sec",
     }
 
-    res = pc.compare_models(include=[], parallel=FugueBackend("dask", fconf, display_remote=True, batch_size=3, top_only=False))
-    assert (len(res) == 0)
+    res = pc.compare_models(
+        include=[],
+        parallel=FugueBackend(
+            "dask", fconf, display_remote=True, batch_size=3, top_only=False
+        ),
+    )
+    assert len(res) == 0

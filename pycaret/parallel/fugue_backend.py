@@ -171,7 +171,10 @@ class FugueBackend(ParallelBackend):
         ).as_array()
 
         pd_dataframe_for_models = [cloudpickle.loads(x[0]) for x in outputs]
-        if all(pd_dataframe_for_model.empty for pd_dataframe_for_model in pd_dataframe_for_models):
+        if all(
+            pd_dataframe_for_model.empty
+            for pd_dataframe_for_model in pd_dataframe_for_models
+        ):
             return []
 
         res = pd.concat(pd_dataframe_for_models)
