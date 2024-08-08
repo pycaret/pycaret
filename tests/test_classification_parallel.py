@@ -71,4 +71,3 @@ def test_classification_parallel_returns_empty_models_list_when_no_model_is_trai
         ),
     )
     assert len(res) == 0
-    
