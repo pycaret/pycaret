@@ -258,7 +258,9 @@ class Preprocessor:
                 self.data.index = self.index[: len(self.data)]
                 test_data.index = self.index[-len(test_data) :]
 
-            self.data = self._set_index(pd.concat([self.data, test_data]).reset_index(drop=True))
+            self.data = self._set_index(
+                pd.concat([self.data, test_data]).reset_index(drop=True)
+            )
             self.idx = [
                 self.data.index[: -len(test_data)],
                 self.data.index[-len(test_data) :],
