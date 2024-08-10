@@ -4,7 +4,7 @@ FROM jupyter/base-notebook:latest
 
 # name your environment and choose python 3.x version
 ARG conda_env=pycaret_full
-ARG py_ver=3.11
+ARG py_ver=3.12
 
 # add additional libraries you want with mamba 
 RUN mamba create --quiet --yes -p "${CONDA_DIR}/envs/${conda_env}" python=${py_ver} ipython ipykernel && \
