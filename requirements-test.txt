@@ -1,4 +1,4 @@
-pytest==8.2.2
+pytest==8.3.2
 moto<5.0.0 # missing moto.mock_s3 on moto>=5.0.0
 # codecov>=2.1.12  # https://github.com/home-assistant/core/issues/91283
 fugue[dask]
