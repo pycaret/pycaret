@@ -4,10 +4,9 @@
 # License: MIT
 
 import random
-from collections.abc import Callable
 from math import ceil
 from threading import RLock
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import cloudpickle
 import pandas as pd
