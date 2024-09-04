@@ -85,7 +85,7 @@ class ClassifierContainer(ModelContainer):
     tune_args : dict, default = {} (empty dict)
         The arguments to always pass to the tuner.
     shap : bool or str, default = False
-        If False, SHAP is not supported. Otherwise, one of 'type1', 'type2' to determine SHAP type.
+        If False, SHAP is not supported. Otherwise, one of 'type1', 'type2' or 'general' to determine SHAP type.
     is_gpu_enabled : bool, default = None
         If None, will try to automatically determine.
     is_boosting_supported : bool, default = None
@@ -120,7 +120,7 @@ class ClassifierContainer(ModelContainer):
     tune_args : dict
         The arguments to always pass to the tuner.
     shap : bool or str
-        If False, SHAP is not supported. Otherwise, one of 'type1', 'type2' to determine SHAP type.
+        If False, SHAP is not supported. Otherwise, one of 'type1', 'type2' or 'general' to determine SHAP type.
     is_gpu_enabled : bool
         If None, will try to automatically determine.
     is_boosting_supported : bool
@@ -151,8 +151,8 @@ class ClassifierContainer(ModelContainer):
         tunable: Optional[type] = None,
     ) -> None:
         self.shap = shap
-        if not (isinstance(shap, bool) or shap in ["type1", "type2"]):
-            raise ValueError("shap must be either bool or 'type1', 'type2'.")
+        if not (isinstance(shap, bool) or shap in ["type1", "type2", "general", "kernel"]):
+            raise ValueError("shap must be either bool or 'type1', 'type2', 'general', 'kernel'.")
 
         if not args:
             args = {}
@@ -306,7 +306,7 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap=False,
+            shap='general',
         )
 
 
@@ -366,7 +366,7 @@ class KNeighborsClassifierContainer(ClassifierContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap=False,
+            shap='kernel',
         )
 
 
@@ -562,7 +562,7 @@ class SGDClassifierContainer(ClassifierContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap=False,
+            shap='general',
         )
 
 
@@ -626,7 +626,7 @@ class SVCClassifierContainer(ClassifierContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap=False,
+            shap='general',
             is_turbo=False,
         )
 
@@ -764,7 +764,7 @@ class RidgeClassifierContainer(ClassifierContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap=False,
+            shap='general',
             is_gpu_enabled=gpu_imported,
         )
         if gpu_imported:
@@ -888,7 +888,7 @@ class QuadraticDiscriminantAnalysisContainer(ClassifierContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap=False,
+            shap='kernel',
         )
 
 
@@ -935,7 +935,7 @@ class AdaBoostClassifierContainer(ClassifierContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap=False,
+            shap='kernel',
         )
 
 
@@ -1009,7 +1009,7 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap=False,
+            shap='type2',
         )
 
 
@@ -1058,7 +1058,7 @@ class LinearDiscriminantAnalysisContainer(ClassifierContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap=False,
+            shap='kernel',
         )
 
 
@@ -1548,7 +1548,7 @@ class BaggingClassifierContainer(ClassifierContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap=False,
+            shap='kernel',
             is_special=True,
             is_gpu_enabled=False,
         )
@@ -1575,7 +1575,7 @@ class StackingClassifierContainer(ClassifierContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap=False,
+            shap='kernel',
             is_special=True,
             is_gpu_enabled=False,
         )
