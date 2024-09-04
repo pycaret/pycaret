@@ -34,6 +34,18 @@ def test_classification(juice_dataframe, return_train_score):
     # compare models
     top3 = pycaret.classification.compare_models(errors="raise", n_select=100)[:3]
     assert isinstance(top3, list)
+    metrics = pycaret.classification.pull()
+    # no metric should be 0
+    assert (
+        (
+            metrics.loc[[i for i in metrics.index if i not in ("dummy")]][
+                [c for c in metrics.columns if c not in ("Model", "TT (Sec)")]
+            ]
+            != 0
+        )
+        .all()
+        .all()
+    )
 
     # tune model
     tuned_top3 = [

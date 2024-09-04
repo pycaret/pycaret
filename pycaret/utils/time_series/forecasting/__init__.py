@@ -82,7 +82,7 @@ def get_predictions_with_intervals(
         The forecasting horizon to use for the predictions
     merge : bool, default = False
         If True, returns a dataframe with 3 columns called
-        ["y_pred", "lower", "upper"], else retruns 3 separate series.
+        ["y_pred", "lower", "upper"], else returns 3 separate series.
     round : Optional[int], default = None
         If set to an integer value, returned values are rounded to as many digits
         If set to None, no rounding is performed.

@@ -1,5 +1,6 @@
 venv/
 .ipynb_checkpoints/
+.mypy_cache/
 .pytest_cache/
 __pycache__/
 mlruns/
@@ -32,7 +33,7 @@ trained_models/
 mlflow_backend.py
 demo4.py
 dask*/
-/.venv
+/.venv*
 /.devcontainer
 tmp/
 nbtest1.ipynb

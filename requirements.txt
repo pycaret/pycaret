@@ -3,11 +3,11 @@ ipython>=5.5.0
 ipywidgets>=7.6.5
 tqdm>=4.62.0
 numpy>=1.21, <1.27
-pandas<2.2.0 #test_check_fairness_regression fails with pandas 2.2.0
+pandas>=2.2.0 #latest sktime makes tests fail if pandas 2.1
 jinja2>=3
 scipy>=1.6.1,<=1.11.4 #to fix later (https://github.com/mljar/mljar-supervised/issues/691)
-joblib>=1.2.0  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution (https://github.com/advisories/GHSA-6hrg-qmvc-2xh8)
-scikit-learn>1.4.0 #scikit-learn 1.4.0 have a bug (https://github.com/scikit-learn/scikit-learn/pull/28241)
+joblib>=1.2.0,<1.4  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution (https://github.com/advisories/GHSA-6hrg-qmvc-2xh8)  # joblib 1.4.0 breaks PyCaret
+scikit-learn>1.4.0
 pyod>=1.1.3 #1.1.3 to support scikit-learn 1.4 (https://github.com/yzhao062/pyod/issues/542)
 imbalanced-learn>=0.12.0 # >=0.12.0 to support scikit-learn 1.4
 category-encoders>=2.4.0
@@ -22,10 +22,12 @@ cloudpickle
 deprecation>=2.1.0
 xxhash
 wurlitzer; platform_system != 'Windows'
+trio>=0.22.0,<0.25.0 #fixes problems about third-party packages, remove after httpcore 1.05
+setuptools; python_version>='3.12'
 
 # Plotting
 matplotlib<3.8.0 #stem(..., use_line_collection=False) is no longer supported. 
-scikit-plot>=0.3.7
+mljar-scikit-plot #this is a updated version of original scikit-plot
 # yellowbrick<=1.5, have conflict with recent matplotlib by use_line_collection error
 # should use yellowbrick>1.5 when fixed (https://github.com/DistrictDataLabs/yellowbrick/issues/1312)
 yellowbrick>=1.4
@@ -36,6 +38,6 @@ plotly-resampler>=0.8.3.1
 
 # Time-series
 statsmodels>=0.12.1
-sktime==0.26.0 # 0.26.0 support for scikit-learn 1.4
+sktime #sktime adds support for scikit-learn 1.5 in version sktime 0.31
 tbats>=1.1.3
 pmdarima>=2.0.4

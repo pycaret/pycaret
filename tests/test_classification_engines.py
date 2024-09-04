@@ -1,4 +1,3 @@
-import daal4py
 import pytest
 import sklearn
 
@@ -28,8 +27,9 @@ def test_engines_setup_global_args():
     # Default Model Engine ----
     assert exp.get_engine("lr") == "sklearnex"
     model = exp.create_model("lr")
-    assert isinstance(
-        model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
     )
 
 
@@ -86,8 +86,9 @@ def test_create_model_engines_local_args():
 
     # Override model engine locally ----
     model = exp.create_model("lr", engine="sklearnex")
-    assert isinstance(
-        model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
     )
     # Original engine should remain the same
     assert exp.get_engine("lr") == "sklearn"
@@ -121,8 +122,9 @@ def test_compare_models_engines_local_args():
 
     # Override model engine locally ----
     model = exp.compare_models(include=["lr"], engine={"lr": "sklearnex"})
-    assert isinstance(
-        model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression
+    parent_library = model.__module__
+    assert parent_library.startswith("sklearnex") or parent_library.startswith(
+        "daal4py"
     )
     # Original engine should remain the same
     assert exp.get_engine("lr") == "sklearn"

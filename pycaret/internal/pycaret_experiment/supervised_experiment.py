@@ -1,3 +1,9 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
 import datetime
 import gc
 import os
@@ -5,9 +11,10 @@ import time
 import traceback
 import warnings
 from abc import abstractmethod
+from collections.abc import Callable
 from copy import copy, deepcopy
 from functools import partial
-from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, BinaryIO, Dict, List, Optional, Set, Tuple, Union
 from unittest.mock import patch
 
 import matplotlib.pyplot as plt
@@ -337,7 +344,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         if x in greater_is_worse_columns
                     ],
                 )
-                .applymap(highlight_cols, subset=["TT (Sec)"])
+                .map(highlight_cols, subset=["TT (Sec)"])
             )
         else:
             return pd.DataFrame().style
@@ -1144,14 +1151,26 @@ class _SupervisedExperiment(_TabularExperiment):
             for k, v in metrics.items():
                 score_dict[v.display_name] = []
                 if return_train_score:
-                    train_score = scores[f"train_{k}"] * (
-                        1 if v.greater_is_better else -1
+                    train_key = f"train_{k}"
+                    if train_key in scores:
+                        train_score = scores[train_key] * (
+                            1 if v.greater_is_better else -1
+                        )
+                        train_score = train_score.tolist()
+                        score_dict[v.display_name] = train_score
+                    else:
+                        self.logger.warning(
+                            f"Train scores for {k} not found in cross-validation results."
+                        )
+                test_key = f"test_{k}"
+                if test_key in scores:
+                    test_score = scores[test_key] * (1 if v.greater_is_better else -1)
+                    test_score = test_score.tolist()
+                    score_dict[v.display_name] += test_score
+                else:
+                    self.logger.warning(
+                        f"Test scores for {k} not found in cross-validation results."
                     )
-                    train_score = train_score.tolist()
-                    score_dict[v.display_name] = train_score
-                test_score = scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
-                test_score = test_score.tolist()
-                score_dict[v.display_name] += test_score
 
             self.logger.info("Calculating mean and std")
 
@@ -1159,17 +1178,32 @@ class _SupervisedExperiment(_TabularExperiment):
             for k, v in metrics.items():
                 avgs_dict[v.display_name] = []
                 if return_train_score:
-                    train_score = scores[f"train_{k}"] * (
-                        1 if v.greater_is_better else -1
-                    )
-                    train_score = train_score.tolist()
-                    avgs_dict[v.display_name] = [
-                        np.mean(train_score),
-                        np.std(train_score),
+                    train_key = f"train_{k}"
+                    if train_key in scores:
+                        train_score = scores[train_key] * (
+                            1 if v.greater_is_better else -1
+                        )
+                        train_score = train_score.tolist()
+                        avgs_dict[v.display_name] = [
+                            np.mean(train_score),
+                            np.std(train_score),
+                        ]
+                    else:
+                        self.logger.warning(
+                            f"Train scores for {k} not found in cross-validation results."
+                        )
+                test_key = f"test_{k}"
+                if test_key in scores:
+                    test_score = scores[test_key] * (1 if v.greater_is_better else -1)
+                    test_score = test_score.tolist()
+                    avgs_dict[v.display_name] += [
+                        np.mean(test_score),
+                        np.std(test_score),
                     ]
-                test_score = scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
-                test_score = test_score.tolist()
-                avgs_dict[v.display_name] += [np.mean(test_score), np.std(test_score)]
+                else:
+                    self.logger.warning(
+                        f"Test scores for {k} not found in cross-validation results."
+                    )
 
             display.move_progress()
 
@@ -1239,7 +1273,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     df_score = pd.concat([df_score, metrics], axis=1)
                     df_score.set_index(["Split", "Fold"], inplace=True)
 
-                    # concatenating train results to cross-validation socre dataframe
+                    # concatenating train results to cross-validation score dataframe
                     model_results = pd.concat([model_results, df_score])
 
                 model_fit_time = np.array(model_fit_end - model_fit_start).round(2)

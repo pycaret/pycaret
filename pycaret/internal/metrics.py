@@ -1,6 +1,12 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
 import traceback
 import warnings
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 from sklearn.exceptions import FitFailedWarning
@@ -118,10 +124,13 @@ class EncodedDecodedLabelsReplaceScoreFunc:
 class BinaryMulticlassScoreFunc:
     """Wrapper to replace call kwargs with preset values if target is binary."""
 
-    def __init__(self, score_func: Callable, kwargs_if_binary: dict):
+    def __init__(
+        self, score_func: Callable, kwargs_if_binary: dict, response_method=None
+    ):
         self.score_func = score_func
         self.kwargs_if_binary = kwargs_if_binary
         self.__name__ = score_func.__name__
+        self.response_method = response_method
 
     def __call__(self, y_true, y_pred, **kwargs):
         if self.kwargs_if_binary:
@@ -133,6 +142,11 @@ class BinaryMulticlassScoreFunc:
             )
             if is_binary:
                 kwargs = {**kwargs, **self.kwargs_if_binary}
+
+        # Use the provided response_method if available
+        if self.response_method:
+            kwargs["response_method"] = self.response_method
+
         return self.score_func(y_true, y_pred, **kwargs)
 
 

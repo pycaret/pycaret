@@ -1,3 +1,9 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
 import datetime
 import gc
 import logging
@@ -6,8 +12,9 @@ import time
 import traceback
 import warnings
 from collections import defaultdict
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -1232,8 +1239,17 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                         np.std(decomp_mult.resid * decomp_mult.seasonal)
                     ) ** 2
 
-                    Fs_add = np.maximum(1 - var_r_add / var_rs_add, 0)
-                    Fs_mult = np.maximum(1 - var_r_mult / var_rs_mult, 0)
+                    # added if conditions to avoid division by zero (https://github.com/pycaret/pycaret/issues/3997)
+                    Fs_add = (
+                        np.maximum(1 - var_r_add / var_rs_add, 0)
+                        if var_rs_add != 0
+                        else 0
+                    )
+                    Fs_mult = (
+                        np.maximum(1 - var_r_mult / var_rs_mult, 0)
+                        if var_rs_mult != 0
+                        else 0
+                    )
 
                     if Fs_mult > Fs_add:
                         seasonality_type = "mul"
@@ -3346,7 +3362,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         weights: list, default = None
             Sequence of weights (float or int) to apply to the individual model
-            predictons. Uses uniform weights when None. Note that weights only
+            predictions. Uses uniform weights when None. Note that weights only
             apply 'mean', 'gmean' and 'median' methods.
 
 
