@@ -2365,7 +2365,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         engine: Optional[str] = None,
         verbose: bool = True,
-        **kwargs,
+        kwargs: dict = {},
     ):
         """
         This function trains and evaluates the performance of a given estimator
@@ -2456,7 +2456,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             Score grid is not printed when verbose is set to False.
 
 
-        **kwargs:
+        kwargs: dict, default = {}
             Additional keyword arguments to pass to the estimator.
 
 
@@ -2485,7 +2485,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 fit_kwargs=fit_kwargs,
                 experiment_custom_tags=experiment_custom_tags,
                 verbose=verbose,
-                **kwargs,
+                kwargs=kwargs,
             )
         finally:
             if engine is not None:
@@ -3233,7 +3233,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             fold=fold,
             round=round,
             fit_kwargs=fit_kwargs,
-            **best_params,
+            kwargs=best_params,
         )
         model_results = self.pull()
         self.logger.info(
