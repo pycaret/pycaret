@@ -98,6 +98,44 @@ def test_create_model_engines_local_args():
     assert exp.get_engine("lr") == "sklearn"
 
 
+def test_create_model_kwargs():
+    """Tests the setting of engines for create_model using local args."""
+
+    boston_dataframe = pycaret.datasets.get_data("boston")
+    exp = pycaret.regression.RegressionExperiment()
+
+    exp.setup(
+        data=boston_dataframe,
+        target="medv",
+        remove_multicollinearity=True,
+        multicollinearity_threshold=0.95,
+        log_experiment=True,
+        html=False,
+        session_id=123,
+        n_jobs=1,
+        experiment_name=uuid.uuid4().hex,
+    )
+
+    et_params = {
+        "ccp_alpha": 0.0,
+        "criterion": "squared_error",
+        "max_depth": None,
+        "max_features": 1.0,
+        "n_estimators": 100,
+        "n_jobs": -1,
+        "oob_score": False,
+        "random_state": 2613,
+        "verbose": 0,
+        "warm_start": False,
+    }
+
+    # Assert that no TypeError is raised when creating a model with kwargs
+    try:
+        _ = exp.create_model("et", kwargs=et_params)
+    except TypeError:
+        pytest.fail("TypeError was raised unexpectedly.")
+
+
 def test_compare_models_engines_local_args():
     """Tests the setting of engines for compare_models using local args."""
 

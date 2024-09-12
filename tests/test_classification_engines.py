@@ -94,6 +94,43 @@ def test_create_model_engines_local_args():
     assert exp.get_engine("lr") == "sklearn"
 
 
+def test_create_model_kwargs():
+    """Tests the setting of engines for create_model using kwargs."""
+
+    juice_dataframe = pycaret.datasets.get_data("juice")
+    exp = pycaret.classification.ClassificationExperiment()
+
+    # init setup
+    exp.setup(
+        juice_dataframe,
+        target="Purchase",
+        remove_multicollinearity=True,
+        multicollinearity_threshold=0.95,
+        log_experiment=True,
+        html=False,
+        session_id=123,
+        n_jobs=1,
+    )
+
+    lr_params = {
+        "C": 1.0,
+        "fit_intercept": True,
+        "max_iter": 1000,
+        "penalty": "l2",
+        "random_state": 3688,
+        "solver": "lbfgs",
+        "tol": 0.0001,
+        "verbose": 0,
+        "warm_start": False,
+    }
+
+    # Assert that no TypeError is raised when creating a model with kwargs
+    try:
+        _ = exp.create_model("lr", kwargs=lr_params)
+    except TypeError:
+        pytest.fail("TypeError was raised unexpectedly.")
+
+
 def test_compare_models_engines_local_args():
     """Tests the setting of engines for compare_models using local args."""
 
