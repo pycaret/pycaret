@@ -1887,11 +1887,11 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 def ks():
                     self.logger.info("Generating predictions / predict_proba on X_test")
-                    predict_proba__ = estimator.predict_proba(self.X_train_transformed)
+                    predict_proba__ = estimator.predict_proba(self.X_test_transformed)
                     # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                         skplt.metrics.plot_ks_statistic(
-                            self.y_train_transformed, predict_proba__, figsize=(10, 6)
+                            self.y_test_transformed, predict_proba__, figsize=(10, 6)
                         )
                         plot_filename = None
                         if save:
