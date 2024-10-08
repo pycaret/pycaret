@@ -1,5 +1,5 @@
-black>=24.3.0
-isort>=5.11.4
-flake8>=6.0.0
-setuptools>65.5.0 #Fix possible errors in VsCode
-mypy
+black>=24.8.0
+isort>=5.13.2
+flake8>=7.1.1
+setuptools>=71.1.0
+mypy>=0.11.1
