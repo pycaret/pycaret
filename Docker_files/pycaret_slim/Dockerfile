@@ -4,7 +4,7 @@ FROM jupyter/base-notebook:latest
 
 # name your environment and choose python 3.x version
 ARG conda_env=pycaret
-ARG py_ver=3.8
+ARG py_ver=3.11
 
 # add additional libraries you want mamba to install by listing them below
 RUN mamba create --quiet --yes -p "${CONDA_DIR}/envs/${conda_env}" python=${py_ver} ipython ipykernel && \
@@ -17,7 +17,7 @@ RUN "${CONDA_DIR}/envs/${conda_env}/bin/python" -m ipykernel install --user --na
     fix-permissions "/home/${NB_USER}"
 
 # install pycaret light version
-RUN "${CONDA_DIR}/envs/${conda_env}/bin/pip" install pycaret==3.0.0
+RUN "${CONDA_DIR}/envs/${conda_env}/bin/pip" install pycaret>=3.3.2
 
 
 # prepend conda environment to path

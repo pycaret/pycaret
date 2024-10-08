@@ -20,22 +20,22 @@ jobs:
     name: Code quality checks
     steps:
       - name: Check out source repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Run black
         uses: psf/black@stable
         with:
           src: pycaret tests
-          version: 22.12.0
+          version: 24.8.0
       - name: Check imports
         uses: jamescurtin/isort-action@master
         with:
           sort-paths: pycaret tests
-          isort-version: 5.11.4
+          isort-version: 5.13.2
       - name: Run flake8
         uses: py-actions/flake8@v2
         with:
           path: pycaret tests
-          flake8-version: 6.0.0
+          flake8-version: 7.1.1
 
   # JOBS MUST START WITH test !!!!
   test_notebooks:
@@ -43,24 +43,27 @@ jobs:
     name: Test notebooks
     steps:
       - name: Check out source repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python environment
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         run: |
-          pip install -U pytest pytest-xdist nbmake
+          python -m pip install --upgrade pip
+          python -m pip install uv
+          python -m uv pip install -U pytest pytest-xdist nbmake
 
           # https://github.com/yaml/pyyaml/issues/736
           echo 'Cython < 3.0' > /tmp/constraint.txt
           PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
 
-          pip install ".[full]"
+          python -m uv pip install ".[full]"
           python -m ipykernel install --user --name cikernel
       - name: Python version and dependency list
         run: |
-          echo "Python version expected: 3.11"
+          echo "Python version expected: 3.12"
           python --version
           which python
           pip list
@@ -73,7 +76,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ 'ubuntu-latest', 'windows-latest' ]
-        python-version: [ '3.9', '3.10', '3.11' ]
+        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
 
     defaults:
       run:
@@ -81,24 +84,26 @@ jobs:
 
     name: Python ${{ matrix.python-version }} on OS ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
         # pyLDAvis 3.3.1 having an "sklearn" dependency
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest numpy
+          python -m pip install -U uv
+          python -m uv pip install -U pytest numpy
 
           # https://github.com/yaml/pyyaml/issues/736
           echo 'Cython < 3.0' > /tmp/constraint.txt
           PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
 
-          pip install ".[full, test]"
+          python -m uv pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
@@ -114,28 +119,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     name: Test plotting
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
         # pyLDAvis 3.3.1 having an "sklearn" dependency
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install --upgrade pip
-          python -m pip install -U pytest numpy
+          python -m pip install uv
+          python -m uv pip install -U pytest numpy
 
           # https://github.com/yaml/pyyaml/issues/736
           echo 'Cython < 3.0' > /tmp/constraint.txt
           PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
 
-          pip install ".[full, test]"
+          python -m uv pip install ".[full, test]"
       - name: Python version and dependency list
         run: |
           echo "Python version expected: ${{ matrix.python-version }}"
@@ -150,28 +157,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     name: Test random tuning
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
         # pyLDAvis 3.3.1 having an "sklearn" dependency
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest numpy
+          python -m pip install -U uv
+          python -m uv pip install -U pytest numpy
 
           # https://github.com/yaml/pyyaml/issues/736
           echo 'Cython < 3.0' > /tmp/constraint.txt
           PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
 
-          pip install ".[full, test]"
+          python -m uv pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
@@ -187,28 +196,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     name: Test grid tuning
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
         # pyLDAvis 3.3.1 having an "sklearn" dependency
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest numpy
+          python -m pip install -U uv
+          python -m uv pip install -U pytest numpy
 
           # https://github.com/yaml/pyyaml/issues/736
           echo 'Cython < 3.0' > /tmp/constraint.txt
           PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
 
-          pip install ".[full, test]"
+          python -m uv pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
@@ -224,28 +235,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     name: Benchmark tests
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
       - name: Install dependencies
         # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
         # pyLDAvis 3.3.1 having an "sklearn" dependency
         run: |
           export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
           python -m pip install -U pip
-          python -m pip install -U pytest numpy
+          python -m pip install -U uv
+          python -m uv pip install -U pytest numpy
 
           # https://github.com/yaml/pyyaml/issues/736
           echo 'Cython < 3.0' > /tmp/constraint.txt
           PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
 
-          pip install ".[full, test]"
+          python -m uv pip install ".[full, test]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
       - name: Python version and dependency list
         run: |
