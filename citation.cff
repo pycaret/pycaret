@@ -9,3 +9,5 @@ authors:
     family-names: Ali
 repository-code: 'https://github.com/ayeshashahzad1/pycaret'
 license: MIT License
+version: PyCaret 3.3.2
+date-released: '2024-04-28'
