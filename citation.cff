@@ -5,8 +5,7 @@ message: >-
   from this file.
 type: dataset
 authors:
-  - given-names: Ayesha
-    family-names: Shahzad
-    email: shahzad@uni-potsdam.de
+  - given-names: Moez
+    family-names: Ali
 repository-code: 'https://github.com/ayeshashahzad1/pycaret'
-license: GPL-2.0
+license: MIT License
