@@ -38,3 +38,14 @@ distributed>=2024.4.1     # Python 3.11.9 breaks Dask (https://github.com/dask/d
 fugue~=0.8.0
 flask
 Werkzeug>=2.2,<3.0
+
+# Plotting
+matplotlib<3.8.0 #stem(..., use_line_collection=False) is no longer supported. 
+mljar-scikit-plot #this is a updated version of original scikit-plot
+# yellowbrick<=1.5, have conflict with recent matplotlib by use_line_collection error
+# should use yellowbrick>1.5 when fixed (https://github.com/DistrictDataLabs/yellowbrick/issues/1312)
+yellowbrick>=1.4
+plotly>=5.14.0
+kaleido>=0.2.1
+schemdraw==0.15  # 0.16 only supports Python >3.8
+plotly-resampler>=0.8.3.1

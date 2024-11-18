@@ -25,17 +25,6 @@ wurlitzer; platform_system != 'Windows'
 trio>=0.22.0,<0.25.0 #fixes problems about third-party packages, remove after httpcore 1.05
 setuptools; python_version>='3.12'
 
-# Plotting
-matplotlib<3.8.0 #stem(..., use_line_collection=False) is no longer supported. 
-mljar-scikit-plot #this is a updated version of original scikit-plot
-# yellowbrick<=1.5, have conflict with recent matplotlib by use_line_collection error
-# should use yellowbrick>1.5 when fixed (https://github.com/DistrictDataLabs/yellowbrick/issues/1312)
-yellowbrick>=1.4
-plotly>=5.14.0
-kaleido>=0.2.1
-schemdraw==0.15  # 0.16 only supports Python >3.8
-plotly-resampler>=0.8.3.1
-
 # Time-series
 statsmodels>=0.12.1
 sktime #sktime adds support for scikit-learn 1.5 in version sktime 0.31
