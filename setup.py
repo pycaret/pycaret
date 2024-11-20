@@ -1,3 +1,8 @@
+"""
+This is the setup script for the PyCaret library.
+"""
+
+
 # Copyright (C) 2019-2024 PyCaret
 # Author: Moez Ali (moez.ali@queensu.ca)
 # Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
@@ -7,22 +12,25 @@ from setuptools import find_packages, setup
 
 
 def readme():
-    with open("README.md", encoding="utf8") as f:
-        README = f.read()
-    return README
+    """
+    Reads the contents of the README.md file and returns it as a string.
+    """
+    with open("README.md", encoding="utf8") as readme_file:
+        readme_content = readme_file.read()
+    return readme_content
 
 
-with open("requirements.txt") as f:
-    required = f.read().splitlines()
+with open("requirements.txt", encoding="utf8") as req_file:
+    required = req_file.read().splitlines()
 
-with open("requirements-optional.txt") as f:
-    required_optional = f.read()
+with open("requirements-optional.txt", encoding="utf8") as req_file:
+    required_optional = req_file.read()
 
-with open("requirements-test.txt") as f:
-    required_test = f.read().splitlines()
+with open("requirements-test.txt", encoding="utf8") as req_file:
+    required_test = req_file.read().splitlines()
 
-with open("requirements-dev.txt") as f:
-    required_dev = f.read().splitlines()
+with open("requirements-dev.txt", encoding="utf8") as req_file:
+    required_dev = req_file.read().splitlines()
 
 
 extras_require = {
