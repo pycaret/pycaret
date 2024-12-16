@@ -1578,7 +1578,24 @@ class SVRCdsDtContainer(CdsDtContainer):
             "window_length": [10],
             "regressor__kernel": ["linear", "poly", "rbf", "sigmoid"],
             "regressor__C": np_list_arange(0, 10, 0.1, inclusive=True),
-            "regressor__epsilon": [0.01, 0.1, 0.2, 0.5, 1.0, 1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
+            "regressor__epsilon": [
+                0.01,
+                0.1,
+                0.2,
+                0.5,
+                1.0,
+                1.1,
+                1.2,
+                1.3,
+                1.35,
+                1.4,
+                1.5,
+                1.55,
+                1.6,
+                1.7,
+                1.8,
+                1.9,
+            ],
         }
         return tune_grid
 
