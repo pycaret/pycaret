@@ -72,7 +72,7 @@ ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
     "xgboost_cds_dt": ["sklearn"],
     "lightgbm_cds_dt": ["sklearn"],
     "catboost_cds_dt": ["sklearn"],
-    # "svm_cds_dt": ["sklearn", "sklearnex"],
+    "svm_cds_dt": ["sklearn", "sklearnex"],
 }
 
 
@@ -1462,7 +1462,7 @@ class CdsDtContainer(TimeSeriesContainer):
             regressor = regressor_class()
             if hasattr(regressor, "n_jobs"):
                 regressor_args["n_jobs"] = self.n_jobs_param
-            if hasattr(regressor, "random_state"):
+            if hasattr(regressor, "random_state") and self.id != "svm_cds_dt":
                 regressor_args["random_state"] = self.seed
             if hasattr(regressor, "seed"):
                 regressor_args["seed"] = self.seed
@@ -1538,6 +1538,70 @@ class LinearCdsDtContainer(CdsDtContainer):
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
+        }
+        return tune_distributions
+
+
+class SVRCdsDtContainer(CdsDtContainer):
+    id = "svm_cds_dt"
+    name = "Epsilon-Support Vector Regression"
+    active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.LINEAR
+
+    def return_regressor_class(self):
+        if self.engine == "sklearn":
+            from sklearn.svm import SVR
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.svm import SVR
+
+        if self.gpu_param == "force":
+            from cuml.svm import SVR  # type: ignore
+
+            self.logger.info("Imported cuml.svm.SVR")
+            self.gpu_imported = True
+        elif self.gpu_param:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
+                from cuml.svm import SVR  # type: ignore
+
+                self.logger.info("Imported cuml.svm.SVR")
+                self.gpu_imported = True
+
+        return SVR
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        tune_grid = {
+            "sp": [self.sp],
+            "deseasonal_model": ["additive"],
+            "degree": [1],
+            "window_length": [10],
+            "regressor__kernel": ["linear", "poly", "rbf", "sigmoid"],
+            "regressor__C": np_list_arange(0, 10, 0.1, inclusive=True),
+            "regressor__epsilon": [0.01, 0.1, 0.2, 0.5, 1.0, 1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
+        }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions = {
+            "sp": CategoricalDistribution(
+                values=[self.sp, 2 * self.sp]
+            ),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(
+                values=(
+                    ["additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["additive"]
+                )
+            ),
+            "degree": IntUniformDistribution(lower=1, upper=10),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
+            "regressor__C": UniformDistribution(0.0, 10.0),
+            "regressor__epsilon": UniformDistribution(0.01, 2.0),
+            "regressor__kernel": CategoricalDistribution(
+                values=["linear", "poly", "rbf", "sigmoid"]
+            ),
         }
         return tune_distributions
 
