@@ -1,0 +1,231 @@
+[project]
+name = "pycaret"
+version = "3.4.0"
+description = "PyCaret - An open source, low-code machine learning library in Python."
+readme = "README.md"
+keywords = [
+  "data-mining",
+  "data-science",
+  "classification",
+  "clustering",
+  "detection",
+  "forecasting",
+  "machine-learning",
+  "regression",
+  "scikit-learn",
+  "time-series",
+]
+license = { file = "LICENSE" }
+maintainers = [
+  { name = "pycaret developers" },
+]
+# for full credits see contributors.md
+authors = [
+    { name = "pycaret developers" },
+]
+requires-python = ">=3.9,<3.13"
+classifiers = [
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX",
+  "Operating System :: Unix",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development",
+]
+# core dependencies of pycaret
+# this set should be kept minimal!
+dependencies = [
+  # Base
+  "ipython>=5.5.0",
+  "ipywidgets>=7.6.5",
+  "tqdm>=4.62.0",
+  "numpy>=1.21, <1.27",
+  "pandas>=2.2.0",  # latest sktime makes tests fail if pandas 2.1
+  "jinja2>=3",
+  "scipy>=1.6.1,<=1.11.4",  # to fix later (
+  "joblib>=1.2.0,<1.4",  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution
+  "scikit-learn>1.4.0",
+  "pyod>=1.1.3",  # 1.1.3 to support scikit-learn 1.4
+  "imbalanced-learn>=0.12.0",  # >=0.12.0 to support scikit-learn 1.4
+  "category-encoders>=2.4.0",
+  "lightgbm>=3.0.0",
+  "numba>=0.55.0",
+  "requests>=2.27.1",  # Required by pycaret.datasets
+  "psutil>=5.9.0",
+  "markupsafe>=2.0.1",  # Fixes Google Colab issue
+  "importlib_metadata>=4.12.0",
+  "nbformat>=4.2.0",
+  "cloudpickle",
+  "deprecation>=2.1.0",
+  "xxhash",
+  "wurlitzer; platform_system != 'Windows'",
+  "trio>=0.22.0,<0.25.0",  # fixes problems about third-party packages, remove after httpcore 1.05
+  "setuptools; python_version>='3.12'",
+  # Plotting
+  "matplotlib<3.8.0",  # stem(..., use_line_collection=False) is no longer supported.
+  "mljar-scikit-plot",  # this is a updated version of original scikit-plot
+  "yellowbrick>=1.4",
+  "plotly>=5.14.0",
+  "kaleido>=0.2.1",
+  "schemdraw==0.15",  # 0.16 only supports Python >3.8
+  "plotly-resampler>=0.8.3.1",
+  # Time-series
+  "statsmodels>=0.12.1",
+  "sktime",  # sktime adds support for scikit-learn 1.5 in version sktime 0.31
+  "tbats>=1.1.3",
+  "pmdarima>=2.0.4",
+]
+
+[project.optional-dependencies]
+# there are the following dependency sets:
+# - full - all soft dependencies
+# - analysis
+# - models
+# - tuners
+# - mlops
+# - parallel
+# - dev
+# - test
+
+# soft dependencies are not required for the core functionality of pycaret
+
+# all soft dependencies
+#
+# users can install via "pip install pycaret[full]"
+#
+full = [
+  'arch>=5.6,<7.1.0; python_version < "3.13"',
+  'autots<0.7,>=0.6.1',
+  'cloudpickle; python_version < "3.13"',
+  'dash!=2.9.0; python_version < "3.13"',
+  "dask<2024.8.1; extra == 'dataframe'",
+  'dtaidistance<2.4; python_version < "3.13"',
+  'dtw-python; python_version < "3.13"',
+  'esig==0.9.7; python_version < "3.10"',
+  'filterpy>=1.4.5; python_version < "3.11"',
+  'gluonts>=0.9; python_version < "3.13"',
+  'h5py; python_version < "3.12"',
+  'hmmlearn>=0.2.7; python_version < "3.11"',
+  'holidays; python_version < "3.13"',
+  'keras-self-attention; python_version < "3.11"',
+  'matplotlib!=3.9.1,>=3.3.2; python_version < "3.13"',
+  'mne; python_version < "3.13"',
+  'numba<0.62,>=0.53; python_version < "3.13"',
+  'optuna<4.3',
+  'pmdarima!=1.8.1,<3.0.0,>=1.8; python_version < "3.12"',
+  'polars[pandas]>=0.20,<2.0; python_version < "3.13"',
+  'prophet>=1.1; python_version < "3.12"',
+  'pycatch22<0.4.6; python_version < "3.13"',
+  'pyod>=0.8; python_version < "3.11"',
+  "pyts<0.14.0; python_version < '3.12'",
+  'scikit-optimize; python_version < "3.13"',
+  'scikit_posthocs>=0.6.5; python_version < "3.13"',
+  'seaborn>=0.11; python_version < "3.13"',
+  'seasonal; python_version < "3.13"',
+  'skforecast<0.15,>=0.12.1; python_version < "3.13"',
+  "skpro>=2,<2.10.0",
+  'statsforecast<2.1.0,>=1.0.0; python_version < "3.13"',
+  'statsmodels>=0.12.1; python_version < "3.13"',
+  'stumpy>=1.5.1; python_version < "3.11"',
+  'tbats>=1.1; python_version < "3.12"',
+  'temporian<0.9.0,>=0.7.0,!=0.8.0; python_version < "3.12" and sys_platform != "win32" and platform_machine != "aarch64"' ,
+  'tensorflow<2.17,>=2; python_version < "3.12"',
+  'tsfresh>=0.17; python_version < "3.12"',
+  'tslearn<0.7.0,!=0.6.0,>=0.5.2; python_version < "3.11"',
+  'u8darts>=0.29.0,<0.32.0; python_version < "3.13"',
+  'xarray; python_version < "3.13"',
+]
+
+analysis = [
+  "shap~=0.44.0",  # 0.44.0 fixes matplotlib use_line_collection error
+  "interpret>=0.2.7",
+  "umap-learn>=0.5.2",
+  "pyyaml",
+  "ydata-profiling>=4.3.1",
+  "explainerdashboard>=0.3.8",  # For dashboard method
+  "fairlearn==0.7.0",  # For check_fairness method
+]
+
+models = [
+  "xgboost>=2.0.0",
+  "catboost>=1.2.5",
+  "kmodes>=0.11.1",
+  "mlxtend>=0.19.0",
+  "statsforecast<1.8.0,>1.6",
+  "scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
+]
+
+tuners = [
+  "tune-sklearn",
+  "ray[tune]",
+  "hyperopt>=0.2.7",
+  "optuna>=3.0.0",
+  "optuna-integration",
+  "scikit-optimize>=0.9.0",
+]
+
+ml_ops = [
+  "mlflow>=2.0.0",
+  "gradio>=3.50.2",
+  "boto3>=1.24.56",  # For deploy_model method
+  "fastapi",  # For web api
+  "uvicorn>=0.17.6",  # For web api
+  "m2cgen>=0.9.0",  # For model conversion
+  "evidently<0.4.30",  # test_check_drift fails with 0.4.30
+]
+
+parallel = [
+  "dask>=2024.4.1",  # Python 3.11.9 breaks Dask (
+  "distributed>=2024.4.1",  # Python 3.11.9 breaks Dask (
+  "fugue~=0.8.0",
+  "flask",
+  "Werkzeug>=2.2,<3.0",
+]
+
+# dev - the developer dependency set, for contributors to sktime
+dev = [
+  "black>=24.8.0",
+  "isort>=5.13.2",
+  "flake8>=7.1.1",
+  "setuptools>=71.1.0",
+  "mypy>=0.11.1",
+]
+
+
+# CI related soft dependency sets - not for users of pycaret
+# they are stable and subject to deprecation policies
+test = [
+  "pytest==8.3.2",
+  "moto<5.0.0",  # missing moto.mock_s3 on moto>=5.0.0
+  # "codecov>=2.1.12",  # https://github.com/home-assistant/core/issues/91283
+  "fugue[dask]",
+  "dash[testing]",
+]
+
+
+[project.urls]
+"API Reference" = "https://pycaret.gitbook.io/"
+Documentation = "https://pycaret.gitbook.io/"
+Download = "https://pypi.org/project/pycaret/#files"
+Homepage = "https://pycaret.org/"
+"Release Notes" = "https://github.com/pycaret/pycaret/releases"
+Repository = "https://github.com/pycaret/pycaret"
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools>61",
+]
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*"]
