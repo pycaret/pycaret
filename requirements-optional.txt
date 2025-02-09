@@ -43,4 +43,4 @@ Werkzeug>=2.2,<3.0
 statsmodels>=0.12.1
 sktime #sktime adds support for scikit-learn 1.5 in version sktime 0.31
 tbats>=1.1.3
-pmdarima>=2.0.4
+pmdarima>=2.0.4; python_version<'3.13'
