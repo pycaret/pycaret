@@ -71,6 +71,9 @@ pip install pycaret[mlops]
 # install parallel extras
 pip install pycaret[parallel]
 
+# install timeseries extras
+pip install pycaret[timeseries]
+
 # install test extras
 pip install pycaret[test]
 

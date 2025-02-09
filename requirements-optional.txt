@@ -38,3 +38,9 @@ distributed>=2024.4.1     # Python 3.11.9 breaks Dask (https://github.com/dask/d
 fugue~=0.8.0
 flask
 Werkzeug>=2.2,<3.0
+
+# Time-series
+statsmodels>=0.12.1
+sktime #sktime adds support for scikit-learn 1.5 in version sktime 0.31
+tbats>=1.1.3
+pmdarima>=2.0.4
