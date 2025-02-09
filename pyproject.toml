@@ -104,46 +104,47 @@ dependencies = [
 # users can install via "pip install pycaret[full]"
 #
 full = [
-  'arch>=5.6,<7.1.0; python_version < "3.13"',
-  'autots<0.7,>=0.6.1',
-  'cloudpickle; python_version < "3.13"',
-  'dash!=2.9.0; python_version < "3.13"',
-  "dask<2024.8.1; extra == 'dataframe'",
-  'dtaidistance<2.4; python_version < "3.13"',
-  'dtw-python; python_version < "3.13"',
-  'esig==0.9.7; python_version < "3.10"',
-  'filterpy>=1.4.5; python_version < "3.11"',
-  'gluonts>=0.9; python_version < "3.13"',
-  'h5py; python_version < "3.12"',
-  'hmmlearn>=0.2.7; python_version < "3.11"',
-  'holidays; python_version < "3.13"',
-  'keras-self-attention; python_version < "3.11"',
-  'matplotlib!=3.9.1,>=3.3.2; python_version < "3.13"',
-  'mne; python_version < "3.13"',
-  'numba<0.62,>=0.53; python_version < "3.13"',
-  'optuna<4.3',
-  'pmdarima!=1.8.1,<3.0.0,>=1.8; python_version < "3.12"',
-  'polars[pandas]>=0.20,<2.0; python_version < "3.13"',
-  'prophet>=1.1; python_version < "3.12"',
-  'pycatch22<0.4.6; python_version < "3.13"',
-  'pyod>=0.8; python_version < "3.11"',
-  "pyts<0.14.0; python_version < '3.12'",
-  'scikit-optimize; python_version < "3.13"',
-  'scikit_posthocs>=0.6.5; python_version < "3.13"',
-  'seaborn>=0.11; python_version < "3.13"',
-  'seasonal; python_version < "3.13"',
-  'skforecast<0.15,>=0.12.1; python_version < "3.13"',
-  "skpro>=2,<2.10.0",
-  'statsforecast<2.1.0,>=1.0.0; python_version < "3.13"',
-  'statsmodels>=0.12.1; python_version < "3.13"',
-  'stumpy>=1.5.1; python_version < "3.11"',
-  'tbats>=1.1; python_version < "3.12"',
-  'temporian<0.9.0,>=0.7.0,!=0.8.0; python_version < "3.12" and sys_platform != "win32" and platform_machine != "aarch64"' ,
-  'tensorflow<2.17,>=2; python_version < "3.12"',
-  'tsfresh>=0.17; python_version < "3.12"',
-  'tslearn<0.7.0,!=0.6.0,>=0.5.2; python_version < "3.11"',
-  'u8darts>=0.29.0,<0.32.0; python_version < "3.13"',
-  'xarray; python_version < "3.13"',
+  "shap~=0.44.0",  # 0.44.0 fixes matplotlib use_line_collection error
+  "interpret>=0.2.7",
+  "umap-learn>=0.5.2",
+  "pyyaml",
+  "ydata-profiling>=4.3.1",
+  "explainerdashboard>=0.3.8",  # For dashboard method
+  "fairlearn==0.7.0",  # For check_fairness method
+  "xgboost>=2.0.0",
+  "catboost>=1.2.5",
+  "kmodes>=0.11.1",
+  "mlxtend>=0.19.0",
+  "statsforecast<1.8.0,>1.6",
+  "scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
+  "tune-sklearn",
+  "ray[tune]",
+  "hyperopt>=0.2.7",
+  "optuna>=3.0.0",
+  "optuna-integration",
+  "scikit-optimize>=0.9.0",
+  "mlflow>=2.0.0",
+  "gradio>=3.50.2",
+  "boto3>=1.24.56",  # For deploy_model method
+  "fastapi",  # For web api
+  "uvicorn>=0.17.6",  # For web api
+  "m2cgen>=0.9.0",  # For model conversion
+  "evidently<0.4.30",  # test_check_drift fails with 0.4.30
+  "dask>=2024.4.1",  # Python 3.11.9 breaks Dask (
+  "distributed>=2024.4.1",  # Python 3.11.9 breaks Dask (
+  "fugue~=0.8.0",
+  "flask",
+  "Werkzeug>=2.2,<3.0",
+  "pytest==8.3.2",
+  "moto<5.0.0",  # missing moto.mock_s3 on moto>=5.0.0
+  # "codecov>=2.1.12",  # https://github.com/home-assistant/core/issues/91283
+  "fugue[dask]",
+  "dash[testing]",
+  "black>=24.8.0",
+  "isort>=5.13.2",
+  "flake8>=7.1.1",
+  "setuptools>=71.1.0",
+  "mypy>=0.11.1",
 ]
 
 analysis = [
