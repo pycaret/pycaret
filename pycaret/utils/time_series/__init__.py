@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from pmdarima.arima.utils import ndiffs
 from sktime.param_est.seasonality import SeasonalityACF
 from sktime.transformations.series.difference import Differencer
 from sktime.utils.plotting import plot_series
@@ -241,6 +240,14 @@ def auto_detect_sp(
         (2) List of all significant seasonal periods
         (3) The number of lags used to detected seasonality
     """
+    try:
+        from pmdarima.arima.utils import ndiffs
+    except ImportError:
+        raise ImportError(
+            "Error in auto_detect_p: "
+            "soft dependency pmdarima is required to run this function. "
+            "Please install using `pip install pmdarima`"
+        )
 
     yt = y.copy()
     for i in np.arange(ndiffs(yt)):
