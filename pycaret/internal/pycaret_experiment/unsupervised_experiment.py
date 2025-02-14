@@ -144,6 +144,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
         engines: Optional[Dict[str, str]] = None,
+        dark_mode: bool = False,
     ):
         """
 
@@ -506,6 +507,11 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             to create the EDA report. Ignored if ``profile`` is False.
 
 
+        dark_mode: bool, default = False
+            When set to True, reports use darker colors to improve readability
+            in dark themed environments.
+
+
         Returns:
             Global variables that can be changed using the ``set_config`` function.
 
@@ -664,6 +670,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.logger.info("Creating final display dataframe.")
 
+        self.dark_mode = dark_mode
+
         container = []
         container.append(["Session id", self.seed])
         container.append(["Original data shape", self.data.shape])
@@ -728,7 +736,11 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self._display_container[0].style.apply(highlight_setup))
+            display.display(
+                self._display_container[0].style.apply(
+                    highlight_setup, dark_mode=self.dark_mode
+                )
+            )
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
