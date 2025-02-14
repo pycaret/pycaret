@@ -32,11 +32,11 @@
 <div align="left">
 
 # Welcome to PyCaret
-PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
+PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that significantly speeds up the experimentation cycle, making you more productive.
 
-In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few lines only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, LightGBM, CatBoost, Optuna, Hyperopt, Ray, and few more.
+In comparison with other open-source machine learning libraries, PyCaret is an alternative low-code library that can replace hundreds of lines of code with just a few lines. This makes experiments exponentially faster and more efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks, including scikit-learn, XGBoost, LightGBM, CatBoost, Optuna, Hyperopt, Ray, and a few more.
 
-The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more technical expertise. PyCaret was inspired by the caret library in R programming language.
+The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen data scientists are power users who can perform both simple and moderately sophisticated analytical tasks that previously required more technical expertise. PyCaret was inspired by the caret library in the R programming language.
 
 # 🚀 Installation
 
