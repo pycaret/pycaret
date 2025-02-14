@@ -38,3 +38,6 @@ distributed>=2024.4.1     # Python 3.11.9 breaks Dask (https://github.com/dask/d
 fugue~=0.8.0
 flask
 Werkzeug>=2.2,<3.0
+
+#Dataframe
+polars
