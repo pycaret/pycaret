@@ -31,6 +31,7 @@ extras_require = {
     "tuners": required_optional.split("\n\n")[2].splitlines(),
     "mlops": required_optional.split("\n\n")[3].splitlines(),
     "parallel": required_optional.split("\n\n")[4].splitlines(),
+    "plots": required_optional.split("\n\n")[5].splitlines(),
     "test": required_test,
     "dev": required_dev,
 }
@@ -41,6 +42,7 @@ extras_require["full"] = (
     + extras_require["tuners"]
     + extras_require["mlops"]
     + extras_require["parallel"]
+    + extras_require["plots"]
     + extras_require["test"]
     + extras_require["dev"]
 )
