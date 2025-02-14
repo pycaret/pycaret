@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+title: Example
+message: >-
+  If you use this dataset, please cite it using the metadata
+  from this file.
+type: dataset
+authors:
+  - given-names: Moez
+    family-names: Ali
+repository-code: 'https://github.com/ayeshashahzad1/pycaret'
+license: MIT License
+version: PyCaret 3.3.2
+date-released: '2024-04-28'

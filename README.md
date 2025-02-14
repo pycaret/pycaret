@@ -257,3 +257,6 @@ PyCaret is completely free and open-source and licensed under the [MIT](https://
 [Cheat sheet]: https://pycaret.gitbook.io/docs/learn-pycaret/cheat-sheet
 [Discussions]: https://github.com/pycaret/pycaret/discussions
 [Release Notes]: https://github.com/pycaret/pycaret/releases
+
+.. image:: .. image:: https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8B%20%20%E2%97%8B-orange
+   :target: https://fair-software.eu
