@@ -1341,6 +1341,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_only: bool = True,
         return_train_score: bool = False,
         error_score: Union[str, float] = 0.0,
+        train_model: bool = True,
         **kwargs,
     ) -> Any:
         """
@@ -1525,6 +1526,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.move_progress()
 
+
+        # Return the model if no need to train it
+        if not train_model:
+            return model
+
         """
         MONITOR UPDATE STARTS
         """
@@ -1657,6 +1663,7 @@ class _SupervisedExperiment(_TabularExperiment):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
         return_train_score: bool = False,
+        train_model: bool = True,
         **kwargs,
     ) -> Any:
         """
@@ -1755,6 +1762,10 @@ class _SupervisedExperiment(_TabularExperiment):
             This is useful when the user wants to do bias-variance tradeoff. A high CV
             training score with a low corresponding CV validation score indicates overfitting.
 
+        train_model: bool, default = True
+            If True, train the model
+            If False, do not train the model
+
         **kwargs:
             Additional keyword arguments to pass to the estimator.
 
@@ -1810,6 +1821,7 @@ class _SupervisedExperiment(_TabularExperiment):
             experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
             return_train_score=return_train_score,
+            train_model=train_model,
             **kwargs,
         )
 
