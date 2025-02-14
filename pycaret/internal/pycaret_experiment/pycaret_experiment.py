@@ -325,7 +325,8 @@ class _PyCaretExperiment:
                 f"If you need the transformed values, call get_config with '{variable}_transformed' instead."
             )
             self.logger.info(msg)
-            warnings.warn(msg)  # print on screen
+            warnings.warn(msg, stacklevel=2)  # print on screen
+            # (test if stacklevel should be 1 or 2)
 
         var = getattr(self, variable)
 

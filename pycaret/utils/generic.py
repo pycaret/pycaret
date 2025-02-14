@@ -503,7 +503,7 @@ def calculate_unsupervised_metrics(
 ) -> Dict[str, np.array]:
     score_dict = []
 
-    for k, v in metrics.items():
+    for _, v in metrics.items():  # Renamed 'k' to '_'
         score_dict.append(
             _calculate_unsupervised_metric(
                 v, v.score_func, v.display_name, X, labels, ground_truth
@@ -531,7 +531,7 @@ def _calculate_unsupervised_metric(
         try:
             calculated_metric = score_func(target, labels, **container.args)
         except Exception:
-            warnings.warn(traceback.format_exc())
+            warnings.warn(traceback.format_exc(), stacklevel=2)
             calculated_metric = 0
 
     return (display_name, calculated_metric)
@@ -552,7 +552,7 @@ def calculate_metrics(
 ) -> Dict[str, np.array]:
     score_dict = []
 
-    for k, v in metrics.items():
+    for _, v in metrics.items():  # Renamed 'k' to '_'
         score_dict.append(
             _calculate_metric(
                 v,
@@ -588,7 +588,7 @@ def _calculate_metric(
         try:
             calculated_metric = score_func(y_test, target, **kwargs)
         except Exception:
-            warnings.warn(traceback.format_exc())
+            warnings.warn(traceback.format_exc(), stacklevel=2)
             calculated_metric = 0
 
     return display_name, calculated_metric
@@ -974,7 +974,7 @@ def check_if_global_is_not_none(globals_d: dict, global_names: dict):
     return decorator
 
 
-def df_shrink_dtypes(df, skip=[], obj2cat=True, int2uint=False):
+def df_shrink_dtypes(df, skip=None, obj2cat=True, int2uint=False):
     """Shrink a dataframe.
 
     Return any possible smaller data types for DataFrame columns.
@@ -982,6 +982,9 @@ def df_shrink_dtypes(df, skip=[], obj2cat=True, int2uint=False):
     From: https://github.com/fastai/fastai/blob/master/fastai/tabular/core.py
 
     """
+
+    if skip is None:
+        skip = []
 
     # 1: Build column filter and typemap
     excl_types, skip = {"category", "datetime64[ns]", "bool"}, set(skip)
@@ -1170,15 +1173,6 @@ def _get_metrics_dict(
         else:
             return_metrics_dict[k] = v
     return return_metrics_dict
-
-
-def enable_colab():
-    # TODO: Remove with pycaret v3.2.1
-    warnings.warn(
-        "This function is no longer necessary in pycaret>=3.0 "
-        "and will be removed with release 3.2.1",
-        DeprecationWarning,
-    )
 
 
 def get_system_logs():

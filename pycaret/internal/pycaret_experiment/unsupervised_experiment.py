@@ -97,7 +97,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         ignore_features: Optional[List[str]] = None,
         keep_features: Optional[List[str]] = None,
         preprocess: bool = True,
-        create_date_columns: List[str] = ["day", "month", "year"],
+        create_date_columns: Optional[List[str]] = None,
         imputation_type: Optional[str] = "simple",
         numeric_imputation: str = "mean",
         categorical_imputation: str = "mode",
@@ -145,6 +145,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         profile_kwargs: Optional[Dict[str, Any]] = None,
         engines: Optional[Dict[str, str]] = None,
     ):
+        if create_date_columns is None:
+            create_date_columns = ["day", "month", "year"]
         """
 
         This function initializes the training environment and creates the transformation

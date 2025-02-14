@@ -448,11 +448,15 @@ def _is_stationary_kpss(
 def _is_white_noise(
     data: pd.Series,
     data_name: Optional[str] = None,
-    lags: List[int] = [24, 48],
+    lags: Optional[List[int]] = None,
     alpha: float = 0.05,
     verbose: bool = False,
     data_kwargs: Optional[Dict] = None,
 ) -> Tuple[Union[bool, List[bool]], Optional[pd.DataFrame]]:
+
+    if lags is None:
+        lags = [24, 48]
+
     """Performs the Ljung-Box test for testing if a time series is White Noise
 
     H0: The data is consistent with white noise

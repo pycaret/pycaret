@@ -43,7 +43,7 @@ def setup(
     ignore_features: Optional[List[str]] = None,
     keep_features: Optional[List[str]] = None,
     preprocess: bool = True,
-    create_date_columns: List[str] = ["day", "month", "year"],
+    create_date_columns: Optional[List[str]] = None,
     imputation_type: Optional[str] = "simple",
     numeric_imputation: Union[int, float, str] = "mean",
     categorical_imputation: str = "mode",
@@ -103,6 +103,9 @@ def setup(
     profile: bool = False,
     profile_kwargs: Optional[Dict[str, Any]] = None,
 ):
+    if create_date_columns is None:
+        create_date_columns = ["day", "month", "year"]
+
     """
     This function initializes the training environment and creates the transformation
     pipeline. Setup function must be called before executing any other function. It takes
@@ -2805,7 +2808,9 @@ def convert_model(estimator, language: str = "python") -> str:
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
+def check_fairness(
+    estimator, sensitive_features: list, plot_kwargs: Optional[dict] = None
+):
     """
     There are many approaches to conceptualizing fairness. This function follows
     the approach known as group fairness, which asks: Which groups of individuals
@@ -2841,6 +2846,9 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
         pandas.DataFrame
 
     """
+    if plot_kwargs is None:
+        plot_kwargs = {}
+
     return _CURRENT_EXPERIMENT.check_fairness(
         estimator=estimator,
         sensitive_features=sensitive_features,

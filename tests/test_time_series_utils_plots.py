@@ -90,9 +90,9 @@ def test_reformat_dataframes_for_plots():
     )
 
     assert isinstance(output_dfs, List)
-    for item, expected_cols in zip(output_dfs, expected_cols):
+    for item, exp_cols in zip(output_dfs, expected_cols):
         assert isinstance(item, pd.DataFrame)
-        assert item.columns.to_list() == expected_cols
+        assert item.columns.to_list() == exp_cols
 
     # Error raised ----
     with pytest.raises(ValueError) as errmsg:

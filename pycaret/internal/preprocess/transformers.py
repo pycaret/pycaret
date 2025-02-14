@@ -84,7 +84,7 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
         for i, col in enumerate(array.T, start=2):
             # equal_nan=True fails for non-numeric arrays
             mask = df.apply(
-                lambda c: np.array_equal(
+                lambda c, col=col: np.array_equal(
                     c,
                     col,
                     equal_nan=is_numeric_dtype(c)
@@ -292,7 +292,9 @@ class CleanColumnNames(BaseEstimator, TransformerMixin):
 class ExtractDateTimeFeatures(BaseEstimator, TransformerMixin):
     """Extract features from datetime columns."""
 
-    def __init__(self, features=["day", "month", "year"]):
+    def __init__(self, features=None):
+        if features is None:
+            features = ["day", "month", "year"]
         self.features = features
 
     def fit(self, X, y=None):

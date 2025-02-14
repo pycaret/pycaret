@@ -67,7 +67,7 @@ def _mp_sample_without_replacement(
     # The following line of code are heavily inspired from python core,
     # more precisely of random.sample.
     selected = set()
-    for i in range(n_samples):
+    for _i in range(n_samples):
         j = rng_randint(n_population, dtype=np.uint64)
         while j in selected:
             j = rng_randint(n_population, dtype=np.uint64)

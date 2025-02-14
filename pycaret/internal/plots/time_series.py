@@ -1336,7 +1336,7 @@ def plot_ccf(
     rows, cols = _get_subplot_rows_cols(num_subplots=num_subplots, rows=rows, cols=cols)
 
     subplot_titles = []
-    for i, col_name in enumerate(plot_data.columns):
+    for _i, col_name in enumerate(plot_data.columns):
         subplot_title = f"{y_label} vs. {col_name}"
         subplot_titles.append(subplot_title)
 

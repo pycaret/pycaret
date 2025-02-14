@@ -718,7 +718,8 @@ class _SupervisedExperiment(_TabularExperiment):
         if self._ml_usecase == MLUsecase.TIME_SERIES:
             if "ensemble_forecaster" in model_library:
                 warnings.warn(
-                    "Unsupported estimator `ensemble_forecaster` for method `compare_models()`, removing from model_library"
+                    "Unsupported estimator `ensemble_forecaster` for method `compare_models()`, removing from model_library",
+                    stacklevel=2,
                 )
                 model_library.remove("ensemble_forecaster")
 
@@ -5215,8 +5216,10 @@ class _SupervisedExperiment(_TabularExperiment):
         return results
 
     def check_fairness(
-        self, estimator, sensitive_features: list, plot_kwargs: dict = {}
+        self, estimator, sensitive_features: list, plot_kwargs: Optional[dict] = None
     ):
+        if plot_kwargs is None:
+            plot_kwargs = {}
         """
         There are many approaches to conceptualizing fairness. This function follows
         the approach known as group fairness, which asks: Which groups of individuals

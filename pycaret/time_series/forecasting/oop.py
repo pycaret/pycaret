@@ -3617,7 +3617,7 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 "DeprecationWarning: `decomp_classical` plot type will be disabled in "
                 "a future release. Please use `decomp` instead."
             )
-            warnings.warn(msg, DeprecationWarning)
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
             if verbose:
                 print(msg)
             # Reset to "decomp"

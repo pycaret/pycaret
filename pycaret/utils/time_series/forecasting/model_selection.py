@@ -584,6 +584,7 @@ class BaseGridSearch:
                     f"One or more of the {key_name.split('_')[0]} scores "
                     f"are non-finite: {array_means}",
                     category=UserWarning,
+                    stacklevel=2,
                 )
 
             # Weighted std is not directly available in numpy

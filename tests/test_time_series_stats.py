@@ -107,7 +107,7 @@ def test_check_stats_data(data, test, data_type):
     # Data Names ----
     expected_data_names = [data_type.capitalize(), "Order=1", "Order=2"]
     data_names = results["Data"].unique().tolist()
-    for i, expected_name in enumerate(data_names):
+    for i, _ in enumerate(data_names):
         assert data_names[i] in expected_data_names
 
     ##################################################
@@ -124,7 +124,7 @@ def test_check_stats_data(data, test, data_type):
     # Data Names ----
     expected_data_names = [data_type.capitalize(), "Lags=1", "Lags=[1, 12]"]
     data_names = results["Data"].unique().tolist()
-    for i, expected_name in enumerate(data_names):
+    for i, _ in enumerate(data_names):
         assert data_names[i] in expected_data_names
 
 
@@ -173,7 +173,7 @@ def test_check_stats_estimator(model_name, data, test):
         # Data Names ----
         expected_data_names = ["Residual"]
         data_names = results["Data"].unique().tolist()
-        for i, expected_name in enumerate(data_names):
+        for i, _ in enumerate(data_names):
             assert data_names[i] in expected_data_names
 
     ###################################################
@@ -190,7 +190,7 @@ def test_check_stats_estimator(model_name, data, test):
         # Data Names ----
         expected_data_names = ["Residual", "Order=1", "Order=2"]
         data_names = results["Data"].unique().tolist()
-        for i, expected_name in enumerate(data_names):
+        for i, _ in enumerate(data_names):
             assert data_names[i] in expected_data_names
 
     ##################################################
@@ -207,7 +207,7 @@ def test_check_stats_estimator(model_name, data, test):
         # Data Names ----
         expected_data_names = ["Residual", "Lags=1", "Lags=[1, 12]"]
         data_names = results["Data"].unique().tolist()
-        for i, expected_name in enumerate(data_names):
+        for i, _ in enumerate(data_names):
             assert data_names[i] in expected_data_names
 
 
