@@ -1167,7 +1167,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         engine: Optional[str] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        **kwargs,
+        kwargs: dict = {},
     ):
         """
         This function trains and evaluates the performance of a given estimator
@@ -1268,7 +1268,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
             training score with a low corresponding CV validation score indicates overfitting.
 
 
-        **kwargs:
+        kwargs: dict, default = {}
             Additional keyword arguments to pass to the estimator.
 
 
@@ -1299,7 +1299,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
                 experiment_custom_tags=experiment_custom_tags,
                 verbose=verbose,
                 return_train_score=return_train_score,
-                **kwargs,
+                kwargs=kwargs,
             )
         finally:
             if engine is not None:

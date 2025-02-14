@@ -933,7 +933,7 @@ def create_model(
         fit_kwargs=fit_kwargs,
         engine=engine,
         verbose=verbose,
-        **kwargs,
+        kwargs=kwargs,
     )
 
 

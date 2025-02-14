@@ -1005,7 +1005,7 @@ def create_model(
         engine=engine,
         verbose=verbose,
         return_train_score=return_train_score,
-        **kwargs,
+        kwargs=kwargs,
     )
 
 
