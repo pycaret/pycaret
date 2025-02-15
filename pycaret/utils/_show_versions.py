@@ -11,7 +11,7 @@ import platform
 import sys
 from typing import Optional
 
-from pycaret.utils._dependencies import get_module_version
+from pycaret.utils._dependencies import get_module_version_str
 
 required_deps = [
     "pip",
@@ -127,7 +127,7 @@ def _get_deps_info(optional: bool = False, logger: Optional[logging.Logger] = No
 
     for modname in deps:
         try:
-            ver = get_module_version(modname)
+            ver = get_module_version_str(modname)
             if not ver:
                 ver = "Installed but version unavailable"
         except ValueError:
