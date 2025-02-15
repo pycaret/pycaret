@@ -63,7 +63,7 @@ def _test_synthetic_data(data, repeats: int = 100):
         )
     )
     print(
-        f"Original: {original_joblib_time} vs PyCaret: {pycaret_joblib_time} ({original_joblib_time-pycaret_joblib_time})"
+        f"Original: {original_joblib_time} vs PyCaret: {pycaret_joblib_time} ({original_joblib_time - pycaret_joblib_time})"
     )
     return original_joblib_time, pycaret_joblib_time
 
@@ -84,7 +84,7 @@ def _test_real_data(data_name: str, repeats: int = 20):
     )
     print(f"({data_name} {data.shape}")
     print(
-        f"({data_name}) Original: {original_joblib_time} vs PyCaret: {pycaret_joblib_time} ({original_joblib_time-pycaret_joblib_time})"
+        f"({data_name}) Original: {original_joblib_time} vs PyCaret: {pycaret_joblib_time} ({original_joblib_time - pycaret_joblib_time})"
     )
     return original_joblib_time, pycaret_joblib_time
 
@@ -154,7 +154,7 @@ def _test_e2e_timeit(
         ).repeat(repeats, 1)
     )
     print(
-        f"({data_name}) Original: {original_joblib_time} vs PyCaret: {pycaret_joblib_time} ({original_joblib_time-pycaret_joblib_time})"
+        f"({data_name}) Original: {original_joblib_time} vs PyCaret: {pycaret_joblib_time} ({original_joblib_time - pycaret_joblib_time})"
     )
     return original_joblib_time, pycaret_joblib_time
 
