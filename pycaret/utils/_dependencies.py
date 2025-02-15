@@ -1,9 +1,10 @@
 # Adapted from
 # https://github.com/sktime/sktime/blob/v0.11.0/sktime/utils/validation/_dependencies.py
 
+from typing import Optional
+
 from skbase.utils.dependencies import _check_soft_dependencies as _skbase_csd
 from skbase.utils.dependencies._dependencies import _get_installed_packages
-from typing import Optional
 
 from pycaret.internal.logging import get_logger
 
