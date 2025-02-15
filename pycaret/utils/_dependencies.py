@@ -67,7 +67,7 @@ def _check_soft_dependencies(
     """
     msg = (
         f"\n'{package}' is a soft dependency and not included in the "
-        f"pycaret installation. Please run: `pip install {package}` to install."
+        f"pycaret installation. Please run: `pip install {package}` to install. "
     )
     if extra is not None:
         msg += (

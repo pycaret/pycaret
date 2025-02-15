@@ -263,7 +263,7 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
         if self.engine == "sklearn":
             from sklearn.linear_model import LogisticRegression
         elif self.engine == "sklearnex":
-            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+            if _check_soft_dependencies("scikit-learn-intelex", extra=None, severity="warning"):  # noqa: E501
                 from sklearnex.linear_model import LogisticRegression
             else:
                 from sklearn.linear_model import LogisticRegression
@@ -324,7 +324,7 @@ class KNeighborsClassifierContainer(ClassifierContainer):
         if self.engine == "sklearn":
             from sklearn.neighbors import KNeighborsClassifier
         elif self.engine == "sklearnex":
-            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+            if _check_soft_dependencies("scikit-learn-intelex", extra=None, severity="warning"):  # noqa: E501
                 from sklearnex.neighbors import KNeighborsClassifier
             else:
                 from sklearn.neighbors import KNeighborsClassifier
@@ -580,7 +580,7 @@ class SVCClassifierContainer(ClassifierContainer):
         if self.engine == "sklearn":
             from sklearn.svm import SVC
         elif self.engine == "sklearnex":
-            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+            if _check_soft_dependencies("scikit-learn-intelex", extra=None, severity="warning"):  # noqa: E501
                 from sklearnex.svm import SVC
             else:
                 from sklearn.svm import SVC
