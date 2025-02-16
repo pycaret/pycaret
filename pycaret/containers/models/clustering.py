@@ -191,7 +191,9 @@ class KMeansClusterContainer(ClusterContainer):
         if self.engine == "sklearn":
             from sklearn.cluster import KMeans
         elif self.engine == "sklearnex":
-            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+            if _check_soft_dependencies(
+                "scikit-learn-intelex", extra=None, severity="warning"
+            ):
                 from sklearnex.cluster import KMeans
             else:
                 from sklearn.cluster import KMeans
@@ -340,7 +342,9 @@ class DBSCANClusterContainer(ClusterContainer):
         if self.engine == "sklearn":
             from sklearn.cluster import DBSCAN
         elif self.engine == "sklearnex":
-            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+            if _check_soft_dependencies(
+                "scikit-learn-intelex", extra=None, severity="warning"
+            ):
                 from sklearnex.cluster import DBSCAN
             else:
                 from sklearn.cluster import DBSCAN

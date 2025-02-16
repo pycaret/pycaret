@@ -233,7 +233,9 @@ class LinearRegressionContainer(RegressorContainer):
         if self.engine == "sklearn":
             from sklearn.linear_model import LinearRegression
         elif self.engine == "sklearnex":
-            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+            if _check_soft_dependencies(
+                "scikit-learn-intelex", extra=None, severity="warning"
+            ):
                 from sklearnex.linear_model import LinearRegression
             else:
                 from sklearn.linear_model import LinearRegression
@@ -287,7 +289,9 @@ class LassoRegressionContainer(RegressorContainer):
         if self.engine == "sklearn":
             from sklearn.linear_model import Lasso
         elif self.engine == "sklearnex":
-            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+            if _check_soft_dependencies(
+                "scikit-learn-intelex", extra=None, severity="warning"
+            ):
                 from sklearnex.linear_model import Lasso
             else:
                 from sklearn.linear_model import Lasso
@@ -344,7 +348,9 @@ class RidgeRegressionContainer(RegressorContainer):
         if self.engine == "sklearn":
             from sklearn.linear_model import Ridge
         elif self.engine == "sklearnex":
-            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+            if _check_soft_dependencies(
+                "scikit-learn-intelex", extra=None, severity="warning"
+            ):
                 from sklearnex.linear_model import Ridge
             else:
                 from sklearn.linear_model import Ridge
@@ -401,7 +407,9 @@ class ElasticNetContainer(RegressorContainer):
         if self.engine == "sklearn":
             from sklearn.linear_model import ElasticNet
         elif self.engine == "sklearnex":
-            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+            if _check_soft_dependencies(
+                "scikit-learn-intelex", extra=None, severity="warning"
+            ):
                 from sklearnex.linear_model import ElasticNet
             else:
                 from sklearn.linear_model import ElasticNet
@@ -1004,7 +1012,9 @@ class SVRContainer(RegressorContainer):
         if self.engine == "sklearn":
             from sklearn.svm import SVR
         elif self.engine == "sklearnex":
-            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+            if _check_soft_dependencies(
+                "scikit-learn-intelex", extra=None, severity="warning"
+            ):
                 from sklearnex.svm import SVR
             else:
                 from sklearn.svm import SVR
@@ -1065,7 +1075,9 @@ class KNeighborsRegressorContainer(RegressorContainer):
         if self.engine == "sklearn":
             from sklearn.neighbors import KNeighborsRegressor
         elif self.engine == "sklearnex":
-            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+            if _check_soft_dependencies(
+                "scikit-learn-intelex", extra=None, severity="warning"
+            ):
                 from sklearnex.neighbors import KNeighborsRegressor
             else:
                 from sklearn.neighbors import KNeighborsRegressor
