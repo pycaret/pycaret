@@ -115,7 +115,7 @@ full = [
   "catboost>=1.2.5",
   "kmodes>=0.11.1",
   "mlxtend>=0.19.0",
-  "statsforecast<1.8.0,>1.6",
+  "statsforecast>1.6,<2.1.0",
   "scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
   "tune-sklearn",
   "ray[tune]",
@@ -162,7 +162,7 @@ models = [
   "catboost>=1.2.5",
   "kmodes>=0.11.1",
   "mlxtend>=0.19.0",
-  "statsforecast<1.8.0,>1.6",
+  "statsforecast>1.6,<2.1.0",
   "scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
 ]
 
