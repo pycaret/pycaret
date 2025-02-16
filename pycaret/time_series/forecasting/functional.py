@@ -878,6 +878,7 @@ def create_model(
         * 'ada_cds_dt' - AdaBoost w/ Cond. Deseasonalize & Detrending
         * 'lightgbm_cds_dt' - Light Gradient Boosting w/ Cond. Deseasonalize & Detrending
         * 'catboost_cds_dt' - CatBoost w/ Cond. Deseasonalize & Detrending
+        * 'svm_cds_dt' - Epsilon-Support Vector Regression
 
 
     fold: int or scikit-learn compatible CV generator, default = None
