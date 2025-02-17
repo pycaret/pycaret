@@ -54,7 +54,7 @@ dependencies = [
   "jinja2>=3",
   "scipy>=1.6.1,<=1.11.4",  # to fix later (
   "joblib>=1.2.0,<1.4",  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution
-  "scikit-learn>1.4.0",
+  "scikit-learn>1.4.0,<1.6",
   "pyod>=1.1.3",  # 1.1.3 to support scikit-learn 1.4
   "imbalanced-learn>=0.12.0",  # >=0.12.0 to support scikit-learn 1.4
   "category-encoders>=2.4.0",
