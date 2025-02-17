@@ -116,6 +116,9 @@ def test_duplicate_columns():
 def test_duplicate_indices():
     """Assert that an error is raised when there are duplicate indices."""
     data = pycaret.datasets.get_data("juice")
+    # force duplicate indices:
+    data = data.reset_index(drop=True)
+    data.index = [0] * len(data)  # all index will be 0
     with pytest.raises(ValueError, match=".*duplicate indices.*"):
         pycaret.classification.setup(
             data=data,
