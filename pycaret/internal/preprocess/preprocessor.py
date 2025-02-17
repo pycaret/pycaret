@@ -206,7 +206,7 @@ class Preprocessor:
 
         if df.index.duplicated().any():
             raise ValueError(
-                "Invalid value for the index parameter. There are duplicate indices "
+                "Invalid value for the index parameter. There are duplicate indices."
                 "in the dataset. Use index=False to reset the index to RangeIndex."
             )
 
