@@ -93,8 +93,10 @@ def to_df(data, index=None, columns=None, dtypes=None):
         Transformed dataframe.
 
     """
+
     # Get number of columns (list/tuple have no shape and sp.matrix has no index)
-    n_cols = lambda data: data.shape[1] if hasattr(data, "shape") else len(data[0])
+    def n_cols(data):
+        return data.shape[1] if hasattr(data, "shape") else len(data[0])
 
     if data is not None:
         if not isinstance(data, pd.DataFrame):
@@ -680,7 +682,7 @@ def get_cv_splitter(
         return default
     if is_sklearn_cv_generator(fold):
         return fold
-    if type(fold) is int:
+    if isinstance(fold, int):
         if default is not None:
             if isinstance(default, _BaseKFold) and fold <= 1:
                 raise ValueError(
@@ -1008,8 +1010,10 @@ def df_shrink_dtypes(df, skip=[], obj2cat=True, int2uint=False):
     else:
         excl_types.add("object")
 
+    def exclude(dt):
+        return dt[1].name not in excl_types and dt[0] not in skip
+
     new_dtypes = {}
-    exclude = lambda dt: dt[1].name not in excl_types and dt[0] not in skip
 
     for c, old_t in filter(exclude, df.dtypes.items()):
         t = next((v for k, v in typemap.items() if old_t.name.startswith(k)), None)
