@@ -123,7 +123,7 @@ def test_duplicate_indices():
         pycaret.classification.setup(
             data=data,
             test_data=data,
-            index=True,
+            index=False,
         )
 
 
