@@ -1,7 +1,8 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Tuple
 
 import numpy as np
 import pandas as pd
+import statsmodels
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from sktime.split import ExpandingWindowSplitter, SlidingWindowSplitter
@@ -1365,3 +1366,193 @@ def plot_ccf(
     return_data_dict = {"ccf": all_ccf_data}
 
     return fig, return_data_dict
+
+### Time Series Decomposition Plot
+def plot_time_series_decomposition(
+    data: pd.DataFrame,
+    decomposition_type: str,
+    fig_defaults: Dict[str, Any],
+    data_kwargs: Dict[str, Any],
+    data_label: Optional[str] = None,
+    model_labels: Optional[List[str]] = None,
+    fig_kwargs: Optional[Dict] = None,
+) -> Tuple[go.Figure, Dict]:
+    """
+    Plots the decomposition of a time series data.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Time series data for decomposition.
+    decomposition_type : str
+        Type of decomposition plot ("additive" or "multiplicative").
+    fig_defaults : Dict[str, Any]
+        Default settings for the plotly plot.
+    data_kwargs : Dict[str, Any]
+        Additional arguments for the decomposition.
+    data_label : Optional[str]
+        Label for the data series.
+    model_labels : Optional[List[str]]
+        Labels for model residuals if applicable.
+    fig_kwargs : Optional[Dict]
+        Overrides for plotly figure settings.
+
+    Returns
+    -------
+    Tuple[go.Figure, Dict]
+        The plotly figure and a dictionary with plot data.
+    """
+    fig = make_subplots(rows=4, cols=len(data.columns), subplot_titles=data.columns)
+    
+    for i, col in enumerate(data.columns):
+        # Decompose the time series and plot (pseudo-code for demonstration)
+        decomposition = decompose_time_series(data[col], decomposition_type, **data_kwargs)
+        
+        # Plot decomposition components
+        fig.add_trace(go.Scatter(x=data.index, y=decomposition['trend'], name='Trend'), row=1, col=i+1)
+        fig.add_trace(go.Scatter(x=data.index, y=decomposition['seasonal'], name='Seasonal'), row=2, col=i+1)
+        fig.add_trace(go.Scatter(x=data.index, y=decomposition['residual'], name='Residual'), row=3, col=i+1)
+    
+    title = f"Time Series Decomposition ({decomposition_type})"
+    if data_label:
+        title += f" | {data_label}"
+    if model_labels:
+        title += " | Model Residuals"
+    
+    fig.update_layout(title_text=title, **fig_defaults, **(fig_kwargs or {}))
+    
+    return fig, {"data": data, "decomposition": decomposition}
+
+
+def decompose_time_series(series: pd.Series, type: str, **kwargs) -> Dict[str, pd.Series]:
+    """
+    Decompose the time series data.
+    This is a placeholder function and needs implementation based on the actual decomposition logic.
+    """
+    # Implement decomposition logic
+    # Example: Using statsmodels for seasonal decomposition
+    from statsmodels.tsa.seasonal import seasonal_decompose
+    result = seasonal_decompose(series, model=type, **kwargs)
+    return {
+        "trend": result.trend,
+        "seasonal": result.seasonal,
+        "residual": result.resid
+    }
+
+### Time Series Difference Plot
+def plot_time_series_differences(
+    data: pd.DataFrame,
+    fig_defaults: Dict[str, Any],
+    data_label: Optional[str] = None,
+    model_labels: Optional[List[str]] = None,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
+) -> Tuple[go.Figure, Dict]:
+    """
+    Plots the differenced time series data.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Time series data for differencing.
+    fig_defaults : Dict[str, Any]
+        Default settings for the plotly plot.
+    data_label : Optional[str]
+        Label for the data series.
+    model_labels : Optional[List[str]]
+        Labels for model residuals if applicable.
+    data_kwargs : Optional[Dict]
+        Arguments for differencing (e.g., orders or lags).
+    fig_kwargs : Optional[Dict]
+        Overrides for plotly figure settings.
+
+    Returns
+    -------
+    Tuple[go.Figure, Dict]
+        The plotly figure and a dictionary with plot data.
+    """
+    fig = make_subplots(rows=1, cols=1, subplot_titles=["Differenced Data"])
+    
+    for i, col in enumerate(data.columns):
+        # Differencing logic (pseudo-code for demonstration)
+        differences = difference_time_series(data[col], **data_kwargs)
+        
+        fig.add_trace(go.Scatter(x=data.index, y=differences, name='Differenced Data'), row=1, col=1)
+    
+    title = "Time Series Differences"
+    if data_label:
+        title += f" | {data_label}"
+    if model_labels:
+        title += " | Model Residuals"
+    
+    fig.update_layout(title_text=title, **fig_defaults, **(fig_kwargs or {}))
+    
+    return fig, {"data": data, "differences": differences}
+
+def difference_time_series(series: pd.Series, **kwargs) -> pd.Series:
+    """
+    Apply differencing to the time series data.
+    This is a placeholder function and needs implementation based on the actual differencing logic.
+    """
+    # Example of first-order differencing
+    return series.diff().dropna()
+
+### Frequency Components Plot
+def plot_frequency_components(
+    data: pd.Series,
+    plot_type: str,
+    fig_defaults: Dict[str, Any],
+    data_label: Optional[str] = None,
+    model_labels: Optional[List[str]] = None,
+    fig_kwargs: Optional[Dict] = None,
+) -> Tuple[go.Figure, Dict]:
+    """
+    Plots the frequency components of the time series data.
+
+    Parameters
+    ----------
+    data : pd.Series
+        Time series data for frequency analysis.
+    plot_type : str
+        Type of frequency plot ("periodogram", "fft", "welch").
+    fig_defaults : Dict[str, Any]
+        Default settings for the plotly plot.
+    data_label : Optional[str]
+        Label for the data series.
+    model_labels : Optional[List[str]]
+        Labels for model residuals if applicable.
+    fig_kwargs : Optional[Dict]
+        Overrides for plotly figure settings.
+
+    Returns
+    -------
+    Tuple[go.Figure, Dict]
+        The plotly figure and a dictionary with plot data.
+    """
+    fig = make_subplots(rows=1, cols=1, subplot_titles=["Frequency Components"])
+    
+    # Frequency components logic (pseudo-code for demonstration)
+    freq_data = compute_frequency_components(data, plot_type)
+    
+    fig.add_trace(go.Scatter(x=freq_data.index, y=freq_data.values, name='Frequency Components'), row=1, col=1)
+    
+    title = f"Frequency Components ({plot_type})"
+    if data_label:
+        title += f" | {data_label}"
+    if model_labels:
+        title += " | Model Residuals"
+    
+    fig.update_layout(title_text=title, **fig_defaults, **(fig_kwargs or {}))
+    
+    return fig, {"data": data, "frequency_components": freq_data}
+
+def compute_frequency_components(series: pd.Series, plot_type: str) -> pd.Series:
+    """
+    Compute frequency components of the time series data.
+    This is a placeholder function and needs implementation based on the actual frequency analysis logic.
+    """
+    # Example: Using numpy for FFT
+    from numpy.fft import fft
+    freq = np.fft.fftfreq(len(series))
+    magnitude = np.abs(fft(series))
+    return pd.Series(magnitude, index=freq)
