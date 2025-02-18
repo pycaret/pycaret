@@ -1,6 +1,7 @@
 # Adapted from
 # https://github.com/sktime/sktime/blob/v0.11.0/sktime/utils/validation/_dependencies.py
 
+import platform
 import sys
 from distutils.version import LooseVersion
 from importlib import import_module
@@ -140,23 +141,25 @@ def _check_soft_dependencies(
             "Soft dependency imported: {k}: {stat}".format(k=package, stat=str(ver))
         )
     else:
-        msg = (
-            f"\n'{package}' is a soft dependency and not included in the "
-            f"pycaret installation. Please run: `pip install {install_name}` to install."
-        )
-        if extra is not None:
-            msg += f"\nAlternately, you can install this by running `pip install pycaret[{extra}]`"
-
-        if severity == "error":
-            logger.exception(f"{msg}")
-            raise ModuleNotFoundError(msg)
-        elif severity == "warning":
-            logger.warning(f"{msg}")
-            package_available = False
-        else:
-            raise RuntimeError(
-                "Error in calling _check_soft_dependencies, severity "
-                f'argument must be "error" or "warning", found "{severity}".'
+        if not (platform.system().lower() == "windows" and package == "cuml"):
+            msg = (
+                f"\n'{package}' is a soft dependency and not included in the "
+                f"pycaret installation. Please run: `pip install {install_name}` to install."
             )
+
+            if extra is not None:
+                msg += f"\nAlternately, you can install this by running `pip install pycaret[{extra}]`"
+
+            if severity == "error":
+                logger.exception(f"{msg}")
+                raise ModuleNotFoundError(msg)
+            elif severity == "warning":
+                logger.warning(f"{msg}")
+                package_available = False
+            else:
+                raise RuntimeError(
+                    "Error in calling _check_soft_dependencies, severity "
+                    f'argument must be "error" or "warning", found "{severity}".'
+                )
 
     return package_available
