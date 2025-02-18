@@ -577,22 +577,18 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # checking fold parameter
         if fold is not None and not (
-            type(fold) is int or is_sklearn_cv_generator(fold)
+            isinstance(fold, int) or is_sklearn_cv_generator(fold)
         ):
             raise TypeError(
                 "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
             )
 
         # checking round parameter
-        if type(round) is not int:
+        if not isinstance(round, int):
             raise TypeError("Round parameter only accepts integer value.")
 
         # checking budget_time parameter
-        if (
-            budget_time
-            and type(budget_time) is not int
-            and type(budget_time) is not float
-        ):
+        if budget_time is not None and not isinstance(budget_time, (int, float)):
             raise TypeError(
                 "budget_time parameter only accepts integer or float values."
             )
@@ -1382,34 +1378,34 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # checking fold parameter
         if fold is not None and not (
-            type(fold) is int or is_sklearn_cv_generator(fold)
+            isinstance(fold, int) or is_sklearn_cv_generator(fold)
         ):
             raise TypeError(
                 "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
             )
 
         # checking round parameter
-        if type(round) is not int:
+        if not isinstance(round, int):
             raise TypeError("Round parameter only accepts integer value.")
 
         # checking verbose parameter
-        if type(verbose) is not bool:
+        if not isinstance(verbose, bool):
             raise TypeError(
                 "Verbose parameter can only take argument as True or False."
             )
 
         # checking system parameter
-        if type(system) is not bool:
+        if not isinstance(system, bool):
             raise TypeError("System parameter can only take argument as True or False.")
 
         # checking cross_validation parameter
-        if type(cross_validation) is not bool:
+        if not isinstance(cross_validation, bool):
             raise TypeError(
                 "cross_validation parameter can only take argument as True or False."
             )
 
         # checking return_train_score parameter
-        if type(return_train_score) is not bool:
+        if not isinstance(return_train_score, bool):
             raise TypeError(
                 "return_train_score can only take argument as True or False"
             )
@@ -2020,7 +2016,7 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs = {}
 
         # checking estimator if string
-        if type(estimator) is str:
+        if isinstance(estimator, str):
             raise TypeError(
                 "The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object."
             )
@@ -2033,18 +2029,18 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # checking fold parameter
         if fold is not None and not (
-            type(fold) is int or is_sklearn_cv_generator(fold)
+            isinstance(fold, int) or is_sklearn_cv_generator(fold)
         ):
             raise TypeError(
                 "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
             )
 
         # checking round parameter
-        if type(round) is not int:
+        if not isinstance(round, int):
             raise TypeError("Round parameter only accepts integer value.")
 
         # checking n_iter parameter
-        if type(n_iter) is not int:
+        if not isinstance(n_iter, int):
             raise TypeError("n_iter parameter only accepts integer value.")
 
         # checking early_stopping parameter
@@ -2058,13 +2054,13 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking early_stopping_max_iters parameter
-        if type(early_stopping_max_iters) is not int:
+        if not isinstance(early_stopping_max_iters, int):
             raise TypeError(
                 "early_stopping_max_iters parameter only accepts integer value."
             )
 
         # checking return_train_score parameter
-        if type(return_train_score) is not bool:
+        if not isinstance(return_train_score, bool):
             raise TypeError(
                 "return_train_score can only take argument as True or False"
             )
@@ -2198,13 +2194,13 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(f"optimize set to user defined function {optimize}")
 
         # checking verbose parameter
-        if type(verbose) is not bool:
+        if not isinstance(verbose, bool):
             raise TypeError(
                 "verbose parameter can only take argument as True or False."
             )
 
         # checking verbose parameter
-        if type(return_tuner) is not bool:
+        if not isinstance(return_tuner, bool):
             raise TypeError(
                 "return_tuner parameter can only take argument as True or False."
             )
@@ -2212,7 +2208,7 @@ class _SupervisedExperiment(_TabularExperiment):
         if not verbose:
             tuner_verbose = 0
 
-        if type(tuner_verbose) not in (bool, int):
+        if not isinstance(tuner_verbose, (bool, int)):
             raise TypeError("tuner_verbose parameter must be a bool or an int.")
 
         tuner_verbose = int(tuner_verbose)
@@ -2984,22 +2980,22 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # checking fold parameter
         if fold is not None and not (
-            type(fold) is int or is_sklearn_cv_generator(fold)
+            isinstance(fold, int) or is_sklearn_cv_generator(fold)
         ):
             raise TypeError(
                 "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
             )
 
         # checking n_estimators parameter
-        if type(n_estimators) is not int:
+        if not isinstance(n_estimators, int):
             raise TypeError("n_estimators parameter only accepts integer value.")
 
         # checking round parameter
-        if type(round) is not int:
+        if not isinstance(round, int):
             raise TypeError("Round parameter only accepts integer value.")
 
         # checking verbose parameter
-        if type(verbose) is not bool:
+        if not isinstance(verbose, bool):
             raise TypeError(
                 "Verbose parameter can only take argument as True or False."
             )
@@ -3019,7 +3015,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
         # checking return_train_score parameter
-        if type(return_train_score) is not bool:
+        if not isinstance(return_train_score, bool):
             raise TypeError(
                 "return_train_score can only take argument as True or False"
             )
@@ -3368,14 +3364,14 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # checking fold parameter
         if fold is not None and not (
-            type(fold) is int or is_sklearn_cv_generator(fold)
+            isinstance(fold, int) or is_sklearn_cv_generator(fold)
         ):
             raise TypeError(
                 "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
             )
 
         # checking round parameter
-        if type(round) is not int:
+        if not isinstance(round, int):
             raise TypeError("Round parameter only accepts integer value.")
 
         if weights is not None:
@@ -3389,7 +3385,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 raise TypeError("weights must contain only ints or floats.")
 
         # checking verbose parameter
-        if type(verbose) is not bool:
+        if not isinstance(verbose, bool):
             raise TypeError(
                 "Verbose parameter can only take argument as True or False."
             )
@@ -3409,7 +3405,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
         # checking return_train_score parameter
-        if type(return_train_score) is not bool:
+        if not isinstance(return_train_score, bool):
             raise TypeError(
                 "return_train_score can only take argument as True or False"
             )
@@ -3749,14 +3745,14 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # checking fold parameter
         if fold is not None and not (
-            type(fold) is int or is_sklearn_cv_generator(fold)
+            isinstance(fold, int) or is_sklearn_cv_generator(fold)
         ):
             raise TypeError(
                 "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
             )
 
         # checking round parameter
-        if type(round) is not int:
+        if not isinstance(round, int):
             raise TypeError("Round parameter only accepts integer value.")
 
         # checking method parameter
@@ -3767,13 +3763,13 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking restack parameter
-        if type(restack) is not bool:
+        if not isinstance(restack, bool):
             raise TypeError(
                 "Restack parameter can only take argument as True or False."
             )
 
         # checking verbose parameter
-        if type(verbose) is not bool:
+        if not isinstance(verbose, bool):
             raise TypeError(
                 "Verbose parameter can only take argument as True or False."
             )
@@ -3793,7 +3789,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
         # checking return_train_score parameter
-        if type(return_train_score) is not bool:
+        if not isinstance(return_train_score, bool):
             raise TypeError(
                 "return_train_score can only take argument as True or False"
             )
@@ -5353,7 +5349,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
         # checking return_train_score parameter
-        if type(return_train_score) is not bool:
+        if not isinstance(return_train_score, bool):
             raise TypeError(
                 "return_train_score can only take argument as True or False"
             )

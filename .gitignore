@@ -38,3 +38,4 @@ dask*/
 tmp/
 nbtest1.ipynb
 .DS_Store
+.ruff_cache

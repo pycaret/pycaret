@@ -1,3 +1,9 @@
+# Copyright (C) 2019-2024 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
+# License: MIT
+
+
 import gc
 import logging
 import os
@@ -329,7 +335,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # Set up GPU usage ========================================= >>
 
-        if self.gpu_param != "force" and type(self.gpu_param) is not bool:
+        if self.gpu_param != "force" and not isinstance(self.gpu_param, bool):
             raise TypeError(
                 f"Invalid value for the use_gpu parameter, got {self.gpu_param}. "
                 "Possible values are: 'force', True or False."
@@ -473,16 +479,16 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # checking fold parameter
         if fold is not None and not (
-            type(fold) is int or is_sklearn_cv_generator(fold)
+            isinstance(fold, int) or is_sklearn_cv_generator(fold)
         ):
             raise TypeError(
                 "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
             )
 
-        if type(label) is not bool:
+        if not isinstance(label, bool):
             raise TypeError("Label parameter only accepts True or False.")
 
-        if feature_name is not None and type(feature_name) is not str:
+        if feature_name is not None and not isinstance(feature_name, str):
             raise TypeError(
                 "feature parameter must be string containing column name of dataset."
             )

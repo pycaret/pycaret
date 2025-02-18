@@ -1,5 +1,8 @@
+# Copyright (C) 2019-2024 PyCaret
+
 # Module: containers.models.base_model
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
 # License: MIT
 
 from typing import Any, Dict, List, Optional

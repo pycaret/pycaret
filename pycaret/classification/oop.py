@@ -2373,24 +2373,24 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
         # checking fold parameter
         if fold is not None and not (
-            type(fold) is int or is_sklearn_cv_generator(fold)
+            isinstance(fold, int) or is_sklearn_cv_generator(fold)
         ):
             raise TypeError(
                 "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
             )
 
         # checking round parameter
-        if type(round) is not int:
+        if not isinstance(round, int):
             raise TypeError("Round parameter only accepts integer value.")
 
         # checking verbose parameter
-        if type(verbose) is not bool:
+        if not isinstance(verbose, bool):
             raise TypeError(
                 "Verbose parameter can only take argument as True or False."
             )
 
         # checking return_train_score parameter
-        if type(return_train_score) is not bool:
+        if not isinstance(return_train_score, bool):
             raise TypeError(
                 "return_train_score can only take argument as True or False"
             )
@@ -2629,7 +2629,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             )
 
         # check predict_proba value
-        if type(estimator) is not list:
+        if not isinstance(estimator, list):
             if not hasattr(estimator, "predict_proba"):
                 raise TypeError(
                     "Estimator doesn't support predict_proba function and cannot be used in optimize_threshold()."
