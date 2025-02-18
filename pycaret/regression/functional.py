@@ -918,13 +918,13 @@ def create_model(
         * 'huber' - Huber Regressor
         * 'kr' - Kernel Ridge
         * 'svm' - Support Vector Regression
-        * 'knn' - K Neighbors Regressor
+        * 'knn' - K Nearest Neighbors Regressor
         * 'dt' - Decision Tree Regressor
         * 'rf' - Random Forest Regressor
         * 'et' - Extra Trees Regressor
         * 'ada' - AdaBoost Regressor
         * 'gbr' - Gradient Boosting Regressor
-        * 'mlp' - MLP Regressor
+        * 'mlp' - Multi-layer Perceptron Regressor
         * 'xgboost' - Extreme Gradient Boosting
         * 'lightgbm' - Light Gradient Boosting Machine
         * 'catboost' - CatBoost Regressor
