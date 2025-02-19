@@ -104,7 +104,7 @@ dependencies = [
 # users can install via "pip install pycaret[full]"
 #
 full = [
-  "shap>=0.44.0,<=0.46.0",
+  "shap>=0.44.0,<0.47.0",
   "interpret>=0.2.7",
   "umap-learn>=0.5.2",
   "pyyaml",
@@ -148,7 +148,7 @@ full = [
 ]
 
 analysis = [
-  "shap>=0.44.0,<=0.46.0",
+  "shap>=0.44.0,<0.47.0",
   "interpret>=0.2.7",
   "umap-learn>=0.5.2",
   "pyyaml",
