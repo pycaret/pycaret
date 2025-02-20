@@ -130,8 +130,8 @@ full = [
   "uvicorn>=0.17.6",  # For web api
   "m2cgen>=0.9.0",  # For model conversion
   "evidently<0.4.30",  # test_check_drift fails with 0.4.30
-  "dask>=2024.4.1",  # Python 3.11.9 breaks Dask (
-  "distributed>=2024.4.1",  # Python 3.11.9 breaks Dask (
+  "dask<2024.6.3",
+  "distributed<2024.6.3",
   "fugue~=0.8.0",
   "flask",
   "Werkzeug>=2.2,<3.0",
@@ -186,8 +186,8 @@ mlops = [
 ]
 
 parallel = [
-  "dask<=2024.6.3",
-  "distributed<=2024.6.3",
+  "dask<2024.6.3",
+  "distributed<2024.6.3",
   "fugue~=0.8.0",
   "flask",
   "Werkzeug>=2.2,<3.0",
