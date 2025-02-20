@@ -50,7 +50,7 @@ dependencies = [
   "ipywidgets>=7.6.5",
   "tqdm>=4.62.0",
   "numpy>=1.21, <1.27",
-  "pandas>=2.2.0",  # latest sktime makes tests fail if pandas 2.1
+  "pandas>=2.2.0",
   "jinja2>=3",
   "scipy>=1.6.1,<=1.11.4",  # to fix later (
   "joblib>=1.2.0,<1.4",  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution
@@ -81,7 +81,7 @@ dependencies = [
   "plotly-resampler>=0.8.3.1",
   # Time-series
   "statsmodels>=0.12.1",
-  "sktime",  # sktime adds support for scikit-learn 1.5 in version sktime 0.31
+  "sktime==0.31.0",
   "tbats>=1.1.3",
   "pmdarima>=2.0.4",
 ]
@@ -186,8 +186,8 @@ mlops = [
 ]
 
 parallel = [
-  "dask>=2024.4.1",  # Python 3.11.9 breaks Dask (
-  "distributed>=2024.4.1",  # Python 3.11.9 breaks Dask (
+  "dask<=2024.6.3",
+  "distributed<=2024.6.3",
   "fugue~=0.8.0",
   "flask",
   "Werkzeug>=2.2,<3.0",
