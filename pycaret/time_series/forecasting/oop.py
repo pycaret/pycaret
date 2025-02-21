@@ -2054,6 +2054,15 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
 
         self.fold_strategy = fold_strategy
         self.fold = fold
+        
+        # Validate fold
+        if not isinstance(fold, int):
+            raise TypeError(
+                f"The 'fold' parameter must be an integer. You provided: {type(fold).__name__}. "
+                "If you intended to use a custom cross-validation object such as SlidingWindowSplitter or "
+                "ExpandingWindowSplitter, please pass it to the 'fold_strategy' parameter instead. "
+                "The 'fold' parameter is ignored when 'fold_strategy' is a custom CV object."
+            )
 
         allowed_hyperparameter_splits = ["all", "train"]
         if hyperparameter_split not in allowed_hyperparameter_splits:
