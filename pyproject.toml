@@ -12,7 +12,7 @@ keywords = [
   "forecasting",
   "machine-learning",
   "regression",
-  "scikit-learn",
+  "scikit-learn<1.5",
   "time-series",
 ]
 license = { file = "LICENSE" }
@@ -50,13 +50,13 @@ dependencies = [
   "ipywidgets>=7.6.5",
   "tqdm>=4.62.0",
   "numpy>=1.21, <1.27",
-  "pandas>=2.2.0",  # latest sktime makes tests fail if pandas 2.1
+  "pandas>=2.2.0",
   "jinja2>=3",
   "scipy>=1.6.1,<=1.11.4",  # to fix later (
   "joblib>=1.2.0,<1.4",  # joblib<1.2.0 is vulnerable to Arbitrary Code Execution
-  "scikit-learn>1.4.0",
-  "pyod>=1.1.3",  # 1.1.3 to support scikit-learn 1.4
-  "imbalanced-learn>=0.12.0",  # >=0.12.0 to support scikit-learn 1.4
+  "scikit-learn<1.5",
+  "pyod>=1.1.3",
+  "imbalanced-learn>=0.12.0,<0.14.0",
   "category-encoders>=2.4.0",
   "lightgbm>=3.0.0",
   "numba>=0.55.0",
@@ -81,7 +81,7 @@ dependencies = [
   "plotly-resampler>=0.8.3.1",
   # Time-series
   "statsmodels>=0.12.1",
-  "sktime",  # sktime adds support for scikit-learn 1.5 in version sktime 0.31
+  "sktime==0.31.0",
   "tbats>=1.1.3",
   "pmdarima>=2.0.4",
 ]
@@ -116,7 +116,7 @@ full = [
   "kmodes>=0.11.1",
   "mlxtend>=0.19.0",
   "statsforecast<1.8.0,>1.6",
-  "scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
+  "scikit-learn-intelex<2024.7.0; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
   "tune-sklearn",
   "ray[tune]",
   "hyperopt>=0.2.7",
@@ -130,9 +130,9 @@ full = [
   "uvicorn>=0.17.6",  # For web api
   "m2cgen>=0.9.0",  # For model conversion
   "evidently<0.4.30",  # test_check_drift fails with 0.4.30
-  "dask>=2024.4.1",  # Python 3.11.9 breaks Dask (
-  "distributed>=2024.4.1",  # Python 3.11.9 breaks Dask (
-  "fugue~=0.8.0",
+  "dask<2024.6.3",
+  "distributed<2024.6.3",
+  "fugue==0.9.1",
   "flask",
   "Werkzeug>=2.2,<3.0",
   "pytest==8.3.2",
@@ -163,7 +163,7 @@ models = [
   "kmodes>=0.11.1",
   "mlxtend>=0.19.0",
   "statsforecast<1.8.0,>1.6",
-  "scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
+  "scikit-learn-intelex<2024.7.0; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
 ]
 
 tuners = [
@@ -186,9 +186,9 @@ mlops = [
 ]
 
 parallel = [
-  "dask>=2024.4.1",  # Python 3.11.9 breaks Dask (
-  "distributed>=2024.4.1",  # Python 3.11.9 breaks Dask (
-  "fugue~=0.8.0",
+  "dask<2024.6.3",
+  "distributed<2024.6.3",
+  "fugue==0.9.1",
   "flask",
   "Werkzeug>=2.2,<3.0",
 ]
