@@ -116,7 +116,7 @@ full = [
   "kmodes>=0.11.1",
   "mlxtend>=0.19.0",
   "statsforecast<1.8.0,>1.6",
-  "scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
+  "scikit-learn-intelex<2024.7.0; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
   "tune-sklearn",
   "ray[tune]",
   "hyperopt>=0.2.7",
@@ -163,7 +163,7 @@ models = [
   "kmodes>=0.11.1",
   "mlxtend>=0.19.0",
   "statsforecast<1.8.0,>1.6",
-  "scikit-learn-intelex>=2023.0.1; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
+  "scikit-learn-intelex<2024.7.0; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
 ]
 
 tuners = [
