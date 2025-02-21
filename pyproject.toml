@@ -132,7 +132,7 @@ full = [
   "evidently<0.4.30",  # test_check_drift fails with 0.4.30
   "dask<2024.6.3",
   "distributed<2024.6.3",
-  "fugue~=0.8.0",
+  "fugue=0.9.1",
   "flask",
   "Werkzeug>=2.2,<3.0",
   "pytest==8.3.2",
@@ -188,7 +188,7 @@ mlops = [
 parallel = [
   "dask<2024.6.3",
   "distributed<2024.6.3",
-  "fugue~=0.8.0",
+  "fugue=0.9.1",
   "flask",
   "Werkzeug>=2.2,<3.0",
 ]
