@@ -72,7 +72,7 @@ dependencies = [
   "trio>=0.22.0,<0.25.0",  # fixes problems about third-party packages, remove after httpcore 1.05
   "setuptools; python_version>='3.12'",
   # Plotting
-  "matplotlib<3.8.0",  # stem(..., use_line_collection=False) is no longer supported.
+  "matplotlib<3.11.0",  # stem(..., use_line_collection=False) is no longer supported.
   "mljar-scikit-plot",  # this is a updated version of original scikit-plot
   "yellowbrick>=1.4",
   "plotly>=5.14.0",
