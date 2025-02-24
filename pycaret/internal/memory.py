@@ -251,8 +251,9 @@ def fast_hash(obj, hash_name="xxhash", coerce_mmap=False, protocol=None):
     valid_hash_names = ("xxhash", "md5", "sha1")
     if hash_name not in valid_hash_names:
         raise ValueError(
-            "Valid options for 'hash_name' are {}. "
-            "Got hash_name={!r} instead.".format(valid_hash_names, hash_name)
+            "Valid options for 'hash_name' are {}. Got hash_name={!r} instead.".format(
+                valid_hash_names, hash_name
+            )
         )
     if "pandas" in sys.modules:
         hasher = FastPandasHasher(
@@ -268,8 +269,7 @@ def fast_hash(obj, hash_name="xxhash", coerce_mmap=False, protocol=None):
 
 
 class FastMemorizedFunc(MemorizedFunc):
-    # Will only cache if function took longer than min_time_to_cache
-    # seconds to run.
+    # Will only cache if function took longer than min_time_to_cache seconds to run.
     def __init__(self, *args, min_time_to_cache=DEFAULT_MIN_TIME_TO_CACHE, **kwargs):
         super().__init__(*args, **kwargs)
         self._cached_output_identifiers = None
@@ -281,29 +281,27 @@ class FastMemorizedFunc(MemorizedFunc):
             coerce_mmap=(self.mmap_mode is not None),
         )
 
-    # Changes here include:
-    # 1. _cached_call calls _get_output_identifiers and then calls call,
-    #    which also calls _get_output_identifiers. Here, we cache the
-    #    output identifiers to avoid calculating them twice.
-    # 2. min_time_to_cache logic.
+    def _get_output_identifiers(self, *args, **kwargs):
+        """Generate the function and argument identifiers."""
+        func_id = self.func_id  # Já definido em MemorizedFunc
+        args_id = self._get_argument_hash(*args, **kwargs)
+        return func_id, args_id
 
     def call(self, *args, **kwargs):
         """Force the execution of the function with the given arguments and
         persist the output values.
         """
         start_time = time.time()
-        # PYCARET CHANGES
-        # This will be set if call is called from _cached_call
+        # Se _cached_output_identifiers está definido (de _cached_call)
         if self._cached_output_identifiers:
             func_id, args_id = self._cached_output_identifiers
             self._cached_output_identifiers = None
         else:
             func_id, args_id = self._get_output_identifiers(*args, **kwargs)
-        # PYCARET CHANGES END
+
         if self._verbose > 0:
             print(format_call(self.func, args, kwargs))
 
-        # PYCARET CHANGES
         func_start_time = time.monotonic()
         output = self.func(*args, **kwargs)
         func_duration = time.monotonic() - func_start_time
@@ -311,16 +309,13 @@ class FastMemorizedFunc(MemorizedFunc):
             self.store_backend.dump_item(
                 [func_id, args_id], output, verbose=self._verbose
             )
-
             duration = time.time() - start_time
             metadata = self._persist_input(duration, args, kwargs)
         else:
             metadata = None
-        # PYCARET CHANGES END
 
         if self._verbose > 0:
             _, name = get_func_name(self.func)
-            # PYCARET CHANGES
             if metadata is not None:
                 msg = "%s - %s" % (name, format_time(duration))
             else:
@@ -329,22 +324,15 @@ class FastMemorizedFunc(MemorizedFunc):
                     format_time(func_duration),
                 )
             print(max(0, (80 - len(msg))) * "_" + msg)
-        # PYCARET CHANGES END
         return output, metadata
 
-    # The code here is identical as in joblib, except for
-    # clearly marked parts
     def _cached_call(self, args, kwargs, shelving=False):
+        # Usa _get_output_identifiers para calcular os identificadores
         func_id, args_id = self._get_output_identifiers(*args, **kwargs)
         metadata = None
         msg = None
-
-        # Whether or not the memorized function must be called
         must_call = False
 
-        # FIXME: The statements below should be try/excepted
-        # Compare the function code with the previous to see if the
-        # function code has changed
         if not (
             self._check_previous_func_code(stacklevel=4)
             and self.store_backend.contains_item([func_id, args_id])
@@ -352,8 +340,7 @@ class FastMemorizedFunc(MemorizedFunc):
             if self._verbose > 10:
                 _, name = get_func_name(self.func)
                 self.warn(
-                    "Computing func {0}, argument hash {1} "
-                    "in location {2}".format(
+                    "Computing func {0}, argument hash {1} in location {2}".format(
                         name,
                         args_id,
                         self.store_backend.get_cached_func_info([func_id])["location"],
@@ -364,56 +351,34 @@ class FastMemorizedFunc(MemorizedFunc):
             try:
                 t0 = time.time()
                 if not shelving:
-                    # When shelving, we do not need to load the output
                     out = self.store_backend.load_item(
                         [func_id, args_id], msg=msg, verbose=self._verbose
                     )
                 else:
                     out = None
-
                 if self._verbose > 4:
                     t = time.time() - t0
                     _, name = get_func_name(self.func)
                     msg = "%s cache loaded - %s" % (name, format_time(t))
                     print(max(0, (80 - len(msg))) * "_" + msg)
             except Exception:
-                # XXX: Should use an exception logger
                 _, signature = format_signature(self.func, *args, **kwargs)
                 self.warn(
-                    "Exception while loading results for "
-                    "{}\n {}".format(signature, traceback.format_exc())
+                    "Exception while loading results for {}\n {}".format(
+                        signature, traceback.format_exc()
+                    )
                 )
-
                 must_call = True
 
         if must_call:
-            # PYCARET CHANGES
-            self._cached_output_identifiers = func_id, args_id
+            self._cached_output_identifiers = (func_id, args_id)
             out, metadata = self.call(*args, **kwargs)
             if self.mmap_mode is not None and metadata is not None:
-                # PYCARET CHANGES END
-                # Memmap the output at the first call to be consistent with
-                # later calls
                 out = self.store_backend.load_item(
                     [func_id, args_id], msg=msg, verbose=self._verbose
                 )
 
         return (out, args_id, metadata)
-
-    def call_and_shelve(self, *args, **kwargs):
-        # PYCARET CHANGES
-        out, args_id, metadata = self._cached_call(args, kwargs, shelving=True)
-        if metadata is None:
-            return NotMemorizedResult(out)
-        # PYCARET CHANGES END
-        return MemorizedResult(
-            self.store_backend,
-            self.func,
-            args_id,
-            metadata=metadata,
-            verbose=self._verbose - 1,
-            timestamp=self.timestamp,
-        )
 
 
 class FastMemory(Memory):
