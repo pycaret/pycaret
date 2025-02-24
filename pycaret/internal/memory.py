@@ -314,13 +314,13 @@ class FastMemorizedFunc(MemorizedFunc):
         func_start_time = time.monotonic()
         output = self.func(*args, **kwargs)
         func_duration = time.monotonic() - func_start_time
+        call_id = (func_id, args_id)  # Create call_id tuple for _persist_input
         if func_duration >= self.min_time_to_cache:
             self.store_backend.dump_item(
                 [func_id, args_id], output, verbose=self._verbose
             )
-
             duration = time.time() - start_time
-            metadata = self._persist_input(duration, args, kwargs)
+            metadata = self._persist_input(duration, call_id, args, kwargs)
         else:
             metadata = None
         # PYCARET CHANGES END
