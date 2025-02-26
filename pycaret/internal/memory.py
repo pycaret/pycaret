@@ -315,10 +315,10 @@ class FastMemorizedFunc(MemorizedFunc):
         output = self.func(*args, **kwargs)
         func_duration = time.monotonic() - func_start_time
         call_id = (func_id, args_id)  # Create call_id tuple for _persist_input
+
+        # Cache only if min_time_to_cache exceeds
         if func_duration >= self.min_time_to_cache:
-            self.store_backend.dump_item(
-                [func_id, args_id], output, verbose=self._verbose
-            )
+            self.store_backend.dump_item(call_id, output, verbose=self._verbose)
             duration = time.time() - start_time
             metadata = self._persist_input(duration, call_id, args, kwargs)
         else:
@@ -405,7 +405,7 @@ class FastMemorizedFunc(MemorizedFunc):
                     [func_id, args_id], msg=msg, verbose=self._verbose
                 )
 
-        return (out, args_id, metadata)
+        return out, args_id, metadata
 
     def call_and_shelve(self, *args, **kwargs):
         # PYCARET CHANGES
