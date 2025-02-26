@@ -372,7 +372,7 @@ class FastMemorizedFunc(MemorizedFunc):
                 if not shelving:
                     # When shelving, we do not need to load the output
                     out = self.store_backend.load_item(
-                        [func_id, args_id], msg=msg, verbose=self._verbose
+                        [func_id, args_id], verbose=self._verbose
                     )
                 else:
                     out = None
@@ -402,7 +402,7 @@ class FastMemorizedFunc(MemorizedFunc):
                 # Memmap the output at the first call to be consistent with
                 # later calls
                 out = self.store_backend.load_item(
-                    [func_id, args_id], msg=msg, verbose=self._verbose
+                    [func_id, args_id], verbose=self._verbose
                 )
 
         return out, args_id, metadata
