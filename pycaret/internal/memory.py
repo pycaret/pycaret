@@ -371,9 +371,8 @@ class FastMemorizedFunc(MemorizedFunc):
                 t0 = time.time()
                 if not shelving:
                     # When shelving, we do not need to load the output
-                    out = self.store_backend.load_item(
-                        [func_id, args_id], verbose=self._verbose
-                    )
+                    call_id = (func_id, args_id)
+                    out = self.store_backend.load_item(call_id, verbose=self._verbose)
                 else:
                     out = None
 
@@ -401,9 +400,8 @@ class FastMemorizedFunc(MemorizedFunc):
                 # PYCARET CHANGES END
                 # Memmap the output at the first call to be consistent with
                 # later calls
-                out = self.store_backend.load_item(
-                    [func_id, args_id], verbose=self._verbose
-                )
+                call_id = (func_id, args_id)
+                out = self.store_backend.load_item(call_id, verbose=self._verbose)
 
         return out, args_id, metadata
 
