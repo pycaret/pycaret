@@ -34,6 +34,9 @@ from sktime.transformations.series.impute import Imputer
 from sktime.utils.seasonality import autocorrelation_seasonality_test
 from statsmodels.tsa.seasonal import seasonal_decompose
 
+# Import temporary monkey patch to fix sktime (remove after SKTIME PR #7903)
+from pycaret.internal.patches import sktime
+
 from pycaret.containers.metrics.time_series import get_all_metric_containers
 from pycaret.containers.models.time_series import (
     ALL_ALLOWED_ENGINES,
