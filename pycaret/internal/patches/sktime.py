@@ -7,9 +7,6 @@ Todo: Remove this file when sktime is updated to a version that includes SKTIME 
 Author: [CelestinoXP]
 """
 
-import warnings
-
-import pandas as pd
 from sktime.transformations.series.summarize import SummaryTransformer
 from sktime.utils.warnings import _SuppressWarningPattern
 
