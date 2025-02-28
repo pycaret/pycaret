@@ -97,6 +97,9 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _get_pipeline_estimator_label,
 )
 
+# Dummy reference to trick VSCode into keeping the import
+_ = sktime  # noqa: F401
+
 LOGGER = get_logger()
 
 
