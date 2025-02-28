@@ -15,6 +15,7 @@ from sktime.utils.warnings import _SuppressWarningPattern
 # 1.Patch for LossySetitemError in SummaryTransformer
 original_summary_fit = SummaryTransformer.fit
 
+
 def patched_summary_fit(self, X, y=None):
     """Patched fit method para evitar LossySetitemError."""
     self._setup(X)
@@ -23,12 +24,16 @@ def patched_summary_fit(self, X, y=None):
     self.func_dict_ = func_dict
     return self
 
+
 SummaryTransformer.fit = patched_summary_fit
 
-#2. Patch for infinite recursion in _custom_showwarning
+# 2. Patch for infinite recursion in _custom_showwarning
 original_custom_showwarning = _SuppressWarningPattern._custom_showwarning
 
-def patched_custom_showwarning(self, message, category, filename, lineno, file=None, line=None):
+
+def patched_custom_showwarning(
+    self, message, category, filename, lineno, file=None, line=None
+):
     """Patched _custom_showwarning para evitar recursão infinita."""
     if not hasattr(self, "_in_warning"):
         self._in_warning = True
@@ -36,8 +41,11 @@ def patched_custom_showwarning(self, message, category, filename, lineno, file=N
             right_type = issubclass(category, self.warning_type)
             fits_pattern = self.message_pattern.search(str(message))
             if not (right_type and fits_pattern):
-                self.original_showwarning(message, category, filename, lineno, file, line)
+                self.original_showwarning(
+                    message, category, filename, lineno, file, line
+                )
         finally:
             del self._in_warning
+
 
 _SuppressWarningPattern._custom_showwarning = patched_custom_showwarning
