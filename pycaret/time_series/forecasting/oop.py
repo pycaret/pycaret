@@ -44,9 +44,6 @@ from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-
-# Import temporary monkey patch to fix sktime (remove after SKTIME PR #7903)
-from pycaret.internal.patches import sktime
 from pycaret.internal.plots.time_series import _get_plot
 from pycaret.internal.plots.utils.time_series import (
     _clean_model_results_labels,
@@ -96,9 +93,6 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _get_imputed_data,
     _get_pipeline_estimator_label,
 )
-
-# Dummy reference to trick VSCode into keeping the import
-_ = sktime  # noqa: F401
 
 LOGGER = get_logger()
 
