@@ -1,4 +1,4 @@
-# Copyright (C) 2019-2024 PyCaret
+# Copyright (C) 2019-2025 PyCaret
 # Author: Moez Ali (moez.ali@queensu.ca)
 # Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
 # License: MIT
@@ -4251,7 +4251,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         shap_values = explainer.shap_values(test_X)
                         shap.initjs()
                         shap_plot = shap.force_plot(
-                            explainer.expected_value[1],
+                            explainer.expected_value[0],  # changed from 1 to 0
                             shap_values[0][row_to_show],
                             data_for_prediction,
                             show=show,
