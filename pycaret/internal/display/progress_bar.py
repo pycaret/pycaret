@@ -116,7 +116,7 @@ class ProgressBarDisplay(DisplayComponent):
         description: str = "Processing: ",
         *,
         verbose: bool = True,
-        backend: Optional[Union[str, DisplayBackend]] = None
+        backend: Optional[Union[str, DisplayBackend]] = None,
     ) -> None:
         super().__init__(verbose=verbose, backend=backend)
         self.pbar_backend_cls: Optional[

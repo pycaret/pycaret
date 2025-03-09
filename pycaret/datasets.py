@@ -1,5 +1,4 @@
-"""Module to get datasets in pycaret
-"""
+"""Module to get datasets in pycaret"""
 
 from typing import Optional
 

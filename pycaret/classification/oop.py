@@ -2711,7 +2711,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
         message = (
             "optimization loop finished successfully. "
-            f"Best threshold: {result.x[0]} with {optimize}={result.fun*direction}"
+            f"Best threshold: {result.x[0]} with {optimize}={result.fun * direction}"
         )
         if verbose:
             print(message)

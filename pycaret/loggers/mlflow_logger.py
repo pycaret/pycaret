@@ -16,27 +16,40 @@ except ImportError:
 
 @contextmanager
 def set_active_mlflow_run(run):
-    """Set active MLFlow run to ``run`` and then back to what it was."""
+    """Set active MLFlow run to `run` and then back to what it was."""
     global _active_run_stack
-    _active_run_stack.append(run)
-    yield
+    current = _active_run_stack.get()
+    new_stack = current.copy()
+    new_stack.append(run)
+    _active_run_stack.set(new_stack)
     try:
-        _active_run_stack.remove(run)
-    except ValueError:
-        pass
+        yield
+    finally:
+        current = _active_run_stack.get()
+        new_stack = current.copy()
+        try:
+            new_stack.remove(run)
+        except ValueError:
+            pass
+        _active_run_stack.set(new_stack)
 
 
 @contextmanager
 def clean_active_mlflow_run():
-    """Trick MLFLow into thinking there are no active runs."""
+    """Trick MLFlow into thinking there are no active runs."""
     global _active_run_stack
-    old_run_stack = _active_run_stack.copy()
-    _active_run_stack.clear()
-    yield
-    active_run = _active_run_stack[-1]
-    _active_run_stack.clear()
-    _active_run_stack.extend(old_run_stack)
-    _active_run_stack.append(active_run)
+    old_stack = _active_run_stack.get().copy()
+    _active_run_stack.set([])
+    try:
+        yield
+    finally:
+        current = _active_run_stack.get()
+        active_run = current[-1] if current else None
+        _active_run_stack.set(old_stack)
+        if active_run is not None:
+            current = _active_run_stack.get().copy()
+            current.append(active_run)
+            _active_run_stack.set(current)
 
 
 class MlflowLogger(BaseLogger):

@@ -1,4 +1,4 @@
-# Copyright (C) 2019-2024 PyCaret
+# Copyright (C) 2019-2025 PyCaret
 # Author: Moez Ali (moez.ali@queensu.ca)
 # Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
 # License: MIT
@@ -107,6 +107,13 @@ class FugueBackend(ParallelBackend):
     top_only: bool, default = False
         Whether only return the top ``n_select`` models from each worker. When top only,
         the overall execution time can be faster.
+
+    report : Optional[Callable], default = None
+        A callable function to report progress or results during parallel execution.
+        Expected to accept parameters similar to ``distributed.scheduler.report``
+        (e.g., ``msg: dict, ts=None, client=None``). Used by Fugue to provide feedback
+        when running with distributed engines like Dask.
+
     """
 
     def __init__(
@@ -116,6 +123,7 @@ class FugueBackend(ParallelBackend):
         batch_size: int = 1,
         display_remote: bool = False,
         top_only: bool = False,
+        report: Optional[Callable] = None,
     ):
         super().__init__()
         self._engine = engine
@@ -123,6 +131,7 @@ class FugueBackend(ParallelBackend):
         self._batch_size = batch_size
         self._display_remote = display_remote
         self._top_only = top_only
+        self._report = report
         self._func: Optional[Callable] = None
         self._params: Optional[Dict[str, Any]] = None
 
@@ -168,6 +177,7 @@ class FugueBackend(ParallelBackend):
             callback=None if not self._display_remote else du.update,
             as_fugue=True,
             as_local=True,
+            params={"report": self._report},
         ).as_array()
 
         pd_dataframe_for_models = [cloudpickle.loads(x[0]) for x in outputs]

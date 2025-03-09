@@ -114,7 +114,7 @@ def get_logger() -> logging.Logger:
 
 
 def create_logger(
-    log: Union[bool, str, logging.Logger] = True
+    log: Union[bool, str, logging.Logger] = True,
 ) -> Union[logging.Logger, DummyLogger]:
     """Create and return a logger object.
 

@@ -1,8 +1,9 @@
 name: 'Lock Old Threads'
 
 on:
-  schedule:
-    - cron: '45 1 * * *'
+  #schedule:
+  #- cron: '45 1 * * *'
+  workflow_dispatch:
 
 permissions:
   issues: write

@@ -160,10 +160,13 @@ def fit_and_score(*args, **kwargs) -> dict:
     """
 
     def wrapper(*args, **kwargs) -> dict:
-        with patch(
-            "sklearn.model_selection._validation._MultimetricScorer",
-            MultimetricScorerPatched,
-        ), patch("sklearn.model_selection._validation._score", score(_score)):
+        with (
+            patch(
+                "sklearn.model_selection._validation._MultimetricScorer",
+                MultimetricScorerPatched,
+            ),
+            patch("sklearn.model_selection._validation._score", score(_score)),
+        ):
             return _fit_and_score(*args, **kwargs)
 
     return wrapper(*args, **kwargs)

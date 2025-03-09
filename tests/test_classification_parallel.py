@@ -7,6 +7,10 @@ def _score_dummy(y_true, y_prob, axis=0):
     return 0.0
 
 
+def dummy_report(msg, ts=None, client=None):
+    pass
+
+
 def test_classification_parallel():
     pc.setup(
         data_func=lambda: get_data("juice", verbose=False),
@@ -20,7 +24,11 @@ def test_classification_parallel():
     test_models = pc.models().index.tolist()[:5]
 
     pc.compare_models(include=test_models, n_select=2)
-    pc.compare_models(include=test_models, n_select=2, parallel=FugueBackend("dask"))
+    pc.compare_models(
+        include=test_models,
+        n_select=2,
+        parallel=FugueBackend("dask", report=dummy_report),
+    )
 
     fconf = {
         "fugue.rpc.server": "fugue.rpc.flask.FlaskRPCServer",  # keep this value
@@ -29,7 +37,14 @@ def test_classification_parallel():
         "fugue.rpc.flask_server.timeout": "2 sec",  # the timeout for worker to talk to driver
     }
 
-    be = FugueBackend("dask", fconf, display_remote=True, batch_size=3, top_only=False)
+    be = FugueBackend(
+        "dask",
+        conf=fconf,
+        display_remote=True,
+        batch_size=3,
+        top_only=False,
+        report=dummy_report,
+    )
     pc.compare_models(n_select=2, parallel=be)
 
     res = pc.pull()
@@ -67,7 +82,12 @@ def test_classification_parallel_returns_empty_models_list_when_no_model_is_trai
     res = pc.compare_models(
         include=[],
         parallel=FugueBackend(
-            "dask", fconf, display_remote=True, batch_size=3, top_only=False
+            "dask",
+            conf=fconf,
+            display_remote=True,
+            batch_size=3,
+            top_only=False,
+            report=dummy_report,
         ),
     )
     assert len(res) == 0
