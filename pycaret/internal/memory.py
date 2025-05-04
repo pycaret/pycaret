@@ -251,8 +251,9 @@ def fast_hash(obj, hash_name="xxhash", coerce_mmap=False, protocol=None):
     valid_hash_names = ("xxhash", "md5", "sha1")
     if hash_name not in valid_hash_names:
         raise ValueError(
-            "Valid options for 'hash_name' are {}. "
-            "Got hash_name={!r} instead.".format(valid_hash_names, hash_name)
+            "Valid options for 'hash_name' are {}. Got hash_name={!r} instead.".format(
+                valid_hash_names, hash_name
+            )
         )
     if "pandas" in sys.modules:
         hasher = FastPandasHasher(
@@ -281,12 +282,18 @@ class FastMemorizedFunc(MemorizedFunc):
             coerce_mmap=(self.mmap_mode is not None),
         )
 
+    # Add this method to define _get_output_identifiers
+    def _get_output_identifiers(self, *args, **kwargs):
+        """Generate the function and argument identifiers for caching."""
+        func_id = self.func_id  # Inherited from MemorizedFunc
+        args_id = self._get_argument_hash(*args, **kwargs)
+        return func_id, args_id
+
     # Changes here include:
     # 1. _cached_call calls _get_output_identifiers and then calls call,
     #    which also calls _get_output_identifiers. Here, we cache the
     #    output identifiers to avoid calculating them twice.
     # 2. min_time_to_cache logic.
-
     def call(self, *args, **kwargs):
         """Force the execution of the function with the given arguments and
         persist the output values.
@@ -307,13 +314,13 @@ class FastMemorizedFunc(MemorizedFunc):
         func_start_time = time.monotonic()
         output = self.func(*args, **kwargs)
         func_duration = time.monotonic() - func_start_time
-        if func_duration >= self.min_time_to_cache:
-            self.store_backend.dump_item(
-                [func_id, args_id], output, verbose=self._verbose
-            )
+        call_id = (func_id, args_id)  # Create call_id tuple for _persist_input
 
+        # Cache only if min_time_to_cache exceeds
+        if func_duration >= self.min_time_to_cache:
+            self.store_backend.dump_item(call_id, output, verbose=self._verbose)
             duration = time.time() - start_time
-            metadata = self._persist_input(duration, args, kwargs)
+            metadata = self._persist_input(duration, call_id, args, kwargs)
         else:
             metadata = None
         # PYCARET CHANGES END
@@ -352,8 +359,7 @@ class FastMemorizedFunc(MemorizedFunc):
             if self._verbose > 10:
                 _, name = get_func_name(self.func)
                 self.warn(
-                    "Computing func {0}, argument hash {1} "
-                    "in location {2}".format(
+                    "Computing func {0}, argument hash {1} in location {2}".format(
                         name,
                         args_id,
                         self.store_backend.get_cached_func_info([func_id])["location"],
@@ -365,9 +371,8 @@ class FastMemorizedFunc(MemorizedFunc):
                 t0 = time.time()
                 if not shelving:
                     # When shelving, we do not need to load the output
-                    out = self.store_backend.load_item(
-                        [func_id, args_id], msg=msg, verbose=self._verbose
-                    )
+                    call_id = (func_id, args_id)
+                    out = self.store_backend.load_item(call_id, verbose=self._verbose)
                 else:
                     out = None
 
@@ -380,8 +385,9 @@ class FastMemorizedFunc(MemorizedFunc):
                 # XXX: Should use an exception logger
                 _, signature = format_signature(self.func, *args, **kwargs)
                 self.warn(
-                    "Exception while loading results for "
-                    "{}\n {}".format(signature, traceback.format_exc())
+                    "Exception while loading results for {}\n {}".format(
+                        signature, traceback.format_exc()
+                    )
                 )
 
                 must_call = True
@@ -394,11 +400,10 @@ class FastMemorizedFunc(MemorizedFunc):
                 # PYCARET CHANGES END
                 # Memmap the output at the first call to be consistent with
                 # later calls
-                out = self.store_backend.load_item(
-                    [func_id, args_id], msg=msg, verbose=self._verbose
-                )
+                call_id = (func_id, args_id)
+                out = self.store_backend.load_item(call_id, verbose=self._verbose)
 
-        return (out, args_id, metadata)
+        return out, args_id, metadata
 
     def call_and_shelve(self, *args, **kwargs):
         # PYCARET CHANGES

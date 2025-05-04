@@ -188,7 +188,7 @@ class DatabricksBackend(JupyterBackend):
 
 
 def detect_backend(
-    backend: Optional[Union[str, DisplayBackend]] = None
+    backend: Optional[Union[str, DisplayBackend]] = None,
 ) -> DisplayBackend:
     if backend is None:
         if IN_DATABRICKS:

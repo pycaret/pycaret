@@ -4,8 +4,7 @@
 # License: MIT
 
 
-"""Functional API for Time Series Forecasting Experiment
-"""
+"""Functional API for Time Series Forecasting Experiment"""
 
 import logging
 import os

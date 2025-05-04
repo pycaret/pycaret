@@ -1,4 +1,7 @@
-# Author: Mavs (m.524687@gmail.com)
+# Copyright (C) 2019-2025 PyCaret
+# Author: Moez Ali (moez.ali@queensu.ca)
+# Module Author: Mavs (m.524687@gmail.com)
+# Contributors (https://github.com/pycaret/pycaret/graphs/contributors)
 # License: MIT
 
 
