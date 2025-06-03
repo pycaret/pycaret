@@ -115,6 +115,19 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             self._is_multiclass = False
         return self._is_multiclass
 
+    @property
+    def num_classes(self) -> int:
+        """Return the number of classes in the target ``y``.
+
+        Returns 0 if ``setup`` has not been run yet.
+        """
+        if getattr(self, "y", None) is None:
+            return 0
+        try:
+            return len(pd.unique(self.y))
+        except Exception:
+            return 0
+
     def _get_default_plots_to_log(self) -> List[str]:
         return ["auc", "confusion_matrix", "feature"]
 

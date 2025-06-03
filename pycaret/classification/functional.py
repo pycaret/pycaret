@@ -877,6 +877,20 @@ def get_engine(estimator: str) -> Optional[str]:
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def num_classes() -> int:
+    """Return the number of classes in the current experiment.
+
+    Returns
+    -------
+    int
+        Number of unique classes in the target data or 0 if ``setup`` has not
+        been run yet.
+    """
+
+    return _CURRENT_EXPERIMENT.num_classes
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_model(
     estimator: Union[str, Any],
     fold: Optional[Union[int, Any]] = None,
