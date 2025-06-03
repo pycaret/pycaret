@@ -115,6 +115,19 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             self._is_multiclass = False
         return self._is_multiclass
 
+    @property
+    def num_classes(self) -> int:
+        """Return the number of classes in the target ``y``.
+
+        Returns 0 if ``setup`` has not been run yet.
+        """
+        if getattr(self, "y", None) is None:
+            return 0
+        try:
+            return len(pd.unique(self.y))
+        except Exception:
+            return 0
+
     def _get_default_plots_to_log(self) -> List[str]:
         return ["auc", "confusion_matrix", "feature"]
 
@@ -227,7 +240,7 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
 
         target: int, str or sequence, default = -1
-            If int or str, respectivcely index or name of the target column in data.
+            If int or str, respectively index or name of the target column in data.
             The default value selects the last column in the dataset. If sequence,
             it should have shape (n_samples,). The target can be either binary or
             multiclass.

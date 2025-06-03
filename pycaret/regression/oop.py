@@ -189,7 +189,7 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
 
 
         target: int, str or sequence, default = -1
-            If int or str, respectivcely index or name of the target column in data.
+            If int or str, respectively index or name of the target column in data.
             The default value selects the last column in the dataset. If sequence,
             it should have shape (n_samples,). The target can be either binary or
             multiclass.

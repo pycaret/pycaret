@@ -133,7 +133,7 @@ def setup(
 
 
     target: int, str or sequence, default = -1
-        If int or str, respectivcely index or name of the target column in data.
+        If int or str, respectively index or name of the target column in data.
         The default value selects the last column in the dataset. If sequence,
         it should have shape (n_samples,). The target can be either binary or
         multiclass.
@@ -874,6 +874,20 @@ def get_engine(estimator: str) -> Optional[str]:
     """
 
     return _CURRENT_EXPERIMENT.get_engine(estimator=estimator)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def num_classes() -> int:
+    """Return the number of classes in the current experiment.
+
+    Returns
+    -------
+    int
+        Number of unique classes in the target data or 0 if ``setup`` has not
+        been run yet.
+    """
+
+    return _CURRENT_EXPERIMENT.num_classes
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
