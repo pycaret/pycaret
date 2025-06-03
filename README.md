@@ -249,6 +249,11 @@ PyCaret is completely free and open-source and licensed under the [MIT](https://
 | :loudspeaker: **[Discussions]**        | Community Discussion board on GitHub|
 | :hammer_and_wrench: **[Release Notes]**          | Release Notes          |
 
+[//]: # (Policy tip)
+## 🔒 Policy Tip
+Please avoid storing copyrighted, personal, or private content in this
+repository. Use only data that is anonymized or public.
+
 [tutorials]: https://pycaret.gitbook.io/docs/get-started/tutorials
 [Example notebooks]: https://github.com/pycaret/examples
 [Blog]: https://pycaret.gitbook.io/docs/learn-pycaret/official-blog
