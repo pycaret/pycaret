@@ -270,7 +270,7 @@ class DashboardLogger:
                         for logger in self.loggers
                         if hasattr(logger, "remote")
                     ]
-                    if experiment.transform_target_param:
+                    if getattr(experiment, "transform_target_param", False):
                         train_transform_path = os.path.join(
                             tmpdir, "Train_transform.csv"
                         )
@@ -291,7 +291,7 @@ class DashboardLogger:
                     train_path = os.path.join(tmpdir, "Dataset.csv")
                     experiment.train.to_csv(train_path)
                     [logger.log_artifact(train_path, "data") for logger in self.loggers]
-                    if experiment.transform_target_param:
+                    if getattr(experiment, "transform_target_param", False):
                         train_transform_path = os.path.join(
                             tmpdir, "Dataset_transform.csv"
                         )
