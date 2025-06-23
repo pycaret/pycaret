@@ -28,6 +28,8 @@ from pycaret.time_series.forecasting.functional import (
 )
 from pycaret.time_series.forecasting.oop import TSForecastingExperiment
 
+from pycaret.time_series.analysis import eda_report
+
 __all__ = [
     "TSForecastingExperiment",
     "setup",
@@ -56,4 +58,5 @@ __all__ = [
     "check_stats",
     "get_allowed_engines",
     "get_engine",
+    "eda_report",
 ]
