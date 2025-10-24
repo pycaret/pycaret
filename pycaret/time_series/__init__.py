@@ -57,3 +57,4 @@ __all__ = [
     "get_allowed_engines",
     "get_engine",
 ]
+from .eda import eda_ts_plot
