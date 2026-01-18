@@ -1,6 +1,15 @@
-import daal4py
+import sys
+
 import pytest
 import sklearn
+
+# Skip entire module on Python 3.13+ on macOS as scikit-learn-intelex (daal4py) has no macOS wheels
+pytestmark = pytest.mark.skipif(
+    sys.version_info >= (3, 13) and sys.platform == "darwin",
+    reason="scikit-learn-intelex (daal4py) has no macOS wheels for Python 3.13+",
+)
+
+daal4py = pytest.importorskip("daal4py")
 
 import pycaret.clustering
 import pycaret.datasets

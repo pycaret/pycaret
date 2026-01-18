@@ -679,7 +679,7 @@ class Preprocessor:
 
                 # Encoder always needs mapping of NaN value
                 mapping[key] = {v: i for i, v in enumerate(value)}
-                mapping[key].setdefault(np.NaN, -1)
+                mapping[key].setdefault(np.nan, -1)
 
             ord_estimator = TransformerWrapper(
                 transformer=OrdinalEncoder(
