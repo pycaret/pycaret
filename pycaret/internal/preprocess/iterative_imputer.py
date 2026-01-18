@@ -26,7 +26,17 @@ from sklearn.pipeline import Pipeline as SklearnPipeline
 from sklearn.preprocessing import OneHotEncoder as SklearnOneHotEncoder
 from sklearn.preprocessing import OrdinalEncoder as SklearnOrdinalEncoder
 from sklearn.utils import check_random_state
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import check_is_fitted
+
+# sklearn 1.6+ moved validate_data to a standalone function
+# For older versions, we use the estimator's _validate_data method
+try:
+    from sklearn.utils.validation import validate_data
+except ImportError:
+    # sklearn < 1.6: validate_data doesn't exist as standalone function
+    # We define a wrapper that calls the estimator's _validate_data method
+    def validate_data(estimator, X, **kwargs):
+        return estimator._validate_data(X, **kwargs)
 
 
 # Handle categorical columns. Special cases for some models.
