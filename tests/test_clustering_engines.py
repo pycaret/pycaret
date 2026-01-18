@@ -1,6 +1,15 @@
-import daal4py
+import sys
+
 import pytest
 import sklearn
+
+# Skip entire module on Python 3.13+ as scikit-learn-intelex (daal4py) is not available
+pytestmark = pytest.mark.skipif(
+    sys.version_info >= (3, 13),
+    reason="scikit-learn-intelex (daal4py) does not support Python 3.13+",
+)
+
+daal4py = pytest.importorskip("daal4py")
 
 import pycaret.clustering
 import pycaret.datasets

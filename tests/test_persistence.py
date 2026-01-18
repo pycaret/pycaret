@@ -2,7 +2,7 @@ import os
 
 import boto3
 import pytest
-from moto import mock_s3
+from moto import mock_aws
 
 from pycaret.internal.persistence import deploy_model, load_model
 
@@ -19,7 +19,7 @@ def aws_credentials():
 @pytest.fixture(scope="function")
 def s3(aws_credentials):
     """Create a mock s3 for testing."""
-    with mock_s3():
+    with mock_aws():
         yield boto3.client("s3", region_name="us-east-1")
 
 

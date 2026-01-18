@@ -2533,11 +2533,11 @@ class _SupervisedExperiment(_TabularExperiment):
                 ):
                     if "actual_estimator__n_estimators" in param_grid:
                         if custom_grid is None:
-                            extra_params[
-                                "actual_estimator__n_estimators"
-                            ] = pipeline_with_model.get_params()[
-                                "actual_estimator__n_estimators"
-                            ]
+                            extra_params["actual_estimator__n_estimators"] = (
+                                pipeline_with_model.get_params()[
+                                    "actual_estimator__n_estimators"
+                                ]
+                            )
                             param_grid.pop("actual_estimator__n_estimators")
                         else:
                             raise ValueError(
@@ -5693,9 +5693,9 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         # Todo: test if works correctly and remove commented (backup) code above
-        from evidently import ColumnMapping
-        from evidently.metric_preset import DataDriftPreset, TargetDriftPreset
-        from evidently.report import Report
+        from evidently.legacy.pipeline.column_mapping import ColumnMapping
+        from evidently.legacy.metric_preset import DataDriftPreset, TargetDriftPreset
+        from evidently.legacy.report import Report
 
         column_mapping = ColumnMapping()
         column_mapping.target = target

@@ -1146,10 +1146,17 @@ class BATSContainer(TimeSeriesContainer):
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
-        from sktime.forecasting.bats import BATS  # type: ignore
+        try:
+            from sktime.forecasting.bats import BATS  # type: ignore
 
-        # Disable container if certain features are not supported but enforced ----
-        dummy = BATS()
+            # Disable container if certain features are not supported but enforced ----
+            dummy = BATS()
+        except (ModuleNotFoundError, ImportError) as e:
+            # BATS/tbats package may not be compatible with numpy 2.0+ (Python 3.13+)
+            self.logger.warning(f"BATS not available: {e}")
+            self.active = False
+            return
+
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
             return
@@ -1215,10 +1222,17 @@ class TBATSContainer(TimeSeriesContainer):
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
-        from sktime.forecasting.tbats import TBATS
+        try:
+            from sktime.forecasting.tbats import TBATS
 
-        # Disable container if certain features are not supported but enforced ----
-        dummy = TBATS()
+            # Disable container if certain features are not supported but enforced ----
+            dummy = TBATS()
+        except (ModuleNotFoundError, ImportError) as e:
+            # TBATS/tbats package may not be compatible with numpy 2.0+ (Python 3.13+)
+            self.logger.warning(f"TBATS not available: {e}")
+            self.active = False
+            return
+
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
             return
