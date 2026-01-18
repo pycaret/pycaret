@@ -26,7 +26,7 @@ from sklearn.pipeline import Pipeline as SklearnPipeline
 from sklearn.preprocessing import OneHotEncoder as SklearnOneHotEncoder
 from sklearn.preprocessing import OrdinalEncoder as SklearnOrdinalEncoder
 from sklearn.utils import check_random_state
-from sklearn.utils.validation import check_is_fitted
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 
 # Handle categorical columns. Special cases for some models.
@@ -151,6 +151,19 @@ class IterativeImputer(SklearnIterativeImputer):
             cat_estimator_prepare_for_categoricals_type
         )
 
+    @staticmethod
+    def _validate_limit(limit, limit_type, n_features):
+        """Validate the limits (min/max) of the feature values.
+
+        Custom implementation for backward compatibility with sklearn 1.6+.
+        Converts scalar min/max limits to vectors of shape `(n_features,)`.
+        """
+        limit_bound = np.inf if limit_type == "max" else -np.inf
+        limit = limit_bound if limit is None else limit
+        if np.isscalar(limit):
+            limit = np.full(n_features, limit)
+        return np.asarray(limit)
+
     def _initial_imputation(self, X, in_fit=False):
         """Perform initial imputation for input `X`.
 
@@ -182,16 +195,17 @@ class IterativeImputer(SklearnIterativeImputer):
             number of features.
         """
         if is_scalar_nan(self.missing_values):
-            force_all_finite = "allow-nan"
+            ensure_all_finite = "allow-nan"
         else:
-            force_all_finite = True
+            ensure_all_finite = True
 
-        X = self._validate_data(
+        X = validate_data(
+            self,
             X,
             dtype=FLOAT_DTYPES,
             order="F",
             reset=in_fit,
-            force_all_finite=force_all_finite,
+            ensure_all_finite=ensure_all_finite,
         )
         _check_inputs_dtype(X, self.missing_values)
 

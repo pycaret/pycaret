@@ -272,9 +272,8 @@ class RMSEMetricContainer(TimeSeriesMetricContainer):
         super().__init__(
             id="rmse",
             name="RMSE",
-            score_func=metrics.mean_squared_error,
+            score_func=metrics.root_mean_squared_error,
             greater_is_better=False,
-            args={"squared": False},
             scorer="neg_root_mean_squared_error",
         )
 

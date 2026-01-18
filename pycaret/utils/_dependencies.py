@@ -2,11 +2,11 @@
 # https://github.com/sktime/sktime/blob/v0.11.0/sktime/utils/validation/_dependencies.py
 
 import sys
-from distutils.version import LooseVersion
 from importlib import import_module
 from typing import Dict, Optional, Union
 
 from importlib_metadata import distributions
+from packaging.version import InvalidVersion, Version
 
 from pycaret.internal.logging import get_logger, redirect_output
 
@@ -15,9 +15,17 @@ logger = get_logger()
 INSTALLED_MODULES = None
 
 
+def _safe_version(ver_str: str) -> Optional[Version]:
+    """Safely parse a version string, returning None for invalid versions."""
+    try:
+        return Version(ver_str)
+    except InvalidVersion:
+        return None
+
+
 def _try_import_and_get_module_version(
     modname: str,
-) -> Optional[Union[LooseVersion, bool]]:
+) -> Optional[Union[Version, bool]]:
     """Returns False if module is not installed, None if version is not available"""
     try:
         if modname in sys.modules:
@@ -36,12 +44,12 @@ def _try_import_and_get_module_version(
     except ImportError:
         ver = False
     if ver:
-        ver = LooseVersion(ver)
+        ver = _safe_version(ver)
     return ver
 
 
 # Based on packages_distributions() from importlib_metadata
-def get_installed_modules() -> Dict[str, Optional[LooseVersion]]:
+def get_installed_modules() -> Dict[str, Optional[Version]]:
     """
     Get installed modules and their versions from pip metadata.
     """
@@ -56,16 +64,13 @@ def get_installed_modules() -> Dict[str, Optional[LooseVersion]]:
         # https://setuptools.pypa.io/en/latest/deprecated/python_eggs.html
         for dist in distributions():
             for pkg in (dist.read_text("top_level.txt") or "").split():
-                try:
-                    ver = LooseVersion(dist.metadata["Version"])
-                except Exception:
-                    ver = None
+                ver = _safe_version(dist.metadata["Version"])
                 module_versions[pkg] = ver
         INSTALLED_MODULES = module_versions
     return INSTALLED_MODULES
 
 
-def _get_module_version(modname: str) -> Optional[Union[LooseVersion, bool]]:
+def _get_module_version(modname: str) -> Optional[Union[Version, bool]]:
     """Will cache the version in INSTALLED_MODULES
 
     Returns False if module is not installed."""
@@ -76,7 +81,7 @@ def _get_module_version(modname: str) -> Optional[Union[LooseVersion, bool]]:
     return installed_modules[modname]
 
 
-def get_module_version(modname: str) -> Optional[LooseVersion]:
+def get_module_version(modname: str) -> Optional[Version]:
     """Raises a ValueError if module is not installed"""
     version = _get_module_version(modname)
     if version is False:
