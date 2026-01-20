@@ -27,7 +27,6 @@ from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetFor
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
-    temporal_train_test_split,
 )
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
@@ -115,9 +114,7 @@ def _temporal_train_test_split_by_fh_legacy(
     """
 
     if X is not None and not y.index.equals(X.index):
-        raise ValueError(
-            "y and X must have the same time index when splitting by fh."
-        )
+        raise ValueError("y and X must have the same time index when splitting by fh.")
 
     # `freq` is used by sktime to interpret fh against the series index.
     fh_checked = check_fh(fh, freq=y.index)
@@ -1499,6 +1496,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         plots = ["diagnostics", "decomp", "diff"]
 
         with mlflow.start_run(nested=True):
+            # Keep this nested run from being counted as a separate `setup` run.
+            # The parent setup run is created by the logging backend.
+            mlflow.set_tag("Source", "setup_plots")
             self.logger.info(
                 "Begin logging diagnostics, decomp, and diff plots ================"
             )
@@ -3689,7 +3689,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         # Import required libraries ----
         if display_format == "streamlit":
             _check_soft_dependencies("streamlit", extra=None, severity="error")
-            import streamlit as st
+            import importlib
+
+            st = importlib.import_module("streamlit")
 
         # Add sp value (used in decomp plots)
         data_kwargs = data_kwargs or {}

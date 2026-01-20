@@ -326,7 +326,7 @@ def cross_validate(
         raise
 
     # Similar to parts of _format_results in BaseGridSearch
-    (test_scores_dict, fit_time, score_time, cutoffs) = zip(*out)
+    test_scores_dict, fit_time, score_time, cutoffs = zip(*out)
     test_scores = _aggregate_score_dicts(test_scores_dict)
 
     return test_scores, cutoffs
@@ -548,7 +548,7 @@ class BaseGridSearch:
     def _format_results(candidate_params, scorers, out, n_splits):
         """From sklearn and sktime"""
         n_candidates = len(candidate_params)
-        (test_scores_dict, fit_time, score_time, cutoffs) = zip(*out)
+        test_scores_dict, fit_time, score_time, cutoffs = zip(*out)
         test_scores_dict = _aggregate_score_dicts(test_scores_dict)
 
         results = {}
