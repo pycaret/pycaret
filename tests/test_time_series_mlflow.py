@@ -1,6 +1,8 @@
 """Module to test time_series "MLflow" functionality
 """
 
+import uuid
+
 from pycaret.time_series import TSForecastingExperiment
 
 ##########################
@@ -12,13 +14,17 @@ def test_mlflow_logging(load_pos_and_neg_data):
     """Tests the logging of MLFlow experiment"""
     data = load_pos_and_neg_data
 
+    # Use a unique experiment name to avoid cross-test contamination when the
+    # MLflow tracking store persists across tests.
+    experiment_name = f"ts_unit_test_{uuid.uuid4().hex}"
+
     exp = TSForecastingExperiment()
     exp.setup(
         data=data,
         fh=12,
         session_id=42,
         log_experiment=True,
-        experiment_name="ts_unit_test",
+        experiment_name=experiment_name,
         log_plots=True,
     )
 
@@ -62,13 +68,17 @@ def test_mlflow_log_setup(load_pos_and_neg_data):
 
     data = load_pos_and_neg_data
 
+    # Use a unique experiment name to avoid cross-test contamination when the
+    # MLflow tracking store persists across tests.
+    experiment_name = f"ts_unit_test_{uuid.uuid4().hex}"
+
     exp = TSForecastingExperiment()
     exp.setup(
         data=data,
         fh=12,
         session_id=42,
         log_experiment=True,
-        experiment_name="ts_unit_test",
+        experiment_name=experiment_name,
         log_plots=True,
     )
     mlflow_logs = exp.get_logs()
