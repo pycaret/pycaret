@@ -1,5 +1,4 @@
-"""Module to test time_series "MLflow" functionality
-"""
+"""Module to test time_series "MLflow" functionality"""
 
 import uuid
 

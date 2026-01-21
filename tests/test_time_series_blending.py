@@ -1,5 +1,4 @@
-"""Module to test time_series `blend_model` functionality
-"""
+"""Module to test time_series `blend_model` functionality"""
 
 import random
 
