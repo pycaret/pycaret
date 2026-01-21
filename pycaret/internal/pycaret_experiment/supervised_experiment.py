@@ -2533,11 +2533,11 @@ class _SupervisedExperiment(_TabularExperiment):
                 ):
                     if "actual_estimator__n_estimators" in param_grid:
                         if custom_grid is None:
-                            extra_params["actual_estimator__n_estimators"] = (
-                                pipeline_with_model.get_params()[
-                                    "actual_estimator__n_estimators"
-                                ]
-                            )
+                            extra_params[
+                                "actual_estimator__n_estimators"
+                            ] = pipeline_with_model.get_params()[
+                                "actual_estimator__n_estimators"
+                            ]
                             param_grid.pop("actual_estimator__n_estimators")
                         else:
                             raise ValueError(
@@ -3499,10 +3499,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 weights=weights,
             )
         elif self._ml_usecase == MLUsecase.TIME_SERIES:
+            # sktime supports weighted variants for all aggfunc options, including
+            # "min" and "max" (via weighted percentiles). PyCaret's documented
+            # behavior is that weights only apply for mean/gmean/median.
+            ts_weights = None if method in ["min", "max"] else weights
             model = voting_model_definition.class_def(
                 forecasters=estimator_list,
                 aggfunc=method,
-                weights=weights,
+                weights=ts_weights,
                 n_jobs=self.gpu_n_jobs_param,
             )
         else:
@@ -5692,9 +5696,10 @@ class _SupervisedExperiment(_TabularExperiment):
         return filename
         """
 
-        # Todo: test if works correctly and remove commented (backup) code above
-        from evidently.legacy.pipeline.column_mapping import ColumnMapping
+        import uuid
+
         from evidently.legacy.metric_preset import DataDriftPreset, TargetDriftPreset
+        from evidently.legacy.pipeline.column_mapping import ColumnMapping
         from evidently.legacy.report import Report
 
         column_mapping = ColumnMapping()
@@ -5705,15 +5710,32 @@ class _SupervisedExperiment(_TabularExperiment):
         column_mapping.categorical_features = categorical_features
         column_mapping.datetime_features = date_features
 
+        if target not in reference_data.columns or target not in current_data.columns:
+            raise ValueError(
+                f"Both dataset must contain a label column {target} "
+                "in order to create a drift report."
+            )
+
         report = Report(metrics=[DataDriftPreset(), TargetDriftPreset()])
 
-        # Generate the report filename
-        filename = f"{self.exp_name_log}_{int(time.time())}_Drift_Report.html"
+        report.run(
+            reference_data=reference_data,
+            current_data=current_data,
+            column_mapping=column_mapping,
+        )
 
-        # Save the report as an HTML file
-        report.save(filename)
+        # Evidently legacy report export expects a `report.id` attribute.
+        # Some versions (e.g. evidently==0.7.x) don't define it until runtime.
+        if not hasattr(report, "id"):
+            report.id = uuid.uuid4()
 
-        # Return the filename
+        filename = (
+            filename or f"{self.exp_name_log}_{int(time.time())}_Drift_Report.html"
+        )
+        if hasattr(report, "save_html"):
+            report.save_html(filename)
+        else:
+            report.save(filename)
         return filename
 
     @classmethod

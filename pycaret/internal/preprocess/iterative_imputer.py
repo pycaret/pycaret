@@ -26,7 +26,17 @@ from sklearn.pipeline import Pipeline as SklearnPipeline
 from sklearn.preprocessing import OneHotEncoder as SklearnOneHotEncoder
 from sklearn.preprocessing import OrdinalEncoder as SklearnOrdinalEncoder
 from sklearn.utils import check_random_state
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import check_is_fitted
+
+# sklearn 1.6+ moved validate_data to a standalone function
+# For older versions, we use the estimator's _validate_data method
+try:
+    from sklearn.utils.validation import validate_data
+except ImportError:
+    # sklearn < 1.6: validate_data doesn't exist as standalone function
+    # We define a wrapper that calls the estimator's _validate_data method
+    def validate_data(estimator, X, **kwargs):
+        return estimator._validate_data(X, **kwargs)
 
 
 # Handle categorical columns. Special cases for some models.
@@ -491,7 +501,7 @@ class IterativeImputer(SklearnIterativeImputer):
             if is_categorical_feat:
                 estimator = clone(self._cat_estimator)
                 if self.cat_estimator_prepare_for_categoricals_type:
-                    (estimator, prep_fit_params) = prepare_estimator_for_categoricals(
+                    estimator, prep_fit_params = prepare_estimator_for_categoricals(
                         estimator,
                         categorical_indices,
                         preparation_type=self.cat_estimator_prepare_for_categoricals_type,
@@ -499,7 +509,7 @@ class IterativeImputer(SklearnIterativeImputer):
             else:
                 estimator = clone(self._num_estimator)
                 if self.num_estimator_prepare_for_categoricals_type:
-                    (estimator, prep_fit_params) = prepare_estimator_for_categoricals(
+                    estimator, prep_fit_params = prepare_estimator_for_categoricals(
                         estimator,
                         categorical_indices,
                         preparation_type=self.num_estimator_prepare_for_categoricals_type,

@@ -1,5 +1,4 @@
-"""Module to test time_series `blend_model` functionality
-"""
+"""Module to test time_series `blend_model` functionality"""
 
 import random
 
@@ -23,14 +22,22 @@ def test_blend_model_basic(load_setup, load_models, method):
     """Tests basic blender functionality for all methods"""
     from sktime.forecasting.compose import EnsembleForecaster
 
+    def _unwrap_forecaster(f):
+        # sktime>=0.40 stores fitted forecasters as (name, forecaster) tuples
+        if isinstance(f, tuple) and len(f) >= 2:
+            return f[1]
+        return f
+
     exp = load_setup
     models = load_models
     weights = [random.uniform(0, 1) for _ in range(len(models))]
     blender = exp.blend_models(models, method=method, weights=weights, verbose=False)
     assert isinstance(blender, EnsembleForecaster)
+    forecasters_ = blender.forecasters_
+    assert forecasters_ is not None
 
     # Test input models are available
-    blender_forecasters = blender.forecasters_
+    blender_forecasters = [_unwrap_forecaster(f) for f in forecasters_]
     blender_forecasters_class = [f.__class__ for f in blender_forecasters]
     ts_models_class = [f.__class__ for f in models]
     assert blender_forecasters_class == ts_models_class
@@ -39,6 +46,7 @@ def test_blend_model_basic(load_setup, load_models, method):
 def test_blend_models_tuning():
     """Test the tuning of blended models."""
     data = get_data("airline", verbose=False)
+    assert isinstance(data, (pd.Series, pd.DataFrame))
 
     exp = TSForecastingExperiment()
     exp.setup(data=data, fh=12, fold=2, session_id=42)
@@ -150,6 +158,7 @@ def test_blend_with_larger_predict_fh():
     Ref: https://github.com/pycaret/pycaret/issues/2329
     """
     data = get_data("airline", verbose=False)
+    assert isinstance(data, (pd.Series, pd.DataFrame))
 
     exp = TSForecastingExperiment()
     exp.setup(data=data, fh=12, fold=2, session_id=42)

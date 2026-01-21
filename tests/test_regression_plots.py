@@ -1,5 +1,7 @@
+import matplotlib
 import pandas as pd
 import pytest
+from packaging import version
 
 import pycaret.datasets
 import pycaret.regression
@@ -7,11 +9,9 @@ import pycaret.regression
 
 @pytest.mark.plotting
 def test_plot():
-    # loading dataset
     data = pycaret.datasets.get_data("boston")
     assert isinstance(data, pd.DataFrame)
 
-    # init setup
     pycaret.regression.setup(
         data,
         target="medv",
@@ -28,7 +28,13 @@ def test_plot():
     exp = pycaret.regression.RegressionExperiment()
     available_plots = exp._available_plots
 
+    skip_plots = set()
+    if version.parse(matplotlib.__version__) >= version.parse("3.8.0"):
+        skip_plots.add("cooks")
+
     for plot in available_plots:
+        if plot in skip_plots:
+            continue
         pycaret.regression.plot_model(model, plot=plot)
 
     models = [

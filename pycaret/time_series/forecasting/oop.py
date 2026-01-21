@@ -27,11 +27,11 @@ from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetFor
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
-    temporal_train_test_split,
 )
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
 from sktime.utils.seasonality import autocorrelation_seasonality_test
+from sktime.utils.validation.forecasting import check_fh
 from statsmodels.tsa.seasonal import seasonal_decompose
 
 from pycaret.containers.metrics.time_series import get_all_metric_containers
@@ -95,6 +95,65 @@ from pycaret.utils.time_series.forecasting.pipeline import (
 )
 
 LOGGER = get_logger()
+
+
+def _temporal_train_test_split_by_fh_legacy(
+    *,
+    y: pd.Series,
+    X: Optional[pd.DataFrame],
+    fh: ForecastingHorizon,
+) -> Tuple[pd.Series, pd.Series, Optional[pd.DataFrame], Optional[pd.DataFrame]]:
+    """Replicate sktime<=0.38.4 fh split semantics.
+
+    sktime>=0.38.5 switched temporal_train_test_split(fh=...) to a new
+    ForecastingHorizonSplitter implementation which is off-by-one for relative fh
+    in some versions (observed in sktime 0.38.5+ including 0.40.1).
+
+    This mirrors the removed helper `sktime.split.base._common._split_by_fh` from
+    sktime v0.38.4.
+    """
+
+    if X is not None and not y.index.equals(X.index):
+        raise ValueError("y and X must have the same time index when splitting by fh.")
+
+    # `freq` is used by sktime to interpret fh against the series index.
+    fh_checked = check_fh(fh, freq=y.index)
+    idx = fh_checked.to_pandas()
+
+    if fh_checked.is_relative:
+        if not fh_checked.is_all_out_of_sample():
+            raise ValueError("`fh` must only contain out-of-sample values")
+
+        max_step = idx.max()
+        steps = fh_checked.to_indexer()
+
+        train_index = y.index[:-max_step]
+        test_index = y.index[-max_step:]
+
+        y_train = y.loc[train_index]
+        y_test = y.loc[test_index[steps]]
+
+        if X is None:
+            return y_train, y_test, None, None
+
+        X_train = X.loc[train_index]
+        X_test = X.loc[test_index]
+        return y_train, y_test, X_train, X_test
+
+    min_step, max_step = idx.min(), idx.max()
+
+    train_index = y.index[y.index < min_step]
+    test_index = y.index[(y.index <= max_step) & (min_step <= y.index)]
+
+    y_train = y.loc[train_index]
+    y_test = y.loc[idx]
+
+    if X is None:
+        return y_train, y_test, None, None
+
+    X_train = X.loc[train_index]
+    X_test = X.loc[test_index]
+    return y_train, y_test, X_train, X_test
 
 
 class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor):
@@ -947,7 +1006,8 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         y = self.data[self.target_param]
         X = self.data.drop(self.target_param, axis=1)
 
-        y_train, y_test, X_train, X_test = temporal_train_test_split(
+        # Use PyCaret-owned fh split to avoid sktime>=0.38.5 relative-fh off-by-one.
+        y_train, y_test, X_train, X_test = _temporal_train_test_split_by_fh_legacy(
             y=y, X=X, fh=self.fh
         )
 
@@ -1436,6 +1496,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         plots = ["diagnostics", "decomp", "diff"]
 
         with mlflow.start_run(nested=True):
+            # Keep this nested run from being counted as a separate `setup` run.
+            # The parent setup run is created by the logging backend.
+            mlflow.set_tag("Source", "setup_plots")
             self.logger.info(
                 "Begin logging diagnostics, decomp, and diff plots ================"
             )
@@ -3626,7 +3689,9 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         # Import required libraries ----
         if display_format == "streamlit":
             _check_soft_dependencies("streamlit", extra=None, severity="error")
-            import streamlit as st
+            import importlib
+
+            st = importlib.import_module("streamlit")
 
         # Add sp value (used in decomp plots)
         data_kwargs = data_kwargs or {}

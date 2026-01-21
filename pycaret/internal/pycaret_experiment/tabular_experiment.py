@@ -1238,6 +1238,20 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def cooks():
+                    import matplotlib
+                    from packaging import version
+
+                    # yellowbrick's CooksDistance uses deprecated 'use_line_collection'
+                    # parameter in ax.stem() which was removed in matplotlib 3.8
+                    if version.parse(matplotlib.__version__) >= version.parse("3.8.0"):
+                        raise NotImplementedError(
+                            "The 'cooks' plot is not available with matplotlib >= 3.8.0 "
+                            "due to an incompatibility in the yellowbrick library. "
+                            "See https://github.com/DistrictDataLabs/yellowbrick/issues/1234 "
+                            "for more information. Please use matplotlib < 3.8.0 or choose "
+                            "a different plot type."
+                        )
+
                     from yellowbrick.regressor import CooksDistance
 
                     visualizer = CooksDistance()
