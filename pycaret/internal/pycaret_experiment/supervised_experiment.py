@@ -3499,10 +3499,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 weights=weights,
             )
         elif self._ml_usecase == MLUsecase.TIME_SERIES:
+            # sktime supports weighted variants for all aggfunc options, including
+            # "min" and "max" (via weighted percentiles). PyCaret's documented
+            # behavior is that weights only apply for mean/gmean/median.
+            ts_weights = None if method in ["min", "max"] else weights
             model = voting_model_definition.class_def(
                 forecasters=estimator_list,
                 aggfunc=method,
-                weights=weights,
+                weights=ts_weights,
                 n_jobs=self.gpu_n_jobs_param,
             )
         else:
