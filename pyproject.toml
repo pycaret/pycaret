@@ -23,7 +23,7 @@ maintainers = [
 authors = [
     { name = "pycaret developers" },
 ]
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.10,<3.14"
 classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
@@ -34,7 +34,6 @@ classifiers = [
   "Operating System :: Unix",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -115,7 +114,8 @@ dependencies = [
 # users can install via "pip install pycaret[full]"
 #
 full = [
-  "shap>=0.44.0",
+  "shap>=0.49.1,<0.50.0; python_version < '3.11'",
+  "shap>=0.50.0; python_version >= '3.11'",
   "interpret>=0.2.7",
   "umap-learn>=0.5.2",
   "pyyaml",
@@ -124,7 +124,8 @@ full = [
   "standard-imghdr; python_version>='3.13'",
   "explainerdashboard>=0.3.8",
   "fairlearn>=0.7.0",
-  "xgboost>=2.0.0",
+  "xgboost>=2.0.0,<3.1.0; python_version < '3.11'",
+  "xgboost>=3.1.1; python_version >= '3.11'",
   "catboost>=1.2.5",
   "kmodes>=0.11.1",
   "mlxtend>=0.19.0",
@@ -142,7 +143,7 @@ full = [
   "fastapi",
   "uvicorn>=0.17.6",
   "m2cgen>=0.9.0",
-  "evidently>=0.4.0",
+  "evidently>=0.7.0,<0.8.0",
   "dask>=2024.1.0",
   "distributed>=2024.1.0",
   "fugue>=0.9.0",
@@ -160,7 +161,8 @@ full = [
 ]
 
 analysis = [
-  "shap>=0.44.0",
+  "shap>=0.49.1,<0.50.0; python_version < '3.11'",
+  "shap>=0.50.0; python_version >= '3.11'",
   "interpret>=0.2.7",
   "umap-learn>=0.5.2",
   "pyyaml",
@@ -172,7 +174,8 @@ analysis = [
 ]
 
 models = [
-  "xgboost>=2.0.0",
+  "xgboost>=2.0.0,<3.1.0; python_version < '3.11'",
+  "xgboost>=3.1.1; python_version >= '3.11'",
   "catboost>=1.2.5",
   "kmodes>=0.11.1",
   "mlxtend>=0.19.0",
@@ -196,7 +199,7 @@ mlops = [
   "fastapi",
   "uvicorn>=0.17.6",
   "m2cgen>=0.9.0",
-  "evidently>=0.4.0",
+  "evidently>=0.7.0,<0.8.0",
 ]
 
 parallel = [
@@ -224,6 +227,7 @@ dev = [
 # CI related soft dependency sets - not for users of pycaret
 # they are stable and subject to deprecation policies
 test = [
+  "anywidget>=0.9.13",
   "pytest>=8.0.0",
   "moto>=4.0.0",
   "fugue[dask]",
