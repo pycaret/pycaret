@@ -2533,11 +2533,11 @@ class _SupervisedExperiment(_TabularExperiment):
                 ):
                     if "actual_estimator__n_estimators" in param_grid:
                         if custom_grid is None:
-                            extra_params["actual_estimator__n_estimators"] = (
-                                pipeline_with_model.get_params()[
-                                    "actual_estimator__n_estimators"
-                                ]
-                            )
+                            extra_params[
+                                "actual_estimator__n_estimators"
+                            ] = pipeline_with_model.get_params()[
+                                "actual_estimator__n_estimators"
+                            ]
                             param_grid.pop("actual_estimator__n_estimators")
                         else:
                             raise ValueError(
