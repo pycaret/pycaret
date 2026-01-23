@@ -4169,6 +4169,71 @@ class _SupervisedExperiment(_TabularExperiment):
 
         shap_plot = None
 
+        def _normalize_shap_values(shap_values, X):
+            """Normalize SHAP outputs to match legacy expectations.
+
+            - Old-style classifier outputs were often `list[n_classes]` of (n_samples, n_features).
+            - SHAP>=0.49 commonly returns a single 3D ndarray instead.
+
+            This helper converts common 3D layouts into the legacy list-of-2D format.
+            """
+
+            if isinstance(shap_values, (list, tuple)):
+                return list(shap_values)
+
+            if isinstance(X, pd.Series):
+                n_samples = 1
+                n_features = int(X.shape[0])
+            else:
+                n_samples, n_features = X.shape
+
+            if isinstance(shap_values, np.ndarray) and shap_values.ndim == 3:
+                # (n_samples, n_features, n_classes)
+                if shap_values.shape[:2] == (n_samples, n_features):
+                    return [shap_values[:, :, i] for i in range(shap_values.shape[2])]
+
+                # (n_classes, n_samples, n_features)
+                if shap_values.shape[1:] == (n_samples, n_features):
+                    return [shap_values[i, :, :] for i in range(shap_values.shape[0])]
+
+                # (n_samples, n_classes, n_features)
+                if (shap_values.shape[0], shap_values.shape[2]) == (
+                    n_samples,
+                    n_features,
+                ):
+                    return [shap_values[:, i, :] for i in range(shap_values.shape[1])]
+
+            return shap_values
+
+        def _get_base_value(
+            expected_value,
+            *,
+            row: Optional[int] = None,
+            class_idx: Optional[int] = None,
+        ):
+            if isinstance(expected_value, (list, tuple)):
+                return (
+                    expected_value[class_idx]
+                    if class_idx is not None
+                    else expected_value
+                )
+
+            if isinstance(expected_value, np.ndarray):
+                if expected_value.ndim == 0:
+                    return expected_value.item()
+                if expected_value.ndim == 1:
+                    if class_idx is not None and expected_value.shape[0] > 1:
+                        return expected_value[class_idx]
+                    return expected_value[0]
+                if (
+                    expected_value.ndim == 2
+                    and row is not None
+                    and class_idx is not None
+                ):
+                    return expected_value[row, class_idx]
+
+            return expected_value
+
         def summary(show: bool = True):
             self.logger.info("Creating TreeExplainer")
             explainer = shap.TreeExplainer(model)
@@ -4208,6 +4273,18 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info("Compiling shap values")
             shap_values = explainer.shap_values(test_X)
 
+            # Normalize SHAP>=0.49 classifier output to the "old" list-of-classes format
+            # Old expected for binary: shap_values[0/1] -> (n_samples, n_features)
+            if model_id in shap_models_type1 and not isinstance(
+                shap_values, (list, tuple)
+            ):
+                # Common SHAP>=0.49: (n_samples, n_features, 2)
+                if (
+                    getattr(shap_values, "ndim", None) == 3
+                    and shap_values.shape[:2] == test_X.shape
+                ):
+                    shap_values = [shap_values[:, :, 0], shap_values[:, :, 1]]
+
             if model_id in shap_models_type1:
                 self.logger.info("model type detected: type 1")
                 shap.dependence_plot(
@@ -4236,40 +4313,64 @@ class _SupervisedExperiment(_TabularExperiment):
                 explainer = shap.TreeExplainer(model)
                 self.logger.info("Compiling shap values")
 
+                shap_values = explainer.shap_values(test_X)
+                shap_values = _normalize_shap_values(shap_values, test_X)
+
                 if observation is None:
                     self.logger.warning(
                         "Observation set to None. Model agnostic plot will be rendered."
                     )
-                    shap_values = explainer.shap_values(test_X)
-                    shap.initjs()
-                    shap_plot = shap.force_plot(
-                        explainer.expected_value[1], shap_values[1], test_X, **kwargs
-                    )
+
+                    # For multi-class, a single output must be selected for force plots.
+                    # Keep legacy binary behavior (class 1). For multiclass, default to class 0.
+                    class_idx = 1 if not self.is_multiclass else 0
+
+                    if isinstance(shap_values, list):
+                        base_value = _get_base_value(
+                            explainer.expected_value, class_idx=class_idx
+                        )
+                        shap.initjs()
+                        shap_plot = shap.force_plot(
+                            base_value, shap_values[class_idx], test_X, **kwargs
+                        )
+                    else:
+                        base_value = _get_base_value(explainer.expected_value)
+                        shap.initjs()
+                        shap_plot = shap.force_plot(
+                            base_value, shap_values, test_X, **kwargs
+                        )
 
                 else:
                     row_to_show = observation
                     data_for_prediction = test_X.iloc[row_to_show]
 
-                    if model_id == "lightgbm":
-                        self.logger.info("model type detected: LGBMClassifier")
-                        shap_values = explainer.shap_values(test_X)
+                    if self.is_multiclass:
+                        # Explain the predicted class for this observation.
+                        proba = model.predict_proba(test_X.iloc[[row_to_show]])[0]
+                        class_idx = int(np.argmax(proba))
+                    else:
+                        class_idx = 1
+
+                    if isinstance(shap_values, list):
+                        base_value = _get_base_value(
+                            explainer.expected_value,
+                            row=row_to_show,
+                            class_idx=class_idx,
+                        )
                         shap.initjs()
                         shap_plot = shap.force_plot(
-                            explainer.expected_value[0],  # changed from 1 to 0
-                            shap_values[0][row_to_show],
+                            base_value,
+                            shap_values[class_idx][row_to_show],
                             data_for_prediction,
                             show=show,
                             **kwargs,
                         )
-
                     else:
-                        self.logger.info("model type detected: Unknown")
-
-                        shap_values = explainer.shap_values(data_for_prediction)
+                        base_value = _get_base_value(explainer.expected_value)
                         shap.initjs()
                         shap_plot = shap.force_plot(
-                            explainer.expected_value[1],
-                            shap_values[1],
+                            base_value,
+                            shap_values[row_to_show, :],
                             data_for_prediction,
                             show=show,
                             **kwargs,

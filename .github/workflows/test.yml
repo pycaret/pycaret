@@ -36,9 +36,41 @@ jobs:
           flake8-version: 7.1.1
 
   # JOBS MUST START WITH test !!!!
+  test_notebooks_regression:
+    runs-on: ubuntu-latest
+    name: Test notebook (Regression)
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v4
+      - name: Set up Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip' # caching pip dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install uv
+          python -m uv pip install -U pytest pytest-xdist nbmake
+
+          # https://github.com/yaml/pyyaml/issues/736
+          echo 'Cython < 3.0' > /tmp/constraint.txt
+          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
+
+          python -m uv pip install ".[full]"
+          python -m ipykernel install --user --name cikernel
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: 3.12"
+          python --version
+          which python
+          pip list
+      - name: Run notebook
+        run: pytest --nbmake --nbmake-kernel=cikernel --nbmake-timeout=3000 "tutorials/Tutorial - Regression.ipynb"
+
   test_notebooks:
     runs-on: ubuntu-latest
-    name: Test notebooks
+    name: Test notebooks (excluding Regression)
     steps:
       - name: Check out source repository
         uses: actions/checkout@v4
@@ -66,7 +98,7 @@ jobs:
           which python
           pip list
       - name: Run notebooks
-        run: pytest --nbmake --nbmake-kernel=cikernel -n=auto --nbmake-timeout=3000 --ignore=./tutorials/translations ./tutorials/
+        run: pytest --nbmake --nbmake-kernel=cikernel -n=auto --nbmake-timeout=3000 --ignore=./tutorials/translations --ignore="tutorials/Tutorial - Regression.ipynb" ./tutorials/
 
   test:
     runs-on: ${{ matrix.os }}
@@ -74,7 +106,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ 'ubuntu-latest', 'windows-latest' ]
-        python-version: [ '3.9', '3.10', '3.11', '3.12', '3.13' ]
+        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
 
     defaults:
       run:
@@ -117,7 +149,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12', '3.13' ]
+        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
 
     name: Test plotting
     steps:
@@ -155,7 +187,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12', '3.13' ]
+        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
 
     name: Test random tuning
     steps:
@@ -194,7 +226,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12', '3.13' ]
+        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
 
     name: Test grid tuning
     steps:
@@ -233,7 +265,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12', '3.13' ]
+        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
 
     name: Benchmark tests
     steps:

@@ -8,6 +8,7 @@
 # `RegressionMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
+import inspect
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
@@ -19,6 +20,36 @@ from sklearn.utils.validation import check_consistent_length
 import pycaret.containers.base_container
 import pycaret.internal.metrics
 from pycaret.containers.metrics.base_metric import MetricContainer
+
+
+def _supports_kw(callable_obj: Any, kw: str) -> bool:
+    try:
+        return kw in inspect.signature(callable_obj).parameters
+    except (TypeError, ValueError):
+        # Some callables (e.g. C-extensions) may not have introspectable
+        # signatures. In that case, assume the kw is not supported.
+        return False
+
+
+def _check_reg_targets_compat(
+    y_true: Any,
+    y_pred: Any,
+    sample_weight: Any,
+    multioutput: Any,
+):
+    """Call sklearn's private _check_reg_targets across sklearn versions.
+
+    sklearn changed _check_reg_targets signature across versions.
+    Older versions don't accept sample_weight, while newer versions do.
+    """
+
+    if _supports_kw(_check_reg_targets, "sample_weight"):
+        return _check_reg_targets(y_true, y_pred, sample_weight, multioutput)
+
+    y_type, y_true, y_pred, multioutput = _check_reg_targets(
+        y_true, y_pred, multioutput
+    )
+    return y_type, y_true, y_pred, sample_weight, multioutput
 
 
 class RegressionMetricContainer(MetricContainer):
@@ -229,8 +260,8 @@ class MAPEMetricContainer(RegressionMetricContainer):
         def mean_absolute_percentage_error(
             y_true, y_pred, sample_weight=None, multioutput="uniform_average"
         ):
-            y_type, y_true, y_pred, sample_weight, multioutput = _check_reg_targets(
-                y_true, y_pred, sample_weight, multioutput
+            y_type, y_true, y_pred, sample_weight, multioutput = (
+                _check_reg_targets_compat(y_true, y_pred, sample_weight, multioutput)
             )
             check_consistent_length(y_true, y_pred, sample_weight)
             mask = y_true != 0

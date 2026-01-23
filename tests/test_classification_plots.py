@@ -42,8 +42,14 @@ def test_plot():
     ]
 
     # no pfi due to dependency hell
-    # available_shap = ["summary", "correlation", "reason", "pdp", "msa"] #https://github.com/pycaret/pycaret/issues/4152
-    available_shap = ["summary", "pdp", "msa"]
+    available_shap = [
+        "summary",
+        "correlation",
+        "reason",
+        "pdp",
+        "msa",
+    ]  # https://github.com/pycaret/pycaret/issues/4152
+    # available_shap = ["summary", "pdp", "msa"]
 
     for model in models:
         for plot in available_shap:

@@ -28,15 +28,7 @@ from sklearn.preprocessing import OrdinalEncoder as SklearnOrdinalEncoder
 from sklearn.utils import check_random_state
 from sklearn.utils.validation import check_is_fitted
 
-# sklearn 1.6+ moved validate_data to a standalone function
-# For older versions, we use the estimator's _validate_data method
-try:
-    from sklearn.utils.validation import validate_data
-except ImportError:
-    # sklearn < 1.6: validate_data doesn't exist as standalone function
-    # We define a wrapper that calls the estimator's _validate_data method
-    def validate_data(estimator, X, **kwargs):
-        return estimator._validate_data(X, **kwargs)
+from pycaret.internal.sklearn_compat import validate_data
 
 
 # Handle categorical columns. Special cases for some models.
@@ -204,18 +196,13 @@ class IterativeImputer(SklearnIterativeImputer):
             `n_samples` is the number of samples and `n_features` is the
             number of features.
         """
-        if is_scalar_nan(self.missing_values):
-            ensure_all_finite = "allow-nan"
-        else:
-            ensure_all_finite = True
-
         X = validate_data(
             self,
             X,
+            allow_nan=is_scalar_nan(self.missing_values),
             dtype=FLOAT_DTYPES,
             order="F",
             reset=in_fit,
-            ensure_all_finite=ensure_all_finite,
         )
         _check_inputs_dtype(X, self.missing_values)
 
