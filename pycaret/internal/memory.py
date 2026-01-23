@@ -12,6 +12,7 @@ Changes include:
 """
 
 import hashlib
+import inspect
 import pickle
 import struct
 import sys
@@ -438,7 +439,15 @@ class FastMemory(Memory):
 
     def reduce_size(self):
         self._cache_counter = 0
-        return super().reduce_size(bytes_limit=self._bytes_limit)
+        try:
+            sig = inspect.signature(super().reduce_size)
+        except (TypeError, ValueError):
+            sig = None
+
+        if sig is not None and "bytes_limit" in sig.parameters:
+            return super().reduce_size(bytes_limit=self._bytes_limit)
+
+        return super().reduce_size()
 
     def cache(self, func=None, ignore=None, verbose=None, mmap_mode=False):
         ret = super().cache(func, ignore, verbose, mmap_mode)
