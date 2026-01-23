@@ -4208,6 +4208,13 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info("Compiling shap values")
             shap_values = explainer.shap_values(test_X)
 
+            # Normalize SHAP>=0.49 classifier output to the "old" list-of-classes format
+            # Old expected for binary: shap_values[0/1] -> (n_samples, n_features)
+            if model_id in shap_models_type1 and not isinstance(shap_values, (list, tuple)):
+                # Common SHAP>=0.49: (n_samples, n_features, 2)
+                if getattr(shap_values, "ndim", None) == 3 and shap_values.shape[:2] == test_X.shape:
+                    shap_values = [shap_values[:, :, 0], shap_values[:, :, 1]]
+
             if model_id in shap_models_type1:
                 self.logger.info("model type detected: type 1")
                 shap.dependence_plot(
@@ -4241,10 +4248,16 @@ class _SupervisedExperiment(_TabularExperiment):
                         "Observation set to None. Model agnostic plot will be rendered."
                     )
                     shap_values = explainer.shap_values(test_X)
+                    # SHAP>=0.49 often returns (n_samples, n_features, 2) for binary classifiers.
+                    # Convert to the old shape PyCaret expects: [class0_matrix, class1_matrix]
+                    if not isinstance(shap_values, (list, tuple)):
+                        if getattr(shap_values, "ndim", None) == 3 and shap_values.shape[:2] == test_X.shape:
+                            shap_values = [shap_values[:, :, 0], shap_values[:, :, 1]]
+                    class_idx = 1
+                    ev = explainer.expected_value
+                    base_value = ev[class_idx] if isinstance(ev, (list, tuple, np.ndarray)) else ev
                     shap.initjs()
-                    shap_plot = shap.force_plot(
-                        explainer.expected_value[1], shap_values[1], test_X, **kwargs
-                    )
+                    shap_plot = shap.force_plot(base_value, shap_values[class_idx], test_X, **kwargs)
 
                 else:
                     row_to_show = observation
