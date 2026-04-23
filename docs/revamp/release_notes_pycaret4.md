@@ -5,6 +5,10 @@
 > Every non-trivial edit during the 4.0 revamp is logged here. At release time, the user-facing `RELEASE_NOTES.md` (and the GitHub Release body) will be generated from this file by summarising and regrouping entries. Do not edit past entries when new work is added; append only.
 
 ## How to use this file
+>
+> For the Part-2 Application-Platform plan (CLI / FastAPI / DB / React / Docker), see
+> [`PLATFORM_PLAN.md`](PLATFORM_PLAN.md). Its phase breakdown is tracked in
+> [`ROADMAP.md`](ROADMAP.md) under Part 2.
 
 - **Organization:** newest session first. Within each session, entries are grouped by type.
 - **Entry types:** `BREAKING`, `REMOVED`, `ADDED`, `CHANGED`, `FIXED`, `DEPRECATED`, `SECURITY`, `DOCS`, `BUILD`, `TESTS`, `DEPS`, `INTERNAL`.
@@ -35,6 +39,76 @@
 | `TESTS` | Usually omitted from user notes |
 | `DEPS` | "Dependency changes" |
 | `INTERNAL` | Usually omitted from user notes |
+
+---
+
+# Session 6 — 2026-04-23 — Cleanup pass 2 + Application-Platform plan authored
+
+Baseline: end of session 5 (v4 branch live on GitHub, CI green).
+Environment: unchanged.
+
+Theme: user asked for "one more round of clean ups. get rid of any garbage from 3.0. keep the bare minimum. the core logic that we will use and thats it." Then laid out the Part-2 vision — PyCaret as an enterprise-grade open-source application platform (CLI + FastAPI + SQL DB + React UI + Docker). Session 6 executed the cleanup and captured the platform plan.
+
+## REMOVED
+
+- `REMOVED` — **`pycaret/distributions.py`** (0 callers) deleted.
+- `REMOVED` — **`pycaret/internal/cloudpickle_compat.py`** (0 callers) deleted.
+- `REMOVED` — **`pycaret/internal/cuml_wrappers.py`** (143 LOC) deleted. cuml is not a 4.0 dep; GPU fallback via NVIDIA cuml is out of scope for the 4.0 engine.
+- `REMOVED` — **`pycaret/loggers/`** shim package deleted. Re-pointed 7 `BaseLogger` import sites to `pycaret.logging.base` directly (1 in each of: `classification/oop.py`, `regression/oop.py`, `time_series/forecasting/oop.py`, `internal/pycaret_experiment/tabular_experiment.py`, `internal/pycaret_experiment/unsupervised_experiment.py`; 2 others already migrated). The 4.0 `BaseLogger` lives in `pycaret.logging.base`; the shim was legacy-compat and had no user after session 3.
+- `REMOVED, BREAKING` — **9 killed-verb methods** deleted across god-class + task oop wrappers (no replacement; public API didn't expose them):
+
+  | File | Methods deleted | ~LOC |
+  |---|---|---:|
+  | `internal/pycaret_experiment/pycaret_experiment.py` | `deploy_model` (stub) | 9 |
+  | `internal/pycaret_experiment/tabular_experiment.py` | `deploy_model`, `convert_model`, `create_api`, `create_docker` | 361 |
+  | `internal/pycaret_experiment/supervised_experiment.py` | `check_fairness`, `create_app`, `dashboard`, `check_drift` | 353 |
+  | `classification/oop.py` | `deploy_model`, `dashboard` | 174 |
+  | `regression/oop.py` | `deploy_model`, `dashboard` | 168 |
+  | `time_series/forecasting/oop.py` | `deploy_model` | 91 |
+  | **Total** | **15 method definitions** | **~1,156** |
+
+  Lazy imports inside those methods (mlflow / comet / wandb / dagshub / fairlearn / evidently / gradio / fastapi / boto3 / m2cgen) disappeared with the bodies.
+
+## CHANGED
+
+- `CHANGED` — **Model containers (`containers/models/{classification,regression,clustering,anomaly}.py`) — cuml branches now raise `NotImplementedError`.** Deleted the `import pycaret.internal.cuml_wrappers` imports + the `pycaret.internal.cuml_wrappers.get_*()` call sites inside `if gpu_imported:` blocks, and replaced `import cuml.X` lines inside `if experiment.gpu_param == "force":` / `elif experiment.gpu_param:` blocks with a raise. These branches were unreachable with default `gpu_param=False` + cuml-not-installed, so no behaviour change; the code is now honest about it. (10 more cuml imports in `containers/models/time_series.py` left as-is — same dead-branch pattern; they'll go with the Phase-5 god-class drain.)
+- `INTERNAL` — **`from functools import partial`** removed from `supervised_experiment.py` (only the deleted `check_fairness` method used it).
+
+## ADDED
+
+- `DOCS, ADDED` — **`docs/revamp/PLATFORM_PLAN.md`** (~350 lines) — detailed design for the Part-2 application platform:
+  - **Vision**: credible open-source alternative to DataRobot / H2O.ai for teams under ~20 people.
+  - **Architecture**: monorepo with 4 sibling packages — `pycaret` (library, current) + `pycaret-server` (FastAPI) + `pycaret-ui` (React) + `pycaret-cli` (CLI).
+  - **Data model**: Workspace → Project → Experiment → Run → Pipeline. 11 SQLAlchemy tables.
+  - **First-run flow**: `docker compose up` → self-service admin setup wizard → no external config.
+  - **Database**: SQLite default, Postgres/MySQL opt-in via `DATABASE_URL`.
+  - **Auth**: local user store + JWT; OAuth as plugin; admin/member roles.
+  - **Tech choices**: Vite + React 18 + Tailwind + TanStack Query + Zustand + Plotly.js; FastAPI + uvicorn + SQLAlchemy + Alembic; Typer + Rich for CLI.
+  - **6 new phases (7-12)** added to ROADMAP.
+  - **Gated on Phase 5** — `pycaret==4.0.0alpha0` shipping — so engine stays focused.
+  - Explicit "out of scope": Celery/Redis v1, K8s operator, GraphQL, multi-tenant SaaS, hosted billing, model serving.
+
+## DOCS
+
+- `DOCS` — **`ROADMAP.md` restructured** into Part 1 (Engine, Phases 0-6) and Part 2 (Platform, Phases 7-12). Every checkbox reflects actual state: Phases 0, 1, 3.5 ✅ COMPLETE; Phase 2 / 4 / 6 ✅ MOSTLY / 🟡 PARTIAL; Phase 5 🟡 IN FLIGHT (god-class drain, 10-verb migration order spelled out); Phases 7-12 🔴 NOT STARTED.
+- `DOCS` — **`STATUS.md`** updated with session-6 delta table + platform-plan summary.
+- `DOCS` — **`docs/revamp/README.md`** hub index updated to include `ARCHITECTURE.md`, `PLATFORM_PLAN.md`, `github_issues/`. New "Two parts, one programme" section. Reading order reorganized.
+
+## TESTS
+
+- `TESTS` — **32/32 still green** on Python 3.13 + sklearn 1.7.2 + NumPy 2.3.5 + pandas 2.x, in 1:37 (was 2:07 in session 5 — slightly faster with less code to import).
+
+## Session 6 delta summary
+
+| Metric | Session 5 end | Session 6 end | Δ |
+|---|---:|---:|---:|
+| Source LOC in `pycaret/` | 51,976 | **50,544** | **−1,432** |
+| Zero-import leaf files | 3 | **0** | **−3** |
+| Killed-verb methods in source | 15 | **0** | **−15** |
+| cuml-coupled files with runtime risk | 5 | **0** (branches raise) | − |
+| Part-2 platform plan | none | **PLATFORM_PLAN.md (~350 lines)** | +1 doc |
+| Roadmap phases defined | 6 engine phases | **12 (6 engine + 6 platform)** | +6 |
+| Test pass rate | 100% (32/32) | 100% (32/32) | — |
 
 ---
 

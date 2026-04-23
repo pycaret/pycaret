@@ -1,6 +1,53 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-23, end of session 4*
+*Updated: 2026-04-23, end of session 6*
+
+## Session 6 — Cleanup pass 2 + Platform-Plan authored — ✅
+
+Two distinct efforts landed this session.
+
+### A. Engine cleanup pass 2
+
+| Metric | Session 5 end | Session 6 end | Δ |
+|---|---:|---:|---:|
+| `pycaret/` source LOC | 51,976 | **50,544** | **−1,432** |
+| Zero-import leaf files | 3 present | **0** (all deleted) | − |
+| Killed-verb methods still in codebase | 15 | **0** | **−15** |
+| cuml GPU-fallback shim | present (143 LOC) | **0** (deleted) | − |
+| Full test suite | 32/32 green, 2:07 | **32/32 green, 1:37** | −30s |
+
+Breakdown:
+- Deleted `pycaret/distributions.py`, `pycaret/internal/cloudpickle_compat.py` — both had zero callers.
+- Deleted `pycaret/internal/cuml_wrappers.py` + stubbed the 6 GPU-fallback call sites in the 4 model-container files (unreachable anyway with default `gpu_param=False`).
+- Deleted the `pycaret/loggers/` shim package; re-pointed 7 `BaseLogger` import sites to `pycaret.logging.base` directly.
+- Deleted 9 killed-verb methods wholesale across the god-class + 5 task oop files: `check_fairness`, `check_drift`, `dashboard`, `create_api`, `create_docker`, `create_app`, `convert_model`, `deploy_model`, `eda`. 15 method definitions × ~77 LOC avg = 1,156 LOC gone. Zero behaviour change (public API didn't expose them).
+
+### B. Application-platform plan authored
+
+User laid out Part-2 vision: PyCaret as an enterprise-grade open-source AutoML platform — credible alternative to DataRobot / H2O.ai. Detailed design captured in [`PLATFORM_PLAN.md`](PLATFORM_PLAN.md).
+
+Headline:
+- Monorepo: `pycaret` (library) + `pycaret-server` (FastAPI) + `pycaret-ui` (React) + `pycaret-cli` (CLI).
+- Hierarchy: Workspace → Project → Experiment → Run → Pipeline (11 SQLAlchemy tables).
+- SQLite default; Postgres/MySQL opt-in via `DATABASE_URL`.
+- First-run self-service admin setup.
+- `docker compose up` from fresh clone → running app at http://localhost:3000, no config.
+- JWT auth, admin/member roles.
+- WebSocket fan-out of the engine's event stream to the UI.
+- React setup form rendered from `pycaret.api.describe_setup_params` (zero hardcoded param names).
+
+6 new phases added to the roadmap (7-12). **Gated on Phase 5 — `pycaret==4.0.0alpha0` being released to PyPI** — so the library stays laser-focused on shipping first.
+
+---
+
+*Session 4 status (repo restructure + issue triage):*
+
+## Session 4 — Repo restructure + dev/agent docs + issue triage — ✅ DONE
+
+User ask: "clear the folder, restructure for dev contributions, get rid of old stuff, one notebook per use-case fully working, MD files for agents, download all open issues, start cleaning them up."
+
+### What shipped
+
 
 ## Session 4 — Repo restructure + dev/agent docs + issue triage — ✅ DONE
 
