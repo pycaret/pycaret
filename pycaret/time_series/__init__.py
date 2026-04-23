@@ -1,59 +1,16 @@
-from pycaret.time_series.forecasting.functional import (
-    add_metric,
-    blend_models,
-    check_stats,
-    compare_models,
-    create_model,
-    deploy_model,
-    finalize_model,
-    get_allowed_engines,
-    get_config,
-    get_current_experiment,
-    get_engine,
-    get_logs,
-    get_metrics,
-    load_experiment,
-    load_model,
-    models,
-    plot_model,
-    predict_model,
-    pull,
-    remove_metric,
-    save_experiment,
-    save_model,
-    set_config,
-    set_current_experiment,
-    setup,
-    tune_model,
-)
-from pycaret.time_series.forecasting.oop import TSForecastingExperiment
+"""Time-series forecasting task — PyCaret 4.0.
 
-__all__ = [
-    "TSForecastingExperiment",
-    "setup",
-    "create_model",
-    "compare_models",
-    "tune_model",
-    "blend_models",
-    "plot_model",
-    "predict_model",
-    "finalize_model",
-    "deploy_model",
-    "save_model",
-    "load_model",
-    "pull",
-    "models",
-    "get_metrics",
-    "add_metric",
-    "remove_metric",
-    "get_logs",
-    "get_config",
-    "set_config",
-    "save_experiment",
-    "load_experiment",
-    "set_current_experiment",
-    "get_current_experiment",
-    "check_stats",
-    "get_allowed_engines",
-    "get_engine",
-]
+PyCaret 4.0 is OOP-only; the 3.x functional API was removed.
+
+The 3.x class name ``TSForecastingExperiment`` was renamed to the cleaner
+``TimeSeriesExperiment`` in 4.0 to match the task's module name.
+
+    from pycaret.time_series import TimeSeriesExperiment
+    exp = TimeSeriesExperiment(fh=12, session_id=42).fit(y)
+    best = exp.compare_models().best
+    forecast = exp.predict_model(best).predictions
+"""
+
+from pycaret.tasks.time_series import TimeSeriesExperiment
+
+__all__ = ["TimeSeriesExperiment"]

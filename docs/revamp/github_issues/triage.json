@@ -1,0 +1,4565 @@
+{
+  "counts": {
+    "still_relevant_enhancement": 107,
+    "fixed_in_4_0": 8,
+    "out_of_scope": 92,
+    "still_relevant_bug": 58,
+    "stale": 123
+  },
+  "buckets": {
+    "still_relevant_enhancement": [
+      {
+        "number": 4174,
+        "title": "[Feature Request] Implementation of Time-Series Exploratory Data Analysis (EDA) Module",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2025-12-31",
+        "updated": "2025-12-31",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4163,
+        "title": "[ENH]: Support Snowflake Notebooks",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2025-04-23",
+        "updated": "2025-05-01",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4156,
+        "title": "[ENH]: support for StratifiedGroupKFold folding strategy",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2025-03-19",
+        "updated": "2025-03-19",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4134,
+        "title": "[MNT] please switch merge modus to squash",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2025-02-11",
+        "updated": "2025-02-19",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4133,
+        "title": "[INSTALL]:",
+        "labels": [
+          "installation"
+        ],
+        "created": "2025-02-11",
+        "updated": "2025-02-18",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4077,
+        "title": "[ENH]: PR-AUC Score Metric in Comparison Result",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-10-03",
+        "updated": "2024-12-23",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4070,
+        "title": "[ENH]: Classification",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-09-10",
+        "updated": "2024-09-10",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4067,
+        "title": "[ENH]: Publish pycaret-cpu package.",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-09-03",
+        "updated": "2024-09-03",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4066,
+        "title": "[ENH]: Make plotting dependencies optional",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-09-03",
+        "updated": "2024-09-03",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4056,
+        "title": "[ENH]: Add early_stopping to tune_model in pycaret.time_series.tune_model",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-08-29",
+        "updated": "2024-08-29",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4055,
+        "title": "[ENH]: Add PerpetualBooster",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-08-28",
+        "updated": "2024-09-23",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4045,
+        "title": "[ENH]: Accept train and test datasets with similar indices",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-08-12",
+        "updated": "2024-08-16",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4027,
+        "title": "[ENH]: Kernel Approximation for large dataset",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-07-18",
+        "updated": "2024-07-18",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 4003,
+        "title": "[ENH]: Call estimator in custom metric function",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-06-07",
+        "updated": "2024-06-07",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3951,
+        "title": "ARDL model",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-03-24",
+        "updated": "2024-06-27",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3919,
+        "title": "[ENH]: add support for polars",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-02-26",
+        "updated": "2024-02-26",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3912,
+        "title": "[ENH]: ",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-02-20",
+        "updated": "2024-02-20",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3891,
+        "title": "[ENH]: black 23.3.0",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-01-23",
+        "updated": "2024-02-28",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3883,
+        "title": "[ENH]: compare_models() for clustering",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-01-11",
+        "updated": "2024-12-23",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3864,
+        "title": "[DOC]: define responsible for each theme",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-12-21",
+        "updated": "2023-12-26",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3863,
+        "title": "[ENH]: define template for header of the files",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-12-21",
+        "updated": "2023-12-21",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3847,
+        "title": "[ENH]: In pycaret version 3.0.1 have xgboost, but in pycaret 3.20.0 not have xgboost",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-12-09",
+        "updated": "2023-12-09",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3802,
+        "title": "Darts Multivariate time series in pycaret or add multivariate time series in pycaret ",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-10-28",
+        "updated": "2023-10-28",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3797,
+        "title": "[ENH] Time Series Multiple(multi variate) Time Series Forecasting",
+        "labels": [
+          "enhancement",
+          "time_series"
+        ],
+        "created": "2023-10-27",
+        "updated": "2023-12-23",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3776,
+        "title": "[ENH]: enable GPU support for LighGBM by installing replacing it with lightgbm_ray",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-10-11",
+        "updated": "2023-10-11",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3775,
+        "title": "[ENH]: Allow plot_model to accept pass though an axis to scatter plot",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-10-11",
+        "updated": "2023-10-11",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3744,
+        "title": "[ENH]: Mechanism Cross validation",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-09-19",
+        "updated": "2023-09-19",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3696,
+        "title": "[ENH]: EDA for time series module",
+        "labels": [
+          "enhancement",
+          "good first issue",
+          "time_series"
+        ],
+        "created": "2023-08-13",
+        "updated": "2025-10-24",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3651,
+        "title": "[ENH]: manually setting probability threshold for already trained model (classification)",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-07-22",
+        "updated": "2023-07-22",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3641,
+        "title": "[ENH]: models with equal metrics should be ordered by time",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-07-17",
+        "updated": "2023-07-20",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3640,
+        "title": "[ENH]: Prepare for XGBoost 2.0",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-07-17",
+        "updated": "2024-12-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3637,
+        "title": "[ENH]: get result of interpret_model() as text.",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-07-13",
+        "updated": "2023-07-20",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3633,
+        "title": "[ENH]: time_series save_model() should accept **kwargs and pass to joblib.dump() like other modeling types",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-07-06",
+        "updated": "2023-07-06",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3627,
+        "title": "[ENH]: Detailed tutorial for Time Series Forecasting using ML models including analysis and feature engineering / extractions / selection",
+        "labels": [
+          "enhancement",
+          "time_series"
+        ],
+        "created": "2023-07-01",
+        "updated": "2023-07-05",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3622,
+        "title": "[ENH]: XGBoost gblinear and dart booster support",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-06-26",
+        "updated": "2024-12-23",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3589,
+        "title": "Pycaret forecasting svm",
+        "labels": [
+          "enhancement",
+          "good first issue",
+          "time_series"
+        ],
+        "created": "2023-06-07",
+        "updated": "2023-09-09",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3585,
+        "title": "[ENH]:  SVM with radial kernel is so slow",
+        "labels": [
+          "enhancement",
+          "missing_info"
+        ],
+        "created": "2023-06-04",
+        "updated": "2023-06-07",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3571,
+        "title": "[ENH]: Yellow+white color problems",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-05-26",
+        "updated": "2023-09-30",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3550,
+        "title": "[ENH]: time series models - add crucial parameter sets as test cases in `sktime`",
+        "labels": [
+          "enhancement",
+          "time_series"
+        ],
+        "created": "2023-05-15",
+        "updated": "2023-05-15",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3529,
+        "title": "Request for credit score card model development",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-05-03",
+        "updated": "2023-05-03",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3512,
+        "title": "[ENH]: Add support for separate validation and test sets in setup function.",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-04-26",
+        "updated": "2023-04-26",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3511,
+        "title": "[BUG]: confusion_matrix",
+        "labels": [
+          "enhancement",
+          "plot_model"
+        ],
+        "created": "2023-04-26",
+        "updated": "2023-06-30",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3495,
+        "title": "[ENH]: Re-enable tests that were failing and that were disabled",
+        "labels": [
+          "enhancement",
+          "unit_tests"
+        ],
+        "created": "2023-04-21",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3492,
+        "title": "[ENH]: smaller deployment install",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-04-20",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3461,
+        "title": "[ENH]: \"log_plot\" to include SHAP values (\"interpret_model\" plots)",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-04-05",
+        "updated": "2023-04-05",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3443,
+        "title": "[ENH]: Easy way to get confidence interval with compare_model",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-03-29",
+        "updated": "2023-03-29",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3429,
+        "title": "[ENH]: Receive the calculated Shapley values as a return",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-03-24",
+        "updated": "2023-03-24",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3399,
+        "title": "multilabel",
+        "labels": [
+          "duplicate",
+          "enhancement"
+        ],
+        "created": "2023-03-15",
+        "updated": "2023-03-21",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3370,
+        "title": "[BUG]: html parameter in the setup",
+        "labels": [
+          "enhancement",
+          "priority_medium",
+          "refactor"
+        ],
+        "created": "2023-03-07",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3369,
+        "title": "[BUG]: Behavior of ignore_features",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-03-07",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3368,
+        "title": "[ENH]: want to adjust dot size and transparency in 'error' and 'residuals' plot_model",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-03-07",
+        "updated": "2023-03-07",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3341,
+        "title": "[ENH]: Prepare for `sktime` split",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "roadmap"
+        ],
+        "created": "2023-02-26",
+        "updated": "2026-02-03",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3338,
+        "title": "[ENH]: Add support for python 3.11",
+        "labels": [
+          "enhancement",
+          "installation"
+        ],
+        "created": "2023-02-25",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3291,
+        "title": "[ENH]: Other ways to save model than pickle",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-01-31",
+        "updated": "2023-01-31",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3281,
+        "title": "Ability to Continue the Optimization (Tuning, Blending, Ensembling) Pipeline Upon Unexpected Kernel Interruption",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2023-01-27",
+        "updated": "2023-01-30",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3239,
+        "title": "[ENH]: Time series unsupervised learning module",
+        "labels": [
+          "enhancement",
+          "anomaly_detection",
+          "clustering",
+          "time_series"
+        ],
+        "created": "2023-01-09",
+        "updated": "2023-01-14",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3237,
+        "title": "[ENH]: Design documentation for Time Series Clustering Module",
+        "labels": [
+          "enhancement",
+          "clustering",
+          "time_series"
+        ],
+        "created": "2023-01-09",
+        "updated": "2023-01-10",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3218,
+        "title": "Please add evaluate_model for visualizing all the plots in the time_seris like train_test_split, ts, forecast,decomposition. ",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "plot_model"
+        ],
+        "created": "2022-12-30",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3201,
+        "title": "[ENH]: Add a Simple Moving Average Forecaster to the time series module.",
+        "labels": [
+          "enhancement",
+          "good first issue",
+          "time_series"
+        ],
+        "created": "2022-12-24",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3183,
+        "title": "Improve inheritance in regards to properties in Base Experiments",
+        "labels": [
+          "enhancement",
+          "refactor"
+        ],
+        "created": "2022-12-17",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 3055,
+        "title": "[ENH]: CPU and GPU benchmarks",
+        "labels": [
+          "enhancement",
+          "benchmark"
+        ],
+        "created": "2022-10-24",
+        "updated": "2023-06-16",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2920,
+        "title": "[ENH]: Add back clustering tests to pycaret",
+        "labels": [
+          "enhancement",
+          "unit_tests"
+        ],
+        "created": "2022-08-29",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2902,
+        "title": "[ENH]: `use_gpu` to use engines interface",
+        "labels": [
+          "enhancement",
+          "models",
+          "gpu"
+        ],
+        "created": "2022-08-22",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2686,
+        "title": "[ENH]: Add more Statistical Tests to Time Series `.check_stats()` method",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "stats"
+        ],
+        "created": "2022-06-29",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2539,
+        "title": "[ENH]: Default behavior of predict_model in classification",
+        "labels": [
+          "enhancement",
+          "classification",
+          "discussion"
+        ],
+        "created": "2022-05-12",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2529,
+        "title": "Pycaret should support Neural Network or Deep  ",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-05-11",
+        "updated": "2023-01-26",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2512,
+        "title": "[ENH]: Multi Output Regression and Classification",
+        "labels": [
+          "enhancement",
+          "block"
+        ],
+        "created": "2022-05-06",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2483,
+        "title": "[ENH]: Add setup argument for `test_alpha` that is used in the rest of the methods for tests and plots",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "plot_model",
+          "stats",
+          "setup"
+        ],
+        "created": "2022-05-01",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2463,
+        "title": "[ENH]: Add sktime conformal prediction to time series module",
+        "labels": [
+          "enhancement",
+          "time_series"
+        ],
+        "created": "2022-04-27",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2424,
+        "title": "Unit tests to run without optional dependencies",
+        "labels": [
+          "enhancement",
+          "plot_model",
+          "priority_medium",
+          "unit_tests"
+        ],
+        "created": "2022-04-18",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2419,
+        "title": "Time series CV plot enhancement",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "plot_model"
+        ],
+        "created": "2022-04-16",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2399,
+        "title": "Time Series | Bias metric",
+        "labels": [
+          "enhancement",
+          "good first issue",
+          "time_series",
+          "metrics"
+        ],
+        "created": "2022-04-11",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2331,
+        "title": "Add GPU support for ReducedRegressionModels",
+        "labels": [
+          "enhancement",
+          "good first issue",
+          "time_series",
+          "big_data",
+          "gpu"
+        ],
+        "created": "2022-03-27",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2323,
+        "title": "Same model from multiple libraries",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "models"
+        ],
+        "created": "2022-03-23",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2287,
+        "title": "Refactor large functions into smaller functions",
+        "labels": [
+          "enhancement",
+          "refactor"
+        ],
+        "created": "2022-03-15",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2286,
+        "title": "Additional Unit Tests - MAC",
+        "labels": [
+          "enhancement",
+          "unit_tests",
+          "refactor"
+        ],
+        "created": "2022-03-15",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2283,
+        "title": "Additional Unit Tests - prophet",
+        "labels": [
+          "enhancement",
+          "unit_tests",
+          "refactor"
+        ],
+        "created": "2022-03-15",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2282,
+        "title": "Remove experiment specific references from Base Experiments",
+        "labels": [
+          "enhancement",
+          "refactor"
+        ],
+        "created": "2022-03-15",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2265,
+        "title": "Benchmark Time Series Results against Darts",
+        "labels": [
+          "enhancement",
+          "good first issue",
+          "time_series",
+          "benchmark"
+        ],
+        "created": "2022-03-10",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2264,
+        "title": "Replicate TSstudio plots from R",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "plot_model"
+        ],
+        "created": "2022-03-10",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2247,
+        "title": "Determine max_p and max_q for AutoARIMA models",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "models"
+        ],
+        "created": "2022-03-06",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2246,
+        "title": "Allow ability to run tests such as ADF on the seasonal components of decomposition",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "stats"
+        ],
+        "created": "2022-03-06",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2245,
+        "title": "Allow ability to run ACF and PACF on the seasonal components of decomposition - Useful to determine P and Q",
+        "labels": [
+          "enhancement",
+          "models",
+          "plot_model"
+        ],
+        "created": "2022-03-06",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2230,
+        "title": "Incorporate `FeatureSelector` in time series",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "exogenous"
+        ],
+        "created": "2022-03-01",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2147,
+        "title": "[Forecasting] Add setup argument for `lags` that is used in the rest of the methods",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "plot_model",
+          "priority_low"
+        ],
+        "created": "2022-02-11",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 2136,
+        "title": "[INSTALL] Release a docker image with pycaret already installed",
+        "labels": [
+          "enhancement",
+          "installation"
+        ],
+        "created": "2022-02-06",
+        "updated": "2023-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1944,
+        "title": "parallel back-end",
+        "labels": [
+          "enhancement",
+          "parallelization",
+          "fugue"
+        ],
+        "created": "2021-12-11",
+        "updated": "2023-10-04",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1911,
+        "title": "Request for get cross validation predict result y_foldN_pred",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-12-02",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1836,
+        "title": "Time Series | Add insample prediction intervals for Anomaly Detection",
+        "labels": [
+          "enhancement",
+          "anomaly_detection",
+          "time_series",
+          "plot_model",
+          "prediction"
+        ],
+        "created": "2021-11-10",
+        "updated": "2024-02-19",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1833,
+        "title": "Time Series Predictions | Add Alpha value in dataframe",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "prediction"
+        ],
+        "created": "2021-11-10",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1766,
+        "title": "Add lower limit and upper limit for time series forecasting",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "priority_medium"
+        ],
+        "created": "2021-10-25",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1731,
+        "title": "Add support for VAR model in time series module",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "backlog",
+          "multivariate",
+          "models"
+        ],
+        "created": "2021-10-20",
+        "updated": "2024-01-10",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1724,
+        "title": "Add `neuralprophet` to time_series module",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "backlog",
+          "models"
+        ],
+        "created": "2021-10-18",
+        "updated": "2025-06-13",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1688,
+        "title": "Support chaining operation in OOP API",
+        "labels": [
+          "enhancement",
+          "oop"
+        ],
+        "created": "2021-10-15",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1606,
+        "title": "Add add_model and remove_model functionality",
+        "labels": [
+          "enhancement",
+          "priority_medium"
+        ],
+        "created": "2021-09-23",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1505,
+        "title": "Adding support for multi-label classification?",
+        "labels": [
+          "enhancement",
+          "classification",
+          "multivariate"
+        ],
+        "created": "2021-08-11",
+        "updated": "2025-03-20",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1436,
+        "title": "[Time Series] compare_models top N by category",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "priority_medium"
+        ],
+        "created": "2021-07-08",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1405,
+        "title": "Visualize Error Distribution & backtesting results across folds ",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "priority_high",
+          "plot_model"
+        ],
+        "created": "2021-06-27",
+        "updated": "2023-06-09",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1350,
+        "title": "Add sample_weights to setup",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-06-11",
+        "updated": "2024-06-11",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1298,
+        "title": "pycaret FAQ's - commonly asked questions",
+        "labels": [
+          "documentation"
+        ],
+        "created": "2021-05-26",
+        "updated": "2023-05-11",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1235,
+        "title": "Support for T SNE  for dimentionality reduction",
+        "labels": [
+          "enhancement",
+          "preprocessing"
+        ],
+        "created": "2021-05-07",
+        "updated": "2025-08-04",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1136,
+        "title": "pycaret.classification setup(): How do I display all rows of the 'Data Types' DataFrame?",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-03-31",
+        "updated": "2023-03-05",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 1117,
+        "title": "Imblearn Pipeline for fix_imbalance_method",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-03-19",
+        "updated": "2023-01-27",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 861,
+        "title": "Bayesian optimization (skopt) : is there a way to pass the callback parameter ?",
+        "labels": [
+          "enhancement",
+          "tune_model"
+        ],
+        "created": "2020-11-19",
+        "updated": "2023-05-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 708,
+        "title": "Has plot_model reset matplotlib.pyplot?",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2020-10-08",
+        "updated": "2023-06-26",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 382,
+        "title": "(Suggestion) Feature Engineering: Use tsfresh to create features for time-series data",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "priority_medium",
+          "exogenous"
+        ],
+        "created": "2020-08-06",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      },
+      {
+        "number": 165,
+        "title": "evaluate_model not generating User Interface",
+        "labels": [
+          "help wanted",
+          "evaluate_model"
+        ],
+        "created": "2020-05-21",
+        "updated": "2024-07-15",
+        "bucket": "still_relevant_enhancement",
+        "reason": "Not kill-listed; recent"
+      }
+    ],
+    "fixed_in_4_0": [
+      {
+        "number": 4173,
+        "title": "[BUG]: Unable to use in Python version 3.12",
+        "labels": [
+          "bug"
+        ],
+        "created": "2025-12-07",
+        "updated": "2025-12-07",
+        "bucket": "fixed_in_4_0",
+        "reason": "Matches 4.0 revamp fixes: python\\s*3\\.1[2-9]"
+      },
+      {
+        "number": 4123,
+        "title": "[ENH]: Support for pandas 2.2",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2025-02-09",
+        "updated": "2025-02-19",
+        "bucket": "fixed_in_4_0",
+        "reason": "Matches 4.0 revamp fixes: pandas\\s*2\\.[2-9]"
+      },
+      {
+        "number": 4121,
+        "title": "[ENH]: Support for Python 3.13",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2025-02-08",
+        "updated": "2026-01-23",
+        "bucket": "fixed_in_4_0",
+        "reason": "Matches 4.0 revamp fixes: python\\s*3\\.1[2-9]"
+      },
+      {
+        "number": 4054,
+        "title": "[ENH]: python 3.12 support failed",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-08-26",
+        "updated": "2025-04-04",
+        "bucket": "fixed_in_4_0",
+        "reason": "Matches 4.0 revamp fixes: python\\s*3\\.1[2-9]"
+      },
+      {
+        "number": 3994,
+        "title": "[BUG]: inconsistent date columns transformations between training and infernece",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-05-28",
+        "updated": "2024-05-29",
+        "bucket": "fixed_in_4_0",
+        "reason": "Matches 4.0 revamp fixes: np\\.NaN"
+      },
+      {
+        "number": 3908,
+        "title": "[BUG]: Incompatible with Pandas 2.0",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-02-13",
+        "updated": "2024-06-28",
+        "bucket": "fixed_in_4_0",
+        "reason": "Matches 4.0 revamp fixes: pandas\\s*2\\.[2-9]"
+      },
+      {
+        "number": 3717,
+        "title": "[BUG]:  Pycaret applying normalize to categorical variables after encoding",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-08-28",
+        "updated": "2023-08-28",
+        "bucket": "fixed_in_4_0",
+        "reason": "Matches 4.0 revamp fixes: np\\.NaN"
+      },
+      {
+        "number": 2079,
+        "title": "AttributeError: 'numpy.ndarray' object has no attribute 'columns'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2022-01-20",
+        "updated": "2022-04-14",
+        "bucket": "fixed_in_4_0",
+        "reason": "Matches 4.0 revamp fixes: np\\.NaN"
+      }
+    ],
+    "out_of_scope": [
+      {
+        "number": 4170,
+        "title": "Issue finding out how to use results when using spark as a back end",
+        "labels": [
+          "documentation"
+        ],
+        "created": "2025-09-25",
+        "updated": "2025-12-28",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bfugue\\b"
+      },
+      {
+        "number": 4161,
+        "title": "[BUG]: Longer reported times for initial execution of compare_models in regression experiment",
+        "labels": [
+          "bug"
+        ],
+        "created": "2025-04-16",
+        "updated": "2025-04-16",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4158,
+        "title": "[BUG]: compare_models with 'lightgbm' is 50 times slower than it should be",
+        "labels": [
+          "bug"
+        ],
+        "created": "2025-03-24",
+        "updated": "2025-03-25",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4148,
+        "title": "[BUG]: Cannot cast object dtype to float64",
+        "labels": [
+          "bug"
+        ],
+        "created": "2025-02-18",
+        "updated": "2025-12-02",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4117,
+        "title": "[BUG]: AttributeError: 'SimpleImputer' object has no attribute 'keep_empty_features'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2025-01-22",
+        "updated": "2025-05-21",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4112,
+        "title": "[BUG]: Timeseries forecasting ignores passed timerange and uses test set timerange (cutoff date)",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-12-16",
+        "updated": "2024-12-23",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4107,
+        "title": "[BUG]: ValueError: \"Seasonal periodicity must be greater than 1\" when tuning ARIMA model in Time Series",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-12-08",
+        "updated": "2025-08-19",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4100,
+        "title": "[BUG]: PyCaret MLflow logger incompatibility with thread safe release of MLflow",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-11-23",
+        "updated": "2024-12-13",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 4084,
+        "title": "[BUG]: error occured after execute second plot_model",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-10-30",
+        "updated": "2024-10-30",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4083,
+        "title": "[BUG]: test_data in classification set up does not work",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-10-28",
+        "updated": "2024-10-28",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4081,
+        "title": "[BUG]: with \"fix_imbalance=True\", finalise_model throws error",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-10-17",
+        "updated": "2025-05-21",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4080,
+        "title": "[BUG]: tune_model does not work with BaggingRegressor",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-10-15",
+        "updated": "2024-10-15",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4079,
+        "title": "[BUG]: When applying the smote algorithm, an error is reported",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-10-13",
+        "updated": "2024-10-13",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bboto3\\b, \\bdaal4py\\b, \\bdask\\b, \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\bscikit[_-]plot\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b, pandas[_-]profiling, scikit[_-]learn[_-]intelex\\b"
+      },
+      {
+        "number": 4071,
+        "title": "[BUG]: TypeError: create_model() got multiple values for argument 'estimator'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-09-11",
+        "updated": "2024-09-11",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4051,
+        "title": "[BUG]: Feature selection in pycaret.classification setup function error",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-08-21",
+        "updated": "2025-08-03",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4049,
+        "title": "[BUG]: test_data in setup not work despite having same structure as data",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-08-17",
+        "updated": "2024-10-30",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4028,
+        "title": "[BUG]: compare_models in parallel mode fails when include parameter is set to empty list ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-07-19",
+        "updated": "2024-08-01",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bdask\\b, \\bfugue\\b"
+      },
+      {
+        "number": 4026,
+        "title": "[BUG]: tune_model use search_library='optuna' can not limit cpu usage",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-07-18",
+        "updated": "2024-07-26",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\bsklearnex\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4023,
+        "title": "[BUG]: AttributeError for `log_profile=True`",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-07-15",
+        "updated": "2024-07-25",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 4018,
+        "title": "[BUG]:  finalize_model does not work when test_data and groupKfold are used.",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-06-29",
+        "updated": "2025-08-01",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3999,
+        "title": "[BUG]: blend_models() and stack_models() Fail with Certain Models Above 1000 Samples",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-06-03",
+        "updated": "2026-04-08",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3995,
+        "title": "[BUG]: not all models compared in `compare_models`",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-05-29",
+        "updated": "2024-10-28",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bsklearnex\\b"
+      },
+      {
+        "number": 3993,
+        "title": "[BUG]: ValueError: Multi-dimensional indexing (e.g. `obj[:, None]`) is no longer supported. Convert to a numpy array before indexing instead.",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-05-22",
+        "updated": "2024-06-17",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3990,
+        "title": "The check drift functions doesn`t generate a drift report file using the evidently library[BUG]: ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-05-10",
+        "updated": "2024-06-02",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bevidently\\b"
+      },
+      {
+        "number": 3989,
+        "title": "[BUG]: Inability to control automatic evaluation metrics, makes clustering infeasible for large datasets",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-05-10",
+        "updated": "2024-06-17",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3986,
+        "title": " create_api does not annotate the data model correctly",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-05-02",
+        "updated": "2024-06-22",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bcreate_api\\b"
+      },
+      {
+        "number": 3979,
+        "title": "[BUG]: Cannot use predict_proba() on a finalized model",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-04-17",
+        "updated": "2024-04-19",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3973,
+        "title": "[BUG]: Custom metrics all report 0.0000 for classification in Pycaret 3.3.1",
+        "labels": [
+          "bug",
+          "priority_high"
+        ],
+        "created": "2024-04-16",
+        "updated": "2024-08-16",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3961,
+        "title": "[BUG]: compare_models much slower in version 3.3.0 than in 2.X",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-04-11",
+        "updated": "2026-04-06",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3957,
+        "title": "[BUG]: Allow Custom Logger Configuration to Handle Prophet Dependency Warning",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-04-04",
+        "updated": "2024-04-04",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3947,
+        "title": "[BUG]: fix_imbalance_method does not work for SMOTENC",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-03-21",
+        "updated": "2024-11-08",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3945,
+        "title": "[BUG]:  Pydantic model generation issues.",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-03-18",
+        "updated": "2024-07-14",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bcreate_api\\b, \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3929,
+        "title": "[BUG]: Problems with Numeric features in setup()",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-02-29",
+        "updated": "2024-02-29",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3928,
+        "title": "[BUG]: When using compare_models(), some models do not have default hyperparameters and cannot be used as Baselines.",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-02-29",
+        "updated": "2024-02-29",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3925,
+        "title": "[BUG]: compare_models() runs forever when cross-validating on lgbm using n_jobs = -1",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-02-28",
+        "updated": "2024-02-28",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3915,
+        "title": "[BUG]: ClassificationExperiment().optimize_threshold() raises error 'CustomProbabilityThresholdClassifier' has no len()",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-02-22",
+        "updated": "2024-06-12",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3907,
+        "title": "[BUG]: `experiment.automl()` fails when called on the experiment where training is distributed (with spark)",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-02-09",
+        "updated": "2024-02-20",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3901,
+        "title": "ImportError: cannot import name '_PredictScorer' from 'sklearn.metrics._scorer'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-01-31",
+        "updated": "2024-06-07",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bcheck_drift\\b, \\bcheck_fairness\\b, \\bconvert_model\\b, \\bcreate_api\\b, \\bcreate_app\\b, \\bcreate_docker\\b, \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3900,
+        "title": "[BUG]: incorrect precision, recall, and f1-score for object dtype target",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-01-30",
+        "updated": "2024-02-20",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3898,
+        "title": "[BUG]: For some unrecognized reason, clustering always stops at 67%",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-01-30",
+        "updated": "2024-02-21",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3888,
+        "title": "[BUG]: Not Able to Log-metrics In Mlflow ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-01-19",
+        "updated": "2024-01-26",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 3877,
+        "title": "[BUG]: return_train_score not properly propagated in tune_model",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-01-08",
+        "updated": "2024-01-08",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3873,
+        "title": "[ENH]: Add signature when logging model to the mlflow server",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2024-01-06",
+        "updated": "2024-02-28",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 3872,
+        "title": "[BUG]: create_api with nan in dataset does not work",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-01-03",
+        "updated": "2024-01-03",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bcreate_api\\b"
+      },
+      {
+        "number": 3865,
+        "title": "[BUG]: AttributeError: 'LogisticRegression' object has no attribute 'ax'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-12-25",
+        "updated": "2024-01-12",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3853,
+        "title": "[BUG]: failed to import because of `AttributeError: module 'matplotlib'`",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-12-13",
+        "updated": "2023-12-19",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bcheck_drift\\b, \\bcheck_fairness\\b, \\bconvert_model\\b, \\bcreate_api\\b, \\bcreate_app\\b, \\bcreate_docker\\b"
+      },
+      {
+        "number": 3852,
+        "title": "[BUG]: wrong parameter name in `plot_model` in oop",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-12-12",
+        "updated": "2023-12-13",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3836,
+        "title": "[BUG]: predict_model not working for anomaly",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-12-04",
+        "updated": "2023-12-08",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3805,
+        "title": "[BUG]: MLFLow Transformation Pipeline and Model not saved together",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-10-30",
+        "updated": "2023-12-01",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 3796,
+        "title": "[BUG]: generated API with `create_api` does not annotate the data model correctly / not at all",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-10-27",
+        "updated": "2023-11-29",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bcreate_api\\b"
+      },
+      {
+        "number": 3779,
+        "title": "[BUG]: tune_model not working with search_algorithm=\"optuna\" and search_library=\"tune-sklearn\"",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-10-13",
+        "updated": "2023-10-13",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\btune[_-]sklearn\\b"
+      },
+      {
+        "number": 3774,
+        "title": "[BUG]: KMeans.predict() raises a  ValueError: Buffer dtype mismatch",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-10-09",
+        "updated": "2024-07-23",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\bydata[_-]profiling\\b, \\byellowbrick\\b"
+      },
+      {
+        "number": 3765,
+        "title": "[BUG]: `tune_model` fails with `ValueError: No experiment checkpoint file`",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-10-04",
+        "updated": "2023-10-17",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bray[\\s_/-]+tune\\b, \\btune[_-]sklearn\\b"
+      },
+      {
+        "number": 3764,
+        "title": "[BUG]: Error in FugueBackend or TSForecastingExperiment",
+        "labels": [
+          "bug",
+          "time_series",
+          "parallelization"
+        ],
+        "created": "2023-10-04",
+        "updated": "2023-10-09",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bfugue\\b"
+      },
+      {
+        "number": 3746,
+        "title": "[BUG]: plot_kwargs not passed to yellowbrick visualizers in function plot_model()",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-09-22",
+        "updated": "2024-04-14",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\byellowbrick\\b"
+      },
+      {
+        "number": 3724,
+        "title": "[BUG]: PyCaret does not inform shap for Shapley value calculations that independent variables had been normalized when using 'normalize=True' in data setup for regression.",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-09-03",
+        "updated": "2023-09-03",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 3716,
+        "title": "[BUG]: convert_model raises an error",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-08-28",
+        "updated": "2023-08-28",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bconvert_model\\b"
+      },
+      {
+        "number": 3691,
+        "title": "[BUG]: Load and Tune Models",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-08-07",
+        "updated": "2024-02-02",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 3653,
+        "title": "[BUG]: evaluate and plot function builds model based on default threshold despite threshold being manually set in create model function ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-07-22",
+        "updated": "2024-02-02",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 3644,
+        "title": "[BUG]: AttributeError: 'ClassificationExperiment' object has no attribute 'logging_param'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-07-18",
+        "updated": "2023-07-20",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bcreate_api\\b, \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 3625,
+        "title": "[ENH]: Improving Parallelization Efficiency",
+        "labels": [
+          "enhancement",
+          "parallelization"
+        ],
+        "created": "2023-06-27",
+        "updated": "2023-07-14",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\bplotly[_-]resampler\\b, \\bschemdraw\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 3624,
+        "title": "[ENH]: Poetry and Pycaret don't work together",
+        "labels": [
+          "enhancement",
+          "installation"
+        ],
+        "created": "2023-06-26",
+        "updated": "2025-01-19",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bplotly[_-]resampler\\b"
+      },
+      {
+        "number": 3602,
+        "title": "[BUG]: Predict with External Regressors",
+        "labels": [
+          "bug",
+          "time_series"
+        ],
+        "created": "2023-06-12",
+        "updated": "2024-02-02",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 3578,
+        "title": "[BUG]: Classification \"AttributeError: module 'h11' has no attribute 'Event'\"",
+        "labels": [
+          "bug",
+          "classification",
+          "missing_info"
+        ],
+        "created": "2023-05-30",
+        "updated": "2023-06-09",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bgradio\\b"
+      },
+      {
+        "number": 3501,
+        "title": "[BUG]: Some Clustering plots have .png extension instead of .html when saved to disk",
+        "labels": [
+          "enhancement",
+          "clustering"
+        ],
+        "created": "2023-04-22",
+        "updated": "2024-03-04",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 3468,
+        "title": "[BUG]: \"interpret_model\" not working correctly",
+        "labels": [
+          "bug",
+          "interpret_model"
+        ],
+        "created": "2023-04-08",
+        "updated": "2024-02-02",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 3420,
+        "title": "[BUG]: Error: Kernel dies when creating a random forest model with use_gpu=True.",
+        "labels": [
+          "bug",
+          "gpu"
+        ],
+        "created": "2023-03-22",
+        "updated": "2024-02-02",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 3417,
+        "title": "[BUG]: predict_model output show unusual high number in error metrics",
+        "labels": [
+          "bug",
+          "regression",
+          "time_series",
+          "metrics"
+        ],
+        "created": "2023-03-20",
+        "updated": "2024-02-02",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 3371,
+        "title": "[BUG]: Long runtime for Pycaret setup function on large dataset",
+        "labels": [
+          "bug",
+          "priority_high",
+          "long_run_time"
+        ],
+        "created": "2023-03-07",
+        "updated": "2024-11-07",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 3177,
+        "title": "[BUG]: compare_models fills master_model_container with unfitted estimators and get_leaderboard takes very long",
+        "labels": [
+          "bug",
+          "compare_models",
+          "leaderboard"
+        ],
+        "created": "2022-12-15",
+        "updated": "2022-12-15",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 3011,
+        "title": "[BUG]: Number of folds not reported correctly when passing ExpandingWindowSplitter",
+        "labels": [
+          "bug",
+          "good first issue",
+          "time_series"
+        ],
+        "created": "2022-10-02",
+        "updated": "2025-05-21",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\byellowbrick\\b"
+      },
+      {
+        "number": 2978,
+        "title": "[ENH]: experiment_custom_tags for tune_model, etc.",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-09-21",
+        "updated": "2025-01-16",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 2933,
+        "title": "[ENH]: ExplainerDashboard: add function to get explainer",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-09-02",
+        "updated": "2022-09-02",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bexplainerdashboard\\b"
+      },
+      {
+        "number": 2836,
+        "title": "[BUG]: fit_kwargs parameters break pycaret.time_series.compare_models()",
+        "labels": [
+          "enhancement",
+          "regression",
+          "classification",
+          "time_series",
+          "compare_models"
+        ],
+        "created": "2022-08-08",
+        "updated": "2024-02-02",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\byellowbrick\\b"
+      },
+      {
+        "number": 2738,
+        "title": "[BUG]: [BUG]: tune_sklearn not working",
+        "labels": [
+          "bug"
+        ],
+        "created": "2022-07-10",
+        "updated": "2022-10-11",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\btune[_-]sklearn\\b"
+      },
+      {
+        "number": 2694,
+        "title": "[ENH]: Enhancements for `plotly-resampler`",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "plot_model"
+        ],
+        "created": "2022-07-01",
+        "updated": "2024-02-02",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bplotly[_-]resampler\\b"
+      },
+      {
+        "number": 2610,
+        "title": "[ENH]: Log additional parameters to mlflow",
+        "labels": [
+          "enhancement",
+          "mlflow"
+        ],
+        "created": "2022-05-31",
+        "updated": "2022-05-31",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 2533,
+        "title": "[BUG]: Custom pipeline not working (classification)",
+        "labels": [
+          "bug",
+          "classification",
+          "preprocessing"
+        ],
+        "created": "2022-05-11",
+        "updated": "2024-02-02",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b, \\bexplainerdashboard\\b, \\bfairlearn\\b, \\bfugue\\b, \\bgradio\\b, \\bm2cgen\\b, \\bmlflow\\b, \\btune[_-]sklearn\\b, \\byellowbrick\\b, pandas[_-]profiling"
+      },
+      {
+        "number": 2181,
+        "title": "Influential data points - get indexes",
+        "labels": [
+          "enhancement",
+          "regression",
+          "plot_model"
+        ],
+        "created": "2022-02-18",
+        "updated": "2022-02-21",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\byellowbrick\\b"
+      },
+      {
+        "number": 2144,
+        "title": "[BUG] ValueError: Found input variables with inconsistent numbers of samples: [13204, 26408]",
+        "labels": [
+          "bug",
+          "classification"
+        ],
+        "created": "2022-02-08",
+        "updated": "2022-08-10",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\byellowbrick\\b"
+      },
+      {
+        "number": 2001,
+        "title": "to_csv is slow and cost lot storage. Should use to_feather(), use arrow ipc format?",
+        "labels": [
+          "enhancement",
+          "good first issue",
+          "priority_low"
+        ],
+        "created": "2021-12-30",
+        "updated": "2022-11-23",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 1955,
+        "title": "Option for Kubeflow as MLOps",
+        "labels": [
+          "enhancement",
+          "mlops"
+        ],
+        "created": "2021-12-15",
+        "updated": "2022-03-06",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 1780,
+        "title": "[BUG] Plots are being saved without labels and titles.",
+        "labels": [
+          "bug",
+          "plot_model"
+        ],
+        "created": "2021-10-29",
+        "updated": "2022-05-10",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\byellowbrick\\b"
+      },
+      {
+        "number": 1648,
+        "title": "Time Series Module Features & Roadmap",
+        "labels": [
+          "time_series",
+          "roadmap",
+          "release"
+        ],
+        "created": "2021-10-03",
+        "updated": "2023-03-12",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 1637,
+        "title": "Add FLAML as a search_library in tune_model function",
+        "labels": [
+          "enhancement",
+          "tune_model",
+          "priority_low"
+        ],
+        "created": "2021-09-30",
+        "updated": "2024-02-02",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bray[\\s_/-]+tune\\b"
+      },
+      {
+        "number": 1610,
+        "title": "Save plots in other formats, vectorial and image",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-09-24",
+        "updated": "2021-11-10",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\byellowbrick\\b"
+      },
+      {
+        "number": 1448,
+        "title": "Model Monitoring feature integration with Pycaret",
+        "labels": [
+          "enhancement",
+          "mlflow",
+          "logging"
+        ],
+        "created": "2021-07-14",
+        "updated": "2021-12-29",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bevidently\\b"
+      },
+      {
+        "number": 1411,
+        "title": "[BUG]Can we store mlflow artifacts in the Azure blob storage for new experiments in pycaret?",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-06-29",
+        "updated": "2022-11-22",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 1268,
+        "title": "Support for \"whylogs\" in PyCaret",
+        "labels": [
+          "enhancement",
+          "logging"
+        ],
+        "created": "2021-05-20",
+        "updated": "2021-10-22",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 1186,
+        "title": "Set MLFLOW output directory",
+        "labels": [
+          "enhancement",
+          "mlflow"
+        ],
+        "created": "2021-04-21",
+        "updated": "2021-05-04",
+        "bucket": "out_of_scope",
+        "reason": "Title mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 833,
+        "title": "Pycaret model monitoring",
+        "labels": [
+          "enhancement",
+          "open for contribution"
+        ],
+        "created": "2020-11-13",
+        "updated": "2021-07-24",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bmlflow\\b"
+      },
+      {
+        "number": 421,
+        "title": "pycaret 2.0: artifacts not getting logged",
+        "labels": [
+          "help wanted",
+          "mlflow"
+        ],
+        "created": "2020-08-12",
+        "updated": "2022-12-06",
+        "bucket": "out_of_scope",
+        "reason": "Body mentions killed feature(s): \\bmlflow\\b"
+      }
+    ],
+    "still_relevant_bug": [
+      {
+        "number": 4096,
+        "title": "[BUG]: Different behaviour between PyCaret and Sklearn",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-11-12",
+        "updated": "2024-11-12",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 4094,
+        "title": "[BUG]: compare_models with fit_kwargs bug - still not working",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-11-12",
+        "updated": "2025-01-22",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 4064,
+        "title": "[tests failing]: ValueError: report is required by not given",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-08-31",
+        "updated": "2025-02-17",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 4038,
+        "title": "[BUG]: conda 3.3.2",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-07-27",
+        "updated": "2024-07-27",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 4031,
+        "title": "[BUG]: AXIS Y OF FEATUE",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-07-21",
+        "updated": "2024-07-21",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 4006,
+        "title": "[BUG]: Import error in Pycaret 3.3.2",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-06-14",
+        "updated": "2024-06-18",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 4000,
+        "title": "[BUG]: %pip install pycaret[full]  give an error. ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-06-04",
+        "updated": "2024-08-04",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3983,
+        "title": "[BUG]: pycaret compare_models MAE increase when add installed tpot",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-04-25",
+        "updated": "2024-06-17",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3975,
+        "title": "[BUG]: Failed to set the disabled \"data_split_shuffle\" option in classification.",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-04-17",
+        "updated": "2024-04-17",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3974,
+        "title": "[BUG]: AUC metrics doesn`t work  in pycaret 3.3.0 and 3.3.1",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-04-16",
+        "updated": "2025-05-16",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3971,
+        "title": "is:issue is:open ERROR cannot import name  '_format_load_msg' from 'joblib.memory' (py310\\lib\\site-packages\\joblib\\memory.py) Hello, I need help for the following error, I have the following error  I have AN ENVIRONMENT WITH pyhton 3.10 and pycaret 3.3.0 What version do I have to have to not have this problem? And by when will the error be resolved. Thank you in advance, and I look forward to your response, because I am working on a project and I am a newbie. [BUG]: ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-04-16",
+        "updated": "2024-05-30",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3969,
+        "title": "[BUG]: Linux ubuntu file permission error",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-04-16",
+        "updated": "2024-04-16",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3943,
+        "title": "[BUG]: ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-03-13",
+        "updated": "2025-01-14",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3941,
+        "title": "[BUG]: ImportError: cannot import name 'TSForecastingExperiment' from 'pycaret.time_series' ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-03-11",
+        "updated": "2024-03-12",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3940,
+        "title": "[BUG]: ImportError: cannot import name 'get_columns_to_stratify_by' from 'pycaret.internal.utils'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-03-11",
+        "updated": "2024-03-11",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3939,
+        "title": "[BUG]: ImportError: cannot import name 'get_columns_to_stratify_by'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-03-11",
+        "updated": "2024-03-11",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3938,
+        "title": "[BUG]: Pycaret : target column-Misisng values Handling Issue",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-03-08",
+        "updated": "2024-08-04",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3931,
+        "title": "[BUG]: plot_model(et, plot='tree') not displaying Tree",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-02-29",
+        "updated": "2025-09-17",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3930,
+        "title": "[BUG]: Training fails in the compare model",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-02-29",
+        "updated": "2024-03-02",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3909,
+        "title": "[BUG]: Time Series | compare_models() ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-02-14",
+        "updated": "2024-02-20",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3899,
+        "title": "[BUG]: Custom Metric in tune_model Does Not Subset kwargs 'offset' Appropriately for Each Fold",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-01-30",
+        "updated": "2024-02-20",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3897,
+        "title": "[BUG]: LightGBM >= v4 hangs during cross validation",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-01-29",
+        "updated": "2024-02-23",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3893,
+        "title": "[BUG]: AUC score is inaccurate. Model overfits after tuning?",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-01-24",
+        "updated": "2024-02-21",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3889,
+        "title": "[BUG]: got error when interpret_model",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-01-21",
+        "updated": "2024-01-21",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3887,
+        "title": "[BUG]:  xgboost not available",
+        "labels": [
+          "bug"
+        ],
+        "created": "2024-01-19",
+        "updated": "2024-05-16",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3867,
+        "title": "[BUG]: 1. When using the plot_model function, it is not possible to plot the distribution of errors on the traini_data. 2. And trying to get the predictions obtained by the regression model on the training set, there doesn't seem to be a corresponding function call.",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-12-26",
+        "updated": "2023-12-27",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3861,
+        "title": "[BUG]: time series - `predict_model()` does not work with loaded model and experiment during future",
+        "labels": [
+          "bug",
+          "time_series"
+        ],
+        "created": "2023-12-21",
+        "updated": "2024-05-28",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3860,
+        "title": "[BUG]:  interpret_model error,  ExplainerError: Additivity check failed in TreeExplainer",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-12-20",
+        "updated": "2023-12-20",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3859,
+        "title": "[BUG]: Behavior of PyCaret with Multiple Options: Feature Generation, Automatic Variable Selection, Polynomial Features, and PCA Dimensionality Reduction",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-12-18",
+        "updated": "2024-01-19",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3851,
+        "title": "[BUG]:output features names and values of interpret_model function in clssification ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-12-10",
+        "updated": "2023-12-10",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3812,
+        "title": "[BUG]: Polynomial_Features with Ignore_features",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-11-03",
+        "updated": "2024-02-15",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3810,
+        "title": "[BUG]: the model giving wrong R2  ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-11-02",
+        "updated": "2023-11-28",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3794,
+        "title": "[BUG]:  predict_model on Anomaly detection for 'sos' model is getting stuck for hours.",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-10-27",
+        "updated": "2023-10-27",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3793,
+        "title": "[BUG]: LightGBM pollutes JupyterLab notebook with info, warning and fatal msgs",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-10-26",
+        "updated": "2023-10-26",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3788,
+        "title": "[BUG]: `compare_models` unable to fit all available models after feature engineering on target and exog variables. ",
+        "labels": [
+          "bug",
+          "time_series"
+        ],
+        "created": "2023-10-20",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3787,
+        "title": "[BUG]: TypeError: can only concatenate str (not \"numpy.float32\") to str",
+        "labels": [
+          "bug",
+          "classification"
+        ],
+        "created": "2023-10-19",
+        "updated": "2023-11-30",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3785,
+        "title": "[BUG]: Metrics calculated appear to be incorrect",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-10-18",
+        "updated": "2024-11-19",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3783,
+        "title": "[BUG]: Error converting PyCaret model to ONNX",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-10-16",
+        "updated": "2023-10-16",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3719,
+        "title": "[BUG]: TypeError: field() got an unexpected keyword argument 'alias'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-09-01",
+        "updated": "2023-09-01",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3697,
+        "title": "[BUG]: Future exogenous data has no impact on prediction",
+        "labels": [
+          "bug",
+          "time_series"
+        ],
+        "created": "2023-08-15",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3692,
+        "title": "[BUG]: Not allow to use the \"use_train_data\" option on plot_model function",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-08-08",
+        "updated": "2024-09-12",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3690,
+        "title": "[BUG]: Run compare_models but always return empty list",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-08-06",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3681,
+        "title": "[BUG]: Model setup error on Snowflake",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-08-01",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3668,
+        "title": "[BUG]: Models cannot be compared.",
+        "labels": [
+          "bug",
+          "missing_info"
+        ],
+        "created": "2023-07-27",
+        "updated": "2023-08-26",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3647,
+        "title": "[BUG]: TypeError: __init__() got an unexpected keyword argument 'predict_fn'",
+        "labels": [
+          "bug",
+          "interpret_model"
+        ],
+        "created": "2023-07-18",
+        "updated": "2023-07-21",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3634,
+        "title": "[BUG]: When using scale parameter in plot_model function, after saving, the figure is still not high-resolution/quality",
+        "labels": [
+          "bug"
+        ],
+        "created": "2023-07-07",
+        "updated": "2023-07-07",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3579,
+        "title": "Multiple classification / compare_models() / metrics results of trainning set.",
+        "labels": [
+          "bug",
+          "missing_info"
+        ],
+        "created": "2023-05-30",
+        "updated": "2023-06-30",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3472,
+        "title": "[BUG]: maximum recursion depth exceeded while calling a Python object",
+        "labels": [
+          "bug",
+          "clustering",
+          "missing_info"
+        ],
+        "created": "2023-04-11",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3357,
+        "title": "[BUG]: Loaded Model not working ",
+        "labels": [
+          "bug",
+          "missing_info",
+          "load_models"
+        ],
+        "created": "2023-03-03",
+        "updated": "2023-03-23",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3348,
+        "title": "[BUG]: GroupTimeSeriesSplit CV Splitter not working as expected in PyCaret Classification",
+        "labels": [
+          "bug",
+          "classification"
+        ],
+        "created": "2023-02-28",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3305,
+        "title": "[BUG]: DecisionTreeClassifier feature_importances_ mismatch",
+        "labels": [
+          "bug",
+          "missing_info"
+        ],
+        "created": "2023-02-10",
+        "updated": "2023-07-28",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3266,
+        "title": "[BUG]: Too many anomalies found, makes no sense",
+        "labels": [
+          "bug",
+          "anomaly_detection"
+        ],
+        "created": "2023-01-19",
+        "updated": "2023-02-06",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3265,
+        "title": "[BUG]: st.pyplot(plot_model(..., display_format= 'streamlit')) creates second empty window below the plot",
+        "labels": [
+          "bug",
+          "plot_model"
+        ],
+        "created": "2023-01-19",
+        "updated": "2023-01-21",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3192,
+        "title": "Original data shape is showing 10 million records instead of 300k records. setup is taking too much time to run.",
+        "labels": [
+          "bug",
+          "classification",
+          "big_data"
+        ],
+        "created": "2022-12-21",
+        "updated": "2023-03-10",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3154,
+        "title": "[BUG]: Each run becomes a nested run when using FugueBackend",
+        "labels": [
+          "bug",
+          "mlflow",
+          "parallelization",
+          "fugue"
+        ],
+        "created": "2022-12-05",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 3135,
+        "title": "[BUG]: AttributeError: 'Make_Time_Features' object has no attribute 'list_of_features'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2022-11-29",
+        "updated": "2023-03-05",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 2996,
+        "title": "[BUG]: Can't save model to .txt? Only can save to .pkl? It's buggy when I transform the saved .pkl to txt.",
+        "labels": [
+          "bug"
+        ],
+        "created": "2022-09-28",
+        "updated": "2025-02-19",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      },
+      {
+        "number": 1633,
+        "title": "[BUG]'DataFrame' object has no attribute 'predict'",
+        "labels": [
+          "bug",
+          "classification"
+        ],
+        "created": "2021-09-29",
+        "updated": "2024-02-02",
+        "bucket": "still_relevant_bug",
+        "reason": "Labeled bug; not kill-listed; recent"
+      }
+    ],
+    "stale": [
+      {
+        "number": 3215,
+        "title": "[ENH]: Handling sessions with Pycaret",
+        "labels": [
+          "enhancement",
+          "mlflow"
+        ],
+        "created": "2022-12-29",
+        "updated": "2022-12-29",
+        "bucket": "stale",
+        "reason": "No update since 2022-12-29 (> 2 years)"
+      },
+      {
+        "number": 3204,
+        "title": "[ENH]: use_holdout argument for get_leaderboard() function in regression and classification",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-12-26",
+        "updated": "2022-12-28",
+        "bucket": "stale",
+        "reason": "No update since 2022-12-28 (> 2 years)"
+      },
+      {
+        "number": 3203,
+        "title": "[ENH]: model_only arg for automl() in regression and classification",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-12-26",
+        "updated": "2022-12-26",
+        "bucket": "stale",
+        "reason": "No update since 2022-12-26 (> 2 years)"
+      },
+      {
+        "number": 3168,
+        "title": "[ENH]: Add a new model to the Time Series module: TemporalFusionTransformer",
+        "labels": [
+          "enhancement",
+          "time_series"
+        ],
+        "created": "2022-12-11",
+        "updated": "2022-12-11",
+        "bucket": "stale",
+        "reason": "No update since 2022-12-11 (> 2 years)"
+      },
+      {
+        "number": 3160,
+        "title": "[BUG]: Stratify split for regression using pycaret",
+        "labels": [
+          "bug",
+          "regression"
+        ],
+        "created": "2022-12-07",
+        "updated": "2022-12-10",
+        "bucket": "stale",
+        "reason": "No update since 2022-12-10 (> 2 years)"
+      },
+      {
+        "number": 3089,
+        "title": "[ENH]: Integration of new algorithm: LambdaMart",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-11-16",
+        "updated": "2022-12-05",
+        "bucket": "stale",
+        "reason": "No update since 2022-12-05 (> 2 years)"
+      },
+      {
+        "number": 3088,
+        "title": "Anomaly detection reverse!?",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-11-15",
+        "updated": "2022-11-15",
+        "bucket": "stale",
+        "reason": "No update since 2022-11-15 (> 2 years)"
+      },
+      {
+        "number": 3025,
+        "title": "[ENH]: LightGBMError: Do not support special JSON characters in feature name.",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-10-08",
+        "updated": "2022-10-08",
+        "bucket": "stale",
+        "reason": "No update since 2022-10-08 (> 2 years)"
+      },
+      {
+        "number": 3024,
+        "title": "[ENH]: Line thickness in ROC plot",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-10-07",
+        "updated": "2022-10-07",
+        "bucket": "stale",
+        "reason": "No update since 2022-10-07 (> 2 years)"
+      },
+      {
+        "number": 3015,
+        "title": "[BUG]: The LR model does not predict correctly after tune_model with search_library='optuna'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2022-10-06",
+        "updated": "2022-11-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-11-21 (> 2 years)"
+      },
+      {
+        "number": 3014,
+        "title": "[ENH]: Plots with several models",
+        "labels": [
+          "enhancement",
+          "priority_low"
+        ],
+        "created": "2022-10-05",
+        "updated": "2022-11-08",
+        "bucket": "stale",
+        "reason": "No update since 2022-11-08 (> 2 years)"
+      },
+      {
+        "number": 2990,
+        "title": "[BUG]: skopt custom search grid throws ValueError ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2022-09-26",
+        "updated": "2022-12-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-12-21 (> 2 years)"
+      },
+      {
+        "number": 2983,
+        "title": "[UPDATE]: parameters update",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-09-23",
+        "updated": "2022-11-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-11-21 (> 2 years)"
+      },
+      {
+        "number": 2965,
+        "title": "[ENH]: TUNE_MODEL seems to run with n_jobs=1. Is it possible to run with more cpu?",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-09-15",
+        "updated": "2022-09-15",
+        "bucket": "stale",
+        "reason": "No update since 2022-09-15 (> 2 years)"
+      },
+      {
+        "number": 2950,
+        "title": "[ENH]: timeseries Compare_model with/without outliers",
+        "labels": [
+          "enhancement",
+          "anomaly_detection",
+          "time_series"
+        ],
+        "created": "2022-09-08",
+        "updated": "2022-09-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-09-21 (> 2 years)"
+      },
+      {
+        "number": 2949,
+        "title": "[ENH]: For timeseries Compare_model has a plot ",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "plot_model"
+        ],
+        "created": "2022-09-08",
+        "updated": "2022-09-10",
+        "bucket": "stale",
+        "reason": "No update since 2022-09-10 (> 2 years)"
+      },
+      {
+        "number": 2948,
+        "title": "[ENH]: Addition of PyThresh to the Anomaly library",
+        "labels": [
+          "enhancement",
+          "anomaly_detection"
+        ],
+        "created": "2022-09-08",
+        "updated": "2022-09-14",
+        "bucket": "stale",
+        "reason": "No update since 2022-09-14 (> 2 years)"
+      },
+      {
+        "number": 2936,
+        "title": "[ENH]: ability to return top n best models from holdout set score results",
+        "labels": [
+          "enhancement",
+          "automl"
+        ],
+        "created": "2022-09-03",
+        "updated": "2022-09-14",
+        "bucket": "stale",
+        "reason": "No update since 2022-09-14 (> 2 years)"
+      },
+      {
+        "number": 2921,
+        "title": "[ENH]: Completed model drawing",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-08-29",
+        "updated": "2022-08-29",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-29 (> 2 years)"
+      },
+      {
+        "number": 2917,
+        "title": "[ENH]: Deep Q-Learning",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-08-27",
+        "updated": "2022-08-27",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-27 (> 2 years)"
+      },
+      {
+        "number": 2916,
+        "title": "[ENH]: New feature engine: Feature-Engine",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-08-26",
+        "updated": "2022-08-26",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-26 (> 2 years)"
+      },
+      {
+        "number": 2915,
+        "title": "[ENH]: New algorithm: PyGad",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-08-26",
+        "updated": "2022-08-26",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-26 (> 2 years)"
+      },
+      {
+        "number": 2897,
+        "title": "[ENH]: time for tune model",
+        "labels": [
+          "enhancement",
+          "tune_model"
+        ],
+        "created": "2022-08-21",
+        "updated": "2022-08-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-21 (> 2 years)"
+      },
+      {
+        "number": 2895,
+        "title": "[ENH]: Sample Weights for classification",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-08-21",
+        "updated": "2022-08-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-21 (> 2 years)"
+      },
+      {
+        "number": 2890,
+        "title": "[ENH]: How to use a triple dataset split for a calibrated classifier",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-08-20",
+        "updated": "2022-08-22",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-22 (> 2 years)"
+      },
+      {
+        "number": 2862,
+        "title": "[ENH]: Make minimum python version >= 3.8",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-08-17",
+        "updated": "2022-08-19",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-19 (> 2 years)"
+      },
+      {
+        "number": 2786,
+        "title": "[ENH]: Remove multicollinearity using VIF technique",
+        "labels": [
+          "enhancement",
+          "preprocessing"
+        ],
+        "created": "2022-07-20",
+        "updated": "2022-07-22",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-22 (> 2 years)"
+      },
+      {
+        "number": 2778,
+        "title": "[ENH]: create useful features for machine learning",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-07-19",
+        "updated": "2022-07-19",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-19 (> 2 years)"
+      },
+      {
+        "number": 2772,
+        "title": "[ENH]: interpret_model takes TOO long in big dataset (request auto sampling or parameter)",
+        "labels": [
+          "enhancement",
+          "interpret_model"
+        ],
+        "created": "2022-07-18",
+        "updated": "2022-07-27",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-27 (> 2 years)"
+      },
+      {
+        "number": 2763,
+        "title": "[ENH]: class weight or sample weight for compare_models",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-07-17",
+        "updated": "2022-07-17",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-17 (> 2 years)"
+      },
+      {
+        "number": 2755,
+        "title": "[ENH]: suggest add function for difference Feature combination in setup",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-07-15",
+        "updated": "2022-07-15",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-15 (> 2 years)"
+      },
+      {
+        "number": 2746,
+        "title": "[ENH]: Pull data from ODBC on Quickstart page; PyODBC?",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-07-12",
+        "updated": "2022-07-12",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-12 (> 2 years)"
+      },
+      {
+        "number": 2744,
+        "title": "[ENH]: Add parameter choose_better for calibrate_model()",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-07-12",
+        "updated": "2022-07-20",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-20 (> 2 years)"
+      },
+      {
+        "number": 2713,
+        "title": "Pycaret and Dash Plotly Integration [ENH]: ",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-07-05",
+        "updated": "2022-07-05",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-05 (> 2 years)"
+      },
+      {
+        "number": 2681,
+        "title": "Plot model (fold based)",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-06-27",
+        "updated": "2022-07-08",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-08 (> 2 years)"
+      },
+      {
+        "number": 2651,
+        "title": "Feature Inverse Transform for better readability and expainability",
+        "labels": [
+          "enhancement",
+          "shapley"
+        ],
+        "created": "2022-06-10",
+        "updated": "2022-07-01",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-01 (> 2 years)"
+      },
+      {
+        "number": 2631,
+        "title": "[ENH]: Automatic reboot kernel after pycaret installation",
+        "labels": [
+          "enhancement",
+          "installation"
+        ],
+        "created": "2022-06-06",
+        "updated": "2022-06-06",
+        "bucket": "stale",
+        "reason": "No update since 2022-06-06 (> 2 years)"
+      },
+      {
+        "number": 2617,
+        "title": "[ENH]:  Visualization of Model Comparison",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-06-02",
+        "updated": "2022-07-06",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-06 (> 2 years)"
+      },
+      {
+        "number": 2526,
+        "title": "[ENH] Add Rocket/Mini-Rocket and MTS (Multiple Time Series) functionality for Classification, Regression, Clustering, and Anomaly Detection",
+        "labels": [
+          "enhancement",
+          "regression",
+          "classification",
+          "clustering",
+          "time_series"
+        ],
+        "created": "2022-05-10",
+        "updated": "2022-05-10",
+        "bucket": "stale",
+        "reason": "No update since 2022-05-10 (> 2 years)"
+      },
+      {
+        "number": 2525,
+        "title": "[ENH] How to cluster multiple time series?",
+        "labels": [
+          "enhancement",
+          "clustering",
+          "time_series"
+        ],
+        "created": "2022-05-10",
+        "updated": "2022-05-10",
+        "bucket": "stale",
+        "reason": "No update since 2022-05-10 (> 2 years)"
+      },
+      {
+        "number": 2491,
+        "title": "[ENH]: Plot interpret_model(reason) as .png",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-05-02",
+        "updated": "2022-05-03",
+        "bucket": "stale",
+        "reason": "No update since 2022-05-03 (> 2 years)"
+      },
+      {
+        "number": 2454,
+        "title": "[ENH]: mlnotify",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-04-24",
+        "updated": "2022-04-25",
+        "bucket": "stale",
+        "reason": "No update since 2022-04-25 (> 2 years)"
+      },
+      {
+        "number": 2403,
+        "title": "Show variable name in setup overview. ",
+        "labels": [
+          "enhancement",
+          "setup"
+        ],
+        "created": "2022-04-12",
+        "updated": "2022-04-14",
+        "bucket": "stale",
+        "reason": "No update since 2022-04-14 (> 2 years)"
+      },
+      {
+        "number": 2361,
+        "title": "pass cross_val = False tune_model method and use test_data for eval",
+        "labels": [
+          "enhancement",
+          "tune_model"
+        ],
+        "created": "2022-04-02",
+        "updated": "2022-04-02",
+        "bucket": "stale",
+        "reason": "No update since 2022-04-02 (> 2 years)"
+      },
+      {
+        "number": 2340,
+        "title": "Numeric confusion matrix does not match with percentage confusion matrix",
+        "labels": [
+          "bug",
+          "classification",
+          "plot_model"
+        ],
+        "created": "2022-03-29",
+        "updated": "2022-04-02",
+        "bucket": "stale",
+        "reason": "No update since 2022-04-02 (> 2 years)"
+      },
+      {
+        "number": 2315,
+        "title": "Add option to use only ONNX compatible models",
+        "labels": [
+          "enhancement",
+          "onnx"
+        ],
+        "created": "2022-03-22",
+        "updated": "2022-04-14",
+        "bucket": "stale",
+        "reason": "No update since 2022-04-14 (> 2 years)"
+      },
+      {
+        "number": 2310,
+        "title": "Exponential Smoothing Parameter Search Space Improvement",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "models"
+        ],
+        "created": "2022-03-20",
+        "updated": "2022-03-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-03-21 (> 2 years)"
+      },
+      {
+        "number": 2288,
+        "title": "Improve Code Quality",
+        "labels": [
+          "enhancement",
+          "priority_medium",
+          "refactor"
+        ],
+        "created": "2022-03-15",
+        "updated": "2022-09-12",
+        "bucket": "stale",
+        "reason": "No update since 2022-09-12 (> 2 years)"
+      },
+      {
+        "number": 2187,
+        "title": "Consider adding Brier score as default metric",
+        "labels": [
+          "enhancement",
+          "classification",
+          "metrics"
+        ],
+        "created": "2022-02-19",
+        "updated": "2022-08-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-21 (> 2 years)"
+      },
+      {
+        "number": 2180,
+        "title": "[BUG] Save=True not working with clustering module.",
+        "labels": [
+          "bug",
+          "clustering",
+          "plot_model"
+        ],
+        "created": "2022-02-18",
+        "updated": "2022-02-19",
+        "bucket": "stale",
+        "reason": "No update since 2022-02-19 (> 2 years)"
+      },
+      {
+        "number": 2165,
+        "title": "[ENH] Support for non integer seasonal periods",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "models"
+        ],
+        "created": "2022-02-15",
+        "updated": "2022-07-23",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-23 (> 2 years)"
+      },
+      {
+        "number": 2157,
+        "title": "GitHub Actions: cancel old but running workflows of a PR when pushing again",
+        "labels": [
+          "enhancement",
+          "unit_tests"
+        ],
+        "created": "2022-02-14",
+        "updated": "2022-03-15",
+        "bucket": "stale",
+        "reason": "No update since 2022-03-15 (> 2 years)"
+      },
+      {
+        "number": 2156,
+        "title": "Is is possible to combine two ROC plots?",
+        "labels": [
+          "enhancement",
+          "classification",
+          "plot_model"
+        ],
+        "created": "2022-02-14",
+        "updated": "2022-02-24",
+        "bucket": "stale",
+        "reason": "No update since 2022-02-24 (> 2 years)"
+      },
+      {
+        "number": 2138,
+        "title": "Hill Climbing",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2022-02-07",
+        "updated": "2022-02-15",
+        "bucket": "stale",
+        "reason": "No update since 2022-02-15 (> 2 years)"
+      },
+      {
+        "number": 2128,
+        "title": "Issue with optimizes probability threshold Function ",
+        "labels": [
+          "bug"
+        ],
+        "created": "2022-02-04",
+        "updated": "2022-02-23",
+        "bucket": "stale",
+        "reason": "No update since 2022-02-23 (> 2 years)"
+      },
+      {
+        "number": 2096,
+        "title": "Add Support for Multivariate Time Series",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "backlog",
+          "multivariate"
+        ],
+        "created": "2022-01-26",
+        "updated": "2022-01-26",
+        "bucket": "stale",
+        "reason": "No update since 2022-01-26 (> 2 years)"
+      },
+      {
+        "number": 2071,
+        "title": "Multiple classification models in pycaret",
+        "labels": [
+          "enhancement",
+          "priority_low"
+        ],
+        "created": "2022-01-18",
+        "updated": "2022-01-19",
+        "bucket": "stale",
+        "reason": "No update since 2022-01-19 (> 2 years)"
+      },
+      {
+        "number": 2022,
+        "title": "PyCaret + SKORCH : Issues in the step of 'predict_model'",
+        "labels": [
+          "bug"
+        ],
+        "created": "2022-01-05",
+        "updated": "2022-01-07",
+        "bucket": "stale",
+        "reason": "No update since 2022-01-07 (> 2 years)"
+      },
+      {
+        "number": 2014,
+        "title": "[BUG] ValueError: could not broadcast input array from shape (169,1) into shape (169,)",
+        "labels": [
+          "bug"
+        ],
+        "created": "2022-01-04",
+        "updated": "2022-04-15",
+        "bucket": "stale",
+        "reason": "No update since 2022-04-15 (> 2 years)"
+      },
+      {
+        "number": 2004,
+        "title": "tune_model(**kwargs)",
+        "labels": [
+          "bug"
+        ],
+        "created": "2021-12-31",
+        "updated": "2022-01-04",
+        "bucket": "stale",
+        "reason": "No update since 2022-01-04 (> 2 years)"
+      },
+      {
+        "number": 1986,
+        "title": "plot_model for hold-out test dataset",
+        "labels": [
+          "enhancement",
+          "plot_model"
+        ],
+        "created": "2021-12-23",
+        "updated": "2022-01-02",
+        "bucket": "stale",
+        "reason": "No update since 2022-01-02 (> 2 years)"
+      },
+      {
+        "number": 1957,
+        "title": "Average metrics for class_report plot",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-12-15",
+        "updated": "2021-12-15",
+        "bucket": "stale",
+        "reason": "No update since 2021-12-15 (> 2 years)"
+      },
+      {
+        "number": 1947,
+        "title": "Deep learning",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-12-12",
+        "updated": "2021-12-14",
+        "bucket": "stale",
+        "reason": "No update since 2021-12-14 (> 2 years)"
+      },
+      {
+        "number": 1937,
+        "title": "cross_validation = False scores",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-12-09",
+        "updated": "2021-12-12",
+        "bucket": "stale",
+        "reason": "No update since 2021-12-12 (> 2 years)"
+      },
+      {
+        "number": 1919,
+        "title": "Addition of new function create_report",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-12-04",
+        "updated": "2021-12-09",
+        "bucket": "stale",
+        "reason": "No update since 2021-12-09 (> 2 years)"
+      },
+      {
+        "number": 1907,
+        "title": "Create functionality to disable metrics",
+        "labels": [
+          "enhancement",
+          "metrics"
+        ],
+        "created": "2021-12-01",
+        "updated": "2022-01-31",
+        "bucket": "stale",
+        "reason": "No update since 2022-01-31 (> 2 years)"
+      },
+      {
+        "number": 1905,
+        "title": "Online learning features for Classification & Regression modules ",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-11-30",
+        "updated": "2021-11-30",
+        "bucket": "stale",
+        "reason": "No update since 2021-11-30 (> 2 years)"
+      },
+      {
+        "number": 1899,
+        "title": "How to save pictures in vector format",
+        "labels": [
+          "enhancement",
+          "plot_model"
+        ],
+        "created": "2021-11-29",
+        "updated": "2021-12-04",
+        "bucket": "stale",
+        "reason": "No update since 2021-12-04 (> 2 years)"
+      },
+      {
+        "number": 1898,
+        "title": "How to draw multiple models in an AUC curve chart?",
+        "labels": [
+          "enhancement",
+          "plot_model"
+        ],
+        "created": "2021-11-29",
+        "updated": "2022-01-11",
+        "bucket": "stale",
+        "reason": "No update since 2022-01-11 (> 2 years)"
+      },
+      {
+        "number": 1889,
+        "title": "Display multiple CI at plot_model() when plot='forecast' for ts module",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "plot_model"
+        ],
+        "created": "2021-11-25",
+        "updated": "2022-03-16",
+        "bucket": "stale",
+        "reason": "No update since 2022-03-16 (> 2 years)"
+      },
+      {
+        "number": 1868,
+        "title": "Time Series | Move Auto-ARIMA to turbo=False bucket",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "models"
+        ],
+        "created": "2021-11-19",
+        "updated": "2022-04-18",
+        "bucket": "stale",
+        "reason": "No update since 2022-04-18 (> 2 years)"
+      },
+      {
+        "number": 1819,
+        "title": "Time Series - Single call to plot all plots...",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "plot_model"
+        ],
+        "created": "2021-11-08",
+        "updated": "2022-03-16",
+        "bucket": "stale",
+        "reason": "No update since 2022-03-16 (> 2 years)"
+      },
+      {
+        "number": 1775,
+        "title": "White noise test lags in time series",
+        "labels": [
+          "enhancement",
+          "time_series"
+        ],
+        "created": "2021-10-28",
+        "updated": "2022-03-16",
+        "bucket": "stale",
+        "reason": "No update since 2022-03-16 (> 2 years)"
+      },
+      {
+        "number": 1754,
+        "title": "Adding Miss Classification table and plot",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-10-22",
+        "updated": "2021-10-25",
+        "bucket": "stale",
+        "reason": "No update since 2021-10-25 (> 2 years)"
+      },
+      {
+        "number": 1753,
+        "title": "Include interpretable models from imodels package",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-10-22",
+        "updated": "2021-12-04",
+        "bucket": "stale",
+        "reason": "No update since 2021-12-04 (> 2 years)"
+      },
+      {
+        "number": 1750,
+        "title": "Seasonality Box Plots & Heatmap",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "plot_model"
+        ],
+        "created": "2021-10-22",
+        "updated": "2022-03-16",
+        "bucket": "stale",
+        "reason": "No update since 2022-03-16 (> 2 years)"
+      },
+      {
+        "number": 1721,
+        "title": "Add Global Forecasting",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "models"
+        ],
+        "created": "2021-10-18",
+        "updated": "2022-05-01",
+        "bucket": "stale",
+        "reason": "No update since 2022-05-01 (> 2 years)"
+      },
+      {
+        "number": 1670,
+        "title": "AutoML for Time Series",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "automl"
+        ],
+        "created": "2021-10-10",
+        "updated": "2021-12-04",
+        "bucket": "stale",
+        "reason": "No update since 2021-12-04 (> 2 years)"
+      },
+      {
+        "number": 1669,
+        "title": "Backtesting Time Series Strategies",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "automl"
+        ],
+        "created": "2021-10-10",
+        "updated": "2021-12-02",
+        "bucket": "stale",
+        "reason": "No update since 2021-12-02 (> 2 years)"
+      },
+      {
+        "number": 1642,
+        "title": "remove_perfect_collinearity: bool, default = True",
+        "labels": [
+          "enhancement",
+          "preprocessing"
+        ],
+        "created": "2021-10-02",
+        "updated": "2022-05-16",
+        "bucket": "stale",
+        "reason": "No update since 2022-05-16 (> 2 years)"
+      },
+      {
+        "number": 1639,
+        "title": "[Feat] sklearn upgrade",
+        "labels": [
+          "enhancement",
+          "maintenance"
+        ],
+        "created": "2021-09-30",
+        "updated": "2021-10-10",
+        "bucket": "stale",
+        "reason": "No update since 2021-10-10 (> 2 years)"
+      },
+      {
+        "number": 1631,
+        "title": "Faster TSNE",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-09-28",
+        "updated": "2021-09-28",
+        "bucket": "stale",
+        "reason": "No update since 2021-09-28 (> 2 years)"
+      },
+      {
+        "number": 1552,
+        "title": "IllegalMonthError for any NaT values",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-09-07",
+        "updated": "2021-09-08",
+        "bucket": "stale",
+        "reason": "No update since 2021-09-08 (> 2 years)"
+      },
+      {
+        "number": 1549,
+        "title": "[BUG]  Cannot clone object DataTypes_Auto_infer as the constructor either does not set or modifies parameter categorical_features",
+        "labels": [
+          "bug"
+        ],
+        "created": "2021-09-04",
+        "updated": "2022-06-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-06-21 (> 2 years)"
+      },
+      {
+        "number": 1517,
+        "title": "Statistical tests on Classification and Regression data and models",
+        "labels": [
+          "enhancement",
+          "regression",
+          "classification"
+        ],
+        "created": "2021-08-17",
+        "updated": "2022-09-06",
+        "bucket": "stale",
+        "reason": "No update since 2022-09-06 (> 2 years)"
+      },
+      {
+        "number": 1516,
+        "title": "Add DAE and AutoLGB from Kaggler library",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-08-17",
+        "updated": "2021-08-17",
+        "bucket": "stale",
+        "reason": "No update since 2021-08-17 (> 2 years)"
+      },
+      {
+        "number": 1504,
+        "title": "Optimal Number of Clusters",
+        "labels": [
+          "enhancement",
+          "clustering"
+        ],
+        "created": "2021-08-11",
+        "updated": "2021-09-20",
+        "bucket": "stale",
+        "reason": "No update since 2021-09-20 (> 2 years)"
+      },
+      {
+        "number": 1446,
+        "title": "feature dependant threshold optimization",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-07-12",
+        "updated": "2021-07-12",
+        "bucket": "stale",
+        "reason": "No update since 2021-07-12 (> 2 years)"
+      },
+      {
+        "number": 1422,
+        "title": "append algorithm names to create_model_container",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-07-03",
+        "updated": "2021-07-03",
+        "bucket": "stale",
+        "reason": "No update since 2021-07-03 (> 2 years)"
+      },
+      {
+        "number": 1413,
+        "title": "Add \"TabNet\" model to regression and classification algorithms",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-06-29",
+        "updated": "2021-11-08",
+        "bucket": "stale",
+        "reason": "No update since 2021-11-08 (> 2 years)"
+      },
+      {
+        "number": 1392,
+        "title": "Custom log file path in the setup function",
+        "labels": [
+          "enhancement",
+          "logging"
+        ],
+        "created": "2021-06-23",
+        "updated": "2021-06-23",
+        "bucket": "stale",
+        "reason": "No update since 2021-06-23 (> 2 years)"
+      },
+      {
+        "number": 1374,
+        "title": "Cleanup up default search space for all time_series models",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "tune_model",
+          "priority_low"
+        ],
+        "created": "2021-06-18",
+        "updated": "2021-10-06",
+        "bucket": "stale",
+        "reason": "No update since 2021-10-06 (> 2 years)"
+      },
+      {
+        "number": 1373,
+        "title": "Incorporate window_length as a tuning parameter in tune_model",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "tune_model",
+          "priority_low"
+        ],
+        "created": "2021-06-18",
+        "updated": "2021-10-06",
+        "bucket": "stale",
+        "reason": "No update since 2021-10-06 (> 2 years)"
+      },
+      {
+        "number": 1343,
+        "title": "[Feature Selection] Boruta run-time display ",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-06-09",
+        "updated": "2021-06-10",
+        "bucket": "stale",
+        "reason": "No update since 2021-06-10 (> 2 years)"
+      },
+      {
+        "number": 1338,
+        "title": "Feature Interaction Extension",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-06-07",
+        "updated": "2021-06-07",
+        "bucket": "stale",
+        "reason": "No update since 2021-06-07 (> 2 years)"
+      },
+      {
+        "number": 1280,
+        "title": "[FEAT] Set logistic trend for prophet container",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "models",
+          "priority_low"
+        ],
+        "created": "2021-05-22",
+        "updated": "2022-03-31",
+        "bucket": "stale",
+        "reason": "No update since 2022-03-31 (> 2 years)"
+      },
+      {
+        "number": 1237,
+        "title": "Automl for clustering",
+        "labels": [
+          "enhancement",
+          "clustering"
+        ],
+        "created": "2021-05-07",
+        "updated": "2022-08-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-21 (> 2 years)"
+      },
+      {
+        "number": 1233,
+        "title": "Remove preprocess when using fix_imbalance",
+        "labels": [
+          "enhancement",
+          "classification"
+        ],
+        "created": "2021-05-06",
+        "updated": "2021-05-07",
+        "bucket": "stale",
+        "reason": "No update since 2021-05-07 (> 2 years)"
+      },
+      {
+        "number": 1215,
+        "title": "Support neural network based timeseries forecasting",
+        "labels": [
+          "enhancement",
+          "time_series",
+          "backlog"
+        ],
+        "created": "2021-05-03",
+        "updated": "2021-09-19",
+        "bucket": "stale",
+        "reason": "No update since 2021-09-19 (> 2 years)"
+      },
+      {
+        "number": 1193,
+        "title": "How to set dpi or scale when using interpret_model() function?",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-04-23",
+        "updated": "2021-04-30",
+        "bucket": "stale",
+        "reason": "No update since 2021-04-30 (> 2 years)"
+      },
+      {
+        "number": 1176,
+        "title": "Scoring on train set with `predict_model`",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-04-19",
+        "updated": "2022-02-07",
+        "bucket": "stale",
+        "reason": "No update since 2022-02-07 (> 2 years)"
+      },
+      {
+        "number": 1141,
+        "title": "Pycaret model deploy to aws subfolder",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-04-02",
+        "updated": "2021-10-22",
+        "bucket": "stale",
+        "reason": "No update since 2021-10-22 (> 2 years)"
+      },
+      {
+        "number": 1104,
+        "title": "Budget time for tune_model",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2021-03-08",
+        "updated": "2021-04-07",
+        "bucket": "stale",
+        "reason": "No update since 2021-04-07 (> 2 years)"
+      },
+      {
+        "number": 928,
+        "title": "Feature Selection Methods",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2020-12-11",
+        "updated": "2021-05-22",
+        "bucket": "stale",
+        "reason": "No update since 2021-05-22 (> 2 years)"
+      },
+      {
+        "number": 921,
+        "title": "Adding a step to unsupervised learning",
+        "labels": [
+          "enhancement",
+          "clustering"
+        ],
+        "created": "2020-12-07",
+        "updated": "2022-08-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-21 (> 2 years)"
+      },
+      {
+        "number": 918,
+        "title": "Features removed through multicollinearity",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2020-12-07",
+        "updated": "2022-01-14",
+        "bucket": "stale",
+        "reason": "No update since 2022-01-14 (> 2 years)"
+      },
+      {
+        "number": 839,
+        "title": "Defining positive class in classification",
+        "labels": [
+          "enhancement",
+          "classification"
+        ],
+        "created": "2020-11-13",
+        "updated": "2022-08-21",
+        "bucket": "stale",
+        "reason": "No update since 2022-08-21 (> 2 years)"
+      },
+      {
+        "number": 771,
+        "title": "Implement test coverage and get code coverage badge",
+        "labels": [
+          "enhancement",
+          "unit_tests"
+        ],
+        "created": "2020-10-26",
+        "updated": "2022-12-05",
+        "bucket": "stale",
+        "reason": "No update since 2022-12-05 (> 2 years)"
+      },
+      {
+        "number": 742,
+        "title": "Add advanced categorical encodings methods",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2020-10-20",
+        "updated": "2021-05-22",
+        "bucket": "stale",
+        "reason": "No update since 2021-05-22 (> 2 years)"
+      },
+      {
+        "number": 616,
+        "title": "Can Pycaret predict multiple taget?",
+        "labels": [
+          "enhancement",
+          "regression",
+          "multivariate"
+        ],
+        "created": "2020-09-10",
+        "updated": "2022-02-24",
+        "bucket": "stale",
+        "reason": "No update since 2022-02-24 (> 2 years)"
+      },
+      {
+        "number": 563,
+        "title": "How to modifiy the plot (name of titel etc.)",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2020-08-28",
+        "updated": "2022-07-30",
+        "bucket": "stale",
+        "reason": "No update since 2022-07-30 (> 2 years)"
+      },
+      {
+        "number": 543,
+        "title": "Change contributors list to all-contributors",
+        "labels": [
+          "documentation",
+          "enhancement"
+        ],
+        "created": "2020-08-26",
+        "updated": "2021-07-24",
+        "bucket": "stale",
+        "reason": "No update since 2021-07-24 (> 2 years)"
+      },
+      {
+        "number": 492,
+        "title": "New function create_webservice",
+        "labels": [
+          "enhancement"
+        ],
+        "created": "2020-08-20",
+        "updated": "2022-04-20",
+        "bucket": "stale",
+        "reason": "No update since 2022-04-20 (> 2 years)"
+      },
+      {
+        "number": 429,
+        "title": "[Feature Request] Support for Featuretools and Compose",
+        "labels": [
+          "enhancement",
+          "open for contribution",
+          "preprocessing"
+        ],
+        "created": "2020-08-13",
+        "updated": "2022-12-06",
+        "bucket": "stale",
+        "reason": "No update since 2022-12-06 (> 2 years)"
+      },
+      {
+        "number": 419,
+        "title": "Bootstrap Validation",
+        "labels": [
+          "enhancement",
+          "open for contribution"
+        ],
+        "created": "2020-08-12",
+        "updated": "2020-08-18",
+        "bucket": "stale",
+        "reason": "No update since 2020-08-18 (> 2 years)"
+      },
+      {
+        "number": 408,
+        "title": "Request to add anomaly detection plots for anomaly detection module",
+        "labels": [
+          "enhancement",
+          "open for contribution",
+          "anomaly_detection"
+        ],
+        "created": "2020-08-10",
+        "updated": "2022-05-24",
+        "bucket": "stale",
+        "reason": "No update since 2022-05-24 (> 2 years)"
+      },
+      {
+        "number": 377,
+        "title": "UnicodeDecodeError while running the example ( Interpret Model)    What can I do?",
+        "labels": [
+          "help wanted"
+        ],
+        "created": "2020-08-06",
+        "updated": "2021-05-24",
+        "bucket": "stale",
+        "reason": "No update since 2021-05-24 (> 2 years)"
+      },
+      {
+        "number": 370,
+        "title": "Data profiling and over fitting Detector enhancement proposal ",
+        "labels": [
+          "enhancement",
+          "open for contribution"
+        ],
+        "created": "2020-08-05",
+        "updated": "2020-10-06",
+        "bucket": "stale",
+        "reason": "No update since 2020-10-06 (> 2 years)"
+      },
+      {
+        "number": 350,
+        "title": "Please include a model sensitivity analysis module",
+        "labels": [
+          "enhancement",
+          "open for contribution"
+        ],
+        "created": "2020-08-04",
+        "updated": "2020-12-05",
+        "bucket": "stale",
+        "reason": "No update since 2020-12-05 (> 2 years)"
+      },
+      {
+        "number": 345,
+        "title": "option to deploy to JVM environments",
+        "labels": [
+          "enhancement",
+          "help wanted",
+          "open for contribution"
+        ],
+        "created": "2020-08-04",
+        "updated": "2020-08-13",
+        "bucket": "stale",
+        "reason": "No update since 2020-08-13 (> 2 years)"
+      },
+      {
+        "number": 339,
+        "title": "KeyError: 'Only the Series name can be used for the key in Series dtype mappings.'",
+        "labels": [
+          "help wanted"
+        ],
+        "created": "2020-08-03",
+        "updated": "2021-05-24",
+        "bucket": "stale",
+        "reason": "No update since 2021-05-24 (> 2 years)"
+      },
+      {
+        "number": 216,
+        "title": "Return Important Variables and importance as DataFrames",
+        "labels": [
+          "enhancement",
+          "interpret_model"
+        ],
+        "created": "2020-06-12",
+        "updated": "2022-12-05",
+        "bucket": "stale",
+        "reason": "No update since 2022-12-05 (> 2 years)"
+      },
+      {
+        "number": 25,
+        "title": "Multi target columns",
+        "labels": [
+          "enhancement",
+          "regression",
+          "classification",
+          "multivariate"
+        ],
+        "created": "2020-04-19",
+        "updated": "2022-02-24",
+        "bucket": "stale",
+        "reason": "No update since 2022-02-24 (> 2 years)"
+      }
+    ]
+  }
+}

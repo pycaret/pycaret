@@ -103,7 +103,8 @@ def _mp_ParameterGrid_getitem(self, ind):
         # Reverse so most frequent cycling parameter comes first
         keys, values_lists = zip(*sorted(sub_grid.items())[::-1])
         sizes = [len(v_list) for v_list in values_lists]
-        total = int(np.product(sizes, dtype=np.uint64))
+        # NumPy 2 removed `np.product`; `np.prod` is the equivalent.
+        total = int(np.prod(sizes, dtype=np.uint64))
 
         if ind >= total:
             # Try the next grid

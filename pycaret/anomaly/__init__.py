@@ -1,43 +1,13 @@
-from pycaret.anomaly.functional import (
-    assign_model,
-    create_model,
-    deploy_model,
-    evaluate_model,
-    get_config,
-    get_current_experiment,
-    get_logs,
-    load_experiment,
-    load_model,
-    models,
-    plot_model,
-    predict_model,
-    pull,
-    save_experiment,
-    save_model,
-    set_config,
-    set_current_experiment,
-    setup,
-)
-from pycaret.anomaly.oop import AnomalyExperiment
+"""Anomaly-detection task — PyCaret 4.0.
 
-__all__ = [
-    "AnomalyExperiment",
-    "setup",
-    "create_model",
-    "assign_model",
-    "plot_model",
-    "evaluate_model",
-    "predict_model",
-    "deploy_model",
-    "save_model",
-    "load_model",
-    "pull",
-    "models",
-    "get_logs",
-    "get_config",
-    "set_config",
-    "save_experiment",
-    "load_experiment",
-    "set_current_experiment",
-    "get_current_experiment",
-]
+PyCaret 4.0 is OOP-only; the 3.x functional API was removed.
+
+    from pycaret.anomaly import AnomalyExperiment
+    exp = AnomalyExperiment(session_id=42).fit(df)
+    iforest = exp.create_model("iforest").pipeline
+    labelled = exp.assign_model(iforest)
+"""
+
+from pycaret.tasks.anomaly import AnomalyExperiment
+
+__all__ = ["AnomalyExperiment"]

@@ -2,8 +2,8 @@
 This module contains methods that can be used in various plot modules and don't really belong to a specific module
 """
 
+import matplotlib.pyplot as plt
 import numpy as np
-import scikitplot as skplt
 
 
 def leverage_statistic(x: np.ndarray):
@@ -115,19 +115,29 @@ def cooks_distance(
     return distance
 
 
-class MatplotlibDefaultDPI(object):
+class MatplotlibDefaultDPI:
+    """Temporarily override matplotlib's default figure DPI inside a `with` block.
+
+    PyCaret 4.0: simplified to use matplotlib directly. The previous implementation
+    went through `scikitplot.metrics.plt`, which was just a re-export of matplotlib
+    via the mljar-scikit-plot package — removed in the 4.0 kill list.
+    """
+
     def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
-        try:
-            self.default_skplt_dpit = skplt.metrics.plt.rcParams["figure.dpi"]
-            skplt.metrics.plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
-        except Exception:
-            pass
+        self._base_dpi = base_dpi * scale_to_set
+        self._original_dpi = None
 
     def __enter__(self) -> None:
+        try:
+            self._original_dpi = plt.rcParams["figure.dpi"]
+            plt.rcParams["figure.dpi"] = self._base_dpi
+        except Exception:
+            pass
         return None
 
     def __exit__(self, type, value, traceback):
         try:
-            skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
+            if self._original_dpi is not None:
+                plt.rcParams["figure.dpi"] = self._original_dpi
         except Exception:
             pass

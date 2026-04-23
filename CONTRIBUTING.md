@@ -1,52 +1,95 @@
-# Contribution Guidelines
+# Contributing to PyCaret 4.0
 
-Thank you for choosing to contribute in PyCaret. There are a ton of great open-source projects out there, so we appreciate your interest in contributing to PyCaret. 
+Thanks for considering a contribution! PyCaret 4.0 is under active architectural revamp. This file is the short version of the contributor guide; deeper references are linked below.
 
-# Documentation
-There is always a room for improvement in documentation. We welcome all the pull requests to fix typo / improve grammar or semantic structuring of documents. Here are few documents you can work on:
+> **⚠ If you are an AI coding agent, read [`AGENTS.md`](AGENTS.md) first.** It is your 60-second briefing and lists the non-negotiables.
 
-- [Official Documentation](https://github.com/pycaret/pycaret-docs) 
-- [Tutorials](https://github.com/pycaret/pycaret/tree/master/tutorials)
-- [Docstrings](https://pycaret.readthedocs.io/en/stable/)
+## The 30-second overview
 
-# Open Issues
-If you would like to help in working on open issues. Lookout for following tags: `good first issue`, `help wanted`, and `open for contribution`.
+- **PyCaret 4.0 is OOP-only.** The 3.x module-level functional API (`setup(...)`, `compare_models(...)`) is gone.
+- **One sklearn-compatible `Experiment` subclass per task.** `ClassificationExperiment`, `RegressionExperiment`, etc.
+- **The repo is in the middle of a multi-session revamp.** See [`docs/revamp/STATUS.md`](docs/revamp/STATUS.md) for what's landed and what's still in play.
+- **The notebook golden path must always work.** `fit → compare_models → tune_model → predict_model → save_model`.
 
+## How to get set up
 
-# Development setup
-Follow [installation instructions](https://pycaret.readthedocs.io/en/latest/installation.html#installing-the-latest-release) to first create a virtual environment. Then, install the development version of the package:
-```shell
-pip install -e .[test]
+See [`docs/for_developers/SETUP.md`](docs/for_developers/SETUP.md). Zero-to-first-green-test in < 5 minutes.
+
+```bash
+git clone https://github.com/pycaret/pycaret.git
+cd pycaret
+uv python install 3.13
+uv sync --all-extras
+uv run pytest tests/test_core_architecture.py tests/test_datasets.py -q   # ~5s green
 ```
 
-We use [black](https://github.com/psf/black) (version `22.12.0`) and [isort](https://github.com/PyCQA/isort) (latest version)
-for code formatting. Make sure to run `isort pycaret` and `black pycaret`
-from the home directory before creating the PR. Failing to do so can result
-in a failed build, which would prevent the adoption of your code.
+## How to run tests
 
+See [`docs/for_developers/TESTING.md`](docs/for_developers/TESTING.md).
 
-# Unit testing
-Install development version of the package with additional extra dependencies required for unit testing:
-```shell
-pip install -e .[test]
-```
-We use [`pytest`](https://docs.pytest.org/en/latest/) for unit testing.
+## How to contribute a change
 
-To run tests, except skipped ones (search for `@pytest.mark.skip` decorator over test functions), run:
-```shell
-pytest pycaret
-```
+### 1. Open an issue first (for non-trivial work)
 
-# Documentation
-We use [`sphinx`](https://www.sphinx-doc.org/) to build our documentation and [readthedocs](https://pycaret.readthedocs.io/en/latest/index.html) to host it. The source files can be found in [`docs/source/`](docs/source). The main configuration file for sphinx is [`conf.py`](docs/source/conf.py) and the main page is [`index.rst`](docs/source/index.rst).
+For anything beyond a typo or a one-line bugfix, open an issue describing what you want to do. This avoids duplicate effort and lets us flag whether your idea conflicts with the ongoing revamp.
 
-To build the documentation locally, you need to install a few extra dependencies listed in
-[`docs/source/requirements.txt`](docs/source/requirements.txt):
-```shell
-pip install -r docs/source/requirements.txt
-```
-To build the website locally, run:
-```shell
-sh make.sh
-```
-You can find the generated files in the `docs/build/` folder. To view the website, open `docs/build/index.html` with your preferred web browser.
+### 2. Check the current state
+
+Before you start writing code:
+
+- [`docs/revamp/ROADMAP.md`](docs/revamp/ROADMAP.md) — are we already working on this in a current phase?
+- [`docs/revamp/KILL_LIST.md`](docs/revamp/KILL_LIST.md) — is what you want to add already deliberately removed?
+- [`docs/revamp/DECISIONS.md`](docs/revamp/DECISIONS.md) — has this design call already been litigated?
+
+### 3. Follow the architecture
+
+- **No new module-level public functions.** The functional API is dead. All user-facing operations are methods on an `Experiment` subclass.
+- **No new module-level mutable state.** No globals, no ContextVars.
+- **Every verb returns a typed result dataclass.** See [`docs/for_agents/TYPED_RESULTS.md`](docs/for_agents/TYPED_RESULTS.md).
+- **Every long-running operation emits structured events.** See [`docs/for_agents/EVENT_STREAM.md`](docs/for_agents/EVENT_STREAM.md).
+
+### 4. Code style
+
+See [`docs/for_developers/CODING_STYLE.md`](docs/for_developers/CODING_STYLE.md). Enforced by `ruff`. Run `uv run ruff check pycaret/ tests/ --fix` before committing.
+
+### 5. Tests
+
+Every non-trivial PR needs test coverage:
+
+- **Bug fix:** add a regression test that fails without the fix.
+- **New feature:** add a unit test in `tests/test_core_architecture.py` (for primitive shapes) and/or an e2e test in `tests/test_e2e_oop.py` (for verb behaviour).
+
+### 6. Release-notes entry
+
+Append to [`docs/revamp/release_notes_pycaret4.md`](docs/revamp/release_notes_pycaret4.md) under the current session block. One bullet per change, tagged with the appropriate category (`BREAKING`, `REMOVED`, `ADDED`, `CHANGED`, `FIXED`, `DEPRECATED`, `SECURITY`, `DOCS`, `BUILD`, `TESTS`, `DEPS`, `INTERNAL`). The user-facing `CHANGELOG.md` is generated from this file at release time.
+
+### 7. PR checklist
+
+- [ ] Tests added / updated
+- [ ] `uv run ruff check pycaret/ tests/` passes
+- [ ] `uv run pytest tests/test_core_architecture.py tests/test_datasets.py -q` passes locally
+- [ ] Release-notes entry appended
+- [ ] For user-visible changes: README / notebook / doc updated if relevant
+- [ ] For new deps: ADR added in `DECISIONS.md`
+
+### 8. What makes a good PR
+
+- **Small and focused.** One concern per PR.
+- **Linked to an issue.** "Fixes #123".
+- **Passes CI.** The merge queue won't take red PRs.
+- **Explains the why.** A paragraph in the PR description. The diff already shows the what.
+
+## Where to go deeper
+
+- [`AGENTS.md`](AGENTS.md) — briefing for AI agents; also useful for humans
+- [`docs/revamp/ARCHITECTURE.md`](docs/revamp/ARCHITECTURE.md) — the 4.0 design
+- [`docs/for_developers/`](docs/for_developers/) — dev onboarding, testing, release process, god-class-draining playbook
+- [`docs/for_agents/`](docs/for_agents/) — deep dives for tooling integrators (engine walkthrough, typed results, event stream, introspection API, verb × task cheatsheet)
+
+## Code of conduct
+
+See [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
+## License
+
+By contributing, you agree that your contributions are licensed under the MIT license. See [`LICENSE`](LICENSE).

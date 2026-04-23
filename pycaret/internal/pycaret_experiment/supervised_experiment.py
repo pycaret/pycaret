@@ -26,7 +26,6 @@ from sklearn.pipeline import Pipeline as skPipeline
 from sklearn.utils.validation import check_is_fitted as check_fitted
 
 import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
 from pycaret.containers.metrics.classification import (
@@ -53,7 +52,6 @@ from pycaret.internal.meta_estimators import (
     get_estimator_from_meta_estimator,
 )
 from pycaret.internal.metrics import EncodedDecodedLabelsReplaceScoreFunc, get_pos_label
-from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.patches.sklearn import fit_and_score as fs
 from pycaret.internal.pipeline import (
     Pipeline,
@@ -280,24 +278,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 runtime,
             )
 
-    def _parallel_compare_models(
-        self,
-        parallel: Optional[ParallelBackend],
-        caller_params: Optional[dict],
-        turbo: bool,
-    ) -> List[Any]:
-        params = dict(caller_params)
-        parallel.attach(self)
-        if params.get("include", None) is None:
-            _models = self.models()
-            if turbo:
-                _models = _models[_models.Turbo]
-            params["include"] = _models.index.tolist()
-        del params["self"]
-        del params["__class__"]
-        del params["parallel"]
-        return parallel.compare_models(self, params)
-
     def _get_greater_is_worse_columns(self) -> Set[str]:
         input_ml_usecase = self._ml_usecase
         target_ml_usecase = MLUsecase.TIME_SERIES
@@ -395,7 +375,6 @@ class _SupervisedExperiment(_TabularExperiment):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
-        parallel: Optional[ParallelBackend] = None,
         caller_params: Optional[dict] = None,
     ) -> List[Any]:
         """
@@ -493,13 +472,6 @@ class _SupervisedExperiment(_TabularExperiment):
             Score grid is not printed when verbose is set to False.
 
 
-        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
-            A ParallelBackend instance. For example if you have a SparkSession ``session``,
-            you can use ``FugueBackend(session)`` to make this function running using
-            Spark. For more details, see
-            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
-
-
         caller_params: dict, default = None
             The parameters used to call this function in the subclass. There are inconsistencies
             in this function's signature between this base class and the subclasses, so this is
@@ -537,9 +509,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
         self._check_setup_ran()
-
-        if parallel is not None:
-            return self._parallel_compare_models(parallel, caller_params, turbo=turbo)
 
         # No extra code should be added above this line
         # --------------------------------------------------------------

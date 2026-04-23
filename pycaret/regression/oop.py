@@ -22,7 +22,6 @@ from pycaret.containers.models.regression import (
 )
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
-from pycaret.internal.parallel.parallel_backend import ParallelBackend
 
 # Own module
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
@@ -1003,7 +1002,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
-        parallel: Optional[ParallelBackend] = None,
     ):
         """
         This function trains and evaluates performance of all estimators available in the
@@ -1097,13 +1095,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
             Score grid is not printed when verbose is set to False.
 
 
-        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
-            A ParallelBackend instance. For example if you have a SparkSession ``session``,
-            you can use ``FugueBackend(session)`` to make this function running using
-            Spark. For more details, see
-            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
-
-
         Returns:
             Trained model or list of trained models, depending on the ``n_select`` param.
 
@@ -1141,7 +1132,6 @@ class RegressionExperiment(_NonTSSupervisedExperiment, Preprocessor):
                 groups=groups,
                 experiment_custom_tags=experiment_custom_tags,
                 verbose=verbose,
-                parallel=parallel,
                 caller_params=caller_params,
             )
 

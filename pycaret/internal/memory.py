@@ -19,7 +19,7 @@ import tempfile
 import time
 import traceback
 from pathlib import Path
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from joblib.hashing import Hasher, Pickler
 from joblib.memory import (
@@ -427,16 +427,25 @@ class FastMemory(Memory):
         *args,
         min_time_to_cache=DEFAULT_MIN_TIME_TO_CACHE,
         caches_between_reduce=DEFAULT_CALLS_BETWEEN_REDUCE,
+        bytes_limit: Optional[int] = None,
         **kwargs,
     ):
+        # PyCaret 4.0 compat: modern joblib.Memory (>=1.3) dropped `bytes_limit`
+        # from the constructor — it's now passed to `reduce_size(bytes_limit=...)`.
+        # We strip it here and apply it on each reduction instead.
+        kwargs.pop("bytes_limit", None)
         super().__init__(*args, **kwargs)
         self.min_time_to_cache = min_time_to_cache
         self.caches_between_reduce = caches_between_reduce
+        self.bytes_limit = bytes_limit
+        self._cache_counter = 0
         self.reduce_size()
 
-    def reduce_size(self):
+    def reduce_size(self, *args, **kwargs):
         self._cache_counter = 0
-        return super().reduce_size()
+        if self.bytes_limit is not None and "bytes_limit" not in kwargs:
+            kwargs["bytes_limit"] = self.bytes_limit
+        return super().reduce_size(*args, **kwargs)
 
     def cache(self, func=None, ignore=None, verbose=None, mmap_mode=False):
         ret = super().cache(func, ignore, verbose, mmap_mode)

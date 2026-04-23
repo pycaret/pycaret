@@ -1,24 +1,39 @@
-# Adapted from
-# https://github.com/sktime/sktime/blob/v0.11.0/sktime/utils/validation/_dependencies.py
+"""Soft-dependency introspection helpers.
+
+Originally adapted from sktime; rewritten for PyCaret 4.0 to drop:
+- `distutils.version.LooseVersion` (removed in Python 3.12)
+- the `importlib_metadata` backport (stdlib `importlib.metadata` is enough on >=3.11)
+
+Versions are now returned as `packaging.version.Version` objects, which support
+rich comparison against version strings via `Version(...)` and tolerate modern
+PEP 440 semantics (including pre/post/dev markers).
+"""
+
+from __future__ import annotations
 
 import sys
-from distutils.version import LooseVersion
 from importlib import import_module
-from typing import Dict, Optional, Union
+from importlib.metadata import distributions
+from typing import Optional, Union
 
-from importlib_metadata import distributions
+from packaging.version import InvalidVersion, Version
 
 from pycaret.internal.logging import get_logger, redirect_output
 
 logger = get_logger()
 
-INSTALLED_MODULES = None
+INSTALLED_MODULES: Optional[dict[str, Optional[Version]]] = None
 
 
-def _try_import_and_get_module_version(
-    modname: str,
-) -> Optional[Union[LooseVersion, bool]]:
-    """Returns False if module is not installed, None if version is not available"""
+def _parse(v: str) -> Optional[Version]:
+    try:
+        return Version(v)
+    except InvalidVersion:
+        return None
+
+
+def _try_import_and_get_module_version(modname: str) -> Optional[Union[Version, bool]]:
+    """Returns False if module is not installed, None if version is not available."""
     try:
         if modname in sys.modules:
             mod = sys.modules[modname]
@@ -28,56 +43,39 @@ def _try_import_and_get_module_version(
                     mod = import_module(modname)
             else:
                 mod = import_module(modname)
-        try:
-            ver = mod.__version__
-        except AttributeError:
-            # Version could not be obtained
-            ver = None
+        ver_str = getattr(mod, "__version__", None)
     except ImportError:
-        ver = False
-    if ver:
-        ver = LooseVersion(ver)
-    return ver
+        return False
+    return _parse(ver_str) if ver_str else None
 
 
-# Based on packages_distributions() from importlib_metadata
-def get_installed_modules() -> Dict[str, Optional[LooseVersion]]:
-    """
-    Get installed modules and their versions from pip metadata.
-    """
+def get_installed_modules() -> dict[str, Optional[Version]]:
+    """Map installed top-level module name -> parsed Version."""
     global INSTALLED_MODULES
-    if not INSTALLED_MODULES:
-        # Get all installed modules and their versions without
-        # needing to import them.
-        module_versions = {}
-        # top_level.txt contains information about modules
-        # in the package. It is not always present, in which case
-        # the assumption is that the package name is the module name.
-        # https://setuptools.pypa.io/en/latest/deprecated/python_eggs.html
+    if INSTALLED_MODULES is None:
+        module_versions: dict[str, Optional[Version]] = {}
         for dist in distributions():
+            version_str = dist.metadata.get("Version") if dist.metadata else None
+            ver = _parse(version_str) if version_str else None
             for pkg in (dist.read_text("top_level.txt") or "").split():
-                try:
-                    ver = LooseVersion(dist.metadata["Version"])
-                except Exception:
-                    ver = None
                 module_versions[pkg] = ver
+            # Fallback: use normalized distribution name as a module hint.
+            if dist.metadata and dist.metadata.get("Name"):
+                module_versions.setdefault(
+                    dist.metadata["Name"].replace("-", "_"), ver
+                )
         INSTALLED_MODULES = module_versions
     return INSTALLED_MODULES
 
 
-def _get_module_version(modname: str) -> Optional[Union[LooseVersion, bool]]:
-    """Will cache the version in INSTALLED_MODULES
-
-    Returns False if module is not installed."""
-    installed_modules = get_installed_modules()
-    if modname not in installed_modules:
-        # Fallback. This should never happen unless module is not present
-        installed_modules[modname] = _try_import_and_get_module_version(modname)
-    return installed_modules[modname]
+def _get_module_version(modname: str) -> Optional[Union[Version, bool]]:
+    installed = get_installed_modules()
+    if modname not in installed:
+        installed[modname] = _try_import_and_get_module_version(modname)
+    return installed[modname]
 
 
-def get_module_version(modname: str) -> Optional[LooseVersion]:
-    """Raises a ValueError if module is not installed"""
+def get_module_version(modname: str) -> Optional[Version]:
     version = _get_module_version(modname)
     if version is False:
         raise ValueError(f"Module '{modname}' is not installed.")
@@ -98,65 +96,40 @@ def _check_soft_dependencies(
     extra: Optional[str] = "all_extras",
     install_name: Optional[str] = None,
 ) -> bool:
-    """Check if all soft dependencies are installed and raise appropriate error message
-    when not.
+    """Check if a soft dependency is installed; raise or warn if not.
 
     Parameters
     ----------
     package : str
-        Package to check
-    severity : str, optional
-        Whether to raise an error ("error") or just a warning message ("warning"),
-        by default "error"
-    extra : Optional[str], optional
-        The 'extras' that will install this package, by default "all_extras".
-        If None, it means that the dependency is not available in optional
-        requirements file and must be installed by the user on their own.
-    install_name : Optional[str], optional
-        The package name to install, by default None
-        If none, the name in `package` argument is used
-
-    Returns
-    -------
-    bool
-        If error is set to "warning", returns True if package can be imported or False
-        if it can not be imported
-
-    Raises
-    ------
-    ModuleNotFoundError
-        User friendly error with suggested action to install all required soft
-        dependencies
-    RuntimeError
-        Is the severity argument is not one of the allowed values
+        Module name to check.
+    severity : str
+        "error" (default) raises ModuleNotFoundError; "warning" logs and returns False.
+    extra : str, optional
+        Name of the `pip install pycaret[<extra>]` that would install this package.
+    install_name : str, optional
+        The pip name if it differs from the module name.
     """
     install_name = install_name or package
-
     package_available = is_module_installed(package)
 
     if package_available:
         ver = get_module_version(package)
-        logger.info(
-            "Soft dependency imported: {k}: {stat}".format(k=package, stat=str(ver))
-        )
-    else:
-        msg = (
-            f"\n'{package}' is a soft dependency and not included in the "
-            f"pycaret installation. Please run: `pip install {install_name}` to install."
-        )
-        if extra is not None:
-            msg += f"\nAlternately, you can install this by running `pip install pycaret[{extra}]`"
+        logger.info("Soft dependency imported: %s: %s", package, ver)
+        return True
 
-        if severity == "error":
-            logger.exception(f"{msg}")
-            raise ModuleNotFoundError(msg)
-        elif severity == "warning":
-            logger.warning(f"{msg}")
-            package_available = False
-        else:
-            raise RuntimeError(
-                "Error in calling _check_soft_dependencies, severity "
-                f'argument must be "error" or "warning", found "{severity}".'
-            )
+    msg = (
+        f"\n'{package}' is a soft dependency and not included in the "
+        f"pycaret installation. Install it with: `pip install {install_name}`."
+    )
+    if extra is not None:
+        msg += f"\nOr install the extras bundle: `pip install pycaret[{extra}]`."
 
-    return package_available
+    if severity == "error":
+        logger.exception(msg)
+        raise ModuleNotFoundError(msg)
+    if severity == "warning":
+        logger.warning(msg)
+        return False
+    raise RuntimeError(
+        f'severity must be "error" or "warning", got "{severity}".'
+    )

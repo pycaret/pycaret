@@ -230,9 +230,16 @@ class MAPEMetricContainer(RegressionMetricContainer):
         def mean_absolute_percentage_error(
             y_true, y_pred, sample_weight=None, multioutput="uniform_average"
         ):
-            y_type, y_true, y_pred, multioutput = _check_reg_targets(
-                y_true, y_pred, multioutput
-            )
+            # sklearn 1.7 changes to `_check_reg_targets`:
+            # - inserted `sample_weight` as a positional before `multioutput`
+            # - now returns 5 values: (y_type, y_true, y_pred, sample_weight, multioutput)
+            (
+                y_type,
+                y_true,
+                y_pred,
+                sample_weight,
+                multioutput,
+            ) = _check_reg_targets(y_true, y_pred, sample_weight, multioutput)
             check_consistent_length(y_true, y_pred, sample_weight)
             mask = y_true != 0
             y_true = y_true[mask]

@@ -1,53 +1,13 @@
-from pycaret.clustering.functional import (
-    add_metric,
-    assign_model,
-    create_model,
-    deploy_model,
-    evaluate_model,
-    get_allowed_engines,
-    get_config,
-    get_current_experiment,
-    get_engine,
-    get_logs,
-    get_metrics,
-    load_experiment,
-    load_model,
-    models,
-    plot_model,
-    predict_model,
-    pull,
-    remove_metric,
-    save_experiment,
-    save_model,
-    set_config,
-    set_current_experiment,
-    setup,
-)
-from pycaret.clustering.oop import ClusteringExperiment
+"""Clustering task — PyCaret 4.0.
 
-__all__ = [
-    "ClusteringExperiment",
-    "setup",
-    "create_model",
-    "assign_model",
-    "plot_model",
-    "evaluate_model",
-    "predict_model",
-    "deploy_model",
-    "save_model",
-    "load_model",
-    "pull",
-    "models",
-    "get_metrics",
-    "add_metric",
-    "remove_metric",
-    "get_logs",
-    "get_config",
-    "set_config",
-    "save_experiment",
-    "load_experiment",
-    "set_current_experiment",
-    "get_allowed_engines",
-    "get_engine",
-    "get_current_experiment",
-]
+PyCaret 4.0 is OOP-only; the 3.x functional API was removed.
+
+    from pycaret.clustering import ClusteringExperiment
+    exp = ClusteringExperiment(session_id=42).fit(df)
+    kmeans = exp.create_model("kmeans", num_clusters=4).pipeline
+    labelled = exp.assign_model(kmeans)
+"""
+
+from pycaret.tasks.clustering import ClusteringExperiment
+
+__all__ = ["ClusteringExperiment"]

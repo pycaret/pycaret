@@ -20,7 +20,18 @@ import numpy as np
 import pandas as pd
 from IPython.display import display as ipython_display
 from pandas.api.types import is_string_dtype
-from plotly_resampler import FigureResampler, FigureWidgetResampler
+# PyCaret 4.0: plotly-resampler (streamlit + plotly-dash display formats)
+# was removed from core deps. The two display paths below ('plotly-widget',
+# 'plotly-dash') raise NotImplementedError when selected; plain plotly still works.
+def _v4_resampler_removed(*_args, **_kwargs):
+    raise NotImplementedError(
+        "display_format='plotly-widget' / 'plotly-dash' were removed in PyCaret 4.0 "
+        "along with the plotly-resampler dependency. Use the default Plotly renderer "
+        "or install plotly-resampler manually if you need it."
+    )
+
+
+FigureResampler = FigureWidgetResampler = _v4_resampler_removed
 from sklearn.base import clone
 from sktime.forecasting.base import BaseForecaster, ForecastingHorizon
 from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
@@ -43,7 +54,6 @@ from pycaret.containers.models.time_series import (
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger, redirect_output
-from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.plots.time_series import _get_plot
 from pycaret.internal.plots.utils.time_series import (
     _clean_model_results_labels,
@@ -2212,7 +2222,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
-        parallel: Optional[ParallelBackend] = None,
     ):
         """
         This function trains and evaluates performance of all estimators available in the
@@ -2298,13 +2307,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             Score grid is not printed when verbose is set to False.
 
 
-        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
-            A ParallelBackend instance. For example if you have a SparkSession ``session``,
-            you can use ``FugueBackend(session)`` to make this function running using
-            Spark. For more details, see
-            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
-
-
         Returns:
             Trained model or list of trained models, depending on the ``n_select`` param.
 
@@ -2342,7 +2344,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
                 fit_kwargs=fit_kwargs,
                 experiment_custom_tags=experiment_custom_tags,
                 verbose=verbose,
-                parallel=parallel,
                 caller_params=caller_params,
             )
         finally:

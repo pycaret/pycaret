@@ -1146,10 +1146,15 @@ class BATSContainer(TimeSeriesContainer):
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
-        from sktime.forecasting.bats import BATS  # type: ignore
-
-        # Disable container if certain features are not supported but enforced ----
-        dummy = BATS()
+        # PyCaret 4.0: tbats is an optional install (numpy<2 pin conflicts with
+        # the NumPy 2.x modernization). If it's missing we mark the container
+        # inactive so compare_models skips BATS without raising.
+        try:
+            from sktime.forecasting.bats import BATS  # type: ignore
+            dummy = BATS()
+        except Exception:
+            self.active = False
+            return
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
             return
@@ -1215,10 +1220,13 @@ class TBATSContainer(TimeSeriesContainer):
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
-        from sktime.forecasting.tbats import TBATS
-
-        # Disable container if certain features are not supported but enforced ----
-        dummy = TBATS()
+        # PyCaret 4.0: tbats is an optional install — see BATSContainer note.
+        try:
+            from sktime.forecasting.tbats import TBATS
+            dummy = TBATS()
+        except Exception:
+            self.active = False
+            return
         self.active = _check_enforcements(forecaster=dummy, experiment=experiment)
         if not self.active:
             return

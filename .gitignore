@@ -1,40 +1,48 @@
-venv/
-.ipynb_checkpoints/
+# Build / packaging
+/build
+/dist
+/pycaret.egg-info
+/pycaret_nightly.egg-info
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
 .mypy_cache/
 .pytest_cache/
-__pycache__/
-mlruns/
-catboost_info/
-/stacker.py
-/stacknet.py
-/cli.py
-/app.py
-/cli_app.py
-/logo.png
-/model
-/Results.html
-/build
-/pycaret_nightly.egg-info
-/pycaret.egg-info
-/dist
-.vscode/settings.json
-*code-workspace
-/logs.log
-examples/logs.log
-.log
-tutorials/logs.log
-/docs/build
-.idea/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual envs
+venv/
+/.venv*
+/.devcontainer
+
+# Logs (root + anywhere in the tree)
 *.log
+logs.log
+/docs/build
+
+# Runtime artifacts (notebook / experiment outputs)
+artifacts/
 trained_models/
+catboost_info/
 *.pkl
+
+# Legacy (kept from 3.x — ignore if accidentally recreated)
+mlruns/
 /mlruns.db
 /mlruns.db-journal
 mlflow_backend.py
-demo4.py
 dask*/
-/.venv*
-/.devcontainer
-tmp/
-nbtest1.ipynb
+
+# IDE / editor
+.vscode/settings.json
+*code-workspace
+.idea/
 .DS_Store
+
+# Scratch / temp
+tmp/
+nbtest*.ipynb
+demo*.py

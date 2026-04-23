@@ -1,29 +1,23 @@
 [project]
 name = "pycaret"
-version = "3.4.0"
-description = "PyCaret - An open source, low-code machine learning library in Python."
+version = "4.0.0.dev0"
+description = "PyCaret 4.0 — lean, modern, agent-native open-source AutoML engine."
 readme = "README.md"
 keywords = [
-  "data-mining",
-  "data-science",
-  "classification",
-  "clustering",
-  "detection",
-  "forecasting",
+  "automl",
   "machine-learning",
+  "classification",
   "regression",
-  "scikit-learn<1.5",
+  "clustering",
+  "anomaly-detection",
   "time-series",
+  "scikit-learn",
+  "llm-agents",
 ]
 license = { file = "LICENSE" }
-maintainers = [
-  { name = "pycaret developers" },
-]
-# for full credits see contributors.md
-authors = [
-    { name = "pycaret developers" },
-]
-requires-python = ">=3.9,<3.13"
+authors = [{ name = "PyCaret developers" }]
+maintainers = [{ name = "Moez Ali" }]
+requires-python = ">=3.11"
 classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
@@ -34,203 +28,187 @@ classifiers = [
   "Operating System :: Unix",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Software Development",
 ]
-# core dependencies of pycaret
-# this set should be kept minimal!
+
+# Core runtime dependencies. Keep this list lean and without upper-bound pins.
+# Anything that isn't needed to execute setup -> compare_models -> predict_model
+# on a medium sklearn dataset belongs in an optional extra.
 dependencies = [
-  # Base
-  "ipython>=5.5.0",
-  "ipywidgets>=7.6.5",
-  "tqdm>=4.62.0",
-  "numpy>=1.21, <1.27",
-  "pandas<2.2",
-  "jinja2>=3",
-  "scipy>=1.6.1,<=1.11.4",  # to fix later (
-  "joblib>=1.4.2,<1.5",
-  "scikit-learn<1.5",
-  "pyod>=1.1.3",
-  "imbalanced-learn>=0.12.0,<0.14.0",
-  "category-encoders>=2.4.0",
-  "lightgbm>=3.0.0",
-  "numba>=0.55.0",
-  "requests>=2.27.1",  # Required by pycaret.datasets
-  "psutil>=5.9.0",
-  "markupsafe>=2.0.1",  # Fixes Google Colab issue
-  "importlib_metadata>=4.12.0",
-  "nbformat>=4.2.0",
-  "cloudpickle",
-  "deprecation>=2.1.0",
-  "xxhash",
-  "wurlitzer; platform_system != 'Windows'",
-  "trio>=0.22.0,<0.25.0",  # fixes problems about third-party packages, remove after httpcore 1.05
-  "setuptools; python_version>='3.12'",
-  # Plotting
-  "matplotlib<3.8.0",  # stem(..., use_line_collection=False) is no longer supported.
-  "mljar-scikit-plot",  # this is a updated version of original scikit-plot
-  "yellowbrick>=1.4",
-  "plotly>=5.14.0",
-  "kaleido>=0.2.1",
-  "schemdraw==0.15",  # 0.16 only supports Python >3.8
-  "plotly-resampler>=0.8.3.1",
-  # Time-series
-  "statsmodels>=0.12.1",
-  "sktime>=0.31.0,<0.31.1",
-  "tbats>=1.1.3",
-  "pmdarima>=2.0.4",
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "scipy>=1.11",
+  # Upper cap on sklearn is driven by sktime <1.8 constraint (see docs/revamp/DECISIONS.md).
+  # When sktime releases a version declaring scikit-learn<1.9 we bump this.
+  "scikit-learn>=1.7,<1.8",
+  "joblib>=1.4",
+  "cloudpickle>=3.0",
+  "lightgbm>=4.3",
+  "category-encoders>=2.6",
+  "imbalanced-learn>=0.13",
+  "plotly>=5.22",
+  "kaleido>=0.2",
+  # matplotlib kept as a transitional dep — it's only pulled in by the
+  # pre-Plotly plot paths and residual yellowbrick-shaped code. Phase 3 of the
+  # revamp (see docs/revamp/ROADMAP.md) removes this once all plots are Plotly.
+  "matplotlib>=3.9",
+  "ipython>=8.18",
+  "ipywidgets>=8.1",
+  "tqdm>=4.66",
+  "jinja2>=3.1",
+  "requests>=2.32",
+  "psutil>=5.9",
+  "nbformat>=5.10",
+  "xxhash>=3.4",
 ]
 
 [project.optional-dependencies]
-# there are the following dependency sets:
-# - full - all soft dependencies
-# - analysis
-# - models
-# - tuners
-# - mlops
-# - parallel
-# - dev
-# - test
 
-# soft dependencies are not required for the core functionality of pycaret
-
-# all soft dependencies
-#
-# users can install via "pip install pycaret[full]"
-#
-full = [
-  "shap>=0.44.0,<0.47.0",
-  "interpret>=0.2.7",
-  "umap-learn>=0.5.2",
-  "pyyaml",
-  "ydata-profiling>=4.3.1",
-  "explainerdashboard>=0.3.8",  # For dashboard method
-  "fairlearn==0.7.0",  # For check_fairness method
-  "xgboost>=2.0.0",
-  "catboost>=1.2.5",
-  "kmodes>=0.11.1",
-  "mlxtend>=0.19.0",
-  "statsforecast<1.8.0,>1.6",
-  "scikit-learn-intelex<2024.7.0; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
-  "tune-sklearn",
-  "ray[tune]",
-  "hyperopt>=0.2.7",
-  "optuna>=3.0.0",
-  "optuna-integration",
-  "scikit-optimize>=0.9.0",
-  "mlflow>=2.0.0",
-  "gradio>=3.50.2",
-  "boto3>=1.24.56",  # For deploy_model method
-  "fastapi",  # For web api
-  "uvicorn>=0.17.6",  # For web api
-  "m2cgen>=0.9.0",  # For model conversion
-  "evidently<0.4.30",  # test_check_drift fails with 0.4.30
-  "dask<2024.6.3",
-  "distributed<2024.6.3",
-  "fugue==0.9.1",
-  "flask",
-  "Werkzeug>=2.2,<3.0",
-  "pytest==8.3.2",
-  "moto<5.0.0",  # missing moto.mock_s3 on moto>=5.0.0
-  # "codecov>=2.1.12",  # https://github.com/home-assistant/core/issues/91283
-  "fugue[dask]",
-  "dash[testing]",
-  "black>=24.8.0",
-  "isort>=5.13.2",
-  "flake8>=7.1.1",
-  "setuptools>=71.1.0",
-  "mypy>=0.11.1",
-]
-
-analysis = [
-  "shap>=0.44.0,<0.47.0",
-  "interpret>=0.2.7",
-  "umap-learn>=0.5.2",
-  "pyyaml",
-  "ydata-profiling>=4.3.1",
-  "explainerdashboard>=0.3.8",  # For dashboard method
-  "fairlearn==0.7.0",  # For check_fairness method
-]
-
+# Additional model families not needed for the core golden path.
 models = [
-  "xgboost>=2.0.0",
-  "catboost>=1.2.5",
-  "kmodes>=0.11.1",
-  "mlxtend>=0.19.0",
-  "statsforecast<1.8.0,>1.6",
-  "scikit-learn-intelex<2024.7.0; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
+  "xgboost>=2.0",
+  "catboost>=1.2",
+  "kmodes>=0.12",
+  "mlxtend>=0.23",
 ]
 
+# Hyperparameter tuning backends. sklearn's own GridSearch/HalvingSearch is in core;
+# optuna is the recommended drop-in for pycaret 4.0.
 tuners = [
-  "tune-sklearn",
-  "ray[tune]",
+  "optuna>=3.6",
+  "optuna-integration>=3.6",
+  "scikit-optimize>=0.10",
   "hyperopt>=0.2.7",
-  "optuna>=3.0.0",
-  "optuna-integration",
-  "scikit-optimize>=0.9.0",
 ]
 
-mlops = [
-  "mlflow>=2.0.0",
-  "gradio>=3.50.2",
-  "boto3>=1.24.56",  # For deploy_model method
-  "fastapi",  # For web api
-  "uvicorn>=0.17.6",  # For web api
-  "m2cgen>=0.9.0",  # For model conversion
-  "evidently<0.4.30",  # test_check_drift fails with 0.4.30
+# Interpretability and dimensionality reduction.
+analysis = [
+  "shap>=0.46",
+  "interpret>=0.6",
+  "umap-learn>=0.5",
 ]
 
-parallel = [
-  "dask<2024.6.3",
-  "distributed<2024.6.3",
-  "fugue==0.9.1",
-  "flask",
-  "Werkzeug>=2.2,<3.0",
+# Anomaly detection models from pyod.
+# (Kept as an extra because pyod pulls numba and can slow install.)
+anomaly = [
+  "pyod>=2.0",
+  "numba>=0.60",
 ]
 
-prophet = [
-  "prophet>=1.0.1",
+# Time-series forecasting. Heaviest single extra — kept isolated so that
+# classification/regression users don't pay the sktime install cost.
+timeseries = [
+  "statsmodels>=0.14",
+  "sktime>=0.36",
+  "pmdarima>=2.0.4",
+  # tbats and statsforecast removed from default extras.
+  # - statsforecast: needed a C toolchain to build on Python 3.14 (no wheel).
+  # - tbats: declares `numpy<2` which conflicts with the NumPy 2.x modernization.
+  # No PyCaret code imports either directly; both are referenced only by
+  # model-container id strings. Users who want them can install manually.
 ]
 
-# dev - the developer dependency set, for contributors to sktime
+# Optional prophet backend for time-series.
+prophet = ["prophet>=1.1.5"]
+
+# Everything a power user might want, in one go.
+full = [
+  "pycaret[models,tuners,analysis,anomaly,timeseries]",
+]
+
+# Developer tooling.
 dev = [
-  "black>=24.8.0",
-  "isort>=5.13.2",
-  "flake8>=7.1.1",
-  "setuptools>=71.1.0",
-  "mypy>=0.11.1",
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "pre-commit>=3.8",
 ]
 
-
-# CI related soft dependency sets - not for users of pycaret
-# they are stable and subject to deprecation policies
+# CI test dependencies.
 test = [
-  "pytest==8.3.2",
-  "moto<5.0.0",  # missing moto.mock_s3 on moto>=5.0.0
-  # "codecov>=2.1.12",  # https://github.com/home-assistant/core/issues/91283
-  "fugue[dask]",
-  "dash[testing]",
+  "pytest>=8.3",
+  "pytest-xdist>=3.6",
+  "pytest-cov>=5.0",
+  "nbval>=0.11",
 ]
-
 
 [project.urls]
-"API Reference" = "https://pycaret.gitbook.io/"
-Documentation = "https://pycaret.gitbook.io/"
-Download = "https://pypi.org/project/pycaret/#files"
 Homepage = "https://pycaret.org/"
-"Release Notes" = "https://github.com/pycaret/pycaret/releases"
 Repository = "https://github.com/pycaret/pycaret"
+Documentation = "https://pycaret.gitbook.io/"
+Issues = "https://github.com/pycaret/pycaret/issues"
 
 [build-system]
-build-backend = "setuptools.build_meta"
-requires = [
-  "setuptools>61",
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pycaret"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/pycaret",
+  "/README.md",
+  "/LICENSE",
+  "/docs/revamp",
 ]
 
-[tool.setuptools.packages.find]
-exclude = ["tests", "tests.*"]
+# --- tooling ---
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+# Exclude the legacy god-class + 3.x-era preprocessing / container / patch code
+# from lint. It's being drained verb-by-verb as part of the Phase 5 migration;
+# running ruff against code that's scheduled for deletion creates noise.
+# Lint is enforced on the new 4.0 surface only.
+exclude = [
+  "pycaret/internal",
+  "pycaret/containers",
+  "pycaret/classification/oop.py",
+  "pycaret/regression/oop.py",
+  "pycaret/clustering/oop.py",
+  "pycaret/anomaly/oop.py",
+  "pycaret/time_series/forecasting/oop.py",
+  "pycaret/loggers",
+  "pycaret/distributions.py",
+  "pycaret/datasets.py",
+  "pycaret/utils",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+  "E501", # line length handled by formatter
+  "E731", # lambdas are fine
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"pycaret/distributions.py" = ["F401"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+markers = [
+  "plotting: tests that render plots",
+  "tuning_grid: grid-search tuning tests",
+  "tuning_random: random-search tuning tests",
+  "slow: tests that take > 5s",
+]
+filterwarnings = [
+  "ignore::DeprecationWarning:sktime",
+  "ignore::FutureWarning:sktime",
+]
+
+[dependency-groups]
+dev = [
+  "pycaret[dev,test]",
+]

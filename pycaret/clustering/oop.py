@@ -4,7 +4,6 @@ import numpy as np  # type: ignore
 import pandas as pd  # type ignore
 
 import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
 from pycaret.containers.metrics.clustering import get_all_metric_containers

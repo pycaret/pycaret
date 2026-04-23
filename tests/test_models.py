@@ -1,3 +1,12 @@
+"""Model-registry equality tests — checks that every registered model's
+equality predicate uniquely matches itself.
+
+Rewritten for PyCaret 4.0 OOP API. The 3.x pattern of
+``exp = ClassificationExperiment(); exp.setup(...)`` becomes
+``exp = ClassificationExperiment(target=...).fit(...)`` — target is a
+constructor parameter, not a setup kwarg.
+"""
+
 from unittest.mock import patch
 
 import numba
@@ -5,28 +14,26 @@ import pytest
 from numba.core.dispatcher import Dispatcher
 
 import pycaret.datasets
-from pycaret.anomaly import AnomalyExperiment
-from pycaret.classification import ClassificationExperiment
-from pycaret.clustering import ClusteringExperiment
-from pycaret.regression import RegressionExperiment
-from pycaret.time_series import TSForecastingExperiment
+from pycaret.tasks import (
+    AnomalyExperiment,
+    ClassificationExperiment,
+    ClusteringExperiment,
+    RegressionExperiment,
+    TimeSeriesExperiment,
+)
 
 
 @pytest.fixture
 def disable_numba():
-    """
-    Forces numba to use the original python functions.
+    """Force numba to use the original Python functions.
 
-    This is required as numba code in pyod (anomaly) seems to not work
-    correctly leading to exceptions if ran from within pytest.
+    Required because numba-compiled code in pyod (anomaly) can misbehave
+    under pytest; calling the underlying py_func via a Dispatcher patch is
+    the documented workaround.
     """
     old = numba.config.DISABLE_JIT
-    # This will not affect already compiled functions...
     numba.config.DISABLE_JIT = True
 
-    # ...which is why we force the Numba dispatcher to simply
-    # call the underlying python function for already compiled
-    # ones
     def pyfunc_call(self, *args, **kwargs):
         return self.py_func(*args, **kwargs)
 
@@ -36,14 +43,14 @@ def disable_numba():
 
 
 def check_exp(exp, **kwargs):
+    """For every registered non-special model, train and assert its equality
+    predicate uniquely matches itself among all other containers."""
     model_definitions = exp.models(internal=True).to_dict("index")
     for id, model_definition in model_definitions.items():
         if model_definition["Special"]:
             continue
-        print(id)
-        model = exp.create_model(id, **kwargs)
+        model = exp.create_model(id, **kwargs).pipeline
         for id_2, model_definition_2 in model_definitions.items():
-            print(f"{id_2}.eq_function({id})")
             if id_2 == id:
                 assert model_definition_2["Equality"](model)
             else:
@@ -51,45 +58,32 @@ def check_exp(exp, **kwargs):
 
 
 def test_model_equality_classification():
-    exp = ClassificationExperiment()
-    exp.setup(
-        pycaret.datasets.get_data("juice"),
-        target="Purchase",
-    )
+    df = pycaret.datasets.get_data("juice")
+    exp = ClassificationExperiment(target="Purchase").fit(df)
     check_exp(exp, cross_validation=False)
 
 
 def test_model_equality_regression():
-    exp = RegressionExperiment()
-    exp.setup(
-        pycaret.datasets.get_data("boston"),
-        target="medv",
-    )
+    df = pycaret.datasets.get_data("boston")
+    exp = RegressionExperiment(target="medv").fit(df)
     check_exp(exp, cross_validation=False)
 
 
 def test_model_equality_time_series():
-    exp = TSForecastingExperiment()
-    exp.setup(
-        pycaret.datasets.get_data("airline"),
-        fh=12,
-    )
+    df = pycaret.datasets.get_data("airline")
+    exp = TimeSeriesExperiment(fh=12).fit(df)
     check_exp(exp, cross_validation=False)
 
 
 def test_model_equality_clustering():
-    exp = ClusteringExperiment()
-    exp.setup(
-        pycaret.datasets.get_data("jewellery"),
-    )
+    df = pycaret.datasets.get_data("jewellery")
+    exp = ClusteringExperiment().fit(df)
     check_exp(exp)
 
 
 def test_model_equality_anomaly(disable_numba):
-    exp = AnomalyExperiment()
-    exp.setup(
-        pycaret.datasets.get_data("anomaly"),
-    )
+    df = pycaret.datasets.get_data("anomaly")
+    exp = AnomalyExperiment().fit(df)
     check_exp(exp)
 
 

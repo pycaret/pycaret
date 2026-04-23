@@ -11,7 +11,6 @@ from unittest.mock import patch
 import numpy as np  # type: ignore
 import pandas as pd
 import plotly.express as px  # type: ignore
-import scikitplot as skplt  # type: ignore
 from IPython.display import display as ipython_display
 from joblib.memory import Memory
 from packaging import version
@@ -20,7 +19,6 @@ from sklearn.model_selection import BaseCrossValidator  # type: ignore
 from sklearn.pipeline import Pipeline
 
 import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
 import pycaret.loggers
@@ -29,15 +27,61 @@ from pycaret.internal.logging import create_logger, get_logger, redirect_output
 from pycaret.internal.memory import get_memory
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
-from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
-from pycaret.loggers.comet_logger import CometLogger
-from pycaret.loggers.dagshub_logger import DagshubLogger
-from pycaret.loggers.mlflow_logger import MlflowLogger
-from pycaret.loggers.wandb_logger import WandbLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
+
+
+# -----------------------------------------------------------------------------
+# PyCaret 4.0 transitional stubs.
+#
+# The external tracker loggers (mlflow/comet/wandb/dagshub/dashboard) and the
+# yellowbrick / scikit-plot plot layer were removed in the 4.0 revamp. We keep
+# named stubs here so that `plot_model` / `setup(log_experiment=...)` call sites
+# raise a clear, actionable error instead of ImportError at module-load time.
+# Phase 3 of the revamp replaces `show_yellowbrick_plot` and `skplt.*` with a
+# Plotly-native registry in `pycaret/plots/`. Phase 1 of the revamp replaces
+# the logger selection with the lean built-in `pycaret.logging` event stream.
+# -----------------------------------------------------------------------------
+
+
+def _v4_removed(feature: str):
+    def _raise(*_args, **_kwargs):
+        raise NotImplementedError(
+            f"{feature} was removed in PyCaret 4.0. See docs/revamp/KILL_LIST.md. "
+            "Phase 3 reintroduces Plotly-native equivalents for plots; tracker "
+            "integrations (mlflow/comet/wandb/dagshub) are out of scope for 4.0 core."
+        )
+    return _raise
+
+
+show_yellowbrick_plot = _v4_removed("yellowbrick-backed plot_model paths")
+
+
+class _RemovedLogger(BaseLogger):
+    def __init__(self, *_args, **_kwargs):
+        raise NotImplementedError(
+            "External experiment trackers (mlflow/comet/wandb/dagshub) were removed "
+            "in PyCaret 4.0. Pass a custom BaseLogger subclass or use "
+            "`log_experiment=False`."
+        )
+
+
+MlflowLogger = CometLogger = WandbLogger = DagshubLogger = _RemovedLogger
+
+
+class _skplt_metrics_stub:
+    plot_lift_curve = staticmethod(_v4_removed("plot_model('lift')"))
+    plot_cumulative_gain = staticmethod(_v4_removed("plot_model('gain')"))
+    plot_ks_statistic = staticmethod(_v4_removed("plot_model('ks')"))
+
+
+class _skplt_stub:
+    metrics = _skplt_metrics_stub()
+
+
+skplt = _skplt_stub()
 from pycaret.utils.generic import (
     MLUsecase,
     get_allowed_engines,
@@ -225,50 +269,40 @@ class _TabularExperiment(_PyCaretExperiment):
 
         return self
 
-    def _validate_log_experiment(self, obj: Any) -> None:
-        return isinstance(obj, (bool, BaseLogger)) or (
-            isinstance(obj, str)
-            and obj.lower() in ["mlflow", "wandb", "dagshub", "comet_ml"]
-        )
+    def _validate_log_experiment(self, obj: Any) -> bool:
+        # PyCaret 4.0: string-based tracker shortcuts ("mlflow", "wandb", ...)
+        # were removed along with the external tracker integrations. Only
+        # explicit BaseLogger instances or a bool are accepted now.
+        return isinstance(obj, (bool, BaseLogger))
 
-    def _convert_log_experiment(
-        self, log_experiment: Any
-    ) -> Union[bool, pycaret.loggers.DashboardLogger]:
-        if not (
-            (
-                isinstance(log_experiment, list)
-                and all(self._validate_log_experiment(x) for x in log_experiment)
-            )
-            or self._validate_log_experiment(log_experiment)
-        ):
+    def _convert_log_experiment(self, log_experiment: Any) -> BaseLogger:
+        """Normalise the user's `log_experiment` setup parameter to a BaseLogger.
+
+        PyCaret 4.0 always stores a BaseLogger instance in `self.logging_param` so
+        downstream hooks (`log_model`, `log_model_comparison`, etc.) can be called
+        unconditionally. The default `BaseLogger()` is a no-op — callers do not
+        need to branch on "is tracking enabled?" before invoking hooks.
+        """
+        if isinstance(log_experiment, list):
+            loggers = [x for x in log_experiment if isinstance(x, BaseLogger)]
+            if loggers:
+                return loggers[0]  # single-logger fan-out in 4.0
+            if all(self._validate_log_experiment(x) for x in log_experiment):
+                return BaseLogger()
             raise TypeError(
-                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb', 'dagshub', 'comet_ml'; or a list of the former."
+                "log_experiment list entries must be bool or BaseLogger instances "
+                "in PyCaret 4.0 (string shortcuts like 'mlflow' were removed)."
             )
 
-        def convert_logging_param(obj):
-            if isinstance(obj, BaseLogger):
-                return obj
-            obj = obj.lower()
-            if obj == "mlflow":
-                return MlflowLogger()
-            if obj == "wandb":
-                return WandbLogger()
-            if obj == "dagshub":
-                return DagshubLogger(os.getenv("MLFLOW_TRACKING_URI"))
-            if obj == "comet_ml":
-                return CometLogger()
+        if isinstance(log_experiment, BaseLogger):
+            return log_experiment
+        if isinstance(log_experiment, bool):
+            return BaseLogger()
 
-        if log_experiment:
-            if log_experiment is True:
-                loggers_list = [MlflowLogger()]
-            else:
-                if not isinstance(log_experiment, list):
-                    log_experiment = [log_experiment]
-                loggers_list = [convert_logging_param(x) for x in log_experiment]
-
-            if loggers_list:
-                return pycaret.loggers.DashboardLogger(loggers_list)
-        return False
+        raise TypeError(
+            "log_experiment must be a bool or a BaseLogger instance in PyCaret 4.0. "
+            "Pass your own BaseLogger subclass if you need custom tracking."
+        )
 
     def _initialize_setup(
         self,
@@ -529,14 +563,12 @@ class _TabularExperiment(_PyCaretExperiment):
 
         model_name = self._get_model_name(model)
         base_plot_filename = f"{plot_name}.png"
-        with patch(
-            "yellowbrick.utils.types.is_estimator",
-            pycaret.internal.patches.yellowbrick.is_estimator,
-        ):
-            with patch(
-                "yellowbrick.utils.helpers.is_estimator",
-                pycaret.internal.patches.yellowbrick.is_estimator,
-            ):
+        # PYCARET 4.0: yellowbrick patches removed. These `with` blocks wrapped
+        # the entire plot dispatch below. Replaced with nullcontext()s so that
+        # body indentation is preserved until Phase 3 rewrites plots in Plotly.
+        from contextlib import nullcontext as _nullctx
+        with _nullctx():
+            with _nullctx():
                 _base_dpi = 100
 
                 def pipeline():

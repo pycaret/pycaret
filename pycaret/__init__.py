@@ -1,26 +1,47 @@
+"""PyCaret 4.0 — lean, modern, agent-native open-source AutoML engine.
+
+Canonical 4.0 API
+-----------------
+
+    from pycaret.tasks import (
+        ClassificationExperiment,
+        RegressionExperiment,
+        ClusteringExperiment,
+        AnomalyExperiment,
+        TimeSeriesExperiment,
+    )
+    from pycaret import save_model, load_model
+
+    exp = ClassificationExperiment(target="y", session_id=42).fit(df)
+    best = exp.compare_models().best
+    preds = exp.predict_model(best).predictions
+    save_model(best, "best.pkl")
+
+Agent / UI introspection
+------------------------
+
+    from pycaret.api import (
+        list_models, describe_model,
+        list_metrics, describe_setup_params,
+    )
+
+Event-stream logging
+--------------------
+
+    from pycaret.logging import MemoryLogger, BaseLogger, EventKind
+"""
+
 import sys
 
+from pycaret.persistence import load_model, save_model
 from pycaret.utils._show_versions import show_versions
 
-version_ = "3.4.0"
+__version__ = "4.0.0.dev0"
+version_ = __version__
 
-__version__ = version_
-
-__all__ = ["show_versions", "__version__"]
-
-# Pycaret only supports python 3.9, 3.10, 3.11, 3.12
-# This code is to avoid issues with python 3.7 or other not supported versions
-# example (see package versions): https://github.com/pycaret/pycaret/issues/3746
-
-if sys.version_info < (3, 9):
-    raise RuntimeError(
-        "Pycaret only supports python 3.9, 3.10, 3.11, 3.12. Your actual Python version: ",
-        sys.version_info,
-        "Please UPGRADE your Python version.",
-    )
-elif sys.version_info >= (3, 13):
-    raise RuntimeError(
-        "Pycaret only supports python 3.9, 3.10, 3.11, 3.12. Your actual Python version: ",
-        sys.version_info,
-        "Please DOWNGRADE your Python version.",
-    )
+__all__ = [
+    "__version__",
+    "load_model",
+    "save_model",
+    "show_versions",
+]

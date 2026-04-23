@@ -32,7 +32,6 @@ from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.preprocess.preprocessor import Preprocessor
 from pycaret.internal.pycaret_experiment.non_ts_supervised_experiment import (
@@ -1048,7 +1047,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
         probability_threshold: Optional[float] = None,
         engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
-        parallel: Optional[ParallelBackend] = None,
     ) -> Union[Any, List[Any]]:
         """
         This function trains and evaluates performance of all estimators available in the
@@ -1152,13 +1150,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
             Score grid is not printed when verbose is set to False.
 
 
-        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
-            A ParallelBackend instance. For example if you have a SparkSession ``session``,
-            you can use ``FugueBackend(session)`` to make this function running using
-            Spark. For more details, see
-            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
-
-
         Returns:
             Trained model or list of trained models, depending on the ``n_select`` param.
 
@@ -1200,7 +1191,6 @@ class ClassificationExperiment(_NonTSSupervisedExperiment, Preprocessor):
                 experiment_custom_tags=experiment_custom_tags,
                 verbose=verbose,
                 probability_threshold=probability_threshold,
-                parallel=parallel,
                 caller_params=caller_params,
             )
         finally:

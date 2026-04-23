@@ -1,259 +1,188 @@
 <div align="center">
 
-<img src="docs/images/logo.png" alt="drawing" width="200"/>
+<img src="docs/images/logo.png" alt="PyCaret" width="200"/>
 
-## **An open-source, low-code machine learning library in Python**
-## 🎉🎉🎉 **PyCaret 3.4 is now available. 🎉🎉🎉**
-## `pip install --upgrade pycaret` </br>
+# PyCaret 4.0 — lean, modern, agent-native AutoML
 
-<p align="center">
-<h3>
-  <a href="https://pycaret.gitbook.io/">Docs</a> •
-  <a href="https://pycaret.gitbook.io/docs/get-started/tutorials">Tutorials</a> •
-  <a href="https://pycaret.gitbook.io/docs/learn-pycaret/official-blog">Blog</a> •
-  <a href="https://www.linkedin.com/company/pycaret/">LinkedIn</a> •
-  <a href="https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g">YouTube</a> •
-    <a href="https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w">Slack</a>
-</h3>
-</p>
+### A sklearn-composable AutoML engine built to power notebooks, LLM agents, and a modern React UI.
 
-| Overview | |
-|---|---|
-| **CI/CD** | ![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) |
-| **Code** |  [![!pypi](https://img.shields.io/pypi/v/pycaret?color=orange)](https://pypi.org/project/pycaret/) [![!python-versions](https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://badge.fury.io/py/pycaret) [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-| **Downloads**| [![Downloads](https://static.pepy.tech/personalized-badge/pycaret?period=week&units=international_system&left_color=grey&right_color=blue&left_text=weekly%20(pypi))](https://pepy.tech/project/pycaret) [![Downloads](https://static.pepy.tech/personalized-badge/pycaret?period=month&units=international_system&left_color=grey&right_color=blue&left_text=monthly%20(pypi))](https://pepy.tech/project/pycaret) [![Downloads](https://static.pepy.tech/personalized-badge/pycaret?period=total&units=international_system&left_color=grey&right_color=blue&left_text=cumulative%20(pypi))](https://pepy.tech/project/pycaret) |
-| **License** | [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg)
-| **Community** | [![Slack](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://join.slack.com/t/pycaret/shared_invite/zt-20gl4zb8k-L~ZQDyi9LtrV4dWxYpLE7A) |
+[![CI](https://github.com/pycaret/pycaret/actions/workflows/test.yml/badge.svg?branch=v4)](https://github.com/pycaret/pycaret/actions/workflows/test.yml)
+[![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/pycaret/pycaret)
+[![License](https://img.shields.io/pypi/l/pycaret.svg)](https://github.com/pycaret/pycaret/blob/v4/LICENSE)
 
+[Changelog](docs/revamp/release_notes_pycaret4.md) ·
+[Architecture](docs/revamp/ARCHITECTURE.md) ·
+[Roadmap](docs/revamp/ROADMAP.md) ·
+[Agent guide](AGENTS.md) ·
+[Dev docs](docs/for_developers/)
 
+</div>
 
-![alt text](docs/images/quick_start.gif)
+---
 
-<div align="left">
+> ## ⚠ 4.0 is **work in progress** — you're looking at the `v4` branch
+>
+> PyCaret 4.0 is a ground-up architectural revamp of PyCaret. It lives on the **`v4` branch**. The `master` branch is still 3.4.0.
+>
+> **Status (as of the latest session):**
+> - **Public API**: OOP-only `Experiment` classes. Functional API is gone. 145 module-level functions + ~11,300 LOC of pass-through wrappers removed.
+> - **Source**: ~49K LOC (down from ~62K at 3.4.0), still shrinking. The 3.x god-class in `pycaret/internal/pycaret_experiment/` is still wrapped by `Experiment._legacy` and being drained verb-by-verb (Phase 5 of the roadmap).
+> - **Tests**: 32/32 green on Python 3.11 / 3.12 / 3.13 + scikit-learn 1.7 + NumPy 2. Runs in ~2 min.
+> - **Dependencies**: 19 core deps (down from 30). mlflow / comet / wandb / dagshub / fugue / dask / ray / yellowbrick / gradio / fastapi / boto3 / m2cgen / evidently / fairlearn all removed. See [`docs/revamp/KILL_LIST.md`](docs/revamp/KILL_LIST.md).
+> - **Notebooks**: 5 working executed end-to-end examples under [`notebooks/`](notebooks/).
+>
+> **Don't use 4.0 in production yet.** It's not on PyPI and the internal delegation layer is still being drained. Track progress in [`docs/revamp/STATUS.md`](docs/revamp/STATUS.md) and [`docs/revamp/ROADMAP.md`](docs/revamp/ROADMAP.md). The first installable release will be `4.0.0alpha0`.
+>
+> **What works today:** `git clone -b v4`, `uv sync --all-extras`, `uv run pytest` — full green. The 5 notebooks in [`notebooks/`](notebooks/) run end-to-end. The OOP API is stable; internal refactors will not break it.
 
-# Welcome to PyCaret
-PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
+---
 
-In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few lines only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, LightGBM, CatBoost, Optuna, Hyperopt, Ray, and few more.
+## Why 4.0 is different
 
-The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more technical expertise. PyCaret was inspired by the caret library in R programming language.
+PyCaret 3.x shipped two overlapping APIs (functional + OOP) and ~62K LOC of code. In 2026, most of that was tech debt: unmaintained tracker integrations (mlflow/comet/wandb), broken-on-modern-sklearn plot wrappers (yellowbrick), never-used distributed backends (fugue/dask/ray), and signature-drift bugs between the two APIs.
 
-# 🚀 Installation
+**PyCaret 4.0 is a ~35% tech-debt cut.** Result:
 
-## 🌐 Option 1: Install via PyPi
-PyCaret is tested and supported on 64-bit systems with:
-- Python 3.9, 3.10, 3.11 and 3.12
-- Ubuntu 16.04 or later
-- Windows 7 or later
+- **OOP-only**, sklearn-composable `Experiment` classes (`ClassificationExperiment`, `RegressionExperiment`, …) that inherit from `sklearn.base.BaseEstimator` — they respond to `get_params`, `set_params`, `clone`, `__sklearn_tags__`, `__sklearn_is_fitted__` like any other sklearn object.
+- **Typed result dataclasses** — every operation returns a `CompareResult` / `TuneResult` / `PredictResult` / … with the fitted pipeline, metrics, and an event trace.
+- **Structured event stream** (`pycaret.logging`) designed to be consumed by a React UI or an LLM agent over `BaseLogger.subscribe(callback)`.
+- **First-class introspection** (`pycaret.api`) — every model, metric, and setup parameter is a serializable dataclass a UI can render directly.
+- **Engine-oriented:** the forthcoming PyCaret React UI runs on this engine; so do LLM-agent workflows that drive PyCaret programmatically.
 
-You can install PyCaret with Python's pip package manager:
+See [`docs/revamp/ARCHITECTURE.md`](docs/revamp/ARCHITECTURE.md) for the full design rationale and [`docs/revamp/release_notes_pycaret4.md`](docs/revamp/release_notes_pycaret4.md) for the engineering change log.
 
-```python
-# install pycaret
+## Installation
+
+PyCaret 4.0 uses `uv` for environment management.
+
+```bash
+# Install the `uv` tool if you don't have it yet
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Core installation
+uv pip install pycaret
+
+# With every optional extra (models, tuners, analysis, anomaly, timeseries)
+uv pip install "pycaret[full]"
+```
+
+Plain `pip` works too:
+
+```bash
 pip install pycaret
+pip install "pycaret[full]"
 ```
 
-PyCaret's default installation will not install all the optional dependencies automatically. Depending on the use case, you may be interested in one or more extras:
+**Supported:** Python 3.11 / 3.12 / 3.13. (Python 3.14 tracked, pending upstream `joblib` + `cloudpickle` support for PEP 649.)
+
+## Quickstart — Classification
 
 ```python
-# install analysis extras
-pip install pycaret[analysis]
-
-# models extras
-pip install pycaret[models]
-
-# install tuner extras
-pip install pycaret[tuner]
-
-# install mlops extras
-pip install pycaret[mlops]
-
-# install parallel extras
-pip install pycaret[parallel]
-
-# install test extras
-pip install pycaret[test]
-
-# install dev extras
-pip install pycaret[dev]
-
-##
-
-# install multiple extras together
-pip install pycaret[analysis,models]
-```
-
-Check out all [optional dependencies](https://github.com/pycaret/pycaret/blob/master/requirements-optional.txt). If you want to install everything including all the optional dependencies:
-
-```python
-# install full version
-pip install pycaret[full]
-```
-## 📄 Option 2: Build from Source
-Install the development version of the library directly from the source. The API may be unstable. It is not recommended for production use.
-
-```python
-pip install git+https://github.com/pycaret/pycaret.git@master --upgrade
-```
-
-## 📦 Option 3: Docker
-Docker creates virtual environments with containers that keep a PyCaret installation separate from the rest of the system. PyCaret docker comes pre-installed with a Jupyter notebook. It can share resources with its host machine (access directories, use the GPU, connect to the Internet, etc.). The PyCaret Docker images are always tested for the latest major releases.
-
-```python
-# default version
-docker run -p 8888:8888 pycaret/slim
-
-# full version
-docker run -p 8888:8888 pycaret/full
-```
-
-## 🏃‍♂️ Quickstart
-
-### 1. Functional API
-```python
-# Classification Functional API Example
-
-# loading sample dataset
 from pycaret.datasets import get_data
-data = get_data('juice')
+from pycaret.tasks import ClassificationExperiment
+from pycaret import save_model, load_model
 
-# init setup
-from pycaret.classification import *
-s = setup(data, target = 'Purchase', session_id = 123)
+df = get_data("juice")
 
-# model training and selection
-best = compare_models()
+exp = ClassificationExperiment(target="Purchase", session_id=42).fit(df)
 
-# evaluate trained model
-evaluate_model(best)
+# Compare top models; returns a CompareResult dataclass
+result = exp.compare_models()
+best = result.best
+print(result.leaderboard)         # notebook-friendly DataFrame
 
-# predict on hold-out/test set
-pred_holdout = predict_model(best)
+# Tune the best model; returns a TuneResult
+tuned = exp.tune_model(best).pipeline
 
-# predict on new data
-new_data = data.copy().drop('Purchase', axis = 1)
-predictions = predict_model(best, data = new_data)
+# Predict on new data; returns a PredictResult
+preds = exp.predict_model(tuned).predictions
 
-# save model
-save_model(best, 'best_pipeline')
+# Persist the fitted pipeline
+save_model(tuned, "artifacts/best")
+restored = load_model("artifacts/best")
 ```
 
-### 2. OOP API
+## Quickstart — Regression / Clustering / Anomaly / Time Series
+
+Same shape, task-specific subclass:
 
 ```python
-# Classification OOP API Example
+from pycaret.tasks import (
+    RegressionExperiment,
+    ClusteringExperiment,
+    AnomalyExperiment,
+    TimeSeriesExperiment,
+)
 
-# loading sample dataset
-from pycaret.datasets import get_data
-data = get_data('juice')
+reg = RegressionExperiment(target="medv").fit(boston_df)
+best = reg.compare_models().best
 
-# init setup
-from pycaret.classification import ClassificationExperiment
-s = ClassificationExperiment()
-s.setup(data, target = 'Purchase', session_id = 123)
+cluster = ClusteringExperiment().fit(jewellery_df)
+km = cluster.create_model("kmeans", num_clusters=4).pipeline
+labelled = cluster.assign_model(km)
 
-# model training and selection
-best = s.compare_models()
+anom = AnomalyExperiment().fit(anomaly_df)
+iforest = anom.create_model("iforest").pipeline
+anom.assign_model(iforest)
 
-# evaluate trained model
-s.evaluate_model(best)
-
-# predict on hold-out/test set
-pred_holdout = s.predict_model(best)
-
-# predict on new data
-new_data = data.copy().drop('Purchase', axis = 1)
-predictions = s.predict_model(best, data = new_data)
-
-# save model
-s.save_model(best, 'best_pipeline')
+ts = TimeSeriesExperiment(fh=12).fit(airline_series)
+forecast = ts.predict_model(ts.compare_models().best).predictions
 ```
 
-
-## 📁 Modules
-<div align="center">
-
-## **Classification**
-
-  Functional API           |  OOP API
-:-------------------------:|:-------------------------:
-![](docs/images/classification_functional.png)  | ![](docs/images/classification_OOP.png)
-
-## **Regression**
-
-  Functional API           |  OOP API
-:-------------------------:|:-------------------------:
-![](docs/images/regression_functional.png)  | ![](docs/images/regression_OOP.png)
-
-## **Time Series**
-
-  Functional API           |  OOP API
-:-------------------------:|:-------------------------:
-![](docs/images/time_series_functional.png)  | ![](docs/images/time_series_OOP.png)
-
-## **Clustering**
-
-  Functional API           |  OOP API
-:-------------------------:|:-------------------------:
-![](docs/images/clustering_functional.png)  | ![](docs/images/clustering_OOP.png)
-
-## **Anomaly Detection**
-
-  Functional API           |  OOP API
-:-------------------------:|:-------------------------:
-![](docs/images/anomaly_functional.png)  | ![](docs/images/anomaly_OOP.png)
-
-<div align="left">
-
-# 👥 Who should use PyCaret?
-PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
-
-- Experienced Data Scientists who want to increase productivity.
-- Citizen Data Scientists who prefer a low code machine learning solution.
-- Data Science Professionals who want to build rapid prototypes.
-- Data Science and Machine Learning students and enthusiasts.
-
-# 🎮 Training on GPUs
-To train models on the GPU, simply pass use_gpu = True in the setup function. There is no change in the use of the API; however, in some cases, additional libraries have to be installed. The following models can be trained on GPUs:
-
-- Extreme Gradient Boosting
-- CatBoost
-- Light Gradient Boosting Machine requires [GPU installation](https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
-- Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier, K Neighbors Regressor, Support Vector Machine, Linear Regression, Ridge Regression, Lasso Regression requires [cuML >= 0.15](https://github.com/rapidsai/cuml)
-
-# 🖥️ PyCaret Intel sklearnex support
-You can apply [Intel optimizations](https://github.com/intel/scikit-learn-intelex) for machine learning algorithms and speed up your workflow. To train models with Intel optimizations use `sklearnex` engine. There is no change in the use of the API, however, installation of Intel sklearnex is required:
+## Introspection — build a UI or drive it from an agent
 
 ```python
-pip install scikit-learn-intelex
+from pycaret.api import (
+    list_models, describe_model, list_metrics, describe_setup_params,
+)
+
+# Static listings — no Experiment required, works for docs generation
+list_models("classification")           # -> list[ModelCard]
+describe_model("classification", "lr")  # -> ModelCard
+list_metrics("classification")          # -> list[MetricCard]
+
+# UI-form schema — JSON-serializable, renders directly as a form
+schema = describe_setup_params("classification")
+import json
+json.dumps(schema.to_dict())
 ```
 
-# 🤝 Contributors
-<a href="https://github.com/pycaret/pycaret/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=pycaret/pycaret" width=600/>
-</a>
+## Event stream — for UIs and LLM agents
 
-# 📝 License
-PyCaret is completely free and open-source and licensed under the [MIT](https://github.com/pycaret/pycaret/blob/master/LICENSE) license.
+```python
+from pycaret.logging import MemoryLogger
 
-# ℹ️ More Information
+log = MemoryLogger()
+log.subscribe(lambda event: print(event.kind.value, event.message))
 
-| Important Links              |            Description                                       |
-| -------------------------- | -------------------------------------------------------------- |
-| :star: **[Tutorials]**        | Tutorials developed and maintained by core developers       |
-| :clipboard: **[Example Notebooks]** | Example notebooks created by community               |
-| :orange_book: **[Blog]** | Official blog by creator of PyCaret                      |
-| :books: **[Documentation]**      | API docs                              |
-| :tv: **[Videos]**            | Video resources             |
-| ✈️ **[Cheat sheet]**            | Community Cheat sheet            |
-| :loudspeaker: **[Discussions]**        | Community Discussion board on GitHub|
-| :hammer_and_wrench: **[Release Notes]**          | Release Notes          |
+exp = ClassificationExperiment(target="y", logger=log).fit(df)
+exp.compare_models()   # emits experiment.started → model.compare.finished → ...
+```
 
-[tutorials]: https://pycaret.gitbook.io/docs/get-started/tutorials
-[Example notebooks]: https://github.com/pycaret/examples
-[Blog]: https://pycaret.gitbook.io/docs/learn-pycaret/official-blog
-[Documentation]: https://pycaret.gitbook.io/docs/
-[Videos]: https://pycaret.gitbook.io/docs/learn-pycaret/videos
-[Cheat sheet]: https://pycaret.gitbook.io/docs/learn-pycaret/cheat-sheet
-[Discussions]: https://github.com/pycaret/pycaret/discussions
-[Release Notes]: https://github.com/pycaret/pycaret/releases
+## What's not in 4.0 (deliberate)
+
+Dropped in the 4.0 revamp because they were either unused, duplicated, or duplicated what the upcoming React UI will provide:
+
+- Module-level functional API (`setup`, `compare_models`, etc.) — **use the OOP `Experiment` classes**.
+- External experiment trackers: mlflow, comet-ml, wandb, dagshub — **replaced by the built-in event stream**.
+- Distributed / parallel backends: fugue, dask, ray, distributed — **removed**.
+- Visualization: yellowbrick, mljar-scikit-plot, schemdraw, plotly-resampler — **Plotly-only plots coming in the next release**.
+- Deployment helpers: `create_api`, `create_app`, `create_docker`, `dashboard`, `deploy_model` (S3), `convert_model` (m2cgen) — **out of scope for the engine**.
+- Drift / fairness: `check_drift`, `check_fairness` — **the React UI owns these**.
+
+See [`docs/revamp/KILL_LIST.md`](docs/revamp/KILL_LIST.md) for the exhaustive list.
+
+## Who PyCaret 4.0 is for
+
+- **Data scientists in notebooks** who want the fastest path from a DataFrame to a fitted pipeline.
+- **Engineering teams** building ML workflows on top of a sklearn-compatible engine with a clean, typed API.
+- **LLM agents** that introspect and drive ML experiments — every model, metric, and parameter is a serializable dataclass.
+- **UI builders** — the forthcoming open-source React UI runs on this engine; you can build your own.
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).
+
+## Contributing
+
+PyCaret 4.0 is under active architectural revamp. See [`docs/revamp/ROADMAP.md`](docs/revamp/ROADMAP.md) for the phased plan and [`docs/revamp/STATUS.md`](docs/revamp/STATUS.md) for current progress. Bug reports welcome; large feature PRs should discuss in an issue first.
