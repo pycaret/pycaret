@@ -91,21 +91,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
-      - name: Create fresh venv + install built wheel
+      - name: Install built wheel into uv-managed venv
         run: |
-          uv venv --python ${{ matrix.python-version }} .venv
           WHEEL=$(ls dist/*.whl | head -1)
-          uv pip install --python .venv "$WHEEL"
+          echo "Installing $WHEEL"
+          uv pip install "$WHEEL"
       - name: Import + version smoke
         run: |
-          .venv/${{ matrix.os == 'windows-latest' && 'Scripts' || 'bin' }}/python -c "import pycaret; print('pycaret', pycaret.__version__)"
-          .venv/${{ matrix.os == 'windows-latest' && 'Scripts' || 'bin' }}/python -c "
-          from pycaret.tasks import ClassificationExperiment, RegressionExperiment, ClusteringExperiment, AnomalyExperiment, TimeSeriesExperiment
-          from pycaret import save_model, load_model
-          from pycaret.api import list_models
-          from pycaret.logging import MemoryLogger
-          print('surface OK; list_models(classification) ->', len(list_models('classification')), 'cards')
-          "
+          uv run python -c "import pycaret; print('pycaret', pycaret.__version__)"
+          uv run python -c "from pycaret.tasks import ClassificationExperiment, RegressionExperiment, ClusteringExperiment, AnomalyExperiment, TimeSeriesExperiment; from pycaret import save_model, load_model; from pycaret.api import list_models; from pycaret.logging import MemoryLogger; print('surface OK; list_models(classification) ->', len(list_models('classification')), 'cards')"
 
   # ------------------------------------------------------------------ publish
 
