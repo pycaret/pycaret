@@ -4,6 +4,44 @@ ADR-style. Newest at top. Each entry: **date | decision | alternatives considere
 
 ---
 
+## 2026-04-23 (session 6 · platform-plan decision 6) · Metrics storage = summary AND per-fold (both, comprehensive)
+
+- **Decision:** Every Run stores two metric representations: (a) `runs.metrics_summary` — leaderboard-shape aggregates (one row per model, `mean_*` / `std_*` columns), (b) `fold_metrics` — per-fold × per-model × per-metric rows (`roughly n_models × n_folds × n_metrics` per Run).
+- **Alternatives:** Summary only (smaller DB, but kills variance/stability analysis); per-fold only (forces every leaderboard query to aggregate at read time).
+- **Why:** The summary drives the leaderboard screen; the per-fold table unlocks variance-across-folds plots, time-to-train analysis, stability checks, and "is this model truly better than the runner-up within CV noise?" comparisons. Storage cost is trivial relative to the fitted-pipeline pickles. Owner answer: "Both. very comprehensive so value can be realized."
+
+## 2026-04-23 (session 6 · platform-plan decision 5) · Dual-licensed platform packages
+
+- **Decision:** Engine `pycaret` stays MIT. Platform packages (`pycaret-server`, `pycaret-cli`, `pycaret-ui`) are dual-licensed: MIT for self-hosted and internal-enterprise use; Business Source License (BSL 1.1) for offering the platform as a multi-tenant hosted service to third parties. BSL auto-converts to MIT/Apache-2.0 after 3 years. A CLA is added to `CONTRIBUTING.md` for platform-package PRs.
+- **Alternatives:** Everything MIT (no commercial-use gate for a future hosted SaaS); AGPL (too aggressive for enterprise adoption); everything BSL (hurts self-hosters' comfort).
+- **Why:** Mirrors the posture of Sentry / Cal.com / Supabase / Plausible — credible OSS core + preserved commercial freedom for a future hosted layer. Self-hosters and internal-enterprise deployments are completely unaffected. Owner answer: "Yes."
+
+## 2026-04-23 (session 6 · platform-plan decision 4) · In-house serving system, not MLServer / BentoML
+
+- **Decision:** Platform owns its inference serving. Each deployed Pipeline becomes a `deployments` row with an `endpoint_slug`; `DeploymentRegistry` loads the pickle into the FastAPI process memory and a single catch-all route `POST /api/v1/deployments/{slug}/predict` serves inference. Per-deployment auth modes: `workspace` (JWT), `api-key` (`X-PyCaret-Key` header), `public` (rate-limited, opt-in). Per-deployment metrics: inference count, p50/p95 latency, error rate.
+- **Alternatives:** MLServer (V2 protocol, production-grade but heavier dep surface); BentoML (own DSL, lock-in); Seldon-Core (K8s-only); no serving (force users to roll their own).
+- **Why:** Owning the serving surface means end-to-end UX consistency and no third-party dep to reason about. V1 is deliberately simple (single-process, in-memory pipeline load); isolation / autoscaling come later. Target users — teams under ~20 — don't need Seldon complexity. Owner answer: "lets build a in house serving system rather than using MLServer or BentoML. no need."
+
+## 2026-04-23 (session 6 · platform-plan decision 3) · Pipelines are workspace-scoped and shareable across projects
+
+- **Decision:** `Pipeline` is a workspace-level object (not project-scoped). Projects reference pipelines via a many-to-many `pipeline_project_links` table. Workspace gets a top-level "Pipelines" screen; Project experiment view has a "Use an existing Pipeline" selector; Deployment is a workspace-level action.
+- **Alternatives:** Project-scoped only (simpler, but blocks reuse across related projects); per-user scoping (unnecessary for v1).
+- **Why:** Model-registry pattern. A team often has one pipeline ("churn model v2") that multiple projects consume. Owner answer: "Yes" to "do we expose Pipelines as a first-class shareable object across projects?"
+
+## 2026-04-23 (session 6 · platform-plan decision 2) · v1 data-source connectors = CSV upload, S3, Postgres
+
+- **Decision:** v1 ships three connectors — CSV upload (via UI), S3 (read-only: list + sample + load CSV/Parquet), Postgres (read-only: list tables + load). A `DataSourceConnector` ABC is in place from v1 so Snowflake / Google Sheets / MySQL can land later without core changes.
+- **Alternatives:** CSV only v1 (too limited given imminent AWS deployment); ship all of Snowflake / BigQuery / GSheets v1 (scope creep).
+- **Why:** AWS is the immediate deployment target, so S3 is non-negotiable. Postgres is the most common internal-DB source for analyst workflows. CSV upload covers everything else for quick testing. Owner answer: "for connectors for now lets build few. once everything work locally i will immediately test it by deploying this on AWS."
+
+## 2026-04-23 (session 6 · platform-plan decision 1) · Run notebooks are first-class artifacts
+
+- **Decision:** Every Run persists an artifact bundle: `run.ipynb` (executable, generated from config + event stream), `fitted_pipeline.pkl`, `leaderboard.json`, `events.jsonl`, `preview.html` (pre-rendered). Artifacts are immutable per Run, downloadable, shareable via signed URL, previewable in-app without download. Storage: local disk v1; S3-backed when deployed.
+- **Alternatives:** Event-stream replay only (doesn't give users a tangible notebook they can send to a colleague); static HTML only (loses reproducibility).
+- **Why:** Users reach for notebooks for sharing, debugging, and reproducibility. A modern SaaS stores these as first-class objects — not just logs. Owner answer: "do what is expected from a modern SaaS."
+
+---
+
 ## 2026-04-23 (session 3) · Functional API deleted wholesale — PyCaret 4.0 is OOP-only
 
 - **Decision:** All 5 `pycaret/*/functional.py` files (~11,300 LOC across 145 module-level functions) were deleted. The canonical 4.0 API is `pycaret.tasks.{Task}Experiment(...)`. `set_current_experiment` / `get_current_experiment` / the `ContextVar` state machinery (`pycaret/core/state.py`) were also deleted.

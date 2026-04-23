@@ -71,7 +71,7 @@ There's no serious open-source middle ground. PyCaret today is a library; enterp
 
 ---
 
-## 3. Data model — workspace → project → experiment → run
+## 3. Data model — workspace → project → experiment → run → pipeline → deployment
 
 Single authoritative hierarchy. Every domain object below is an SQLAlchemy model.
 
@@ -79,29 +79,43 @@ Single authoritative hierarchy. Every domain object below is an SQLAlchemy model
 Workspace
 ├── members (User × role)
 ├── config (theme, default compute profile, data-source allowlist)
+├── pipelines                     ← workspace-scoped; shareable across projects (§ decision 3)
+│   └── Pipeline
+│       ├── name, description, tags
+│       ├── origin_run_id (the Run that created it, if any)
+│       ├── model_id (pycaret id, e.g. "lr")
+│       ├── stored_path (fitted sklearn Pipeline pickle)
+│       ├── sha256
+│       └── linked_projects[]    ← many-to-many; a Pipeline can be used by multiple Projects
+├── deployments                  ← in-house serving (§ decision 4)
+│   └── Deployment
+│       ├── pipeline_id (FK → Pipeline)
+│       ├── endpoint_slug         ← stable path: /api/v1/deployments/{slug}/predict
+│       ├── status (active / paused / archived)
+│       ├── inference_count, last_inference_at
+│       └── auth_mode (workspace / api-key / public)
 └── projects
     └── Project
         ├── metadata (name, description, tags, owner)
-        ├── data_sources (registered CSVs / DB connections / S3 paths)
+        ├── data_sources (CSV upload, S3, Postgres — § decision 2)
+        ├── pipeline_refs[]       ← references to workspace-scoped Pipelines
         └── experiments
             └── Experiment
                 ├── config (task, target, setup params — serialized SetupParamSchema)
-                ├── runs                      ← many-to-one with Experiment
-                │   └── Run
-                │       ├── started_at, finished_at, status
-                │       ├── events[]          ← engine Event stream captured here
-                │       ├── leaderboard        ← CompareResult.leaderboard serialized
-                │       ├── artifacts[]       ← fitted pipeline .pkl paths
-                │       └── metrics           ← per-model CV metrics
-                └── pipelines                 ← many-to-one with Experiment
-                    └── Pipeline               ← a named fitted sklearn pipeline
-                        ├── run_id (origin)
-                        ├── model_id (pycaret id, e.g. "lr")
-                        ├── stored_path
-                        └── sha256
+                └── runs                       ← many-to-one with Experiment
+                    └── Run
+                        ├── started_at, finished_at, status
+                        ├── events[]           ← engine Event stream captured (append-only)
+                        ├── leaderboard       ← CompareResult.leaderboard serialized
+                        ├── artifacts[]       ← fitted pipeline pickle + notebook (§ decision 1)
+                        ├── fold_metrics[]    ← per-fold × per-model metrics (§ decision 6)
+                        ├── metrics_summary   ← leaderboard-shaped aggregates
+                        └── produced_pipelines[] ← references to Pipelines registered from this Run
 ```
 
-**Core tables:** `users`, `workspaces`, `workspace_members`, `projects`, `data_sources`, `experiments`, `runs`, `events`, `artifacts`, `pipelines`, `sessions` (auth).
+**Core tables (v1, 14 total):** `users`, `workspaces`, `workspace_members`, `projects`, `data_sources`, `experiments`, `runs`, `events`, `artifacts`, `fold_metrics`, `pipelines`, `pipeline_project_links`, `deployments`, `api_keys`, `sessions`.
+
+**Granularity (§ decision 6 — "both, very comprehensive"):** `runs.metrics_summary` stores the leaderboard shape (one row per model, `mean_*` / `std_*` columns). `fold_metrics` stores every per-fold × per-model × per-metric value (one row per `(run, model, fold, metric)` — roughly `n_models × n_folds × n_metrics` rows per Run). Both are queryable from the UI: summary drives the leaderboard screen; per-fold drives detailed model-inspection and any future time-to-train / variance-across-folds dashboards.
 
 **First-run setup flow** (self-service, no external config):
 1. User runs `docker compose up` (or `pycaret serve`).
@@ -203,7 +217,25 @@ Scope: SQLAlchemy models + Alembic migrations.
 - All models inherit a `Base` with `id` (UUID), `created_at`, `updated_at`, `created_by`.
 - Alembic migrations checked into `pycaret-server/db/migrations/`.
 
-Tables (v1): `users`, `workspaces`, `workspace_members`, `projects`, `data_sources`, `experiments`, `runs`, `events`, `artifacts`, `pipelines`, `sessions`.
+**Tables (v1, 14):**
+
+| Table | Purpose |
+|---|---|
+| `users` | Local user store (email + bcrypt hash). |
+| `workspaces` | Top-level container. |
+| `workspace_members` | User × Workspace × role (`admin` / `member`). |
+| `projects` | Project inside a workspace. |
+| `data_sources` | CSV upload / S3 / Postgres connection (§ decision 2). |
+| `experiments` | Configured `Experiment` (task, target, setup params). |
+| `runs` | One invocation of an experiment; captures status + timings. |
+| `events` | Append-only engine event stream per run. |
+| `artifacts` | Run outputs: pickle, notebook, plots (§ decision 1). |
+| `fold_metrics` | Per-fold × per-model × per-metric values (§ decision 6). |
+| `pipelines` | Workspace-scoped fitted sklearn Pipeline registry (§ decision 3). |
+| `pipeline_project_links` | Many-to-many: a Pipeline can be used by multiple Projects. |
+| `deployments` | In-house serving record (§ decision 4). |
+| `api_keys` | Per-user / per-workspace programmatic access tokens (SaaS standard). |
+| `sessions` | Active login sessions (for refresh-token rotation and forced logout). |
 
 Exit: `alembic upgrade head` on a fresh SQLite file produces a valid schema; smoke-insert + query on every table.
 
@@ -264,16 +296,33 @@ Exit:
 - Event stream renders in real time during a run.
 - Setup form is 100% driven by `describe_setup_params` — zero UI code knows what a "normalize" parameter is.
 
-### Phase 11 — Docker / deploy
+### Phase 11 — In-house serving + Docker/deploy
 
-Scope:
+Two deliverables in this phase — the **serving subsystem** and the **Docker deployment story**.
+
+**Serving subsystem (§ decision 4):**
+- New module `pycaret-server/engine/serving.py` implementing `DeploymentRegistry` (in-memory map of `slug → loaded pipeline`).
+- New API routes:
+  - `POST /api/v1/pipelines/{pipeline_id}/deploy` — create deployment, register route.
+  - `POST /api/v1/deployments/{slug}/predict` — single catch-all inference endpoint.
+  - `POST /api/v1/deployments/{slug}/pause` / `archive`.
+  - `GET  /api/v1/deployments` — list for a workspace, with rolled-up inference counts.
+- On FastAPI startup: `DeploymentRegistry.bootstrap()` loads every `status='active'` deployment's pipeline from disk.
+- Per-deployment auth: `workspace` (JWT) / `api-key` (header `X-PyCaret-Key`) / `public` (rate-limited).
+- Per-deployment metrics table: inference count, last-used timestamp, p50/p95 latency rollups.
+- Stretch (v1.1): per-request payload logging to a drift-monitoring store (default: same DB; S3-backed option).
+
+**Docker / deploy:**
 - `Dockerfile.api` — multi-stage (python:3.13-slim + uv).
 - `Dockerfile.ui` — Node build + nginx serve of the dist.
 - `docker-compose.yml` — full stack: `api`, `ui`, `db` (Postgres optional for prod; SQLite volume-mounted for default).
 - `docker-compose.prod.yml` — traefik or caddy reverse proxy, TLS termination, healthchecks, restart policies.
 - K8s manifests (`deploy/k8s/`) as a stretch goal.
 
-**Target: `docker compose up` from a fresh clone produces a running app at http://localhost:3000 with a valid first-run setup page, no additional config.**
+**Exit criteria:**
+- `docker compose up` from a fresh clone produces a running app at http://localhost:3000 with a valid first-run setup page, no additional config.
+- A Pipeline can be deployed from the UI and a `curl POST /api/v1/deployments/<slug>/predict` returns predictions.
+- Deployment survives backend restart (registry rehydrates from DB).
 
 ### Phase 12 — Docs + release
 
@@ -299,26 +348,131 @@ To mirror the engine's "lean" ethos, the platform side also has a kill list.
 
 **Allowed:**
 - FastAPI + uvicorn + Starlette.
-- SQLAlchemy + Alembic.
-- Pydantic (FastAPI already pulls it; reuse for DTO shapes).
-- React + Vite + Tailwind + TanStack Query + Zustand.
+- SQLAlchemy 2.x + Alembic.
+- Pydantic 2 (FastAPI already pulls it; reuse for DTO shapes).
+- React 18+ + Vite + Tailwind + TanStack Query + Zustand.
 - Plotly.js.
 - bcrypt + pyjwt.
+- `nbconvert` (render the generated notebooks to HTML for in-app preview — § decision 1).
+- `boto3` (S3 data-source connector — § decision 2; gated behind an `s3` extra).
+- `psycopg[binary]` or `asyncpg` (Postgres data-source connector — § decision 2; gated behind a `postgres` extra).
+- `python-multipart` (CSV upload handling).
+- `joblib` (deployment pipeline loading — already in the engine; re-used in the server).
 
 ---
 
-## 7. Open questions (parked for future decision)
+## 7. Resolved design decisions
 
-1. **Notebook persistence** — should runs store their produced Jupyter notebook as an artifact, or is the event-stream replay enough?
-2. **Data-source connectors** — v1 supports local CSV upload. v1.1: Postgres / Snowflake / S3 as plugins. v2: live-data refresh semantics.
-3. **Model registry** — do we expose Pipelines as a first-class shareable object across projects? Or keep them scoped to their project?
-4. **Serving** — do we add a "deploy this pipeline" button that pushes to MLServer / BentoML? Or keep serving out of scope?
-5. **Hosted SaaS** — someone will eventually build this on top. Do we keep the core MIT-only, or dual-license?
-6. **Metrics warehouse** — do we store every per-fold metric in the DB, or only the leaderboard summary?
+Project owner has answered the six parked questions. Each answer is now binding and has been propagated into §3 Data model, §5 Phased plan, and §6 Dep discipline above.
+
+### § Decision 1 — Notebook artifacts: do what a modern SaaS would do
+
+Every Run persists a first-class artifact bundle:
+
+- `run.ipynb` — the executed notebook (programmatically generated from `pycaret.api.describe_setup_params` config + the engine's event stream). Stored in object storage (local disk v1; S3 when deployed).
+- `fitted_pipeline.pkl` — the sklearn Pipeline joblib-pickled.
+- `leaderboard.json` — serialized `CompareResult.leaderboard`.
+- `events.jsonl` — the full `MemoryLogger` event stream.
+- `preview.html` — pre-rendered HTML of the notebook (via nbconvert) for fast UI preview.
+
+Modern-SaaS expectations also covered: versioned (each Run is immutable), shareable via signed URL, downloadable, previewable in-app without download.
+
+### § Decision 2 — Data-source connectors: build a small set locally first
+
+v1 ships three connectors; AWS-first since the owner will deploy to AWS for initial testing:
+
+| Connector | Purpose | v1 scope |
+|---|---|---|
+| `csv-upload` | Direct file upload through the UI | Full support |
+| `s3` | Read CSV / Parquet from an S3 bucket | Read-only v1; list + sample + load |
+| `postgres` | Read a table / view from Postgres | Read-only v1; list tables + load |
+
+Plugin interface (`DataSourceConnector` ABC) is in place from v1 so community/maintainer can add Snowflake / Google Sheets / MySQL later without touching core.
+
+### § Decision 3 — Pipelines are workspace-scoped and shareable across projects
+
+`Pipeline` is promoted out of `Project` into `Workspace` (see updated §3). Projects reference pipelines via a many-to-many link table. Model-registry-style: one fitted pipeline, many consumers.
+
+UI affordances:
+- Project experiment view shows "Use an existing Pipeline from the workspace" selector.
+- Workspace has a "Pipelines" top-level screen listing every registered pipeline with a search/filter.
+- Deploying a Pipeline is a workspace-level action; scoping discussion deferred to v2.
+
+### § Decision 4 — In-house serving, not MLServer / BentoML
+
+Own the serving layer. Design for v1 (single-process, self-hosted):
+
+**Storage model.** Each deployed Pipeline has a `deployments` row with an `endpoint_slug` (url-safe id) and `status`. On backend startup, the FastAPI app reads all `deployments WHERE status='active'` and loads each `fitted_pipeline.pkl` from storage into memory.
+
+**Routing.** A single catch-all route:
+
+```python
+@app.post("/api/v1/deployments/{slug}/predict")
+def predict(slug: str, req: PredictRequest, auth=Depends(resolve_deployment_auth)):
+    deployment = DeploymentRegistry.get_or_404(slug)
+    df = pd.DataFrame(req.records)
+    preds = deployment.pipeline.predict(df)
+    proba = deployment.pipeline.predict_proba(df) if hasattr(deployment.pipeline, "predict_proba") else None
+    DeploymentMetrics.record(slug, n=len(df), latency_ms=...)
+    return PredictResponse(predictions=preds.tolist(), probabilities=proba.tolist() if proba is not None else None)
+```
+
+**Auth modes (per deployment):**
+- `workspace` — requires a workspace-member JWT. Default.
+- `api-key` — requires one of the `api_keys` rows linked to the deployment. For scripts / CI.
+- `public` — no auth, rate-limited. Opt-in only; UI shows a red warning.
+
+**Operational surface:**
+- "Deploy" button on a Pipeline → creates `deployments` row → `DeploymentRegistry.register(...)`.
+- "Pause" / "Archive" actions change status; the registry drops the pipeline from memory.
+- Per-deployment metrics: inference count, p50/p95 latency, error rate. Stored in a time-series rollup.
+
+**What we deliberately skip in v1:**
+- Per-deployment Docker isolation (add in v2 if memory/security requires it).
+- Auto-scaling / load balancing (single-process + Docker Compose is fine for the target teams-under-20 use case).
+- A/B model routing, shadow deployments, canary traffic (v2+).
+- Model drift monitoring as a first-class product (the event stream captures request data; a post-v1 module surfaces drift dashboards).
+
+Phase 11 becomes **Phase 11 — Docker + in-house serving** (see updated §5).
+
+### § Decision 5 — Dual-license for the platform packages
+
+- `pycaret` (engine library): stays **MIT**. No change.
+- `pycaret-server` / `pycaret-cli` / `pycaret-ui`: **dual-licensed**.
+  - **MIT** for self-hosted and internal-enterprise use. Clone, deploy, modify, ship to your team — no restrictions.
+  - **Business Source License (BSL 1.1)** for any deployment that offers the platform as a multi-tenant hosted service to third parties. BSL converts to MIT/Apache-2.0 after 3 years, so it's a commercial-use gate, not a freeze.
+- A `CONTRIBUTING.md`-level Contributor License Agreement (CLA) is required on PRs so the project owner can relicense if needed.
+
+Concrete effect: if Moez (or an acquirer) wants to run a hosted SaaS on top someday, the license permits it while still letting everyone else self-host freely.
+
+### § Decision 6 — Metrics: store both summary AND every per-fold value
+
+Two tables, as already shown in §3:
+- `runs.metrics_summary` — leaderboard-shaped aggregates (one row per model per run, `mean_*` / `std_*` columns).
+- `fold_metrics` — per-fold × per-model × per-metric. One row per `(run_id, model_id, fold_idx, metric_name) → value`.
+
+Rationale: the summary drives the leaderboard; the fold table unlocks variance-across-folds plots, time-to-train analysis, stability checks, and any future "is this model actually better than the runner-up within CV noise?" screens. Storage cost is trivial relative to the fitted-pipeline pickles.
 
 ---
 
-## 8. Success criteria for the platform
+---
+
+## 8. Licensing posture (§ decision 5)
+
+| Component | License |
+|---|---|
+| `pycaret` (engine) | **MIT** — unchanged from 3.x. |
+| `pycaret-server` | **Dual: MIT for self-hosted + internal-enterprise; BSL 1.1 for hosted multi-tenant SaaS.** BSL auto-converts to MIT after 3 years. |
+| `pycaret-cli` | Same dual-license as `pycaret-server`. |
+| `pycaret-ui` | Same dual-license. |
+
+A Contributor License Agreement (CLA) is added to `CONTRIBUTING.md` so the project owner retains the right to relicense a future hosted variant commercially. Self-hosters, internal deployments, and anyone cloning the repo to run it themselves are covered by the MIT side of the dual license and are not affected.
+
+This mirrors the posture of Sentry / Cal.com / Plausible / Supabase — credible OSS core + commercial freedom for a future hosted layer.
+
+---
+
+## 9. Success criteria for the platform
 
 The platform is "done enough to talk about" when:
 

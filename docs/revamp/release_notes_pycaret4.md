@@ -98,6 +98,21 @@ Theme: user asked for "one more round of clean ups. get rid of any garbage from 
 
 - `TESTS` — **32/32 still green** on Python 3.13 + sklearn 1.7.2 + NumPy 2.3.5 + pandas 2.x, in 1:37 (was 2:07 in session 5 — slightly faster with less code to import).
 
+## ADDED — 6 resolved platform decisions
+
+Owner answered the six parked questions from `PLATFORM_PLAN.md §7`. Each answer is now baked into the plan and recorded as an ADR in `DECISIONS.md`:
+
+- `DOCS, ADDED` — **Decision 1: Run notebooks are first-class artifacts.** Every Run persists `run.ipynb` + `fitted_pipeline.pkl` + `leaderboard.json` + `events.jsonl` + `preview.html`. Immutable, downloadable, shareable via signed URL, previewable in-app. Storage: local disk v1, S3 when deployed.
+- `DOCS, ADDED` — **Decision 2: Data-source connectors v1 = CSV upload + S3 + Postgres.** `DataSourceConnector` ABC allows adding Snowflake / GSheets / MySQL later without core changes. AWS-first since immediate deploy target.
+- `DOCS, ADDED` — **Decision 3: Pipelines are workspace-scoped + shareable across projects.** `Pipeline` moves out of `Project` into `Workspace`; `pipeline_project_links` many-to-many joins them. Workspace gets a top-level "Pipelines" screen.
+- `DOCS, ADDED` — **Decision 4: In-house serving system, not MLServer/BentoML.** `DeploymentRegistry` loads pickles into memory; single catch-all `POST /api/v1/deployments/{slug}/predict` handles inference. Per-deployment auth: `workspace` / `api-key` / `public`. Per-deployment metrics: count, p50/p95 latency, error rate. Phase 11 renamed "In-house serving + Docker/deploy".
+- `DOCS, ADDED` — **Decision 5: Dual-license the platform packages.** Engine `pycaret` stays MIT. `pycaret-server` / `pycaret-cli` / `pycaret-ui` become MIT + BSL 1.1 (BSL for multi-tenant hosted SaaS only; converts to MIT after 3 years). CLA added to CONTRIBUTING.md. Mirrors Sentry / Cal.com / Supabase / Plausible posture.
+- `DOCS, ADDED` — **Decision 6: Metrics stored as summary AND per-fold.** Two tables — `runs.metrics_summary` (leaderboard shape) and `fold_metrics` (per-fold × per-model × per-metric). Summary drives leaderboard; per-fold unlocks variance / stability / time-to-train analysis.
+
+Data model in `PLATFORM_PLAN.md §3` expanded to 14 SQLAlchemy tables (from 11): added `fold_metrics`, `deployments`, `api_keys`, `pipeline_project_links`. Phase 11 now covers the serving subsystem in detail. Dep discipline §6 updated with `nbconvert` (notebook preview), `boto3` (S3 extra), `psycopg[binary]` (postgres extra), `python-multipart` (CSV upload), `joblib` (deployment loading).
+
+New §8 "Licensing posture" added to `PLATFORM_PLAN.md`. Reading order updated.
+
 ## Session 6 delta summary
 
 | Metric | Session 5 end | Session 6 end | Δ |
