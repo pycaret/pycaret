@@ -1,6 +1,6 @@
 [project]
 name = "pycaret"
-version = "4.0.0.dev0"
+version = "4.0.0a0"
 description = "PyCaret 4.0 — lean, modern, agent-native open-source AutoML engine."
 readme = "README.md"
 keywords = [
@@ -14,14 +14,15 @@ keywords = [
   "scikit-learn",
   "llm-agents",
 ]
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "PyCaret developers" }]
-maintainers = [{ name = "Moez Ali" }]
+maintainers = [{ name = "Moez Ali", email = "moez.ali@queensu.ca" }]
 requires-python = ">=3.11"
 classifiers = [
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: MacOS",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX",
@@ -31,10 +32,10 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
-  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Software Development",
+  "Typing :: Typed",
 ]
 
 # Core runtime dependencies. Keep this list lean and without upper-bound pins.
@@ -142,6 +143,9 @@ Homepage = "https://pycaret.org/"
 Repository = "https://github.com/pycaret/pycaret"
 Documentation = "https://pycaret.gitbook.io/"
 Issues = "https://github.com/pycaret/pycaret/issues"
+Changelog = "https://github.com/pycaret/pycaret/blob/v4/CHANGELOG.md"
+"Release notes (engineering)" = "https://github.com/pycaret/pycaret/blob/v4/docs/revamp/release_notes_pycaret4.md"
+"4.0 status" = "https://github.com/pycaret/pycaret/blob/v4/docs/revamp/STATUS.md"
 
 [build-system]
 requires = ["hatchling>=1.25"]
@@ -149,13 +153,32 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["pycaret"]
+# Exclude caches/tests/dev-only artifacts from the wheel.
+exclude = [
+  "**/__pycache__",
+  "**/.pytest_cache",
+  "**/*.pyc",
+  "**/*.pyo",
+  "**/*.pyd",
+]
 
 [tool.hatch.build.targets.sdist]
+# sdist only includes what someone needs to rebuild the wheel and read the docs.
 include = [
   "/pycaret",
   "/README.md",
   "/LICENSE",
-  "/docs/revamp",
+  "/CHANGELOG.md",
+  "/AGENTS.md",
+  "/CONTRIBUTING.md",
+  "/pyproject.toml",
+]
+exclude = [
+  "**/__pycache__",
+  "**/.pytest_cache",
+  "**/*.pyc",
+  "**/*.pyo",
+  "**/*.pyd",
 ]
 
 # --- tooling ---

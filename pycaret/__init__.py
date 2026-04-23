@@ -36,7 +36,7 @@ import sys
 from pycaret.persistence import load_model, save_model
 from pycaret.utils._show_versions import show_versions
 
-__version__ = "4.0.0.dev0"
+__version__ = "4.0.0a0"
 version_ = __version__
 
 __all__ = [

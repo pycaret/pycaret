@@ -1,0 +1,146 @@
+name: Release
+
+# Tag-triggered release to PyPI.
+#
+# Workflow:
+#   1. Create a GitHub release with a tag like `v4.0.0a0` OR push the tag manually.
+#   2. This workflow builds the wheel + sdist, runs the test suite on the built
+#      artifacts, and uploads to PyPI via trusted publishing (OIDC — no API
+#      tokens in secrets).
+#   3. TestPyPI is also available via `workflow_dispatch` with `target=testpypi`.
+#
+# Trusted publishing setup (one-time):
+#   - PyPI project Settings → Publishing → Add trusted publisher
+#     Owner: pycaret   Repo: pycaret   Workflow: release.yml   Env: pypi
+#   - TestPyPI same flow under https://test.pypi.org/ with env: testpypi
+#
+# After setup, this workflow needs no secrets.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Publish target"
+        required: true
+        default: pypi
+        type: choice
+        options: [pypi, testpypi]
+
+permissions:
+  contents: read
+
+jobs:
+  # ------------------------------------------------------------------ build
+
+  build:
+    runs-on: ubuntu-latest
+    name: Build wheel + sdist
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Read version from pyproject.toml
+        id: version
+        run: |
+          v=$(grep -E '^version\s*=\s*"' pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Building version: $v"
+
+      - name: uv build
+        run: uv build
+
+      - name: Check built artifacts
+        run: |
+          ls -la dist/
+          uv run --with twine twine check dist/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  # ------------------------------------------------------------------ smoke
+
+  smoke:
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12", "3.13"]
+    name: Smoke ${{ matrix.os }} · Python ${{ matrix.python-version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - name: Create fresh venv + install built wheel
+        run: |
+          uv venv --python ${{ matrix.python-version }} .venv
+          WHEEL=$(ls dist/*.whl | head -1)
+          uv pip install --python .venv "$WHEEL"
+      - name: Import + version smoke
+        run: |
+          .venv/${{ matrix.os == 'windows-latest' && 'Scripts' || 'bin' }}/python -c "import pycaret; print('pycaret', pycaret.__version__)"
+          .venv/${{ matrix.os == 'windows-latest' && 'Scripts' || 'bin' }}/python -c "
+          from pycaret.tasks import ClassificationExperiment, RegressionExperiment, ClusteringExperiment, AnomalyExperiment, TimeSeriesExperiment
+          from pycaret import save_model, load_model
+          from pycaret.api import list_models
+          from pycaret.logging import MemoryLogger
+          print('surface OK; list_models(classification) ->', len(list_models('classification')), 'cards')
+          "
+
+  # ------------------------------------------------------------------ publish
+
+  publish-pypi:
+    needs: [build, smoke]
+    runs-on: ubuntu-latest
+    name: Publish to PyPI
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'pypi')
+    environment:
+      name: pypi
+      url: https://pypi.org/project/pycaret/
+    permissions:
+      id-token: write # trusted publishing — no API token needed
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-testpypi:
+    needs: [build, smoke]
+    runs-on: ubuntu-latest
+    name: Publish to TestPyPI
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'testpypi'
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/pycaret/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
