@@ -15,12 +15,10 @@ import numpy as np
 from packaging import version
 
 import pycaret.containers.base_container
-import pycaret.internal.cuml_wrappers
 from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
 )
-from pycaret.internal.cuml_wrappers import get_svc_classifier
 from pycaret.internal.distributions import (
     Distribution,
     IntUniformDistribution,
@@ -269,16 +267,10 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
                 from sklearn.linear_model import LogisticRegression
 
         if experiment.gpu_param == "force":
-            from cuml.linear_model import LogisticRegression
-
-            logger.info("Imported cuml.linear_model.LogisticRegression")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml.linear_model import LogisticRegression
-
-                logger.info("Imported cuml.linear_model.LogisticRegression")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {"max_iter": 1000}
         tune_args = {}
@@ -330,16 +322,10 @@ class KNeighborsClassifierContainer(ClassifierContainer):
                 from sklearn.neighbors import KNeighborsClassifier
 
         if experiment.gpu_param == "force":
-            from cuml.neighbors import KNeighborsClassifier
-
-            logger.info("Imported cuml.neighbors.KNeighborsClassifier")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml.neighbors import KNeighborsClassifier
-
-                logger.info("Imported cuml.neighbors.KNeighborsClassifier")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {}
         tune_args = {}
@@ -489,16 +475,10 @@ class SGDClassifierContainer(ClassifierContainer):
         from sklearn.linear_model import SGDClassifier
 
         if experiment.gpu_param == "force":
-            from cuml import MBSGDClassifier as SGDClassifier
-
-            logger.info("Imported cuml.MBSGDClassifier")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml import MBSGDClassifier as SGDClassifier
-
-                logger.info("Imported cuml.MBSGDClassifier")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {"tol": 0.001, "loss": "hinge", "penalty": "l2", "eta0": 0.001}
         tune_args = {}
@@ -586,16 +566,10 @@ class SVCClassifierContainer(ClassifierContainer):
                 from sklearn.svm import SVC
 
         if experiment.gpu_param == "force":
-            from cuml.svm import SVC
-
-            logger.info("Imported cuml.svm.SVC")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml.svm import SVC
-
-                logger.info("Imported cuml.svm.SVC")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {
             "gamma": "auto",
@@ -616,7 +590,10 @@ class SVCClassifierContainer(ClassifierContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         if gpu_imported:
-            SVC = get_svc_classifier()
+            raise NotImplementedError(
+                "cuml GPU fallback was removed in PyCaret 4.0. Install a CPU-compatible "
+                "backend or file an issue if you need GPU routing."
+            )
 
         super().__init__(
             id=id,
@@ -728,16 +705,10 @@ class RidgeClassifierContainer(ClassifierContainer):
         from sklearn.linear_model import RidgeClassifier
 
         if experiment.gpu_param == "force":
-            import cuml.linear_model
-
-            logger.info("Imported cuml.linear_model")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                import cuml.linear_model
-
-                logger.info("Imported cuml.linear_model")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {}
         tune_args = {}
@@ -745,7 +716,10 @@ class RidgeClassifierContainer(ClassifierContainer):
         tune_distributions = {}
 
         if gpu_imported:
-            RidgeClassifier = pycaret.internal.cuml_wrappers.get_ridge_classifier()
+            raise NotImplementedError(
+                "cuml GPU fallback was removed in PyCaret 4.0. Install a CPU-compatible "
+                "backend or file an issue if you need GPU routing."
+            )
         else:
             args = {"random_state": experiment.seed}
 
@@ -780,20 +754,15 @@ class RandomForestClassifierContainer(ClassifierContainer):
         from sklearn.ensemble import RandomForestClassifier
 
         if experiment.gpu_param == "force":
-            import cuml.ensemble
-
-            logger.info("Imported cuml.ensemble")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                import cuml.ensemble
-
-                logger.info("Imported cuml.ensemble")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         if gpu_imported:
-            RandomForestClassifier = (
-                pycaret.internal.cuml_wrappers.get_random_forest_classifier()
+            raise NotImplementedError(
+                "cuml GPU fallback was removed in PyCaret 4.0. Install a CPU-compatible "
+                "backend or file an issue if you need GPU routing."
             )
 
         if not gpu_imported:
@@ -802,12 +771,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
                 "n_jobs": experiment.n_jobs_param,
             }
         else:
-            import cuml
-
-            if version.parse(cuml.__version__) >= version.parse("0.19"):
-                args = {"random_state": experiment.seed}
-            else:
-                args = {"seed": experiment.seed}
+            raise NotImplementedError("cuml GPU path removed in 4.0")
 
         tune_args = {}
         tune_grid = {

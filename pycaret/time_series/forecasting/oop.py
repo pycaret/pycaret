@@ -74,7 +74,7 @@ from pycaret.internal.tests.time_series import (
 )
 from pycaret.internal.tunable import TunableMixin
 from pycaret.internal.validation import is_sklearn_cv_generator
-from pycaret.loggers.base_logger import BaseLogger
+from pycaret.logging.base import BaseLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.datetime import coerce_datetime_to_period_index
 from pycaret.utils.generic import MLUsecase, _resolve_dict_keys, highlight_setup
@@ -4663,97 +4663,6 @@ class TSForecastingExperiment(_TSSupervisedExperiment, TSForecastingPreprocessor
             fit_kwargs=fit_kwargs,
             model_only=model_only,
             experiment_custom_tags=experiment_custom_tags,
-        )
-
-    def deploy_model(
-        self,
-        model,
-        model_name: str,
-        authentication: dict,
-        platform: str = "aws",
-    ):
-        """
-        This function deploys the transformation pipeline and trained model on cloud.
-
-
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> data = get_data('airline')
-        >>> from pycaret.time_series import *
-        >>> exp_name = setup(data = data, fh = 12)
-        >>> arima = create_model('arima')
-        >>> deploy_model(
-                model = arima, model_name = 'arima-for-deployment',
-                platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'}
-            )
-
-
-        Amazon Web Service (AWS) users:
-            To deploy a model on AWS S3 ('aws'), environment variables must be set in your
-            local environment. To configure AWS environment variables, type ``aws configure``
-            in the command line. Following information from the IAM portal of amazon console
-            account is required:
-
-            - AWS Access Key ID
-            - AWS Secret Key Access
-            - Default Region Name (can be seen under Global settings on your AWS console)
-
-            More info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
-
-
-        Google Cloud Platform (GCP) users:
-            To deploy a model on Google Cloud Platform ('gcp'), project must be created
-            using command line or GCP console. Once project is created, you must create
-            a service account and download the service account key as a JSON file to set
-            environment variables in your local environment.
-
-            More info: https://cloud.google.com/docs/authentication/production
-
-
-        Microsoft Azure (Azure) users:
-            To deploy a model on Microsoft Azure ('azure'), environment variables for connection
-            string must be set in your local environment. Go to settings of storage account on
-            Azure portal to access the connection string required.
-
-            More info: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
-
-
-        model: scikit-learn compatible object
-            Trained model object
-
-
-        model_name: str
-            Name of model.
-
-
-        authentication: dict
-            Dictionary of applicable authentication tokens.
-
-            When platform = 'aws':
-            {'bucket' : 'S3-bucket-name', 'path': (optional) folder name under the bucket}
-
-            When platform = 'gcp':
-            {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
-
-            When platform = 'azure':
-            {'container': 'azure-container-name'}
-
-
-        platform: str, default = 'aws'
-            Name of the platform. Currently supported platforms: 'aws', 'gcp' and 'azure'.
-
-
-        Returns:
-            None
-
-        """
-
-        return super().deploy_model(
-            model=model,
-            model_name=model_name,
-            authentication=authentication,
-            platform=platform,
         )
 
     def save_model(

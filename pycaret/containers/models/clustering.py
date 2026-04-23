@@ -13,9 +13,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 import pycaret.containers.base_container
-import pycaret.internal.cuml_wrappers
 from pycaret.containers.models.base_model import ModelContainer
-from pycaret.internal.cuml_wrappers import get_dbscan, get_kmeans
 from pycaret.internal.distributions import Distribution
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import get_logger, param_grid_to_lists
@@ -197,16 +195,10 @@ class KMeansClusterContainer(ClusterContainer):
                 from sklearn.cluster import KMeans
 
         if experiment.gpu_param == "force":
-            from cuml.cluster import KMeans
-
-            logger.info("Imported cuml.cluster.KMeans")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml.cluster import KMeans
-
-                logger.info("Imported cuml.cluster.KMeans")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {
             "n_clusters": _DEFAULT_N_CLUSTERS,
@@ -217,7 +209,10 @@ class KMeansClusterContainer(ClusterContainer):
         tune_distributions = {}
 
         if gpu_imported:
-            KMeans = get_kmeans()
+            raise NotImplementedError(
+                "cuml GPU fallback was removed in PyCaret 4.0. Install a CPU-compatible "
+                "backend or file an issue if you need GPU routing."
+            )
 
         super().__init__(
             id=id,
@@ -346,16 +341,10 @@ class DBSCANClusterContainer(ClusterContainer):
                 from sklearn.cluster import DBSCAN
 
         if experiment.gpu_param == "force":
-            from cuml.cluster import DBSCAN
-
-            logger.info("Imported cuml.cluster.DBSCAN")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml.cluster import DBSCAN
-
-                logger.info("Imported cuml.cluster.DBSCAN")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {}
         tune_args = {}
@@ -365,7 +354,10 @@ class DBSCANClusterContainer(ClusterContainer):
         if not gpu_imported:
             args["n_jobs"] = experiment.n_jobs_param
         else:
-            DBSCAN = get_dbscan()
+            raise NotImplementedError(
+                "cuml GPU fallback was removed in PyCaret 4.0. Install a CPU-compatible "
+                "backend or file an issue if you need GPU routing."
+            )
 
         super().__init__(
             id=id,

@@ -239,16 +239,10 @@ class LinearRegressionContainer(RegressorContainer):
                 from sklearn.linear_model import LinearRegression
 
         if experiment.gpu_param == "force":
-            from cuml.linear_model import LinearRegression
-
-            logger.info("Imported cuml.linear_model.LinearRegression")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml.linear_model import LinearRegression
-
-                logger.info("Imported cuml.linear_model.LinearRegression")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {}
         tune_args = {}
@@ -293,16 +287,10 @@ class LassoRegressionContainer(RegressorContainer):
                 from sklearn.linear_model import Lasso
 
         if experiment.gpu_param == "force":
-            from cuml.linear_model import Lasso
-
-            logger.info("Imported cuml.linear_model.Lasso")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml.linear_model import Lasso
-
-                logger.info("Imported cuml.linear_model.Lasso")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {}
         tune_args = {}
@@ -350,16 +338,10 @@ class RidgeRegressionContainer(RegressorContainer):
                 from sklearn.linear_model import Ridge
 
         if experiment.gpu_param == "force":
-            from cuml.linear_model import Ridge
-
-            logger.info("Imported cuml.linear_model.Ridge")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml.linear_model import Ridge
-
-                logger.info("Imported cuml.linear_model.Ridge")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {}
         tune_args = {}
@@ -407,16 +389,10 @@ class ElasticNetContainer(RegressorContainer):
                 from sklearn.linear_model import ElasticNet
 
         if experiment.gpu_param == "force":
-            from cuml.linear_model import ElasticNet
-
-            logger.info("Imported cuml.linear_model.ElasticNet")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml.linear_model import ElasticNet
-
-                logger.info("Imported cuml.linear_model.ElasticNet")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {}
         tune_args = {}
@@ -1010,16 +986,10 @@ class SVRContainer(RegressorContainer):
                 from sklearn.svm import SVR
 
         if experiment.gpu_param == "force":
-            from cuml.svm import SVR
-
-            logger.info("Imported cuml.svm.SVR")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml.svm import SVR
-
-                logger.info("Imported cuml.svm.SVR")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {}
         tune_args = {}
@@ -1071,16 +1041,10 @@ class KNeighborsRegressorContainer(RegressorContainer):
                 from sklearn.neighbors import KNeighborsRegressor
 
         if experiment.gpu_param == "force":
-            from cuml.neighbors import KNeighborsRegressor
-
-            logger.info("Imported cuml.neighbors.KNeighborsRegressor")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                from cuml.neighbors import KNeighborsRegressor
-
-                logger.info("Imported cuml.neighbors.KNeighborsRegressor")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         args = {}
         tune_args = {}
@@ -1177,20 +1141,15 @@ class RandomForestRegressorContainer(RegressorContainer):
         from sklearn.ensemble import RandomForestRegressor
 
         if experiment.gpu_param == "force":
-            import cuml.ensemble
-
-            logger.info("Imported cuml.ensemble")
-            gpu_imported = True
+            raise NotImplementedError("cuml GPU path removed in 4.0")
         elif experiment.gpu_param:
             if _check_soft_dependencies("cuml", extra=None, severity="warning"):
-                import cuml.ensemble
-
-                logger.info("Imported cuml.ensemble")
-                gpu_imported = True
+                raise NotImplementedError("cuml GPU path removed in 4.0")
 
         if gpu_imported:
-            RandomForestRegressor = (
-                pycaret.internal.cuml_wrappers.get_random_forest_regressor()
+            raise NotImplementedError(
+                "cuml GPU fallback was removed in PyCaret 4.0. Install a CPU-compatible "
+                "backend or file an issue if you need GPU routing."
             )
 
         if not gpu_imported:
@@ -1199,12 +1158,7 @@ class RandomForestRegressorContainer(RegressorContainer):
                 "n_jobs": experiment.n_jobs_param,
             }
         else:
-            import cuml
-
-            if version.parse(cuml.__version__) >= version.parse("0.19"):
-                args = {"random_state": experiment.seed}
-            else:
-                args = {"seed": experiment.seed}
+            raise NotImplementedError("cuml GPU path removed in 4.0")
 
         tune_args = {}
         tune_grid = {

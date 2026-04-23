@@ -29,7 +29,7 @@ from pycaret.internal.pipeline import estimator_pipeline, get_pipeline_fit_kwarg
 from pycaret.internal.preprocess.preprocessor import Preprocessor
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
 from pycaret.internal.validation import is_sklearn_pipeline
-from pycaret.loggers.base_logger import BaseLogger
+from pycaret.logging.base import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
 from pycaret.utils.generic import MLUsecase, highlight_setup
 

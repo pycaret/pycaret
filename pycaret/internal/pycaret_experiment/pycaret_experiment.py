@@ -146,15 +146,6 @@ class _PyCaretExperiment:
                 "\nMore info: https://pycaret.gitbook.io/docs/get-started/quickstart"
             )
 
-    def deploy_model(
-        self,
-        model,
-        model_name: str,
-        authentication: dict,
-        platform: str = "aws",  # added gcp and azure support in pycaret==2.1
-    ):
-        return None
-
     def save_model(
         self,
         model,

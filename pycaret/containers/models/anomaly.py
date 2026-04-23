@@ -13,7 +13,6 @@ from typing import Any, Dict, Optional
 import numpy as np
 
 import pycaret.containers.base_container
-import pycaret.internal.cuml_wrappers
 from pycaret.containers.models.base_model import ModelContainer
 from pycaret.internal.distributions import Distribution
 from pycaret.utils.generic import get_logger, param_grid_to_lists
