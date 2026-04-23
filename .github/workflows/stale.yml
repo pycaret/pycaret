@@ -1,8 +1,10 @@
 name: Mark stale issues and pull requests
 
-# on:
-#  schedule:
-#  - cron: "30 1 * * *"
+# Disabled on push. Maintainer runs this manually via workflow_dispatch when
+# they're ready to sweep stale issues; we don't want it to fire every day
+# during the 4.0 revamp while issues are still being triaged.
+on:
+  workflow_dispatch:
 
 jobs:
   stale:
