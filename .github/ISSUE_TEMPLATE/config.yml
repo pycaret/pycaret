@@ -1,8 +1,17 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Stack Overflow
-    url: https://stackoverflow.com/questions/tagged/pycaret
-    about: Please ask and answer usage questions on Stack Overflow
-  - name: Discussions
-    url: https://github.com/pycaret/pycaret/discussions/new
-    about: Ask questions and discuss with other pycaret community members
+  - name: PyCaret 4.0 status
+    url: https://github.com/pycaret/pycaret/blob/v4/docs/revamp/STATUS.md
+    about: What's landed and what's still in play for the 4.0 revamp.
+  - name: What was removed in 4.0 (kill list)
+    url: https://github.com/pycaret/pycaret/blob/v4/docs/revamp/KILL_LIST.md
+    about: Check here before filing. If your feature is on the kill list, we won't reinstate it in core.
+  - name: 4.0 architecture
+    url: https://github.com/pycaret/pycaret/blob/v4/docs/revamp/ARCHITECTURE.md
+    about: Design of the new sklearn-composable engine.
+  - name: Contributor guide
+    url: https://github.com/pycaret/pycaret/blob/v4/CONTRIBUTING.md
+    about: How to contribute to PyCaret 4.0.
+  - name: Discussion / community
+    url: https://github.com/pycaret/pycaret/discussions
+    about: General questions and discussion (prefer this over issues for usage questions).

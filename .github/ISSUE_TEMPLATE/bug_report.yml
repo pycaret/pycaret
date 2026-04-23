@@ -1,127 +1,81 @@
-name: Bug Report
-description: Report incorrect behavior in the pycaret library
+name: Bug Report (PyCaret 4.0)
+description: Report incorrect behavior in PyCaret 4.0
 title: "[BUG]: "
-labels: [bug]
+labels: [bug, "4.0-candidate"]
 
 body:
-  
+  - type: markdown
+    attributes:
+      value: |
+        ## Before filing
+        - PyCaret 4.0 is still WIP on the [`v4` branch](https://github.com/pycaret/pycaret/tree/v4). If you're on `master` (3.4.0) please **use 3.x templates**, not this one.
+        - For 4.0 bugs, install from the v4 branch: `pip install git+https://github.com/pycaret/pycaret.git@v4`
+        - Check [`docs/revamp/KILL_LIST.md`](https://github.com/pycaret/pycaret/blob/v4/docs/revamp/KILL_LIST.md) — the feature you're asking about may have been deliberately removed in 4.0.
+        - Search [existing issues](https://github.com/pycaret/pycaret/issues) before filing.
+
   - type: checkboxes
     id: checks
     attributes:
-      label: pycaret version checks
+      label: Pre-flight checklist
       options:
-        - label: >
-            I have checked that this issue has not already been reported [here](https://github.com/pycaret/pycaret/issues).
+        - label: I have searched existing issues and this isn't a duplicate.
           required: true
-        - label: >
-            I have confirmed this bug exists on the
-            [latest version](https://github.com/pycaret/pycaret/releases) of pycaret.
+        - label: I'm reporting against the **4.0 `v4` branch**, not 3.x.
           required: true
-        - label: >
-            I have confirmed this bug exists on the master branch of pycaret (pip install -U git+https://github.com/pycaret/pycaret.git@master).
-  
+        - label: I've confirmed the feature I'm asking about is not on the 4.0 kill list (`docs/revamp/KILL_LIST.md`).
+          required: true
+
   - type: textarea
-    id: problem
+    id: description
     attributes:
-      label: Issue Description
-      description: >
-        Please provide a description of the issue shown in the reproducible example.
+      label: Issue description
+      description: One paragraph description of what's wrong.
     validations:
       required: true
-  
+
   - type: textarea
-    id: example
+    id: repro
     attributes:
-      label: Reproducible Example
-      description: >
-        Please follow [this guide](https://matthewrocklin.com/blog/work/2018/02/28/minimal-bug-reports) on how to
-        provide a minimal, copy-pastable example that can reproduce your issue.
-        
-        
-        Our preference would be to try and reproduce the issue with an inbuilt data source in pycaret.
-        If using a data source other than one that is inbuilt in pycaret, please provide the dataset so that the
-        problem can be recreated by the maintainers. 
-        
-        
-        If the code is too long, feel free to put it in a [Google Colab notebook](https://colab.research.google.com/)
-        or [public gist](https://gist.github.com) and link it in the issue.
-
-
-        In short, **we are going to copy-paste your code** to run it and we expect to get the same result as you.
-
-
-        We acknowledge that crafting a minimal reproducible code example requires some effort on your side but it really
-        helps the maintainers quickly reproduce the problem and analyze its cause without any ambiguity.
-        Ambiguous bug reports tend to be slower to fix because they will require more effort and back and forth discussion
-        between the maintainers and the reporter to pin-point the precise conditions necessary to reproduce the problem.    
-      placeholder: >
-        from pycaret.datasets import get_data
-        
-        from pycaret.classification import setup
-        
-        data = get_data('diabetes')
-        
-        s = setup(data, target = 'Wrong Class variable')
-
-        ...
-      render: python
-    validations:
-      required: true
-  
-  - type: textarea
-    id: expected-behavior
-    attributes:
-      label: Expected Behavior
-      description: >
-        Please describe or show a code example of the expected behavior.
-    validations:
-      required: true
-  - type: textarea
-    attributes:
-      label: Actual Results
+      label: Minimal reproducible example
       description: |
-        Please paste or describe the results you observe instead of the expected results. If you observe an error, please paste the 
-        error message including the **full traceback** of the exception. For instance the code above raises the following exception:
+        Use PyCaret 4.0's OOP API. Prefer bundled datasets so maintainers can
+        reproduce without extra files.
+      render: python
+      placeholder: |
+        from pycaret.datasets import get_data
+        from pycaret.tasks import ClassificationExperiment
 
-        ```python-traceback
-        ---------------------------------------------------------------------------
-        ValueError                                Traceback (most recent call last)
-        <ipython-input-3-671ca7f8e078> in <module>()
-              5 data = get_data('diabetes')
-              6 
-        ----> 7 s = setup(data, target = 'Wrong Class variable')
+        df = get_data("juice")
+        exp = ClassificationExperiment(target="Purchase", session_id=42).fit(df)
+        # ... your repro continues here ...
+    validations:
+      required: true
 
-        1 frames
-        /usr/local/lib/python3.7/dist-packages/pycaret/internal/tabular.py in setup(data, target, ml_usecase, available_plots, train_size, test_data, preprocess, imputation_type, iterative_imputation_iters, categorical_features, categorical_imputation, categorical_iterative_imputer, ordinal_features, high_cardinality_features, high_cardinality_method, numeric_features, numeric_imputation, numeric_iterative_imputer, date_features, ignore_features, normalize, normalize_method, transformation, transformation_method, handle_unknown_categorical, unknown_categorical_method, pca, pca_method, pca_components, ignore_low_variance, combine_rare_levels, rare_level_threshold, bin_numeric_features, remove_outliers, outliers_threshold, remove_multicollinearity, multicollinearity_threshold, remove_perfect_collinearity, create_clusters, cluster_iter, polynomial_features, polynomial_degree, trigonometry_features, polynomial_threshold, group_features, feature_selection, feature_selection_threshold, feature_selection_method, feature_interaction, feature_ratio, interaction_threshold, fix_imbalance, fix_imbalance_method, transform_target, transform_target_method, data_split_shuffle, data_split_stratify, fold_strategy, fold, fold_shuffle, fold_groups, n_jobs, use_gpu, custom_pipeline, html, session_id, log_experiment, experiment_name, experiment_custom_tags, log_plots, log_profile, log_data, silent, verbose, profile, profile_kwargs, display)
-            330     if not _is_unsupervised(ml_usecase) and target not in data.columns:
-            331         raise ValueError(
-        --> 332             f"Target parameter: {target} does not exist in the data provided."
-            333         )
-            334 
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
 
-        ValueError: Target parameter: Wrong Class variable does not exist in the data provided.
-        ```
-      placeholder: >
-        Please paste or specifically describe the actual output or traceback.
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior / traceback
+      description: Paste the full traceback inside a fenced code block.
       render: python-traceback
     validations:
       required: true
+
   - type: textarea
-    id: version
+    id: versions
     attributes:
-      label: Installed Versions
-      description: >
-        Please paste the output of ``from pycaret import show_versions; show_versions()``. If this does not work, try this instead ``import pycaret; pycaret.__version__``     
-      value: >
-        <details>
-
-        Replace this line with the output of the version code above.
-
-        </details>
+      label: Environment
+      description: |
+        Paste the output of:
+        ```
+        import pycaret; print(pycaret.__version__)
+        import sys, sklearn, numpy, pandas; print(sys.version, sklearn.__version__, numpy.__version__, pandas.__version__)
+        ```
     validations:
       required: true
-      
-  - type: markdown
-    attributes:
-      value: >
-        Thanks for contributing 🎉!

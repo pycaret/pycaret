@@ -1,51 +1,37 @@
-# Related Issue or bug
+<!-- PyCaret 4.0 pull request template.
+     If your PR targets master (3.4.x), delete this and use free-form.
+     If it targets v4, fill in the sections below. -->
 
-Info about Issue or bug
+## Summary
 
-Closes #[issue number that will be closed through this PR]
+<!-- One-paragraph description of what this PR does and why.
+     The diff shows *what*; this section should explain *why*. -->
 
-# Describe the changes you've made
+## Related issue
 
-A clear and concise description of what you have done to successfully close your assigned issue. Any new files? or anything you feel to let us know!
+Closes #<issue-number>
 
-# Type of change
+## Type of change
 
-Please delete options that are not relevant.
-<!--
-Example how to mark a checkbox :-
-- [x] My code follows the code style of this project.
--->
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Code style update (formatting, local variables)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] This change requires a documentation update
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Refactor / tech-debt cleanup
+- [ ] Docs / contributor-facing
+- [ ] CI / build
+- [ ] Verb migration (legacy → native — see `docs/for_developers/DRAINING_THE_GODCLASS.md`)
 
-# How Has This Been Tested?
+## PR checklist
 
-Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce. 
+- [ ] Tests added or updated (`tests/test_core_architecture.py` and/or `tests/test_e2e_oop.py`)
+- [ ] `uv run ruff check pycaret tests` passes
+- [ ] `uv run ruff format --check pycaret tests` passes
+- [ ] `uv run pytest tests/test_core_architecture.py tests/test_datasets.py -q` passes locally
+- [ ] Release-notes entry appended to `docs/revamp/release_notes_pycaret4.md` under the current session block, tagged `BREAKING` / `REMOVED` / `ADDED` / `CHANGED` / `FIXED` / `DEPRECATED` / `SECURITY` / `DOCS` / `BUILD` / `TESTS` / `DEPS` / `INTERNAL`
+- [ ] For new runtime deps: ADR added in `docs/revamp/DECISIONS.md`
+- [ ] For API changes: notebooks / README / docs updated where relevant
+- [ ] If a verb was migrated off `_legacy`: the legacy method is deleted and the public API signature is unchanged
 
-# Describe if there is any unusual behaviour of your code(Write `NA` if there isn't)
+## Notes for reviewers
 
-A clear and concise description of it.
-
-# Checklist:
-
-<!--
-Example how to mark a checkbox :-
-- [x] My code follows the code style of this project.
--->
-- [ ] My code follows the style guidelines of this project.
-- [ ] I have performed a self-review of my own code.
-- [ ] I have commented my code, particularly in hard-to-understand areas.
-- [ ] I have made corresponding changes to the documentation.
-- [ ] My changes generate no new warnings.
-- [ ] I have added tests that prove my fix is effective or that my feature works.
-- [ ] New and existing unit tests pass locally with my changes.
-- [ ] Any dependent changes have been merged and published in downstream modules.
-
-# Screenshots
-
- Original           | Updated
- :--------------------: |:--------------------:
- **original screenshot**  | <b>updated screenshot </b> |
+<!-- Anything the reviewer should know that isn't obvious from the diff.
+     e.g. "I moved X into Y but did not rename; next PR renames it." -->

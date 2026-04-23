@@ -1,268 +1,111 @@
-name: pycaret
+name: CI
+
+# 4.0 CI. Runs on v4 (4.0 development branch) and any PRs targeting it.
+# - lint: ruff check + format check
+# - test: pytest on ubuntu + windows × python 3.11 / 3.12 / 3.13
+# - notebooks: re-execute all canonical notebooks (nightly + on-demand)
+#
+# The workflow uses `uv` for environment management to match local dev.
 
 on:
   push:
-    branches:
-      - master
+    branches: [v4, master, main]
   pull_request:
+    branches: [v4, master, main]
   schedule:
+    # Re-execute the canonical notebook suite nightly at 05:00 UTC so any
+    # upstream dep regression (sklearn / NumPy / pandas / sktime) shows up
+    # without waiting for a PR.
     - cron: "0 5 * * *"
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  code_quality:
+  # --------------------------------------------------------------- lint
+
+  lint:
     runs-on: ubuntu-latest
-    name: Code quality checks
+    name: Lint (ruff)
     steps:
-      - name: Check out source repository
-        uses: actions/checkout@v4
-      - name: Run black
-        uses: psf/black@stable
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
         with:
-          src: pycaret tests
-          version: 24.8.0
-      - name: Check imports
-        uses: jamescurtin/isort-action@master
-        with:
-          sort-paths: pycaret tests
-          isort-version: 5.13.2
-      - name: Run flake8
-        uses: py-actions/flake8@v2
-        with:
-          path: pycaret tests
-          flake8-version: 7.1.1
+          python-version: "3.13"
+          enable-cache: true
+      - name: ruff check
+        run: uv run --with ruff ruff check pycaret tests
+      - name: ruff format --check
+        run: uv run --with ruff ruff format --check pycaret tests
 
-  # JOBS MUST START WITH test !!!!
-  test_notebooks:
-    runs-on: ubuntu-latest
-    name: Test notebooks
-    steps:
-      - name: Check out source repository
-        uses: actions/checkout@v4
-      - name: Set up Python environment
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: 'pip' # caching pip dependencies
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install uv
-          python -m uv pip install -U pytest pytest-xdist nbmake
-
-          # https://github.com/yaml/pyyaml/issues/736
-          echo 'Cython < 3.0' > /tmp/constraint.txt
-          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
-
-          python -m uv pip install ".[full]"
-          python -m ipykernel install --user --name cikernel
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: 3.12"
-          python --version
-          which python
-          pip list
-      - name: Run notebooks
-        run: pytest --nbmake --nbmake-kernel=cikernel -n=auto --nbmake-timeout=3000 --ignore=./tutorials/translations ./tutorials/
+  # --------------------------------------------------------------- test
 
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'ubuntu-latest', 'windows-latest' ]
-        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12", "3.13"]
+    name: ${{ matrix.os }} · Python ${{ matrix.python-version }}
 
     defaults:
       run:
         shell: bash
 
-    name: Python ${{ matrix.python-version }} on OS ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip' # caching pip dependencies
-      - name: Install dependencies
-        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-        # pyLDAvis 3.3.1 having an "sklearn" dependency
+          enable-cache: true
+
+      - name: uv sync --all-extras
+        run: uv sync --all-extras
+
+      - name: Environment summary
         run: |
-          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
-          python -m pip install -U pip
-          python -m pip install -U uv
-          python -m uv pip install -U pytest numpy
+          uv run python -c "import sys; print('Python', sys.version)"
+          uv run python -c "import sklearn, numpy, pandas, pycaret; print(f'pycaret {pycaret.__version__}  sklearn {sklearn.__version__}  numpy {numpy.__version__}  pandas {pandas.__version__}')"
 
-          # https://github.com/yaml/pyyaml/issues/736
-          echo 'Cython < 3.0' > /tmp/constraint.txt
-          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
+      - name: pytest (full suite)
+        run: uv run pytest tests/ -q --durations=10
 
-          python -m uv pip install ".[full, test]"
-          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: ${{ matrix.python-version }}"
-          python --version
-          which python
-          pip list
-      - name: Test with pytest
-        run: pytest --durations=0 -m "not (benchmark or plotting or tuning_random or tuning_grid)"
+  # --------------------------------------------------------------- notebooks
 
-  test_plots:
+  notebooks:
+    # Nightly + manual only. PRs don't re-execute notebooks (slow, brittle).
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-
-    name: Test plotting
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip' # caching pip dependencies
-      - name: Install dependencies
-        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-        # pyLDAvis 3.3.1 having an "sklearn" dependency
-        run: |
-          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
-          python -m pip install --upgrade pip
-          python -m pip install uv
-          python -m uv pip install -U pytest numpy
-
-          # https://github.com/yaml/pyyaml/issues/736
-          echo 'Cython < 3.0' > /tmp/constraint.txt
-          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
-
-          python -m uv pip install ".[full, test]"
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: ${{ matrix.python-version }}"
-          python --version
-          which python
-          pip list
-      - name: Test with pytest
-        run: pytest --durations=0 -m "plotting"
-
-  test_ts_tune_random:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-
-    name: Test random tuning
+    name: Re-execute canonical notebooks
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip' # caching pip dependencies
-      - name: Install dependencies
-        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-        # pyLDAvis 3.3.1 having an "sklearn" dependency
-        run: |
-          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
-          python -m pip install -U pip
-          python -m pip install -U uv
-          python -m uv pip install -U pytest numpy
+          python-version: "3.13"
+          enable-cache: true
+      - name: uv sync --all-extras
+        run: uv sync --all-extras
+      - name: Install nbclient + ipykernel
+        run: uv pip install nbclient ipykernel
+      - name: Execute notebooks
+        run: uv run python scripts/build_notebooks.py --run
 
-          # https://github.com/yaml/pyyaml/issues/736
-          echo 'Cython < 3.0' > /tmp/constraint.txt
-          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
+  # --------------------------------------------------------------- ci-status
 
-          python -m uv pip install ".[full, test]"
-          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: ${{ matrix.python-version }}"
-          python --version
-          which python
-          pip list
-      - name: Test with pytest
-        run: pytest --durations=0 -m "tuning_random"
-
-  test_ts_tune_grid:
+  ci-status:
+    # Aggregate job so branch protection can require a single `ci-status` check.
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-
-    name: Test grid tuning
+    needs: [lint, test]
+    if: always()
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip' # caching pip dependencies
-      - name: Install dependencies
-        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-        # pyLDAvis 3.3.1 having an "sklearn" dependency
+      - name: Report status
         run: |
-          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
-          python -m pip install -U pip
-          python -m pip install -U uv
-          python -m uv pip install -U pytest numpy
-
-          # https://github.com/yaml/pyyaml/issues/736
-          echo 'Cython < 3.0' > /tmp/constraint.txt
-          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
-
-          python -m uv pip install ".[full, test]"
-          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: ${{ matrix.python-version }}"
-          python --version
-          which python
-          pip list
-      - name: Test with pytest
-        run: pytest --durations=0 -m "tuning_grid"
-
-  test_benchmarks:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-
-    name: Benchmark tests
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip' # caching pip dependencies
-      - name: Install dependencies
-        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-        # pyLDAvis 3.3.1 having an "sklearn" dependency
-        run: |
-          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
-          python -m pip install -U pip
-          python -m pip install -U uv
-          python -m uv pip install -U pytest numpy
-
-          # https://github.com/yaml/pyyaml/issues/736
-          echo 'Cython < 3.0' > /tmp/constraint.txt
-          PIP_CONSTRAINT=/tmp/constraint.txt pip wheel PyYAML==5.4.1
-
-          python -m uv pip install ".[full, test]"
-          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: ${{ matrix.python-version }}"
-          python --version
-          which python
-          pip list
-      - name: Run benchmarks
-        run: pytest --durations=0 -m "benchmark"
+          if [[ "${{ needs.lint.result }}" != "success" || "${{ needs.test.result }}" != "success" ]]; then
+            echo "lint=${{ needs.lint.result }}  test=${{ needs.test.result }}"
+            exit 1
+          fi
+          echo "All required jobs succeeded."

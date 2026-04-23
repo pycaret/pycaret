@@ -1,0 +1,23 @@
+# CODEOWNERS — PyCaret 4.0
+#
+# Default: @moezali1 reviews everything on v4 during the revamp.
+# As the project scales up, ownership for specific areas gets delegated.
+
+*                                @moezali1
+
+# Revamp documentation — all substantive edits go through the project owner.
+/docs/revamp/                    @moezali1
+/AGENTS.md                       @moezali1
+/CONTRIBUTING.md                 @moezali1
+/README.md                       @moezali1
+/pyproject.toml                  @moezali1
+
+# Task experiment classes — high-stakes; every change affects the public API.
+/pycaret/core/                   @moezali1
+/pycaret/tasks/                  @moezali1
+/pycaret/api/                    @moezali1
+/pycaret/logging/                @moezali1
+/pycaret/persistence.py          @moezali1
+
+# CI / workflows
+/.github/                        @moezali1
