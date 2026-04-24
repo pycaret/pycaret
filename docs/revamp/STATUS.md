@@ -1,6 +1,68 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 15*
+*Updated: 2026-04-24, end of session 16*
+
+## Session 16 — Pipelines, Deployments, CSV upload — closes the serving loop — ✅
+
+The full Control Plane product loop is now live in the UI — **from a raw CSV upload through a promoted pipeline deployed behind a slug answering live predictions**, with no Python required.
+
+### What landed
+
+- **4 new screens** wired into the nav:
+  - **`/workspaces/:wsId/pipelines`** (`Pipelines.tsx`) — workspace-scoped registry of promoted pipelines. Table with name, model_id, SHA-256 prefix, tags, created date.
+  - **`/workspaces/:wsId/pipelines/:pipelineId`** (`PipelineDetail.tsx`) — pipeline metadata + a sidebar deploy-form (slug validator regex `[a-z0-9][a-z0-9-]{1,62}[a-z0-9]`, auth-mode selector) + a live-metrics table of every deployment backed by this pipeline.
+  - **`/workspaces/:wsId/deployments`** (`Deployments.tsx`) — workspace-level deployments list with p50/p95 latency, inference count, error count, last-hit timestamp. Polls every 5 s so metrics stay fresh.
+  - **`/deployments/:deploymentId`** (`DeploymentDetail.tsx`) — single-deployment view. Four stat cards (predictions / errors / p50 / p95) over a live `PredictTester`. Polls every 3 s. Sidebar shows deployment / workspace / pipeline IDs for copy-paste. Delete button with confirmation prompt (can also reach pipeline via link back).
+- **2 new components**:
+  - **`<PredictTester>`** — a monospace JSON-array textarea pre-seeded with an iris-shaped payload. Live-validates JSON as the user types (hint turns red, submit disables). On submit, renders a predictions table + latency + request-id chip. Pastes cleanly for bulk predictions.
+  - **`<DataSourcesCard>`** — lives in the `WorkspaceDetail` sidebar. Lists existing CSV uploads with row count / file size / column count. File-picker + name input + submit wired to `dataSourcesApi.uploadCsv` (multipart). Per-row delete with confirmation.
+- **API + types**:
+  - `pipelinesApi` (list / get / remove) and `deploymentsApi` (list / get / create / remove / **predict**). `PredictRequest` + `PredictResponse` types mirror the backend contract.
+  - `Deployment` type now imported in the endpoints module for `deploymentsApi` return types.
+- **Nav**:
+  - `WorkspaceDetail` header now has **Pipelines** + **Deployments** buttons at the top-right.
+  - `RunDetail` post-promote hint now links directly to the pipeline detail page.
+  - Runs-table rows in `ExperimentDetail` were already clickable (session 15).
+
+### Headline metrics
+
+| | Session 15 end | Session 16 end |
+|---|---|---|
+| UI screens | 8 | **12** (+ Pipelines / PipelineDetail / Deployments / DeploymentDetail) |
+| UI shared components | 5 | **7** (+ PredictTester + DataSourcesCard) |
+| UI routes | 8 | **12** |
+| UI tests | 27 | **33** (+6: 3 PredictTester + 3 DataSourcesCard) |
+| Combined tests | 89 | **95** (32 engine + 30 server + 33 web) |
+| UI LOC | ~2,950 | **~3,800** (+850) |
+| Production bundle (gz) | 89 kB | **93 kB** (+4 kB) |
+
+### End-to-end, in 8 clicks — zero Python
+
+1. `/setup` → bootstrap admin
+2. `/` → pick workspace
+3. Workspace sidebar → **upload CSV** (iris.csv, 150 rows, parsed + SHA-256'd)
+4. Click project → **"New experiment"** → dynamic form from engine
+5. Experiment screen sidebar → **plan=create, model=lr, source=iris.csv** → Submit
+6. Run row clickable → `/runs/:id` → watch live WebSocket events, leaderboard materialises
+7. **Promote** → land on `/workspaces/:wsId/pipelines/:id`
+8. Sidebar deploy form → slug `iris-v1` → **Deploy** → `/deployments/:id` → **Send request** (PredictTester) → predictions + 0.9 ms latency
+
+Live-verified against the real backend. 3-row predict on a freshly-deployed iris pipeline: latency = 0.9 ms, `inference_count` ticks to 3, `p50 = 0.9`, `p95 = 0.9`.
+
+### What's next (session 17)
+
+- **LLM router** (Anthropic Claude + OpenAI) + first 2 advisory endpoints:
+  - **Dataset consultant** — reads a CSV's profile + returns a suggested task type, target column, preprocessing strategy, risk flags.
+  - **Experiment designer** — takes a dataset + user goal → returns a proposed `RunConfig` the user reviews + approves.
+- Both surface as panels in the UI: "Ask the AI" button on `WorkspaceDetail` / `NewExperiment` → modal with the advisory response.
+
+### What's next (session 18+)
+
+- **Admin screens** — users, API keys, audit logs (V2 foundations).
+- **Monitoring + drift screens**.
+- **God-class drain** (engine Phase 5) → 4.0.0 (non-alpha) release.
+
+---
 
 ## Session 15 — Run detail + live WebSocket event stream — ✅
 

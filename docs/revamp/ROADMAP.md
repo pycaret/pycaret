@@ -69,7 +69,7 @@ Status: ✅ **FULLY DONE** (sessions 9–11). 30 integration tests green.
 
 ## MVP 3 — Web UI (`apps/web`)
 
-Status: 🟡 **IN FLIGHT** (sessions 12 + 14 + 15). 8/10 screens. 27 tests green.
+Status: 🟢 **CORE COMPLETE** (sessions 12 + 14 + 15 + 16). 12/14 screens. 33 tests green. Full product loop shipped.
 
 - [x] Vite 5 + React 18 + TypeScript 5 + Tailwind 3 + TanStack Query + Zustand + React Router 6 scaffold.
 - [x] Typed API client (hand-written; `npm run gen:api` wired for growth).
@@ -83,6 +83,9 @@ Status: 🟡 **IN FLIGHT** (sessions 12 + 14 + 15). 8/10 screens. 27 tests green
 - [x] *(session 14)* **`/workspaces/:wsId/projects/:projectId/experiments/:experimentId`** — experiment detail with config overview, runs table (auto-polls while pending), and a minimal new-run sidebar (plan / model / sklearn sample dataset).
 - [x] *(session 15)* **`/runs/:runId`** — dedicated run detail. Live WebSocket event stream (`<EventStream>` with connection + replay + sentinel handling + single-retry reconnect). Sortable leaderboard (`<Leaderboard>` — zero hard-coded metric names). Cancel button while pending. Promote-to-pipeline form on success. Polls run row every 2 s until terminal. Full request snapshot for reproducibility.
 - [x] *(session 15)* **Experiment sidebar upgrade** — model picker driven by `describeApi.models(task)`; data-source picker mixing workspace CSV uploads + sklearn sample fallbacks; runs-table rows now clickable through to `/runs/:id`.
+- [x] *(session 16)* **`/workspaces/:wsId/pipelines`** + **`/workspaces/:wsId/pipelines/:id`** — workspace-scoped fitted-pipeline registry + deploy-form sidebar (slug regex validation, auth-mode selector) + list of existing deployments per pipeline.
+- [x] *(session 16)* **`/workspaces/:wsId/deployments`** + **`/deployments/:id`** — workspace deployments list + single-deployment view with 4 stat cards (predictions / errors / p50 / p95) + `<PredictTester>` (JSON textarea → predictions table + latency). Polls every 3–5 s to keep metrics fresh.
+- [x] *(session 16)* **`<DataSourcesCard>`** in `WorkspaceDetail` — CSV upload + list + delete. Multipart upload via `dataSourcesApi.uploadCsv`. Row count / file size / column count rendered inline.
 - [ ] **`/datasets/:id`** — dataset overview / schema / profile / quality / versions.
 - [ ] **`/deployments/:id`** — endpoint details + test form + logs + metrics + drift tab.
 - [ ] **`/monitoring`** — deployment health + drift alerts.
@@ -171,10 +174,10 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 12 | Frontend scaffold (Phase 10 start) | 4 screens live |
 | 13 | Monorepo restructure + Control Plane spec | Canonical structure + docs |
 | 14 | Project detail + Experiment wizard (dynamic form) | Experiment creation UI + runs sidebar + 13 new tests |
-| **15** | **`/runs/:id` with live WebSocket + leaderboard + data-source + model pickers** | **Run view + promote button + 8 new tests** |
-| 16 | Trial entity + Model Library table sync | DB expansion |
-| 17 | LLM router + first 2 advisory endpoints | AI assist MVP |
-| 18 | Dataset upload UI + profile screen | Data-source UI |
+| 15 | `/runs/:id` with live WebSocket + leaderboard + data-source + model pickers | Run view + promote button + 8 new tests |
+| **16** | **Pipelines + Deployments + CSV upload UI — full serving loop** | **4 screens + 2 components + 6 tests + E2E verified** |
+| 17 | LLM router + first 2 advisory endpoints (dataset consultant, experiment designer) | AI assist MVP |
+| 18 | Trial entity + Model Library table sync | DB expansion |
 | 19 | Admin screens + API keys + audit logs | V2 foundation |
 | 20+ | God-class drain → 4.0.0 release | Engine finish |
 

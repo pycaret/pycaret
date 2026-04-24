@@ -42,6 +42,81 @@
 
 ---
 
+# Session 16 — 2026-04-24 — Pipelines + Deployments + CSV upload (closes the serving loop)
+
+Baseline: session 15 closed the run-execution loop with live WebSocket events + leaderboard. A user could promote a run into a Pipeline via the API — but there was no UI for the pipeline registry, no UI for deployments, no way to hit `/predict` from the browser, and no way to upload a real CSV.
+
+Theme: close the full **zero-Python product loop**. Every step in §24 of the spec (CSV upload → run → promote → deploy → predict) is now reachable from the UI in under 8 clicks.
+
+## ADDED — pipelines UI
+
+- `ADDED` — **`apps/web/src/pages/Pipelines.tsx`** — `/workspaces/:wsId/pipelines`. Workspace-scoped registry. Table columns: name (link to detail), model_id, SHA-256 prefix (hover for full hash), tags, created. Breadcrumb-navigated from the workspace header.
+- `ADDED` — **`apps/web/src/pages/PipelineDetail.tsx`** — `/workspaces/:wsId/pipelines/:pipelineId`. Two-column layout:
+  - **Main**: metadata `<dl>` (model_id, sha256, origin_run_id, stored_path, created, tags). Below: a table of every Deployment backed by this pipeline with live p50/p95 latency + inference count + error count + auth mode.
+  - **Sidebar**: new-deployment form. Slug input validates against `[a-z0-9][a-z0-9-]{1,62}[a-z0-9]` live; submit disabled on invalid. Auth-mode selector with `workspace` active + `api-key` / `public` disabled + labelled "(V2)".
+
+## ADDED — deployments UI + serving
+
+- `ADDED` — **`apps/web/src/pages/Deployments.tsx`** — `/workspaces/:wsId/deployments`. Workspace-level list. 8-column table: slug (link) / status / auth / predictions / errors (red when > 0) / p50 / p95 / last-hit timestamp. Polls every 5 s so the metrics stay alive.
+- `ADDED` — **`apps/web/src/pages/DeploymentDetail.tsx`** — `/deployments/:deploymentId`. Polls every 3 s. Header with slug (mono) + status tone + auth mode + linked pipeline name. Four `<Stat>` cards: predictions, errors (red tone when > 0), p50, p95. Below: full `<PredictTester>` inline. Right column: a metadata card with deployment_id / workspace_id / pipeline_id / created (all mono, click-to-copy via `title`). Delete action with confirmation prompt; on success, redirects to the workspace deployments list.
+- `ADDED` — **`apps/web/src/components/PredictTester.tsx`** — the load-bearing serving test-form.
+  - Monospace JSON-array `<textarea>` pre-seeded with an iris-shaped payload.
+  - Live JSON parse on every keystroke → inline red hint (`JSON: ...`) + submit disabled on invalid.
+  - Submit calls `deploymentsApi.predict(slug, {rows})` and renders the response as: latency chip (`3.1ms`) + request-id chip (truncated, full via `title`) + a predictions table (index / prediction, numeric or JSON-stringified).
+  - Error responses surface via `errorMessage()`; good for catching schema mismatches ("prediction failed: Feature names seen at fit time, yet now missing: ...").
+
+## ADDED — CSV upload UI
+
+- `ADDED` — **`apps/web/src/components/DataSourcesCard.tsx`** — lives in `WorkspaceDetail`'s sidebar. Lists existing `csv_upload` data sources (filters out s3/postgres — those get their own Integrations screen later). Per-row: name, row count, pretty-printed size, column count. Per-row delete with confirmation. Upload form at the bottom: file picker (accept `.csv,text/csv`, styled via `file:` pseudo-class), name input that auto-fills from the file name. Multipart submit via `dataSourcesApi.uploadCsv` (FormData wrapper; axios sets Content-Type + boundary automatically).
+- `CHANGED` — **`apps/web/src/pages/WorkspaceDetail.tsx`** — header now has two buttons at the top-right: **Pipelines** + **Deployments** (both `btn-secondary`). Sidebar changed from single card to stack: `New project` card + `<DataSourcesCard>`.
+
+## ADDED — API bindings
+
+- `ADDED` — **`apps/web/src/api/endpoints.ts`**:
+  - `pipelinesApi` — `list(workspace_id)`, `get(pipeline_id)`, `remove(pipeline_id)`.
+  - `deploymentsApi` — `list(workspace_id)`, `get(deployment_id)`, `create(pipeline_id, body)`, `remove(deployment_id)`, **`predict(endpoint_slug, body)`**.
+  - Request / response types: `PredictRequest` (`{rows: Record<string, unknown>[]}`), `PredictResponse` (`{deployment_id, endpoint_slug, predictions: [{index, prediction}], latency_ms, request_id}`).
+
+## CHANGED — routing
+
+- `CHANGED` — **`apps/web/src/App.tsx`** — 4 new authenticated routes mounted inside the `<AuthGate><Layout>` wrapper: `/workspaces/:wsId/pipelines`, `/workspaces/:wsId/pipelines/:pipelineId`, `/workspaces/:wsId/deployments`, `/deployments/:deploymentId`.
+- `CHANGED` — **`apps/web/src/pages/RunDetail.tsx`** — the promote-success hint now links directly to the created pipeline's detail page. Closes the loop from run → pipeline → deploy with one mouse path.
+
+## TESTS
+
+- `TESTS` — **`apps/web/src/components/PredictTester.test.tsx`** — 3 new:
+  - Renders the monospace JSON textarea pre-seeded with an iris-shaped payload (asserts via `.value` string-contains — asymmetric matchers don't compose with `toHaveValue`).
+  - Typing invalid JSON via `fireEvent.change` (userEvent.type treats `{` as a key sequence) surfaces the inline red hint and disables submit.
+  - Clicking submit renders the predictions table + latency chip after the mock resolves.
+- `TESTS` — **`apps/web/src/components/DataSourcesCard.test.tsx`** — 3 new:
+  - Empty-state hint when `list` returns `[]`.
+  - Lists only `csv_upload`-kind rows (s3/postgres filtered out), with `rows · size · cols` summary formatted.
+  - Upload button disabled until a file is attached via `userEvent.upload`.
+- `TESTS` — **UI suite: 33/33 green** (was 27). **Combined: 95/95** (32 engine + 30 server + 33 web).
+
+## INTERNAL
+
+- `INTERNAL` — **userEvent + curly braces.** `user.type(textarea, '{not json}')` throws `Expected repeat modifier or release modifier or "}" but found " "` — `{` is a special-key prefix in userEvent's keyboard DSL. `fireEvent.change(..., { target: { value: 'not json' } })` is the right primitive for pasting raw invalid input. Same pattern used by DynamicForm test (session 14) for clearing number inputs.
+- `INTERNAL` — **Mid-file import rejected by flow.** First draft added `import type { Deployment }` mid-file between sections for ergonomic reasons. Moved it up into the single `import type { … } from './types'` block so the module obeys "all imports at top" convention. TS doesn't care, but readers do.
+- `INTERNAL` — **Polling cadence.** DeploymentDetail polls every 3 s because its stat cards change every `/predict`. The Deployments list polls every 5 s (less critical). The PipelineDetail deployments sub-table piggybacks on the workspace-scoped list query's 5 s cadence through query-key sharing.
+- `INTERNAL` — **JSON textarea vs. dynamic form.** PredictTester keeps inputs as a raw JSON array instead of a column-aware dynamic form because the `Deployment` row doesn't currently carry the pipeline's input schema. A V2 session can attach a `schema.json` artifact at promotion time and render a column-aware form on top of the same `deploymentsApi.predict` call.
+
+## Session 16 delta summary
+
+| Metric | Session 15 end | Session 16 end |
+|---|---:|---:|
+| UI screens | 8 | **12** (+4) |
+| UI shared components | 5 | **7** (+2) |
+| UI routes | 8 | **12** (+4) |
+| UI tests | 27 | **33** (+6) |
+| Combined tests | 89 | **95** |
+| UI LOC | ~2,950 | **~3,800** |
+| Production bundle (gz) | 89 kB | **93 kB** |
+
+Live E2E verified: CSV upload (150 rows, 5 cols, SHA-256 checksummed) → create-plan run on LR → succeeded in 6.3 s → promoted to a pipeline with SHA-256 → deployed as slug `iris-v1` (active, workspace auth) → `/predict` with 3 iris rows → 0.9 ms latency, `inference_count` ticks to 3, p50 = p95 = 0.9 ms.
+
+---
+
 # Session 15 — 2026-04-24 — Run detail + live WebSocket event stream
 
 Baseline: session 14 shipped the experiment wizard + project detail. The runs table existed but clicking a row did nothing.
