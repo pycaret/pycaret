@@ -17,9 +17,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from pycaret_server import __version__
-from pycaret_server.api import auth, describe, experiments, projects, setup, workspaces
+from pycaret_server.api import (
+    auth,
+    describe,
+    experiments,
+    projects,
+    runs,
+    setup,
+    workspaces,
+)
 from pycaret_server.config import get_settings
 from pycaret_server.db import Base, engine
+from pycaret_server.runs.orchestrator import reset_orchestrator
 
 
 @asynccontextmanager
@@ -34,7 +43,11 @@ async def _lifespan(app: FastAPI):
     if settings.database_url.startswith("sqlite"):
         Base.metadata.create_all(engine)
     settings.artifact_dir.mkdir(parents=True, exist_ok=True)
-    yield
+    try:
+        yield
+    finally:
+        # Tear down the run-orchestrator singleton so worker threads stop.
+        reset_orchestrator()
 
 
 def create_app() -> FastAPI:
@@ -71,6 +84,7 @@ def create_app() -> FastAPI:
         workspaces.router,
         projects.router,
         experiments.router,
+        runs.router,
     ):
         app.include_router(router, prefix="/api/v1")
 

@@ -103,6 +103,56 @@ class ExperimentResponse(BaseModel):
     created_by: str
 
 
+# ---------------------------------------------------------------- runs
+
+
+class RunCreate(BaseModel):
+    """Request body for ``POST /api/v1/experiments/{id}/runs``.
+
+    Exactly one input source must be provided — ``sklearn_dataset`` (a tiny
+    built-in sklearn frame, handy for tutorials and tests) or ``data_inline``
+    (a list of row dicts). S3 / CSV uploads will be added alongside the data
+    sources router.
+    """
+
+    plan: str = Field(
+        default="setup",
+        description="One of: setup | create | compare.",
+    )
+    model_id: str | None = Field(
+        default=None, description="Required when plan='create'; PyCaret model id (e.g. 'lr')."
+    )
+    plan_params: dict = Field(default_factory=dict)
+
+    sklearn_dataset: str | None = None
+    data_inline: list[dict] | None = None
+
+
+class RunResponse(BaseModel):
+    id: str
+    experiment_id: str
+    status: str
+    started_at: datetime | None
+    finished_at: datetime | None
+    duration_ms: float | None
+    error: str | None
+    leaderboard: list[dict] | dict | None
+    metrics_summary: dict | None
+    snapshot: dict | None
+    created_at: datetime
+    created_by: str
+
+
+class EventResponse(BaseModel):
+    id: str
+    run_id: str
+    kind: str
+    message: str | None
+    payload: dict | None
+    duration_ms: float | None
+    emitted_at: datetime
+
+
 # ---------------------------------------------------------------- setup/bootstrap
 
 
