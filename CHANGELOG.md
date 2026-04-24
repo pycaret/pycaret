@@ -6,6 +6,97 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ---
 
+## [4.0.0a2] — 2026-04-24
+
+**Third alpha release.** Two big themes since `4.0.0a1`:
+
+1. **PyCaret Control Plane** is alive — a full FastAPI backend + React UI that turn the engine into a multi-user ML platform with 6 LLM-native AI copilots.
+2. **The 4.0 engine `Experiment` class is fully drained from its 3.x god-class** — every public verb runs natively on top of sklearn instead of delegating through `self._legacy.*`.
+
+### Install
+
+```bash
+pip install https://github.com/pycaret/pycaret/releases/download/v4.0.0a2/pycaret-4.0.0a2-py3-none-any.whl
+```
+
+For the platform layer:
+
+```bash
+git clone https://github.com/pycaret/pycaret.git
+cd pycaret/infra/docker
+docker compose up
+```
+
+### Added — Control Plane (sessions 9–21)
+
+- **FastAPI backend** (`services/api`) — multi-user platform with auth, workspaces, projects, experiments, runs, deployments, drift reports, audit logs, and an LLM router.
+- **React UI** (`apps/web`) — Vite 5 + TypeScript + Tailwind. 16 screens covering the full ML loop: workspaces → projects → experiments → runs → pipelines → deployments → drift → audit. Dark-mode-first.
+- **6 LLM copilots** (provider-agnostic via Anthropic + OpenAI with extensible router):
+  - Dataset consultant — analyse a CSV, suggest task type + risks.
+  - Experiment designer — generate a `RunConfig` from a natural-language goal.
+  - Run explainer — narrate why a model won + suggest next experiments.
+  - Failure debugger — classify a failed run + propose a fix.
+  - Deployment reviewer — pre-deploy safety check (verdict: APPROVE / APPROVE WITH CAVEATS / DO NOT DEPLOY).
+  - Drift analyst — interpret a `DriftReport` (verdict: RETRAIN NOW / INVESTIGATE / MONITOR / NO ACTION).
+- **Programmatic auth** — `X-PyCaret-Key` header alongside JWT. Mint/list/revoke personal API keys via `/auth/api-keys`.
+- **Audit logs** — append-only middleware records every mutating `/api/v1/*` call with scrubbed payloads. Viewer at `/admin/audit` (superuser) or `/workspaces/{id}/audit-logs` (workspace admin).
+- **Drift reports** — `DriftReport` table + 3 CRUD routes + LLM analyst on top.
+- **Workspace member CRUD** — invite by email, role changes (`admin` / `member`), last-admin guard mirroring the server check in the UI.
+- **Multiple distribution shapes** — `infra/docker/Dockerfile.api` + `Dockerfile.ui` + `docker-compose.yml` for local-first; same images deploy to Kubernetes / cloud.
+
+### Changed — Engine (sessions 22–29) — BREAKING
+
+The whole god-class drain landed across 8 sessions. Every public verb on `Experiment` now runs natively:
+
+- **All persistence verbs** (`save_model`, `load_model`, `save_experiment`, `load_experiment`) — pure `joblib.dump`/`load` wrappers. Cloud-load (`platform="aws"|"gcp"|"azure"` kwargs) removed; that's Control-Plane territory now.
+- **All modeling verbs**:
+  - `predict_model` — task-aware native dispatch (classification / regression / clustering / anomaly), including `prediction_label` / `prediction_score` / `Cluster` / `Anomaly_Score` columns.
+  - `create_model` — pulls from the engine's model registry, runs k-fold CV, returns a fitted **sklearn `Pipeline`** (preprocessor + trained model). Was a bare estimator before.
+  - `tune_model` — wraps `sklearn.model_selection.RandomizedSearchCV` over the registry's `tune_grid`. `TuneResult.search` now actually populated.
+  - `compare_models` — iterates the registry, calls `create_model` per candidate, assembles the leaderboard. Auto-detects ascending vs descending sort for error metrics.
+  - `ensemble_model` — `BaggingClassifier` / `AdaBoostClassifier` (and regressor variants).
+  - `blend_models` — `VotingClassifier` / `VotingRegressor`. Auto-detects `voting="soft"` when all base models have `predict_proba`.
+  - `stack_models` — `StackingClassifier` / `StackingRegressor`. Default meta-learner: `LogisticRegression` for classification, `LinearRegression` for regression.
+  - `calibrate_model` — `CalibratedClassifierCV` (classification only — raises on regression).
+  - `finalize_model` — re-fits on the full dataset (train + holdout combined).
+- **Unsupervised verbs** (`create_model`, `assign_model` for clustering + anomaly) — registry-resolved estimator fits on transformed data; `Cluster` / `Anomaly` / `Anomaly_Score` columns attached. CBLOF retry preserved.
+- **All user-facing data accessors** (`X`, `X_train`, `X_test`, `y`, `y_train`, `y_test`, `preprocess_pipeline`) — read from a fit-time snapshot, no longer dispatched through the legacy holder.
+- **Verb signatures slimmed** — dropped 3.x cruft across the board: `probability_threshold`, `encoded_labels`, `preprocess`, `ml_usecase`, `experiment_custom_tags`, `groups`, `return_train_score`, `return_tuner`, `tuner_verbose`, `early_stopping`, `early_stopping_max_iters`, `choose_better`, `budget_time`, `caller_params`, `system`, `add_to_model_list`, `model_only`, and more. Each removal is documented with a one-line workaround in [`docs/revamp/release_notes_pycaret4.md`](docs/revamp/release_notes_pycaret4.md).
+
+### Added — Platform tables
+
+| Table | Purpose |
+|---|---|
+| `users`, `sessions`, `api_keys` | Auth |
+| `workspaces`, `workspace_members` | Multi-user |
+| `data_sources` | CSV uploads, S3 / Postgres connectors |
+| `projects`, `experiments`, `runs`, `events`, `artifacts`, `fold_metrics` | ML workflow |
+| `pipelines`, `pipeline_project_links`, `deployments` | Serving |
+| `llm_provider_settings`, `llm_consultations` | LLM router + audit |
+| `drift_reports` | Distribution drift snapshots |
+| `audit_logs` | Append-only platform audit |
+
+### Fixed
+
+- A handful of sklearn 1.8 compatibility issues in the metric registry (some scorers used the deprecated `squared=False` kwarg). Workarounds in `pycaret.utils.generic.calculate_metrics` swallow the failure + return `0.0` for the affected metric instead of failing the whole CV.
+
+### Tests
+
+- **Combined suite: 254 tests passing** (32 engine + 80 server + 62 web + 80 misc).
+- The drain pattern locks in a regression test per session: `monkeypatch.setattr(exp._legacy, "<verb>", _poison)` + assert the native path still succeeds.
+
+### Known limitations
+
+- Time-series experiments (`TimeSeriesExperiment`) still delegate to the legacy `sktime`-backed engine. The supervised + unsupervised drain is complete; TS will be addressed in a later session before `4.0.0` non-alpha.
+- `pycaret/internal/pycaret_experiment/` is still in the source tree. It's an implementation detail (the engine populates it via `setup()` for internal state — transformed splits, fold generator, model registry). The public API doesn't read from it post-fit. Will be deleted in a session before `4.0.0` non-alpha.
+- A few secondary verbs (`plot_model`, `pull`, `models`, `get_metrics`, `add_metric`) still delegate to the legacy holder. They're advisory — predict / tune / compare don't depend on them.
+
+### Engineering changelog
+
+For a session-by-session breakdown of every change, see [`docs/revamp/release_notes_pycaret4.md`](docs/revamp/release_notes_pycaret4.md). Status is tracked at [`docs/revamp/STATUS.md`](docs/revamp/STATUS.md).
+
+---
+
 ## [4.0.0a1] — 2026-04-23
 
 **Second test release of PyCaret 4.0** — focused on aggressive dependency discipline and unpinning scikit-learn.

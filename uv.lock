@@ -2625,7 +2625,7 @@ wheels = [
 
 [[package]]
 name = "pycaret"
-version = "4.0.0a1"
+version = "4.0.0a2"
 source = { editable = "packages/engine" }
 dependencies = [
     { name = "category-encoders" },

@@ -36,7 +36,7 @@ import sys
 from pycaret.persistence import load_model, save_model
 from pycaret.utils._show_versions import show_versions
 
-__version__ = "4.0.0a1"
+__version__ = "4.0.0a2"
 # NOTE: rebuild dist/*.whl after every version bump. See docs/for_developers/PUBLISHING.md
 version_ = __version__
 

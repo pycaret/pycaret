@@ -1,6 +1,6 @@
 [project]
 name = "pycaret"
-version = "4.0.0a1"
+version = "4.0.0a2"
 description = "PyCaret 4.0 — the modern, minimalistic ML control pane on top of scikit-learn."
 readme = "README.md"
 keywords = [
