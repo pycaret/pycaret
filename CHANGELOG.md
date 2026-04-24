@@ -6,6 +6,60 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ---
 
+## [4.0.0a1] — 2026-04-23
+
+**Second test release of PyCaret 4.0** — focused on aggressive dependency discipline and unpinning scikit-learn.
+
+### Install
+
+```bash
+pip install https://github.com/pycaret/pycaret/releases/download/v4.0.0a1/pycaret-4.0.0a1-py3-none-any.whl
+```
+
+### Changed
+
+- **scikit-learn is now unpinned** — your install gets whatever the latest scikit-learn is (tested against 1.8). Previously pinned to `>=1.7,<1.8` because `sktime` capped it; `sktime` moved to the `timeseries` extra so the core install is no longer constrained.
+- **Core install pulls ~41 packages** (vs. ~90+ in 3.x, ~65 in 4.0.0a0). sklearn 1.8, NumPy 2.4, pandas 3.0 on the default install.
+
+### Removed from the default install
+
+PyCaret 4.0 is opinionated: the library is a minimal ML control pane on top of scikit-learn. Everything below is now **user-installed** if wanted — pycaret's model / metric / plot registries auto-detect them via soft-dependency checks.
+
+- `lightgbm`, `xgboost`, `catboost` — pick your own; pycaret lights the container up when it finds one installed.
+- `kmodes`, `mlxtend` — same pattern.
+- `optuna`, `optuna-integration`, `scikit-optimize`, `hyperopt` — the whole `tuners` extra is gone. Use sklearn's built-in `GridSearchCV` / `RandomizedSearchCV` / `HalvingRandomSearchCV`, or install a backend yourself and pass a fitted search-cv object to `tune_model`.
+- `shap`, `interpret`, `umap-learn` — the whole `analysis` extra is gone. Interpretability is out of scope for 4.0 alpha; will return targeted in a later release.
+- `prophet` — the entire `prophet` extra is gone.
+- `matplotlib` — no longer a core dep. Lazy-imported with graceful fallbacks wherever a residual non-Plotly plot path exists. Plotly is the single chosen plot library for 4.0.
+- `kaleido` — moved from core to the new `export` extra (only needed for static Plotly image export).
+- `xxhash` — no longer core; `pycaret.internal.memory.FastMemory` now falls back to `hashlib.blake2b` if xxhash isn't available.
+- `cloudpickle` — no longer core; `load_experiment()` lazy-imports it and raises a clean error if missing.
+- `psutil` — no longer core; system-info logging falls back to stdlib `os.cpu_count()`.
+- `nbformat` — moved to the `notebook` extra (only needed for run-notebook artifact generation in the forthcoming platform layer).
+- `ipywidgets` — moved to the `notebook` extra.
+- `ipython` — **kept** in core (widely used, small footprint, and the 4.0 Jupyter integration expects it).
+
+### New extras structure
+
+- `pycaret[notebook]` — `ipywidgets`, `nbformat` (for progress widgets + run-notebook artifact generation).
+- `pycaret[export]` — `kaleido` (static Plotly image export).
+- `pycaret[anomaly]` — `pyod`, `numba` (AnomalyExperiment backend).
+- `pycaret[timeseries]` — `sktime`, `statsmodels`, `pmdarima` (TimeSeriesExperiment backend).
+- `pycaret[full]` — all of the above in one go.
+
+### Fixed
+
+- `lightgbm` container in `pycaret.containers.models.*` now gracefully disables itself when lightgbm is missing (was ImportError-at-load before).
+
+### Known transitional deps (still in core; targeted for removal)
+
+- `imbalanced-learn` — required because `pycaret.internal.pipeline.Pipeline` inherits from `imblearn.pipeline.Pipeline`. Phase 4 preprocessor rewrite removes this.
+- `category-encoders` — used by the legacy preprocessor. sklearn 1.3+ has native `OrdinalEncoder` / `OneHotEncoder` / `TargetEncoder` replacements; Phase 4 swaps them in.
+
+These two are listed as transitional in `pyproject.toml` and will be cut in a future alpha.
+
+---
+
 ## [4.0.0a0] — 2026-04-23
 
 **First test release of PyCaret 4.0.** This is an alpha — the OOP public API is stable, but the legacy internal implementation is still being progressively replaced. Feel free to install, try, and file feedback; do **not** rely on it for production workloads yet.

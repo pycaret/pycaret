@@ -2,7 +2,13 @@
 This module contains methods that can be used in various plot modules and don't really belong to a specific module
 """
 
-import matplotlib.pyplot as plt
+# matplotlib was removed from core deps in 4.0.0a1. Lazy-imported so the
+# legacy MatplotlibDefaultDPI helper's no-op path is available without pulling
+# matplotlib into every pycaret install.
+try:
+    import matplotlib.pyplot as plt
+except ImportError:  # pragma: no cover
+    plt = None  # type: ignore[assignment]
 import numpy as np
 
 

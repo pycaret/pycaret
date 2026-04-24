@@ -1,8 +1,14 @@
 from math import ceil
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import matplotlib
-import matplotlib.pyplot as plt
+# matplotlib removed from core deps in 4.0.0a1 (time-series plots use
+# plotly primarily; matplotlib paths are residual).
+try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+except ImportError:  # pragma: no cover
+    matplotlib = None  # type: ignore[assignment]
+    plt = None  # type: ignore[assignment]
 import numpy as np
 import pandas as pd
 import plotly.express as px

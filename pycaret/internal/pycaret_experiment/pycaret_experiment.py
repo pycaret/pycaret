@@ -11,8 +11,16 @@ from collections import defaultdict
 from collections.abc import Callable
 from typing import Any, BinaryIO, Dict, Optional, Union
 
-import cloudpickle
 import pandas as pd
+
+# cloudpickle moved out of core deps in 4.0.0a1; joblib depends on it
+# transitively when available. load_experiment() lazy-imports it to give a
+# clean error if a pickled-with-cloudpickle experiment is opened without
+# the package installed.
+try:
+    import cloudpickle
+except ImportError:  # pragma: no cover
+    cloudpickle = None  # type: ignore[assignment]
 
 import pycaret.internal.patches.sklearn
 import pycaret.internal.persistence
@@ -115,11 +123,17 @@ class _PyCaretExperiment:
         self.logger.info(f"machine: {machine()}")
         self.logger.info(f"platform: {platform()}")
 
-        import psutil
-
-        self.logger.info(f"Memory: {psutil.virtual_memory()}")
-        self.logger.info(f"Physical Core: {psutil.cpu_count(logical=False)}")
-        self.logger.info(f"Logical Core: {psutil.cpu_count(logical=True)}")
+        # psutil removed from core deps in 4.0.0a1. Use stdlib os.cpu_count()
+        # for the logical-core count and skip memory/physical-core logging
+        # unless psutil is installed (diagnostic only, not required).
+        import os as _os
+        self.logger.info(f"Logical Core: {_os.cpu_count()}")
+        try:
+            import psutil  # optional
+            self.logger.info(f"Memory: {psutil.virtual_memory()}")
+            self.logger.info(f"Physical Core: {psutil.cpu_count(logical=False)}")
+        except ImportError:
+            pass
 
         from pycaret.utils._show_versions import show_versions
 

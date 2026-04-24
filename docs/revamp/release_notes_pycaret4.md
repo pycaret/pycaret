@@ -42,6 +42,84 @@
 
 ---
 
+# Session 8 — 2026-04-23 — Aggressive dependency cut → 4.0.0a1
+
+Baseline: end of session 7 (4.0.0a0 tag pushed, GitHub Release published, user testing on Google Colab surfaced "deps still too heavy").
+Environment: unchanged.
+
+Theme: owner asked for another round of dep discipline — "lets start cleaning them up. we dont need all kind of tuners. we dont need all that kind of extra visualization... nobody uses all those long tail functionalities. we dont need kmodes, lightgbm, catboost, xgboost, let user install it separately and add them to the library model container or something." Plus: unpin sklearn.
+
+## BREAKING — extras collapsed
+
+- `REMOVED, BREAKING` — **`pycaret[models]`** extra entirely removed. `xgboost`, `catboost`, `kmodes`, `mlxtend`, `lightgbm` — all no longer installed by `pycaret[full]` or any other extra. Users install them directly: `pip install xgboost lightgbm catboost`. Pycaret's model containers already use `_check_soft_dependencies` to auto-detect and light up when the backing package is present (LGBM container gained this guard in this session; xgboost/catboost already had it).
+- `REMOVED, BREAKING` — **`pycaret[tuners]`** extra entirely removed. `optuna`, `optuna-integration`, `scikit-optimize`, `hyperopt` — all gone. Users attach a custom search via sklearn's `GridSearchCV` / `RandomizedSearchCV` / `HalvingRandomSearchCV`, or install an optuna-type backend and pass a constructed search-cv to `tune_model`.
+- `REMOVED, BREAKING` — **`pycaret[analysis]`** extra entirely removed. `shap`, `interpret`, `umap-learn` — all gone. Interpretability re-enters targeted in a later release (owner: "for analysis we get drop interpret related functionalities, shap as well for now, we will bring it later").
+- `REMOVED, BREAKING` — **`pycaret[prophet]`** extra entirely removed.
+
+## DEPS — core cut from 19 → 11
+
+Removed from core `dependencies`:
+- `lightgbm>=4.3` (moved to user-install).
+- `cloudpickle>=3.0` (joblib pulls it transitively when needed; `load_experiment()` lazy-imports with a clean fallback).
+- `psutil>=5.9` (system-info logging falls back to `os.cpu_count()`).
+- `xxhash>=3.4` (`FastMemory` falls back to `hashlib.blake2b(digest_size=16)`).
+- `matplotlib>=3.9` (Plotly is the single chosen library; matplotlib lazy-imported in 4 residual non-Plotly call sites).
+- `kaleido>=0.2` (moved to new `export` extra).
+- `nbformat>=5.10` (moved to `notebook` extra).
+- `ipywidgets>=8.1` (moved to `notebook` extra).
+
+Kept in core:
+- `numpy>=1.26`, `pandas>=2.2`, `scipy>=1.11`, **`scikit-learn>=1.7`** (upper cap removed — see below), `joblib>=1.4`, `plotly>=5.22`, `tqdm>=4.66`, `requests>=2.32`, `jinja2>=3.1` (pandas.style), `ipython>=8.18`.
+
+Transitional (still in core, flagged for removal):
+- `imbalanced-learn>=0.13` — removed when `pycaret.internal.pipeline.Pipeline` stops inheriting from `imblearn.pipeline.Pipeline` (Phase 4).
+- `category-encoders>=2.6` — removed when legacy preprocessor is rewritten on native sklearn encoders (Phase 4).
+
+## CHANGED — sklearn unpinned
+
+- `CHANGED` — **`scikit-learn>=1.7`** — upper cap `<1.8` removed. The cap existed only because `sktime` (in the `timeseries` extra) required `scikit-learn<1.8`. Since `sktime` is no longer pulled into the default install — only when a user installs `pycaret[timeseries]` — the core can track the latest sklearn. Default fresh install now pulls sklearn 1.8, NumPy 2.4, pandas 3.0.
+
+## REMOVED — show_versions diagnostic table entries
+
+- `CHANGED` — `pycaret/utils/_show_versions.py` dependency-version reporting table no longer includes `mlxtend`, `kmodes`, `kaleido`, `jinja2` (still reported), `xxhash` (uses stdlib now). Kept for diagnostic: `numpy`, `pandas`, `scipy`, `scikit-learn`, `joblib`, `plotly`, `tqdm`, `requests`, `ipython`, `imbalanced-learn`, `category-encoders`, `matplotlib` (if installed), plus extras packages when detected.
+
+## FIXED — soft-dep guards
+
+- `FIXED` — `pycaret/containers/models/classification.py::LGBMClassifierContainer` — added `_check_soft_dependencies("lightgbm")` guard; container sets `self.active = False` cleanly when lightgbm isn't installed. Same guard added to `regression.py::LGBMRegressorContainer` and `time_series.py::LGBMCdsDtContainer` (TS variant also pre-sets `is_gpu_enabled = False` so the god-class `__init__` flow doesn't AttributeError before the `active=False` short-circuit takes effect).
+- `FIXED` — `pycaret/internal/memory.py` — xxhash import now `try/except`; falls back to `hashlib.blake2b`. No behaviour change in practice (hash-based cache key collisions don't matter for correctness, only perf).
+- `FIXED` — `pycaret/internal/pycaret_experiment/pycaret_experiment.py` — `cloudpickle` now lazy-imported; `psutil` system-info logging is conditional.
+- `FIXED` — `pycaret/internal/pycaret_experiment/supervised_experiment.py` — `matplotlib.pyplot` lazy-imported. Only the two `plt.savefig()` interpret-model call sites need it; both guarded against `plt is None` via the surrounding `if self.logging_param` block and the `try/except AttributeError` in the calling code.
+- `FIXED` — `pycaret/internal/plots/helper.py` + `pycaret/internal/plots/utils/time_series.py` — matplotlib lazy-imported; `MatplotlibDefaultDPI` already had `try/except` wrapping its `plt.rcParams` access so `plt = None` is a silent no-op.
+
+## TESTS
+
+- `TESTS` — **32/32 green** on the lean 4.0.0a1 in 71s on the full-extras dev venv.
+- `TESTS` — **Fresh `pycaret` install with no extras** (41 deps total) successfully runs `ClassificationExperiment(target='Purchase').fit(juice) → compare_models(include=['lr','dt']) → predict_model → save_model → load_model` roundtrip on sklearn 1.8 / NumPy 2.4 / pandas 3.0.
+
+## BUILD
+
+- `BUILD, BREAKING` — **Version `4.0.0a0` → `4.0.0a1`**.
+- `BUILD` — Rebuilt wheel `pycaret-4.0.0a1-py3-none-any.whl` (412 KB, 112 files). `twine check` PASSED.
+
+## DOCS
+
+- `DOCS` — **`CHANGELOG.md`** — prepended 4.0.0a1 release entry with install commands, changed-removed-fixed subsections, new-extras-structure table, and the two "transitional deps" flagged for removal.
+- `DOCS` — this session-8 block in `release_notes_pycaret4.md`.
+- `DOCS` — `KILL_LIST.md` updated with the 4.0.0a1 extras collapse.
+
+## Session 8 delta summary
+
+| Metric | 4.0.0a0 | 4.0.0a1 | Δ |
+|---|---:|---:|---:|
+| Core `dependencies` count | 19 | **11** | **−8** |
+| `[project.optional-dependencies]` extras | 7 (models/tuners/analysis/anomaly/timeseries/prophet/full + dev/test) | **6** (notebook/export/anomaly/timeseries/full + dev/test) | −1 category, simpler shape |
+| Default `pip install pycaret` dep closure | ~65 pkgs | **~41 pkgs** | **−24** |
+| sklearn constraint | `>=1.7,<1.8` | `>=1.7` (no upper cap) | unpinned |
+| Test suite | 32/32 in 1:46 | 32/32 in 1:11 | −35s |
+| Lazy-guarded matplotlib import sites | 0 | 4 | +4 (matplotlib now optional) |
+
+---
+
 # Session 6 — 2026-04-23 — Cleanup pass 2 + Application-Platform plan authored
 
 Baseline: end of session 5 (v4 branch live on GitHub, CI green).

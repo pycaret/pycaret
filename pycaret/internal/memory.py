@@ -33,7 +33,18 @@ from joblib.memory import (
     format_time,
     get_func_name,
 )
-from xxhash import xxh128 as xxh
+# xxhash removed from core deps in 4.0.0a1. We use blake2b from stdlib hashlib
+# as the default fast hash — it's cryptographically-grade (overkill for cache
+# keying but free) and about as fast as xxh128 on modern CPUs. If the user has
+# xxhash installed, we still prefer it.
+try:
+    from xxhash import xxh128 as _xxh128
+
+    def xxh():
+        return _xxh128()
+except ImportError:  # xxhash not installed — use stdlib
+    def xxh():
+        return hashlib.blake2b(digest_size=16)
 
 try:
     from math import prod

@@ -1222,6 +1222,10 @@ class LGBMClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
         get_logger()
         np.random.seed(experiment.seed)
+        # lightgbm is a soft dep in 4.0 — skip container if not installed.
+        if not _check_soft_dependencies("lightgbm", extra=None, severity="warning"):
+            self.active = False
+            return
         from lightgbm import LGBMClassifier
         from lightgbm.basic import LightGBMError
 

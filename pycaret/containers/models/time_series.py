@@ -2459,6 +2459,14 @@ class LGBMCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.TREE
 
     def return_regressor_class(self):
+        # lightgbm is a soft dep in 4.0. If it's not installed, disable this
+        # container entirely so the model registry skips it gracefully.
+        # We pre-set `is_gpu_enabled` so downstream code that reads it before
+        # the active=False short-circuit takes effect doesn't AttributeError.
+        if not _check_soft_dependencies("lightgbm", extra=None, severity="warning"):
+            self.active = False
+            self.is_gpu_enabled = False
+            return None
         from lightgbm import LGBMRegressor
         from lightgbm.basic import LightGBMError
 

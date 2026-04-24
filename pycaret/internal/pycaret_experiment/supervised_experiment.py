@@ -16,7 +16,13 @@ from copy import copy, deepcopy
 from typing import Any, BinaryIO, Dict, List, Optional, Set, Tuple, Union
 from unittest.mock import patch
 
-import matplotlib.pyplot as plt
+# matplotlib removed from core deps in 4.0.0a1. Two call sites in this file
+# (interpret_model plot-saving paths). Lazy-import with a clean fallback so
+# the module is importable even when matplotlib isn't installed.
+try:
+    import matplotlib.pyplot as plt  # noqa: F401
+except ImportError:  # pragma: no cover
+    plt = None  # type: ignore[assignment]
 import numpy as np  # type: ignore
 import pandas as pd  # type ignore
 import pandas.io.formats.style

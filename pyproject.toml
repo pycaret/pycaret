@@ -1,17 +1,17 @@
 [project]
 name = "pycaret"
-version = "4.0.0a0"
-description = "PyCaret 4.0 — lean, modern, agent-native open-source AutoML engine."
+version = "4.0.0a1"
+description = "PyCaret 4.0 — the modern, minimalistic ML control pane on top of scikit-learn."
 readme = "README.md"
 keywords = [
   "automl",
   "machine-learning",
+  "scikit-learn",
   "classification",
   "regression",
   "clustering",
   "anomaly-detection",
   "time-series",
-  "scikit-learn",
   "llm-agents",
 ]
 license = "MIT"
@@ -38,89 +38,63 @@ classifiers = [
   "Typing :: Typed",
 ]
 
-# Core runtime dependencies. Keep this list lean and without upper-bound pins.
-# Anything that isn't needed to execute setup -> compare_models -> predict_model
-# on a medium sklearn dataset belongs in an optional extra.
+# Core runtime dependencies. Keep this list MINIMAL.
+#
+# Rule: only the packages we cannot function without. Everything model-family
+# specific (xgboost / catboost / lightgbm / optuna / shap / …) is a soft dep,
+# either installed separately by the user or behind a named extra.
+#
+# 8 core deps total. Everything else lives in [project.optional-dependencies]
+# or is an optional import the user is free to provide.
 dependencies = [
   "numpy>=1.26",
   "pandas>=2.2",
   "scipy>=1.11",
-  # Upper cap on sklearn is driven by sktime <1.8 constraint (see docs/revamp/DECISIONS.md).
-  # When sktime releases a version declaring scikit-learn<1.9 we bump this.
-  "scikit-learn>=1.7,<1.8",
+  "scikit-learn>=1.7",  # no upper cap — we align with sklearn, not against it
   "joblib>=1.4",
-  "cloudpickle>=3.0",
-  "lightgbm>=4.3",
-  "category-encoders>=2.6",
-  "imbalanced-learn>=0.13",
   "plotly>=5.22",
-  "kaleido>=0.2",
-  # matplotlib kept as a transitional dep — it's only pulled in by the
-  # pre-Plotly plot paths and residual yellowbrick-shaped code. Phase 3 of the
-  # revamp (see docs/revamp/ROADMAP.md) removes this once all plots are Plotly.
-  "matplotlib>=3.9",
-  "ipython>=8.18",
-  "ipywidgets>=8.1",
   "tqdm>=4.66",
-  "jinja2>=3.1",
-  "requests>=2.32",
-  "psutil>=5.9",
-  "nbformat>=5.10",
-  "xxhash>=3.4",
+  "requests>=2.32",     # pycaret.datasets dataset loaders
+  "jinja2>=3.1",        # pandas.io.formats.style.Styler (notebook display)
+  "ipython>=8.18",      # display detection + rich repr; 4 call sites
+  # ↓ transitional — removed when Phase 4 rewrites preprocessor on native sklearn.
+  "imbalanced-learn>=0.13",  # internal Pipeline inherits imblearn.pipeline.Pipeline
+  "category-encoders>=2.6",  # legacy preprocessor: BaseN/OneHot/Ordinal/Target encoders
 ]
 
 [project.optional-dependencies]
 
-# Additional model families not needed for the core golden path.
-models = [
-  "xgboost>=2.0",
-  "catboost>=1.2",
-  "kmodes>=0.12",
-  "mlxtend>=0.23",
+# Progress-bar widget + notebook-artifact generation (run.ipynb rendering).
+# ipython itself is in core; these are the extras only notebook users need.
+notebook = [
+  "ipywidgets>=8.1",
+  "nbformat>=5.10",
 ]
 
-# Hyperparameter tuning backends. sklearn's own GridSearch/HalvingSearch is in core;
-# optuna is the recommended drop-in for pycaret 4.0.
-tuners = [
-  "optuna>=3.6",
-  "optuna-integration>=3.6",
-  "scikit-optimize>=0.10",
-  "hyperopt>=0.2.7",
+# Static image export for Plotly figures (png / svg / pdf rendering without a
+# browser). Needed when the platform layer persists plot previews; not needed
+# for interactive Jupyter use.
+export = [
+  "kaleido>=0.2",
 ]
 
-# Interpretability and dimensionality reduction.
-analysis = [
-  "shap>=0.46",
-  "interpret>=0.6",
-  "umap-learn>=0.5",
-]
-
-# Anomaly detection models from pyod.
-# (Kept as an extra because pyod pulls numba and can slow install.)
+# Anomaly-detection task dependencies (pyod registry backs AnomalyExperiment).
 anomaly = [
   "pyod>=2.0",
   "numba>=0.60",
 ]
 
-# Time-series forecasting. Heaviest single extra — kept isolated so that
-# classification/regression users don't pay the sktime install cost.
+# Time-series forecasting task dependencies. Heavy (sktime chain) so kept
+# isolated from the default install.
 timeseries = [
   "statsmodels>=0.14",
   "sktime>=0.36",
   "pmdarima>=2.0.4",
-  # tbats and statsforecast removed from default extras.
-  # - statsforecast: needed a C toolchain to build on Python 3.14 (no wheel).
-  # - tbats: declares `numpy<2` which conflicts with the NumPy 2.x modernization.
-  # No PyCaret code imports either directly; both are referenced only by
-  # model-container id strings. Users who want them can install manually.
 ]
 
-# Optional prophet backend for time-series.
-prophet = ["prophet>=1.1.5"]
-
-# Everything a power user might want, in one go.
+# Everything a notebook / power user wants in one line.
 full = [
-  "pycaret[models,tuners,analysis,anomaly,timeseries]",
+  "pycaret[notebook,export,anomaly,timeseries]",
 ]
 
 # Developer tooling.
@@ -153,7 +127,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["pycaret"]
-# Exclude caches/tests/dev-only artifacts from the wheel.
 exclude = [
   "**/__pycache__",
   "**/.pytest_cache",
@@ -163,7 +136,6 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.sdist]
-# sdist only includes what someone needs to rebuild the wheel and read the docs.
 include = [
   "/pycaret",
   "/README.md",
@@ -187,10 +159,9 @@ exclude = [
 line-length = 100
 target-version = "py313"
 
-# Exclude the legacy god-class + 3.x-era preprocessing / container / patch code
-# from lint. It's being drained verb-by-verb as part of the Phase 5 migration;
-# running ruff against code that's scheduled for deletion creates noise.
-# Lint is enforced on the new 4.0 surface only.
+# Exclude legacy god-class + 3.x-era container / patch code from lint. It's
+# being drained verb-by-verb; linting what's scheduled for deletion creates
+# noise. Lint is enforced on the new 4.0 surface only.
 exclude = [
   "pycaret/internal",
   "pycaret/containers",
@@ -199,8 +170,6 @@ exclude = [
   "pycaret/clustering/oop.py",
   "pycaret/anomaly/oop.py",
   "pycaret/time_series/forecasting/oop.py",
-  "pycaret/loggers",
-  "pycaret/distributions.py",
   "pycaret/datasets.py",
   "pycaret/utils",
 ]
@@ -208,13 +177,12 @@ exclude = [
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 ignore = [
-  "E501", # line length handled by formatter
-  "E731", # lambdas are fine
+  "E501",
+  "E731",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"pycaret/distributions.py" = ["F401"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -222,8 +190,6 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 markers = [
   "plotting: tests that render plots",
-  "tuning_grid: grid-search tuning tests",
-  "tuning_random: random-search tuning tests",
   "slow: tests that take > 5s",
 ]
 filterwarnings = [
