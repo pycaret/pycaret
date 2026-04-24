@@ -1,6 +1,78 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 18*
+*Updated: 2026-04-24, end of session 19*
+
+## Session 19 — Failure debugger + Deployment reviewer + API keys — ✅
+
+Two more LLM advisories (5 of 6 copilots in SPEC § 12.2 now live) + the first admin surface: personal API keys. What's left in session 20: drift analyst + audit logs + workspace member management.
+
+### What landed — LLM advisories
+
+- **`llm/consultations/failure_debugging.py`** (5th copilot) — reads a failed Run's error + event tail. System prompt classifies the cause as DATA / CONFIG / ENGINE, proposes a minimal config change that would unblock a retry, and flags uncertainty when there are multiple candidate causes.
+- **`llm/consultations/deployment_risk_review.py`** (6th-ish copilot — drift is deferred) — reads a Pipeline + origin Run + leaderboard. System prompt tells the LLM to return a verdict starting with one of `APPROVE` / `APPROVE WITH CAVEATS: …` / `DO NOT DEPLOY: …`, walking through overfit / tiny-margin / small-sample / missing-imputer / missing-encoder / version-skew risks explicitly. UI tone-codes the verdict accordingly.
+- **2 new routes**:
+  - `POST /api/v1/llm/debug-run` — body `{run_id}`. Only `status='failed'` runs accepted (400 otherwise: `"debug is for failed runs only"`).
+  - `POST /api/v1/llm/review-deployment` — body `{pipeline_id}`. Pulls the origin Run + leaderboard, persists the consultation correlated to `origin_run_id`.
+- **6 new integration tests** in `services/api/tests/test_session19.py` covering the happy paths + the "only failed" + "only succeeded explains" cross-guard + 404 on unknown pipeline.
+
+### What landed — API keys
+
+- **`services/api/pycaret_server/api/api_keys.py`** — 3 routes:
+  - `POST /auth/api-keys` — mint. Returns plaintext **once** (`pck_` prefix + `secrets.token_urlsafe(32)`). Hash + prefix stored; plaintext never.
+  - `GET /auth/api-keys` — list the caller's keys. Never exposes plaintext.
+  - `DELETE /auth/api-keys/{id}` — revoke (soft delete — `revoked_at` set; audit trail preserved). Can only revoke your own keys unless superuser.
+- **Key format**: `pck_` recognisable prefix so leaks are greppable in logs + GitHub secret scanners; 32-byte url-safe-b64 body; total ~47 chars.
+- **Middleware that accepts `X-PyCaret-Key` for programmatic traffic is session-20 work** — this session just ships the CRUD surface.
+
+### What landed — frontend
+
+- **`<FailureDebuggerCard>`** — inline card on `/runs/:id` when `status === 'failed'`. Red-tinted border (`border-danger-500/30`). Same opt-in pattern as `<RunExplainerCard>` — button fires the consultation on click, not on mount. Button flips "Diagnose" → "Re-diagnose" after first success.
+- **`<DeploymentReviewModal>`** — modal on `/pipelines/:id`. Opens on "✨ Review" button click in the deploy sidebar. Auto-fires on open. Verdict text tone-coded: `DO NOT DEPLOY` → red, `APPROVE WITH CAVEATS` → warn-amber, `APPROVE` → success-green. UI does NOT block the Deploy button — the reviewer is advisory per SPEC § 12.3.
+- **`<ApiKeysScreen>`** at `/account/api-keys` — list with status column (active / revoked / expired), per-row revoke button with confirm prompt, "New API key" form, and a one-time plaintext-display panel that appears once on successful creation with a Copy button + big warning.
+- **Wiring**:
+  - `RunDetail` now splits terminal-state rendering: `succeeded` → `<RunExplainerCard>`, `failed` → `<FailureDebuggerCard>` (was single "terminal" branch before).
+  - `PipelineDetail` deploy sidebar gains an "✨ Review" button alongside Deploy; opens the modal pre-keyed to the current pipeline.
+  - `Layout` top nav gains an **"API keys"** link.
+- **API bindings** — `llmApi.debugRun` + `llmApi.reviewDeployment`; new `apiKeysApi` with list / create / revoke.
+- **7 new Vitest tests** — 2 for FailureDebuggerCard, 2 for DeploymentReviewModal (verdict tone-coding verified), 3 for ApiKeysScreen (empty state, create flow with one-time plaintext, active/revoked status column).
+
+### Headline metrics
+
+| | Session 18 end | Session 19 end |
+|---|---|---|
+| LLM consultation types shipped (of 6 in spec § 12.2) | 3 | **5** (+ failure_debugging, deployment_risk_review) |
+| API routes (under `/api/v1/`) | ~49 | **~54** |
+| Server integration tests | 45 | **54** (+9) |
+| UI shared components | 10 | **12** (+ FailureDebuggerCard, DeploymentReviewModal) |
+| UI screens | 13 | **14** (+ ApiKeysScreen) |
+| UI tests | 41 | **48** (+7) |
+| **Combined tests** | **118** | **134** (32 engine + 54 server + 48 web) |
+| Production bundle (gz) | 96 kB | **98 kB** (+2 kB) |
+
+### AI at every stage of the product loop
+
+```
+Upload CSV            → ✨ AI          (dataset consultant — session 17)
+New Experiment        → ✨ Ask AI      (experiment designer — session 18)
+Run succeeds          → ✨ Explain     (run explainer — session 18)
+Run fails             → ✨ Diagnose    (failure debugger — session 19)  ← NEW
+Deploy a Pipeline     → ✨ Review      (deployment reviewer — session 19)  ← NEW
+```
+
+Only `drift_analysis` remains unimplemented — that's session 20, alongside the drift-report infrastructure it depends on.
+
+### What's next (session 20)
+
+- **Workspace members** — invite / list / role changes / remove. Needed before multi-user workflows land.
+- **Drift analyst** — backend + `DriftReport` model (SPEC § 4.12) + scheduled `drift_detection_job`. UI surface on the Deployment detail screen or a dedicated `/monitoring` page.
+- **`X-PyCaret-Key` auth middleware** — accept API keys as an alternative to JWT on all `/api/v1/*` routes.
+- **Audit logs** — SPEC § 17.4. Cross-cutting table + middleware + viewer screen.
+
+### And then session 21+
+
+God-class drain (engine Phase 5) → 4.0.0 non-alpha release on PyPI.
+
+---
 
 ## Session 18 — Experiment designer + Run explainer advisories — ✅
 

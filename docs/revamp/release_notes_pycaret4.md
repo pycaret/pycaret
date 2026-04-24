@@ -42,6 +42,79 @@
 
 ---
 
+# Session 19 — 2026-04-24 — Failure debugger + Deployment reviewer + API keys
+
+Baseline: session 18 completed the three classic copilots (3 of 6 types from SPEC § 12.2) + the router/provider infrastructure. No admin surface yet; only dataset-adjacent advisories.
+
+Theme: ship two more copilots (failure debugger + deployment risk reviewer) + the first admin surface (personal API keys). Drift analyst + audit logs + workspace members defer to session 20.
+
+## ADDED — LLM advisories (2 of remaining 3)
+
+- `ADDED` — **`services/api/pycaret_server/llm/consultations/failure_debugging.py`** (5th copilot). System prompt classifies the error as **DATA** (schema mismatch, missing target, wrong dtype), **CONFIG** (wrong task for target, incompatible model, train_size too small), or **ENGINE** (upstream library error, version skew). Output demands reasoning_summary open with the category label so UI can tone-code. Event stream head-5 + tail-35 + `__truncated__` marker to keep prompts bounded.
+- `ADDED` — **`services/api/pycaret_server/llm/consultations/deployment_risk_review.py`** (6th copilot — drift deferred). System prompt walks explicit risks: overfit (AUC≈1.0), tiny margin between top-2 models, small training sample, missing imputer/encoder in the pipeline, metric-goal mismatch, version skew. Demands verdict start with `APPROVE` / `APPROVE WITH CAVEATS: …` / `DO NOT DEPLOY: …` so the UI can render it tone-coded.
+- `ADDED` — **`POST /api/v1/llm/debug-run`** — body `{run_id}`. 400 when `status != 'failed'` (succeeded runs use `explain-run`, in-flight runs have nothing to debug yet). Consultation persisted with `type='failure_debugging'` + FKs to run/experiment/project for audit correlation.
+- `ADDED` — **`POST /api/v1/llm/review-deployment`** — body `{pipeline_id}`. Pulls origin Run snapshot + leaderboard; consultation stored with `run_id = pipeline.origin_run_id`.
+
+## ADDED — API keys (first admin surface)
+
+- `ADDED` — **`services/api/pycaret_server/api/api_keys.py`** — 3 routes:
+  - `POST /auth/api-keys` — mint a key. Returns plaintext **exactly once**. Body: `{name, workspace_id?, expires_in_days?, scopes?}`. Hashes with SHA-256; stores hash + prefix only.
+  - `GET /auth/api-keys` — list the caller's keys. Never exposes plaintext; only `prefix` (`pck_abcd1234`).
+  - `DELETE /auth/api-keys/{id}` — revoke (soft delete — `revoked_at` set; row stays for audit). Only the owner (or a superuser) can revoke a key.
+- `ADDED` — **Key format**: `pck_` recognisable prefix + `secrets.token_urlsafe(32)` body. `pck_` chosen to be greppable in logs + triggerable by GitHub's secret-scanner pattern library later. Total plaintext length: ~47 chars.
+- `INTERNAL` — **Middleware that accepts `X-PyCaret-Key` as an auth header** on all `/api/v1/*` routes is session-20 work. Session 19 ships the CRUD surface so users can start minting keys + we can exercise the UX — the middleware is a small addition once that's settled.
+
+## ADDED — frontend
+
+- `ADDED` — **`apps/web/src/components/FailureDebuggerCard.tsx`** — inline card on `/runs/:id` when `status === 'failed'`. Red-tinted border. Opt-in (button fires the consultation, not mount). Button label flips "Diagnose" → "Re-diagnose" after first success. Renders standard `LLMAdvice` envelope + (when present) suggested config as pretty JSON.
+- `ADDED` — **`apps/web/src/components/DeploymentReviewModal.tsx`** — modal on `/pipelines/:id`. Opens on "✨ Review" button click in the deploy sidebar. **Auto-fires on open** (unlike the cards — the user's committing to run the review by clicking the button to open the modal). Verdict tone-coded: `DO NOT DEPLOY` → `text-danger-500`, `APPROVE WITH CAVEATS` → `text-warn-500`, `APPROVE` → `text-success-500`.
+- `ADDED` — **`apps/web/src/pages/ApiKeysScreen.tsx`** at `/account/api-keys`:
+  - Table with name / prefix / status (active / revoked / expired — computed from `revoked_at` + `expires_at`) / expiry / created-at / revoke action.
+  - "New API key" form with name + optional `expires_in_days`.
+  - **One-time plaintext panel** appears on successful creation with a bold warning, the plaintext in a `<pre>`, a Copy button, and an "I've saved it" primary button to dismiss.
+- `CHANGED` — **`apps/web/src/pages/RunDetail.tsx`** — terminal-state rendering splits: `succeeded` → `<RunExplainerCard>`, `failed` → `<FailureDebuggerCard>`.
+- `CHANGED` — **`apps/web/src/pages/PipelineDetail.tsx`** — deploy sidebar gains a "✨ Review" button alongside Deploy; opens `<DeploymentReviewModal>`. Layout became a flex row so the two buttons share the bottom of the sidebar.
+- `CHANGED` — **`apps/web/src/components/Layout.tsx`** — top nav gains an "API keys" link → `/account/api-keys`.
+- `CHANGED` — **`apps/web/src/App.tsx`** — new authenticated route `/account/api-keys`.
+- `ADDED` — **`apps/web/src/api/endpoints.ts`**:
+  - `llmApi.debugRun` + `llmApi.reviewDeployment`.
+  - `apiKeysApi` module — `list`, `create`, `revoke`.
+- `ADDED` — **`apps/web/src/api/types.ts`** — `ApiKeyRead`, `ApiKeyCreateResponse` (extends + adds `token`), `ApiKeyCreateRequest`.
+
+## TESTS
+
+- `TESTS` — **`services/api/tests/test_session19.py`** — 9 new integration tests:
+  - **Failure debugger** (2): `happy_path` (forces a real failed run via a bogus model id then debugs), `rejects_succeeded` (400).
+  - **Deployment reviewer** (2): `happy_path` (train → promote → review; verify `run_id` correlated to `origin_run_id`), `404_on_unknown_pipeline`.
+  - **API keys** (5): `create_returns_plaintext_once` (prefix matches head of plaintext; plaintext absent from GET), `list_scoped_to_user`, `revoke_soft_deletes` (row stays, `revoked_at` set), `expiry_round_trip`, `create_requires_name` (Pydantic 422).
+- `TESTS` — **`apps/web/src/components/FailureDebuggerCard.test.tsx`** — 2 new (opt-in on mount, click-fires + renders diagnosis + Re-diagnose button).
+- `TESTS` — **`apps/web/src/components/DeploymentReviewModal.test.tsx`** — 2 new (inert when closed, auto-fires on open + tone-codes `APPROVE WITH CAVEATS` with `text-warn-500`).
+- `TESTS` — **`apps/web/src/pages/ApiKeysScreen.test.tsx`** — 3 new (empty state, create-flow with one-time plaintext panel renders + warning + correct payload, active/revoked status column with distinct key names to avoid text collisions).
+- `TESTS` — **Combined suite: 134/134 green** (32 engine + 54 server + 48 web); was 118.
+
+## INTERNAL
+
+- `INTERNAL` — **Auto-fire vs. opt-in modal pattern.** `<DeploymentReviewModal>` auto-fires on open (matches `<AnalyzeDatasetModal>` from session 17 + `<ExperimentDesignerModal>` from session 18 — opening a modal is the user's consent signal). `<FailureDebuggerCard>` + `<RunExplainerCard>` are opt-in buttons (they're always-visible cards; firing on mount would run the LLM on every page view). Same envelope, different trigger affordance.
+- `INTERNAL` — **Verdict-string classifier.** The deployment-reviewer prompt demands the verdict start with one of three literal strings (`APPROVE`, `APPROVE WITH CAVEATS`, `DO NOT DEPLOY`) so the UI can classify them via simple `.startsWith()` checks instead of NLP. The test asserts tone-coded class names on the DOM to lock this contract.
+- `INTERNAL` — **Test `getByText` ambiguity fix.** An API-keys test initially used `getByText('active')` which matched both a key name and a status cell. Renamed the fixture keys to distinct values (`my-laptop` / `old-ci-token`) + added `{ exact: true }` for the status cells. Extending this — all test fixtures should avoid string collisions with semantic text the component renders.
+- `INTERNAL` — **Forcing a failed run in tests.** `_fail_a_run()` submits a `create` plan with `model_id='zzzz_not_a_model'` (bogus) against valid iris data. `setup` plans tolerate many misconfigurations (the engine defers validation); `create` has to actually look up the model in the registry → `UnknownModelError` at execute time → run.status='failed'. This is the cleanest way to deterministically produce a failed run for the debugger test.
+- `INTERNAL` — **Key prefix `pck_`.** Chose `pck` to stand for *PyCaret key*. Distinctive + short enough that the visible prefix (`pck_abcd1234` = 12 chars) is still useful in UIs. Will register with GitHub secret scanning once we publish a stable format.
+
+## Session 19 delta summary
+
+| Metric | Session 18 end | Session 19 end |
+|---|---:|---:|
+| LLM copilots (of 6 in spec) | 3 | **5** |
+| API routes | ~49 | **~54** |
+| Server integration tests | 45 | **54** |
+| UI shared components | 10 | **12** |
+| UI screens | 13 | **14** |
+| UI tests | 41 | **48** |
+| **Combined tests** | **118** | **134** |
+| Production bundle (gz) | 96 kB | **98 kB** |
+
+---
+
 # Session 18 — 2026-04-24 — Experiment designer + Run explainer advisories
 
 Baseline: session 17 shipped the LLM router + dataset consultant (1 of 6 consultation types in SPEC § 12.2). Infrastructure solid; this session demonstrates the extension pattern + completes the three classic copilots.
