@@ -5,6 +5,9 @@ import { Setup } from '@/pages/Setup';
 import { Login } from '@/pages/Login';
 import { Workspaces } from '@/pages/Workspaces';
 import { WorkspaceDetail } from '@/pages/WorkspaceDetail';
+import { ProjectDetail } from '@/pages/ProjectDetail';
+import { NewExperiment } from '@/pages/NewExperiment';
+import { ExperimentDetail } from '@/pages/ExperimentDetail';
 
 export default function App() {
   return (
@@ -20,6 +23,18 @@ export default function App() {
       >
         <Route index element={<Workspaces />} />
         <Route path="/workspaces/:id" element={<WorkspaceDetail />} />
+        <Route
+          path="/workspaces/:wsId/projects/:projectId"
+          element={<ProjectDetail />}
+        />
+        <Route
+          path="/workspaces/:wsId/projects/:projectId/experiments/new"
+          element={<NewExperiment />}
+        />
+        <Route
+          path="/workspaces/:wsId/projects/:projectId/experiments/:experimentId"
+          element={<ExperimentDetail />}
+        />
       </Route>
       <Route
         path="*"

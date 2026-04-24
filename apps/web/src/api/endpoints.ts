@@ -7,9 +7,15 @@
 import { api } from './client';
 import type {
   BootstrapRequest,
+  Experiment,
+  ExperimentCreate,
   LoginRequest,
+  MetricCard,
+  ModelCard,
   Project,
+  SetupParamSchema,
   SetupStatus,
+  TaskType,
   TokenPair,
   User,
   Workspace,
@@ -63,4 +69,36 @@ export const projectsApi = {
     api
       .delete<void>(`/workspaces/${workspace_id}/projects/${project_id}`)
       .then((r) => r.data),
+};
+
+// ───────────────────────────── experiments
+
+export const experimentsApi = {
+  list: (project_id: string) =>
+    api.get<Experiment[]>(`/projects/${project_id}/experiments`).then((r) => r.data),
+  get: (project_id: string, experiment_id: string) =>
+    api
+      .get<Experiment>(`/projects/${project_id}/experiments/${experiment_id}`)
+      .then((r) => r.data),
+  create: (project_id: string, body: ExperimentCreate) =>
+    api
+      .post<Experiment>(`/projects/${project_id}/experiments`, body)
+      .then((r) => r.data),
+  remove: (project_id: string, experiment_id: string) =>
+    api
+      .delete<void>(`/projects/${project_id}/experiments/${experiment_id}`)
+      .then((r) => r.data),
+};
+
+// ───────────────────────────── engine introspection (drives dynamic form + dropdowns)
+
+export const describeApi = {
+  setupParams: (task: TaskType) =>
+    api
+      .get<SetupParamSchema>('/describe/setup-params', { params: { task } })
+      .then((r) => r.data),
+  models: (task: TaskType) =>
+    api.get<ModelCard[]>('/describe/models', { params: { task } }).then((r) => r.data),
+  metrics: (task: TaskType) =>
+    api.get<MetricCard[]>('/describe/metrics', { params: { task } }).then((r) => r.data),
 };

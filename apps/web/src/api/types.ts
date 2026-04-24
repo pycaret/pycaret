@@ -108,3 +108,61 @@ export interface RunEvent {
   duration_ms: number | null;
   emitted_at: string;
 }
+
+// ───────────────────────────────────────────────────────── engine introspection
+
+/** One parameter descriptor in the engine's setup-params schema. */
+export type ParamKind = 'bool' | 'int' | 'float' | 'enum' | 'column' | 'string';
+
+export interface SetupParam {
+  name: string;
+  kind: ParamKind;
+  default: unknown;
+  description: string;
+  choices: string[] | null;
+  minimum: number | null;
+  maximum: number | null;
+  required: boolean;
+  group: string;
+}
+
+export interface SetupParamSchema {
+  task: TaskType;
+  parameters: SetupParam[];
+  /** Group labels in display order. */
+  groups: string[];
+}
+
+export interface ModelCard {
+  id: string;
+  name: string;
+  task: TaskType;
+  description: string;
+  library: string;
+  gpu_enabled: boolean;
+  is_turbo: boolean;
+  is_available: boolean;
+  hyperparameters: unknown[];
+  tags: string[];
+}
+
+export interface MetricCard {
+  id: string;
+  name: string;
+  task: TaskType;
+  greater_is_better: boolean;
+  description: string;
+  is_default: boolean;
+  is_available: boolean;
+}
+
+// ───────────────────────────────────────────────────────── create-experiment form
+
+/** Payload for POST /projects/:id/experiments. */
+export interface ExperimentCreate {
+  name: string;
+  task: TaskType;
+  target?: string | null;
+  setup_params?: Record<string, unknown>;
+  data_source_id?: string | null;
+}

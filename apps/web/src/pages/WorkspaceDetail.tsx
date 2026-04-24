@@ -76,20 +76,25 @@ export function WorkspaceDetail() {
 
           <ul className="grid gap-3">
             {projects.data?.map((p) => (
-              <li key={p.id} className="card">
-                <h3 className="font-medium text-ink-100">{p.name}</h3>
-                {p.description && (
-                  <p className="mt-1 text-sm text-ink-200/70">{p.description}</p>
-                )}
-                {p.tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {p.tags.map((t) => (
-                      <span key={t} className="kbd">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                )}
+              <li key={p.id}>
+                <Link
+                  to={`/workspaces/${id}/projects/${p.id}`}
+                  className="card block hover:border-accent-500 transition-colors"
+                >
+                  <h3 className="font-medium text-ink-100">{p.name}</h3>
+                  {p.description && (
+                    <p className="mt-1 text-sm text-ink-200/70">{p.description}</p>
+                  )}
+                  {p.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {p.tags.map((t) => (
+                        <span key={t} className="kbd">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
               </li>
             ))}
           </ul>
