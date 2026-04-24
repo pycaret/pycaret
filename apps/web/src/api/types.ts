@@ -334,3 +334,25 @@ export interface ApiKeyCreateRequest {
   expires_in_days?: number | null;
   scopes?: string[] | null;
 }
+
+// ──────────────────────────────────────────────────────────── workspace members
+
+export type WorkspaceRole = 'admin' | 'member';
+
+export interface MemberRead {
+  user_id: string;
+  email: string;
+  display_name: string | null;
+  role: WorkspaceRole;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface InviteRequest {
+  email: string;
+  role?: WorkspaceRole;
+}
+
+export interface PatchRoleRequest {
+  role: WorkspaceRole;
+}

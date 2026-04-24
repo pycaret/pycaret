@@ -63,6 +63,12 @@ export function WorkspaceDetail() {
           {id && (
             <div className="flex items-center gap-2 text-sm shrink-0">
               <Link
+                to={`/workspaces/${id}/members`}
+                className="btn-secondary"
+              >
+                Members
+              </Link>
+              <Link
                 to={`/workspaces/${id}/pipelines`}
                 className="btn-secondary"
               >

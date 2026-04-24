@@ -14,12 +14,15 @@ import type {
   Deployment,
   Experiment,
   ExperimentCreate,
+  InviteRequest,
   LLMConsultationRead,
   LLMProviderSettingRead,
   LLMProviderSettingWrite,
   LoginRequest,
+  MemberRead,
   MetricCard,
   ModelCard,
+  PatchRoleRequest,
   Pipeline,
   Project,
   Run,
@@ -245,6 +248,30 @@ export const llmApi = {
       .then((r) => r.data),
   getConsultation: (id: string) =>
     api.get<LLMConsultationRead>(`/llm/consultations/${id}`).then((r) => r.data),
+};
+
+// ───────────────────────────── workspace members
+
+export const membersApi = {
+  list: (workspace_id: string) =>
+    api
+      .get<MemberRead[]>(`/workspaces/${workspace_id}/members`)
+      .then((r) => r.data),
+  invite: (workspace_id: string, body: InviteRequest) =>
+    api
+      .post<MemberRead>(`/workspaces/${workspace_id}/members`, body)
+      .then((r) => r.data),
+  changeRole: (workspace_id: string, user_id: string, body: PatchRoleRequest) =>
+    api
+      .patch<MemberRead>(
+        `/workspaces/${workspace_id}/members/${user_id}`,
+        body,
+      )
+      .then((r) => r.data),
+  remove: (workspace_id: string, user_id: string) =>
+    api
+      .delete<void>(`/workspaces/${workspace_id}/members/${user_id}`)
+      .then((r) => r.data),
 };
 
 // ───────────────────────────── API keys (personal programmatic tokens)

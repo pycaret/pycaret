@@ -15,6 +15,7 @@ import { Deployments } from '@/pages/Deployments';
 import { DeploymentDetail } from '@/pages/DeploymentDetail';
 import { LLMSettings } from '@/pages/LLMSettings';
 import { ApiKeysScreen } from '@/pages/ApiKeysScreen';
+import { WorkspaceMembers } from '@/pages/WorkspaceMembers';
 
 export default function App() {
   return (
@@ -51,6 +52,10 @@ export default function App() {
         <Route path="/workspaces/:wsId/deployments" element={<Deployments />} />
         <Route path="/deployments/:deploymentId" element={<DeploymentDetail />} />
         <Route path="/workspaces/:wsId/llm" element={<LLMSettings />} />
+        <Route
+          path="/workspaces/:wsId/members"
+          element={<WorkspaceMembers />}
+        />
         <Route path="/account/api-keys" element={<ApiKeysScreen />} />
       </Route>
       <Route
