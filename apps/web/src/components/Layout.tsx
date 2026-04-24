@@ -61,6 +61,18 @@ export function Layout() {
             >
               API keys
             </NavLink>
+            {user?.is_superuser && (
+              <NavLink
+                to="/admin/audit"
+                className={({ isActive }) =>
+                  isActive
+                    ? 'text-accent-400'
+                    : 'text-ink-200 hover:text-ink-100'
+                }
+              >
+                Audit log
+              </NavLink>
+            )}
             {user && (
               <span className="text-ink-200/70" title={user.email}>
                 {user.display_name ?? user.email}

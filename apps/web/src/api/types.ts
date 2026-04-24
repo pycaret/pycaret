@@ -356,3 +356,76 @@ export interface InviteRequest {
 export interface PatchRoleRequest {
   role: WorkspaceRole;
 }
+
+// ──────────────────────────────────────────────────────────── drift reports
+
+export type DriftStatus = 'none' | 'mild' | 'moderate' | 'severe';
+
+export type DriftKind = 'psi' | 'ks' | 'chi2' | 'missing_rate';
+
+export interface FeatureDriftEntry {
+  score: number;
+  kind: DriftKind;
+}
+
+export interface PredictionDrift {
+  kind: 'js' | 'ks';
+  score: number;
+  baseline_mean?: number;
+  current_mean?: number;
+}
+
+export interface DriftReportRead {
+  id: string;
+  deployment_id: string;
+  baseline_artifact_id: string | null;
+  window_start: string;
+  window_end: string;
+  drift_score: number;
+  drift_status: DriftStatus;
+  feature_drift_json: Record<string, FeatureDriftEntry>;
+  prediction_drift_json: PredictionDrift | null;
+  sample_size: number | null;
+  created_at: string;
+  created_by: string;
+}
+
+export interface DriftReportCreate {
+  window_start: string;
+  window_end: string;
+  drift_score: number;
+  feature_drift_json: Record<string, FeatureDriftEntry>;
+  prediction_drift_json?: PredictionDrift | null;
+  sample_size?: number | null;
+  baseline_artifact_id?: string | null;
+}
+
+// ──────────────────────────────────────────────────────────── audit logs
+
+export interface AuditLogRead {
+  id: string;
+  workspace_id: string | null;
+  user_id: string | null;
+  action: string;
+  method: string;
+  path: string;
+  target_type: string | null;
+  target_id: string | null;
+  status_code: number | null;
+  payload: Record<string, unknown> | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+}
+
+export interface AuditLogFilters {
+  action?: string;
+  user_id?: string;
+  workspace_id?: string;
+  target_type?: string;
+  target_id?: string;
+  since?: string;
+  until?: string;
+  limit?: number;
+  offset?: number;
+}

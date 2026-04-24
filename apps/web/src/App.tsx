@@ -16,6 +16,7 @@ import { DeploymentDetail } from '@/pages/DeploymentDetail';
 import { LLMSettings } from '@/pages/LLMSettings';
 import { ApiKeysScreen } from '@/pages/ApiKeysScreen';
 import { WorkspaceMembers } from '@/pages/WorkspaceMembers';
+import { AuditLogViewer } from '@/pages/AuditLogViewer';
 
 export default function App() {
   return (
@@ -57,6 +58,7 @@ export default function App() {
           element={<WorkspaceMembers />}
         />
         <Route path="/account/api-keys" element={<ApiKeysScreen />} />
+        <Route path="/admin/audit" element={<AuditLogViewer />} />
       </Route>
       <Route
         path="*"

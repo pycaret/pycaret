@@ -132,6 +132,10 @@ class ReviewDeploymentRequest(BaseModel):
     pipeline_id: str
 
 
+class AnalyzeDriftRequest(BaseModel):
+    drift_report_id: str
+
+
 class TestConnectionResponse(BaseModel):
     ok: bool
     provider: str

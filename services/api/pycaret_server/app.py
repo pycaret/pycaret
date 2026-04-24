@@ -19,10 +19,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pycaret_server import __version__
 from pycaret_server.api import (
     api_keys,
+    audit,
     auth,
     data_sources,
     deployments,
     describe,
+    drift,
     experiments,
     llm,
     members,
@@ -31,6 +33,7 @@ from pycaret_server.api import (
     setup,
     workspaces,
 )
+from pycaret_server.audit import AuditLogMiddleware
 from pycaret_server.config import get_settings
 from pycaret_server.db import Base, engine
 from pycaret_server.db.bootstrap import ensure_schema
@@ -97,6 +100,10 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Audit-log middleware records POST/PATCH/PUT/DELETE on /api/v1/*.
+    # Added here so every route is covered. See pycaret_server.audit.
+    app.add_middleware(AuditLogMiddleware)
+
     # Mount all /api/v1/* routers.
     for router in (
         setup.router,
@@ -110,7 +117,9 @@ def create_app() -> FastAPI:
         runs.router,
         data_sources.router,
         deployments.router,
+        drift.router,
         llm.router,
+        audit.router,
     ):
         app.include_router(router, prefix="/api/v1")
 

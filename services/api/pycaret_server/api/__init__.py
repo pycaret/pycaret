@@ -6,10 +6,12 @@ factory mounts them at ``/api/v1``.
 
 from pycaret_server.api import (
     api_keys,
+    audit,
     auth,
     data_sources,
     deployments,
     describe,
+    drift,
     experiments,
     llm,
     members,
@@ -21,10 +23,12 @@ from pycaret_server.api import (
 
 __all__ = [
     "api_keys",
+    "audit",
     "auth",
     "data_sources",
     "deployments",
     "describe",
+    "drift",
     "experiments",
     "llm",
     "members",

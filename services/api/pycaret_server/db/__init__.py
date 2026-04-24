@@ -22,8 +22,10 @@ from pycaret_server.db.base import Base, TimestampMixin, UUIDMixin
 from pycaret_server.db.models import (
     ApiKey,
     Artifact,
+    AuditLog,
     DataSource,
     Deployment,
+    DriftReport,
     Event,
     Experiment,
     FoldMetric,
@@ -48,9 +50,11 @@ from pycaret_server.db.session import (
 __all__ = [
     "ApiKey",
     "Artifact",
+    "AuditLog",
     "Base",
     "DataSource",
     "Deployment",
+    "DriftReport",
     "Event",
     "Experiment",
     "FoldMetric",

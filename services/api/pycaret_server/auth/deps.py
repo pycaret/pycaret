@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -77,6 +77,7 @@ def _resolve_api_key(db: Session, header_value: str) -> User:
 
 
 def get_current_user(
+    request: Request,
     creds: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     db: Annotated[Session, Depends(get_db)],
     x_pycaret_key: Annotated[str | None, Header(alias="X-PyCaret-Key")] = None,
@@ -88,6 +89,11 @@ def get_current_user(
     bearer JWT takes precedence — matches the common developer pattern of
     having a long-lived key in their env plus a short-lived session token
     while they're clicking around in the UI.
+
+    Stashes the resolved user onto ``request.state.audit_user`` so the
+    audit-log middleware can attribute the row. Best-effort — a route that
+    doesn't depend on ``CurrentUser`` won't have this set, and the
+    middleware tolerates that.
     """
     # 1) Bearer JWT wins when present.
     if creds is not None:
@@ -102,11 +108,14 @@ def get_current_user(
         user = db.get(User, payload.sub)
         if user is None or not user.is_active:
             raise _auth_error("user not found or inactive")
+        request.state.audit_user = user
         return user
 
     # 2) Fall back to the API key header.
     if x_pycaret_key:
-        return _resolve_api_key(db, x_pycaret_key)
+        user = _resolve_api_key(db, x_pycaret_key)
+        request.state.audit_user = user
+        return user
 
     raise _auth_error("missing Authorization or X-PyCaret-Key header")
 

@@ -26,6 +26,8 @@ from pycaret_server.api.workspaces import _require_access, _require_admin
 from pycaret_server.auth import CurrentUser
 from pycaret_server.db import (
     DataSource,
+    Deployment,
+    DriftReport,
     Event,
     Experiment,
     LLMConsultation,
@@ -39,6 +41,7 @@ from pycaret_server.db import (
 from pycaret_server.llm.consultations import (
     dataset_analysis,
     deployment_risk_review,
+    drift_analysis,
     experiment_design,
     failure_debugging,
     run_explanation,
@@ -47,6 +50,7 @@ from pycaret_server.llm.router import ConsultationContext, NoLLMConfigured, get_
 from pycaret_server.llm.schemas import (
     PROVIDERS,
     AnalyzeDatasetRequest,
+    AnalyzeDriftRequest,
     DebugRunRequest,
     DesignExperimentRequest,
     ExplainRunRequest,
@@ -537,6 +541,85 @@ def review_deployment(
         user=user_prompt,
         output_schema=deployment_risk_review.OUTPUT_SCHEMA,
         run_id=pipeline.origin_run_id,
+    )
+    try:
+        _advice, row = get_router().consult(db, ctx)
+    except NoLLMConfigured as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
+    return _serialise_consultation(row)
+
+
+@router.post(
+    "/llm/analyze-drift",
+    response_model=LLMConsultationRead,
+)
+def analyze_drift(
+    payload: AnalyzeDriftRequest,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> LLMConsultationRead:
+    """Interpret a drift report + recommend an action.
+
+    Reads the DriftReport + its owning Deployment + (if linked) the Pipeline
+    snapshot, asks the LLM to classify drift severity and name specific
+    features driving it. Verdict: RETRAIN NOW / INVESTIGATE / MONITOR /
+    NO ACTION. Advisory — the user still decides.
+    """
+    report = db.get(DriftReport, payload.drift_report_id)
+    if report is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "drift report not found")
+    dep = db.get(Deployment, report.deployment_id)
+    if dep is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "owning deployment missing")
+    _require_access(user, db, dep.workspace_id)
+
+    pipeline = db.get(Pipeline, dep.pipeline_id) if dep.pipeline_id else None
+
+    report_payload = {
+        "id": report.id,
+        "window_start": report.window_start.isoformat(),
+        "window_end": report.window_end.isoformat(),
+        "drift_score": report.drift_score,
+        "drift_status": report.drift_status,
+        "feature_drift": dict(report.feature_drift_json or {}),
+        "prediction_drift": dict(report.prediction_drift_json)
+        if report.prediction_drift_json
+        else None,
+        "sample_size": report.sample_size,
+    }
+    deployment_payload = {
+        "id": dep.id,
+        "endpoint_slug": dep.endpoint_slug,
+        "status": dep.status,
+        "inference_count": dep.inference_count,
+        "last_inference_at": dep.last_inference_at.isoformat() if dep.last_inference_at else None,
+        "p50_latency_ms": dep.p50_latency_ms,
+        "p95_latency_ms": dep.p95_latency_ms,
+        "error_count": dep.error_count,
+    }
+    pipeline_payload: dict | None = None
+    if pipeline is not None:
+        pipeline_payload = {
+            "id": pipeline.id,
+            "name": pipeline.name,
+            "model_id": pipeline.model_id,
+            "tags": list(pipeline.tags or []),
+        }
+
+    system, user_prompt = drift_analysis.build_prompt(
+        drift_report=report_payload,
+        deployment=deployment_payload,
+        pipeline=pipeline_payload,
+    )
+    ctx = ConsultationContext(
+        workspace_id=dep.workspace_id,
+        user_id=user.id,
+        consultation_type="drift_analysis",
+        system=system,
+        user=user_prompt,
+        output_schema=drift_analysis.OUTPUT_SCHEMA,
     )
     try:
         _advice, row = get_router().consult(db, ctx)

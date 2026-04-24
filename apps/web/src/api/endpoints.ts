@@ -9,9 +9,13 @@ import type {
   ApiKeyCreateRequest,
   ApiKeyCreateResponse,
   ApiKeyRead,
+  AuditLogFilters,
+  AuditLogRead,
   BootstrapRequest,
   DataSource,
   Deployment,
+  DriftReportCreate,
+  DriftReportRead,
   Experiment,
   ExperimentCreate,
   InviteRequest,
@@ -239,6 +243,8 @@ export const llmApi = {
     api
       .post<LLMConsultationRead>('/llm/review-deployment', body)
       .then((r) => r.data),
+  analyzeDrift: (body: { drift_report_id: string }) =>
+    api.post<LLMConsultationRead>('/llm/analyze-drift', body).then((r) => r.data),
   listConsultations: (workspace_id: string, limit = 50) =>
     api
       .get<LLMConsultationRead[]>(
@@ -282,6 +288,40 @@ export const apiKeysApi = {
     api.post<ApiKeyCreateResponse>('/auth/api-keys', body).then((r) => r.data),
   revoke: (id: string) =>
     api.delete<void>(`/auth/api-keys/${id}`).then((r) => r.data),
+};
+
+// ───────────────────────────── drift reports + audit logs (session 21)
+
+export const driftApi = {
+  list: (deployment_id: string, limit = 50) =>
+    api
+      .get<DriftReportRead[]>(
+        `/deployments/${deployment_id}/drift-reports`,
+        { params: { limit } },
+      )
+      .then((r) => r.data),
+  create: (deployment_id: string, body: DriftReportCreate) =>
+    api
+      .post<DriftReportRead>(
+        `/deployments/${deployment_id}/drift-reports`,
+        body,
+      )
+      .then((r) => r.data),
+  get: (report_id: string) =>
+    api.get<DriftReportRead>(`/drift-reports/${report_id}`).then((r) => r.data),
+};
+
+export const auditApi = {
+  listAdmin: (filters?: AuditLogFilters) =>
+    api
+      .get<AuditLogRead[]>('/admin/audit-logs', { params: filters })
+      .then((r) => r.data),
+  listForWorkspace: (workspace_id: string, filters?: AuditLogFilters) =>
+    api
+      .get<AuditLogRead[]>(`/workspaces/${workspace_id}/audit-logs`, {
+        params: filters,
+      })
+      .then((r) => r.data),
 };
 
 export const dataSourcesApi = {

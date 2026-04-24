@@ -26,7 +26,7 @@ Tables (v1):
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     JSON,
@@ -484,4 +484,93 @@ class LLMConsultation(UUIDMixin, TimestampMixin, Base):
     error: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[str] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+# -----------------------------------------------------------------------------
+# drift reports + audit logs (session 21)
+# -----------------------------------------------------------------------------
+
+
+class DriftReport(UUIDMixin, TimestampMixin, Base):
+    """Snapshot of distribution drift for a Deployment over a time window.
+
+    Spec § 4.12. In v1 there's no scheduled job yet (needs the Job queue that
+    lands post-4.0.0); drift reports are created by explicit POST — either
+    from the UI or from CI/cron hitting the API with a ``X-PyCaret-Key``.
+    The row stores:
+
+    - ``drift_score`` — overall 0..1 PSI-weighted score (higher = more drift).
+    - ``drift_status`` — bucketed label ``none | mild | moderate | severe``.
+    - ``feature_drift_json`` — per-feature drift values + kind
+      (``{feature: {score, kind}}``, kind ∈ ``psi | ks | chi2 | missing_rate``).
+    - ``prediction_drift_json`` — prediction distribution shift
+      (``{kind, score, ...details}`` — e.g. JS-divergence on prediction histogram).
+
+    The LLM ``drift_analysis`` consultation reads these rows + suggests
+    ``RETRAIN NOW`` / ``INVESTIGATE`` / ``MONITOR`` / ``NO ACTION``.
+    """
+
+    __tablename__ = "drift_reports"
+
+    deployment_id: Mapped[str] = mapped_column(
+        ForeignKey("deployments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    baseline_artifact_id: Mapped[str | None] = mapped_column(
+        ForeignKey("artifacts.id", ondelete="SET NULL"), index=True
+    )
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    window_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    drift_score: Mapped[float] = mapped_column(Float, nullable=False)
+    # none | mild | moderate | severe
+    drift_status: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    feature_drift_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    prediction_drift_json: Mapped[dict | None] = mapped_column(JSON)
+    sample_size: Mapped[int | None] = mapped_column(Integer)
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class AuditLog(UUIDMixin, Base):
+    """Append-only audit trail. Spec § 17.4.
+
+    One row per mutating API call (POST/PATCH/PUT/DELETE) + selected read-only
+    events like login. Intentionally *no* ``updated_at`` — rows are immutable.
+    Written by a FastAPI middleware; read via ``/admin/audit-logs`` or
+    ``/workspaces/{id}/audit-logs``.
+
+    ``action`` is a dotted namespace: ``workspace.create``, ``run.cancel``,
+    ``deployment.delete``, ``llm.analyze-drift``. Derived from route path +
+    method. ``target_type`` / ``target_id`` let us filter "everything that
+    touched deployment X".
+
+    ``payload`` is the scrubbed request body (passwords / tokens redacted).
+    Response status stored so we can audit 4xx/5xx attempts too.
+    """
+
+    __tablename__ = "audit_logs"
+
+    # Both nullable: workspace-less events (login) + unauth events (failed
+    # login attempts — useful for intrusion forensics).
+    workspace_id: Mapped[str | None] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="SET NULL"), index=True
+    )
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    method: Mapped[str] = mapped_column(String(8), nullable=False)
+    path: Mapped[str] = mapped_column(String(512), nullable=False)
+    target_type: Mapped[str | None] = mapped_column(String(32), index=True)
+    target_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    status_code: Mapped[int | None] = mapped_column(Integer)
+    payload: Mapped[dict | None] = mapped_column(JSON)
+    ip_address: Mapped[str | None] = mapped_column(String(64))
+    user_agent: Mapped[str | None] = mapped_column(String(256))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+        default=lambda: datetime.now(UTC),
     )
