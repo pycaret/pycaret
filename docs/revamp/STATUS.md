@@ -1,6 +1,65 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 24*
+*Updated: 2026-04-24, end of session 25*
+
+## Session 25 — God-class drain: `tune_model` (supervised) — ✅
+
+Fourth drain. **`SupervisedExperiment.tune_model`** for classification + regression no longer delegates to `self._legacy.tune_model`. It runs `sklearn.model_selection.RandomizedSearchCV` on the base estimator pulled from the registry's `tune_grid`, then assembles the best Pipeline (preprocessor + tuned model). The shared `_cross_validate_supervised` helper (built in session 24) gives the returned `TuneResult.metrics` an identical schema to `CreateResult.metrics`.
+
+### What landed
+
+- **`packages/engine/pycaret/core/supervised.py`** — rewrote `tune_model` into a task-aware dispatcher:
+  - Supervised → `_tune_model_supervised_native`.
+  - Time-series / clustering / anomaly → `_tune_model_legacy` (their drains are later sessions).
+- Native path:
+  1. Unwrap the estimator: a Pipeline (last step = bare model + `model_id`), a registry ID string (resolved through the helper from session 24), or a bare estimator.
+  2. Pick search space: `custom_grid=` > registry's `tune_grid` (explicit dict[str, list]). Registry's `tune_distribution` uses a custom PyCaret distribution type that sklearn's `RandomizedSearchCV` can't sample from — adapting it to scipy distributions is a polish item; for now `tune_grid` is the source of truth.
+  3. Resolve scoring: maps PyCaret metric names (``"Accuracy"`` / ``"AUC"`` / ``"MAE"`` / ``"R2"``) to sklearn scorer strings (``"accuracy"`` / ``"roc_auc"`` / ``"neg_mean_absolute_error"`` / ``"r2"``).
+  4. Run `RandomizedSearchCV(deepcopy(bare_model), ..., refit=True)` over `X_train_transformed`, `y_train_transformed` with `cv=fold or self._legacy.fold_generator`.
+  5. Re-assemble the Pipeline = `deepcopy(self.preprocess_pipeline).steps + [(model_id, search.best_estimator_)]`.
+  6. Compute per-fold metrics for the winning estimator via the shared `_cross_validate_supervised` helper so `TuneResult.metrics` has the same shape as `CreateResult.metrics`.
+- **`packages/engine/tests/test_session25_tune.py`** — 9 new tests:
+  - Pipeline shape (last step is the tuned bare estimator under `model_id` name).
+  - `cv_results` (sklearn's `cv_results_` as a DataFrame, length = `n_iter`) + `metrics` (Fold/Mean/Std rows, classification metric columns).
+  - `custom_grid={"C": [0.1, 1.0, 10.0]}` overrides the registry default.
+  - `optimize="AUC"` maps to the sklearn `"roc_auc"` scorer.
+  - Regression default is `"r2"`.
+  - **Drain-lock**: monkeypatch `self._legacy.tune_model` to raise; native path still succeeds.
+  - End-to-end chain: `create_model` → `tune_model` → `predict_model` all on a sklearn Pipeline, no transitional branches.
+  - Registry ID directly: `tune_model("lr", ...)` works without a prior `create_model`.
+  - `NotFittedError` on unfit experiment.
+
+### Headline metrics
+
+| | Session 24 end | Session 25 end |
+|---|---|---|
+| Supervised OOP verbs still on `self._legacy` | 3 | **2** |
+| Engine tests (fast + slow) | 61 | **70** (+9) |
+| **Combined tests** | **207** | **216** |
+
+### What's next (session 26+)
+
+Next on the drain: **`compare_models`** — the heart of the AutoML loop. It iterates over the registry, runs `create_model` for each, ranks them by an `optimize` metric, and returns the top-K. Native version uses the already-drained `create_model` plus a per-model loop. After that: `ensemble_model` / `blend_models` / `stack_models` / `calibrate_model` / `finalize_model`.
+
+Drain progress: **7 of 10** verbs drained.
+
+```
+[✓] save_model          (session 22)
+[✓] load_model          (session 22)
+[✓] save_experiment     (session 22)
+[✓] load_experiment     (session 22)
+[✓] predict_model       (session 23)
+[✓] create_model        (session 24, supervised)
+[✓] tune_model          (session 25, supervised)
+[ ] compare_models      (session 26 target)
+[ ] ensemble_model
+[ ] blend_models
+[ ] stack_models
+[ ] calibrate_model
+[ ] finalize_model
+```
+
+---
 
 ## Session 24 — God-class drain: `create_model` (supervised) — ✅
 

@@ -186,8 +186,9 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 21 | Drift analyst + audit logs | DriftReport table + 3 drift routes + 6th copilot + AuditLog + middleware + 2 viewer routes + 2 UI components + 1 screen + 22 new tests (174/174) |
 | 22 | God-class drain #1 — persistence verbs | save_model/load_model/save_experiment/load_experiment off self._legacy. 7 new tests (181/181). 4 of 10 god-class verbs drained. |
 | 23 | God-class drain #2 — `predict_model` | Native task-aware dispatch. 12 new tests (197/197). 5 of 10 verbs drained. |
-| **24** | **God-class drain #3 — `create_model` (supervised)** | **CreateResult.pipeline now a real sklearn Pipeline. 10 new tests (207/207). 6 of 10 verbs drained (classification + regression only; clustering/anomaly/TS still delegate).** |
-| 25+ | God-class drain continues → 4.0.0 release | tune_model → ensemble_model → blend_models → stack_models → calibrate_model → compare_models → finalize_model |
+| 24 | God-class drain #3 — `create_model` (supervised) | CreateResult.pipeline now a real sklearn Pipeline. 10 new tests (207/207). 6 of 10 verbs drained (classification + regression only; clustering/anomaly/TS still delegate). |
+| **25** | **God-class drain #4 — `tune_model` (supervised)** | **RandomizedSearchCV with registry tune_grid. TuneResult.search populated. 9 new tests (216/216). 7 of 10 verbs drained.** |
+| 26+ | God-class drain continues → 4.0.0 release | compare_models → ensemble_model → blend_models → stack_models → calibrate_model → finalize_model |
 
 Roughly **7–8 sessions to MVP 3 completion** (all 8 UI screens wired + LLM assist + full AutoML flow). Then a handful of V2 items. Then god-class drain for MVP 1 release.
 

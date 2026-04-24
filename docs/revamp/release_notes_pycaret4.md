@@ -115,6 +115,53 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 25 — 2026-04-24 — God-class drain: `tune_model` (supervised)
+
+Baseline: session 24 drained `create_model`, returning real Pipelines for supervised tasks. Session 25 drains the next verb in the chain — `tune_model` — using sklearn's `RandomizedSearchCV` with the engine's registry-supplied search space.
+
+## CHANGED — engine
+
+- `CHANGED, BREAKING` — **`packages/engine/pycaret/core/supervised.py` — `SupervisedExperiment.tune_model`** (supervised path). No longer delegates to `self._legacy.tune_model` for classification + regression. Rewritten as task-aware dispatcher with native `RandomizedSearchCV`. Time-series / clustering / anomaly still delegate via `_tune_model_legacy`.
+- `CHANGED, BREAKING` — **Signature slim-down** (supervised path). Kept: `estimator`, `fold`, `n_iter`, `custom_grid`, `optimize`, `fit_kwargs`, `round`, `verbose`. Dropped 3.x cruft: `custom_scorer`, `search_library` (sklearn-only for now; optuna / scikit-optimize integration is a follow-up if needed), `search_algorithm`, `early_stopping`, `early_stopping_max_iters`, `choose_better`, `groups`, `return_tuner`, `tuner_verbose`, `return_train_score`. All gone for the same reason as session 24's drops — either dead code (legacy tuner library deps that were already killed) or one-line post-hoc overrides on `TuneResult.search`.
+- `CHANGED` — **`optimize=` accepts both naming conventions.** Maps PyCaret display names (``"Accuracy"`` / ``"AUC"`` / ``"Recall"`` / ``"Precision"`` / ``"F1"`` / ``"MAE"`` / ``"MSE"`` / ``"RMSE"`` / ``"R2"`` / ``"MAPE"``) AND sklearn scorer strings (``"accuracy"`` / ``"roc_auc"`` / ...) to sklearn's built-in scorers. Defaults to ``"accuracy"`` for classification, ``"r2"`` for regression. Metrics not in the mapping (PyCaret-only ``"Kappa"`` / ``"MCC"`` / ``"RMSLE"``) fall through to the task default — adapting them via `make_scorer` is a polish item.
+- `CHANGED` — **Search space comes from `tune_grid` not `tune_distribution`.** Each engine container exposes both; sklearn's `RandomizedSearchCV` requires either an iterable or a scipy distribution with `.rvs()`, neither of which the registry's custom `UniformDistribution` / `IntUniformDistribution` types implement. `tune_grid` is a plain `dict[str, list]` and works directly. Adapting `tune_distribution` to scipy is a future-session polish.
+- `CHANGED` — **`TuneResult` shape stabilised**:
+  - `pipeline` — fitted sklearn Pipeline (preprocessor + tuned model).
+  - `best_params` — `dict(search.best_params_)`.
+  - `search` — the `RandomizedSearchCV` instance (now actually populated; the legacy wrapper had `search=None`).
+  - `cv_results` — `pd.DataFrame(search.cv_results_)`.
+  - `metrics` — per-fold metrics DataFrame for the winning estimator (same schema as `CreateResult.metrics`).
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session25_tune.py`** — 9 tests:
+  - `test_tune_model_returns_pipeline_with_tuned_estimator` — Pipeline shape + `RandomizedSearchCV` in `result.search`.
+  - `test_tune_model_cv_results_and_metrics_dataframes` — `cv_results.length == n_iter`; `metrics` has `Mean` / `Std` rows.
+  - `test_tune_model_custom_grid_overrides_registry` — `custom_grid={"C": [0.1, 1.0, 10.0]}` ⇒ `best_params["C"] in grid["C"]`.
+  - `test_tune_model_optimize_mapping_uses_sklearn_scorer` — `optimize="AUC"` ⇒ `search.scoring == "roc_auc"`.
+  - `test_tune_model_regression_default_optimize_is_r2`.
+  - `test_tune_model_does_not_call_legacy_tune_model` — drain-lock; poisons `self._legacy.tune_model` + verifies success.
+  - `test_tune_model_predict_chain_from_tuned_pipeline` — full `create → tune → predict` chain on Pipeline-in/out.
+  - `test_tune_model_accepts_registry_id_directly` — `tune_model("lr", ...)` without prior `create_model`.
+  - `test_tune_model_requires_fit` — `NotFittedError` on unfit Experiment.
+
+## INTERNAL
+
+- `INTERNAL` — **No-op fallback when `tune_grid` is empty.** Some registry containers have `tune_grid={}` (no tunable params). Rather than failing the whole call, native `tune_model` falls through to `create_model` with cross-validation enabled, returning a `TuneResult` with `search=None` + `best_params=params`. Caller's flow is consistent — `result.pipeline` is always a fitted Pipeline.
+- `INTERNAL` — **`deepcopy` before search.** `RandomizedSearchCV` mutates the estimator in place during refit. Deep-copying the bare model first means the user's input estimator (and any Pipeline carrying it) is untouched after the call. Same pattern as session 24's per-fold deep-copy.
+- `INTERNAL` — **Reusing `_cross_validate_supervised` for `TuneResult.metrics`.** The helper from session 24 is task-aware + uses the shared metric registry. By calling it on `search.best_estimator_`, `TuneResult.metrics` and `CreateResult.metrics` have byte-identical column schemas. The downstream UI / leaderboard / LLM-advisory code can render either uniformly.
+- `INTERNAL` — **`error_score=0.0`.** sklearn's `RandomizedSearchCV` defaults to `error_score=np.nan` which causes the search to mark a fold-fit failure as nan and propagate through the mean. PyCaret's legacy default is to return `0.0` for failed metric calculations (see session 23 metric helper). Aligning the search to `0.0` keeps tune CV rankings consistent with the rest of the engine.
+
+## Session 25 delta summary
+
+| Metric | Session 24 end | Session 25 end |
+|---|---:|---:|
+| Supervised OOP verbs still on `self._legacy` | 3 | **2** |
+| Engine tests (fast + slow) | 61 | **70** |
+| **Combined tests** | **207** | **216** |
+
+---
+
 # Session 24 — 2026-04-24 — God-class drain: `create_model` (supervised)
 
 Baseline: session 23 drained `predict_model`. Session 24 drains `create_model` for classification + regression. Unlocks the 4.0 invariant "`CreateResult.pipeline` is a real sklearn Pipeline".
