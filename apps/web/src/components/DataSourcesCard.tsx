@@ -15,6 +15,7 @@ import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { dataSourcesApi } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
+import { AnalyzeDatasetModal } from './AnalyzeDatasetModal';
 
 export interface DataSourcesCardProps {
   workspaceId: string;
@@ -39,6 +40,8 @@ export function DataSourcesCard({ workspaceId }: DataSourcesCardProps) {
 
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState('');
+  // When set, renders the AnalyzeDatasetModal for this data source.
+  const [analyzing, setAnalyzing] = useState<{ id: string; name: string } | null>(null);
 
   const upload = useMutation({
     mutationFn: () => {
@@ -91,18 +94,27 @@ export function DataSourcesCard({ workspaceId }: DataSourcesCardProps) {
                     {cfg.columns?.length != null && <> · {cfg.columns.length} cols</>}
                   </p>
                 </div>
-                <button
-                  className="btn-ghost text-xs shrink-0"
-                  onClick={() => {
-                    if (window.confirm(`Delete "${d.name}"? The uploaded file is removed from disk.`)) {
-                      remove.mutate(d.id);
-                    }
-                  }}
-                  disabled={remove.isPending}
-                  title="Delete"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    className="btn-ghost text-xs"
+                    onClick={() => setAnalyzing({ id: d.id, name: d.name })}
+                    title="Analyze with AI"
+                  >
+                    ✨ AI
+                  </button>
+                  <button
+                    className="btn-ghost text-xs"
+                    onClick={() => {
+                      if (window.confirm(`Delete "${d.name}"? The uploaded file is removed from disk.`)) {
+                        remove.mutate(d.id);
+                      }
+                    }}
+                    disabled={remove.isPending}
+                    title="Delete"
+                  >
+                    ✕
+                  </button>
+                </div>
               </li>
             );
           })}
@@ -156,6 +168,16 @@ export function DataSourcesCard({ workspaceId }: DataSourcesCardProps) {
         </button>
         <p className="hint">64 MB cap. CSV is parsed + SHA-256-checksummed on upload.</p>
       </form>
+
+      {analyzing && (
+        <AnalyzeDatasetModal
+          workspaceId={workspaceId}
+          dataSourceId={analyzing.id}
+          dataSourceName={analyzing.name}
+          open
+          onClose={() => setAnalyzing(null)}
+        />
+      )}
     </div>
   );
 }

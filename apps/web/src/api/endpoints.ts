@@ -11,6 +11,9 @@ import type {
   Deployment,
   Experiment,
   ExperimentCreate,
+  LLMConsultationRead,
+  LLMProviderSettingRead,
+  LLMProviderSettingWrite,
   LoginRequest,
   MetricCard,
   ModelCard,
@@ -22,6 +25,7 @@ import type {
   SetupParamSchema,
   SetupStatus,
   TaskType,
+  TestConnectionResponse,
   TokenPair,
   User,
   Workspace,
@@ -182,6 +186,47 @@ export const deploymentsApi = {
 };
 
 // ───────────────────────────── data sources (listing + register; upload is separate)
+
+// ───────────────────────────── LLM advisory surface
+
+export const llmApi = {
+  getSettings: (workspace_id: string) =>
+    api
+      .get<LLMProviderSettingRead | null>(
+        `/workspaces/${workspace_id}/llm/settings`,
+      )
+      .then((r) => r.data),
+  upsertSettings: (workspace_id: string, body: LLMProviderSettingWrite) =>
+    api
+      .put<LLMProviderSettingRead>(
+        `/workspaces/${workspace_id}/llm/settings`,
+        body,
+      )
+      .then((r) => r.data),
+  testConnection: (workspace_id: string) =>
+    api
+      .post<TestConnectionResponse>(
+        `/workspaces/${workspace_id}/llm/test-connection`,
+      )
+      .then((r) => r.data),
+  analyzeDataset: (body: {
+    workspace_id: string;
+    data_source_id: string;
+    task_type_hint?: string | null;
+  }) =>
+    api
+      .post<LLMConsultationRead>('/llm/analyze-dataset', body)
+      .then((r) => r.data),
+  listConsultations: (workspace_id: string, limit = 50) =>
+    api
+      .get<LLMConsultationRead[]>(
+        `/workspaces/${workspace_id}/llm/consultations`,
+        { params: { limit } },
+      )
+      .then((r) => r.data),
+  getConsultation: (id: string) =>
+    api.get<LLMConsultationRead>(`/llm/consultations/${id}`).then((r) => r.data),
+};
 
 export const dataSourcesApi = {
   list: (workspace_id: string) =>

@@ -74,6 +74,13 @@ export function WorkspaceDetail() {
               >
                 Deployments
               </Link>
+              <Link
+                to={`/workspaces/${id}/llm`}
+                className="btn-secondary"
+                title="LLM provider settings"
+              >
+                ✨ LLM
+              </Link>
             </div>
           )}
         </div>

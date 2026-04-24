@@ -414,3 +414,74 @@ class Deployment(UUIDMixin, TimestampMixin, Base):
 
     workspace: Mapped[Workspace] = relationship(back_populates="deployments")
     pipeline: Mapped[Pipeline] = relationship(back_populates="deployments")
+
+
+# -----------------------------------------------------------------------------
+# LLM provider settings + advisory consultations
+# -----------------------------------------------------------------------------
+
+
+class LLMProviderSetting(UUIDMixin, TimestampMixin, Base):
+    """Per-workspace LLM provider configuration.
+
+    Unique on (workspace_id, provider) so a workspace can have one active
+    Anthropic entry + one OpenAI entry side-by-side; the `enabled` flag picks
+    which one actually runs. ``api_key_encrypted`` is stored raw for v1 — the
+    spec (§ 17.3) requires KMS/Vault wrapping before V2 SSO ships, tracked as
+    a roadmap item.
+    """
+
+    __tablename__ = "llm_provider_settings"
+    __table_args__ = (UniqueConstraint("workspace_id", "provider", name="uq_llm_provider"),)
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # anthropic | openai | google | azure_openai | ollama | custom_openai_compatible
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    api_key_encrypted: Mapped[str | None] = mapped_column(Text)  # TODO: KMS wrap (V2)
+    base_url: Mapped[str | None] = mapped_column(String(512))
+    model_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    config: Mapped[dict | None] = mapped_column(JSON)  # max_tokens, temperature, …
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class LLMConsultation(UUIDMixin, TimestampMixin, Base):
+    """Append-only audit record of every LLM advisory request.
+
+    Every consultation produces the same envelope shape: ``suggested_config_json``,
+    ``suggested_action``, ``reasoning_summary``, ``risk_flags``. This lets the
+    UI + server treat Claude / OpenAI output uniformly — the `response_json`
+    column stores that envelope as-is.
+    """
+
+    __tablename__ = "llm_consultations"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    project_id: Mapped[str | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    experiment_id: Mapped[str | None] = mapped_column(
+        ForeignKey("experiments.id", ondelete="CASCADE"), index=True
+    )
+    run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("runs.id", ondelete="CASCADE"), index=True
+    )
+    # dataset_analysis | experiment_design | metric_selection | …
+    type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    response_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    # Extracted from response_json for convenience / indexing.
+    generated_config_json: Mapped[dict | None] = mapped_column(JSON)
+    latency_ms: Mapped[float | None] = mapped_column(Float)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )

@@ -23,6 +23,7 @@ from pycaret_server.api import (
     deployments,
     describe,
     experiments,
+    llm,
     projects,
     runs,
     setup,
@@ -31,6 +32,7 @@ from pycaret_server.api import (
 from pycaret_server.config import get_settings
 from pycaret_server.db import Base, engine
 from pycaret_server.db.bootstrap import ensure_schema
+from pycaret_server.llm.router import reset_router as reset_llm_router
 from pycaret_server.runs.orchestrator import reset_orchestrator
 from pycaret_server.serving import reset_registry
 
@@ -59,10 +61,12 @@ async def _lifespan(app: FastAPI):
         yield
     finally:
         # Tear down the run-orchestrator singleton so worker threads stop,
-        # and drop the in-memory deployment registry so cached pipelines
-        # aren't carried into the next process (matters in reload mode).
+        # drop the in-memory deployment registry so cached pipelines don't
+        # carry across processes (matters in reload mode), and reset the LLM
+        # router so providers get rebuilt from fresh settings next boot.
         reset_orchestrator()
         reset_registry()
+        reset_llm_router()
 
 
 def create_app() -> FastAPI:
@@ -102,6 +106,7 @@ def create_app() -> FastAPI:
         runs.router,
         data_sources.router,
         deployments.router,
+        llm.router,
     ):
         app.include_router(router, prefix="/api/v1")
 

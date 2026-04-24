@@ -49,6 +49,13 @@ s3 = ["boto3>=1.35"]
 # Notebook-artifact rendering (HTML preview of Run notebooks).
 notebook = ["nbformat>=5.10", "nbconvert>=7.16", "jupyter-client>=8.6"]
 
+# LLM advisory features — `pycaret-server[llm]` pulls both providers.
+# Operators can also install just the one they use (`pycaret-server[llm-anthropic]`).
+# Neither is required for the core platform; the FakeLLMProvider backs tests.
+llm-anthropic = ["anthropic>=0.39"]
+llm-openai = ["openai>=1.54"]
+llm = ["pycaret-server[llm-anthropic,llm-openai]"]
+
 # Dev tooling.
 dev = ["ruff>=0.6", "mypy>=1.11", "types-requests"]
 

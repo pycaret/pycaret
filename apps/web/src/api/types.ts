@@ -241,3 +241,70 @@ export interface WsEvent {
   timestamp: number;
   experiment_id: string | null;
 }
+
+// ──────────────────────────────────────────────────────────── LLM advisory
+
+export type LLMProviderName =
+  | 'anthropic'
+  | 'openai'
+  | 'google'
+  | 'azure_openai'
+  | 'ollama'
+  | 'custom_openai_compatible';
+
+/** Canonical output envelope from every consultation. */
+export interface LLMAdvice {
+  suggested_config_json: Record<string, unknown>;
+  suggested_action: string;
+  reasoning_summary: string;
+  risk_flags: string[];
+}
+
+export interface LLMProviderSettingRead {
+  id: string;
+  workspace_id: string;
+  provider: LLMProviderName;
+  base_url: string | null;
+  model_name: string;
+  enabled: boolean;
+  config: Record<string, unknown> | null;
+  /** Set server-side; we never ship the plaintext key back to the browser. */
+  has_api_key: boolean;
+  created_at: string;
+  created_by: string;
+}
+
+export interface LLMProviderSettingWrite {
+  provider: LLMProviderName;
+  api_key?: string | null;
+  base_url?: string | null;
+  model_name: string;
+  enabled?: boolean;
+  config?: Record<string, unknown> | null;
+}
+
+export interface LLMConsultationRead {
+  id: string;
+  workspace_id: string;
+  project_id: string | null;
+  experiment_id: string | null;
+  run_id: string | null;
+  type: string;
+  provider: string;
+  model_name: string;
+  prompt: string;
+  response_json: LLMAdvice;
+  generated_config_json: Record<string, unknown> | null;
+  latency_ms: number | null;
+  error: string | null;
+  created_at: string;
+  created_by: string;
+}
+
+export interface TestConnectionResponse {
+  ok: boolean;
+  provider: string;
+  model_name: string;
+  error: string | null;
+  latency_ms: number | null;
+}

@@ -13,6 +13,7 @@ import { Pipelines } from '@/pages/Pipelines';
 import { PipelineDetail } from '@/pages/PipelineDetail';
 import { Deployments } from '@/pages/Deployments';
 import { DeploymentDetail } from '@/pages/DeploymentDetail';
+import { LLMSettings } from '@/pages/LLMSettings';
 
 export default function App() {
   return (
@@ -48,6 +49,7 @@ export default function App() {
         />
         <Route path="/workspaces/:wsId/deployments" element={<Deployments />} />
         <Route path="/deployments/:deploymentId" element={<DeploymentDetail />} />
+        <Route path="/workspaces/:wsId/llm" element={<LLMSettings />} />
       </Route>
       <Route
         path="*"
