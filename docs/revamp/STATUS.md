@@ -1,6 +1,50 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 27*
+*Updated: 2026-04-24, end of session 28*
+
+## Session 28 — God-class drain: unsupervised verbs — ✅
+
+**The OOP drain is essentially complete.** With session 28, both `UnsupervisedExperiment.create_model` and `UnsupervisedExperiment.assign_model` for clustering + anomaly run natively. The only `_legacy` callsite that remains for the *modeling* surface is the time-series experiment subclass (which has different shapes — `fh`, `seasonal_period`, no fold generator in the usual sense — and warrants its own session).
+
+### What landed
+
+- **`packages/engine/pycaret/core/unsupervised.py`** — drained both unsupervised verbs:
+  - **`UnsupervisedExperiment.create_model`** — resolves a registry ID (KMeans / DBSCAN / Birch / IForest / LOF / etc.) into an instance, fits on `self._legacy.X_transformed`, and returns a `CreateResult` whose `.pipeline` is a real sklearn Pipeline. Accepts `num_clusters=` for clustering (translates to `n_clusters`) and `fraction=` for anomaly (translates to `contamination`). Falls through to the registry default kwargs if the constructor rejects a forwarded one (`AffinityPropagation` doesn't accept `n_clusters`, etc.).
+  - **`UnsupervisedExperiment.assign_model`** — unwraps Pipeline → bare model, reads `model.labels_` (and `model.decision_scores_` for anomaly), decorates a copy of `self.X` with `Cluster`/`Anomaly`/`Anomaly_Score` columns. `transformation=True` returns rows from `X_transformed` instead. `score=False` skips the score column.
+- **CBLOF retry preserved**. The `cluster` (CBLOF) anomaly detector can fail when the default `n_clusters` yields a degenerate small/large cluster split. Native `create_model` mirrors the legacy retry: catch the `ValueError`, set `n_clusters=12`, refit. Identical behavior to 3.x — the `test_model_equality_anomaly` test passes without modification.
+- **`packages/engine/pycaret/core/experiment.py`** — `predict_model`'s transitional bare-estimator branch comment updated. The branch is dead for both supervised AND unsupervised tasks now (both `create_model` paths return a real Pipeline). The branch lives on as a belt-and-braces fallback for callers passing in their own bare estimators directly.
+- **`packages/engine/tests/test_session28_unsupervised.py`** — 11 new tests:
+  - Clustering: KMeans Pipeline shape, `assign_model` decorates with `Cluster` column, drain-locks for both `create_model` + `assign_model`, predict-chain for KMeans (which supports `.predict`).
+  - Anomaly: IForest Pipeline shape, `assign_model` adds `Anomaly` + `Anomaly_Score`, `score=False` omits the score column, drain-lock for `create_model`.
+  - Cross-task: unknown ID → `ConfigurationError`, all four verbs require fit → `NotFittedError`.
+
+### Headline metrics
+
+| | Session 27 end | Session 28 end |
+|---|---|---|
+| OOP verbs still on `self._legacy` (clf/reg/clu/anomaly) | 0 / 0 / 2 / 2 | **0 / 0 / 0 / 0** ✅ |
+| Engine tests (fast + slow) | 93 | **104** (+11) |
+| **Combined tests** | **239** | **250** |
+
+### Drain progress
+
+```
+Supervised (sessions 22-27): ALL 13 verbs ✓
+Unsupervised  (session 28):  ALL  3 verbs ✓ (create_model, predict_model via core/experiment, assign_model)
+Time-series   (pending):     legacy delegation remains
+```
+
+### What's next (session 29+)
+
+The remaining work to ship `4.0.0`:
+
+1. **Drain the time-series Experiment subclass** — `_create_model_legacy` fallback in `core/experiment.py` is still active for TS. The TS hierarchy in `pycaret/internal/pycaret_experiment/ts_supervised_experiment.py` has its own setup, fold generator, and forecasting verbs (forecast / plot_forecasts). One session.
+2. **Refactor model + metric registry helpers** to read from `Experiment` directly instead of `self._legacy`. The `get_all_metric_containers` / `get_all_model_containers` functions take an `experiment` arg + read fields like `seed`, `gpu_param`, `num_classes`. Migrating them to read from the `Experiment` (or a thin context object) lets us delete the legacy holder entirely.
+3. **Read-only properties** (`X`, `X_train`, `X_test`, `y`, `y_train`, `y_test`, `preprocess_pipeline`) currently delegate to `self._legacy`. Move them onto the `Experiment` directly so `_legacy` is no longer referenced post-fit.
+4. **Delete `pycaret/internal/pycaret_experiment/`** entirely once steps 1-3 are done.
+5. **Cut `4.0.0` non-alpha to PyPI**.
+
+---
 
 ## Session 27 — God-class drain: ensemble / blend / stack / calibrate / finalize — ✅
 

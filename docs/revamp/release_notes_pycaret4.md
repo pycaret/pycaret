@@ -115,6 +115,39 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 28 — 2026-04-24 — God-class drain: unsupervised verbs (clustering + anomaly)
+
+Baseline: session 27 finished the supervised drain (13 verbs). Session 28 drains the 3 unsupervised verbs — clustering + anomaly experiments now run natively.
+
+## CHANGED — engine
+
+- `CHANGED, BREAKING` — **`packages/engine/pycaret/core/unsupervised.py` — `UnsupervisedExperiment.create_model`**. No longer delegates to `self._legacy.create_model`. Resolves the estimator from the registry (or accepts a pre-constructed object), fits on `self._legacy.X_transformed`, and returns a `CreateResult` whose `.pipeline` is a real sklearn Pipeline.
+  - Signature: `(estimator, *, num_clusters=None, fraction=None, fit_kwargs=None, round=4, verbose=False, **estimator_kwargs)`. `num_clusters` translates to `n_clusters`; `fraction` translates to `contamination` for anomaly.
+  - Constructor falls through to the registry's default kwargs if a forwarded kwarg is rejected (`AffinityPropagation` has no `n_clusters`, `MeanShift` has none, etc.).
+  - Dropped 3.x cruft: `ground_truth`, `experiment_custom_tags`, `system`, `add_to_model_list`, `raise_num_clusters`, `X_data`, `display`.
+- `CHANGED, BREAKING` — **`UnsupervisedExperiment.assign_model`**. No longer delegates. Unwraps Pipeline → bare model, reads `model.labels_` (and `model.decision_scores_` for anomaly), and decorates a copy of `self.X`. `transformation=True` returns `X_transformed` rows; `score=False` skips the `Anomaly_Score` column for anomaly tasks.
+- `CHANGED` — **CBLOF retry preserved**. The `cluster` anomaly detector (CBLOF) can `ValueError` on degenerate cluster separation. The native path mirrors legacy: catch the error, `model.set_params(n_clusters=12)`, refit. Wrapped in a `RuntimeError` with the legacy's message if the retry also fails.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session28_unsupervised.py`** — 11 tests covering clustering + anomaly create_model + assign_model + drain-locks + edge cases (unknown ID, `score=False`, `NotFittedError`).
+
+## INTERNAL
+
+- `INTERNAL` — **`predict_model`'s transitional bare-estimator branch is now universally dead.** Both supervised and unsupervised `create_model` return real Pipelines, so the `preprocessor.transform(X)` fallback inside `predict_model` is only reachable when a caller passes a bare estimator directly (uncommon). The comment in `core/experiment.py:predict_model` is updated to reflect this — the branch lives on as a belt-and-braces fallback rather than a transitional accommodation.
+- `INTERNAL` — **Why CBLOF gets explicit retry, not a generic one.** Other anomaly detectors fail with different errors (`pyod`'s `ABOD` has its own gotchas around small datasets, etc.). The legacy code only retries CBLOF specifically, so we mirror that. A more general "try with smaller / larger param" retry would be over-engineering for v1.
+- `INTERNAL` — **Constructor `TypeError` fallback.** When the registry args + user kwargs include something the underlying class doesn't accept (e.g. `AffinityPropagation(n_clusters=4)` — no such kwarg), we catch the `TypeError` and retry with just the registry defaults. Cleaner than gating on a per-algorithm allowlist + handles future registry changes gracefully.
+
+## Session 28 delta summary
+
+| Metric | Session 27 end | Session 28 end |
+|---|---:|---:|
+| OOP verbs still on `self._legacy` (clf/reg/clu/anomaly) | 0/0/2/2 | **0/0/0/0** ✅ |
+| Engine tests (fast + slow) | 93 | **104** |
+| **Combined tests** | **239** | **250** |
+
+---
+
 # Session 27 — 2026-04-24 — God-class drain: ensemble / blend / stack / calibrate / finalize
 
 **The supervised drain is complete.** All 13 OOP verbs on classification + regression now run without `self._legacy`. This session lands the final 5 in one batch — each is a thin sklearn-meta-estimator wrapper that reuses the already-drained `create_model`.

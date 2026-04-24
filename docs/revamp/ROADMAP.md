@@ -189,8 +189,9 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 24 | God-class drain #3 — `create_model` (supervised) | CreateResult.pipeline now a real sklearn Pipeline. 10 new tests (207/207). 6 of 10 verbs drained (classification + regression only; clustering/anomaly/TS still delegate). |
 | 25 | God-class drain #4 — `tune_model` (supervised) | RandomizedSearchCV with registry tune_grid. TuneResult.search populated. 9 new tests (216/216). 7 of 10 verbs drained. |
 | 26 | God-class drain #5 — `compare_models` (supervised) | Native iteration over registry, reuses drained create_model. 10 new tests (226/226). 8 of 10 verbs drained. |
-| **27** | **God-class drain #6 — ensemble + blend + stack + calibrate + finalize** | **All 5 remaining supervised verbs drained in one batch. 13 new tests (239/239). ALL 13 supervised verbs done. 0 of supervised verbs still on self._legacy.** |
-| 28+ | Unsupervised + TS drain → 4.0.0 release | create_model/predict_model/assign_model for clustering+anomaly; TS subclass; strip transitional branches; delete pycaret/internal/pycaret_experiment; ship 4.0.0 |
+| 27 | God-class drain #6 — ensemble + blend + stack + calibrate + finalize | All 5 remaining supervised verbs drained in one batch. 13 new tests (239/239). ALL 13 supervised verbs done. 0 of supervised verbs still on self._legacy. |
+| **28** | **God-class drain #7 — unsupervised (clustering + anomaly)** | **create_model + assign_model native for clustering + anomaly. CreateResult.pipeline is now a real sklearn Pipeline for ALL non-TS tasks. 11 new tests (250/250).** |
+| 29+ | Drain finish + 4.0.0 release | TS subclass drain; refactor registry helpers; drain read-only properties; delete pycaret/internal/pycaret_experiment; ship 4.0.0 |
 
 Roughly **7–8 sessions to MVP 3 completion** (all 8 UI screens wired + LLM assist + full AutoML flow). Then a handful of V2 items. Then god-class drain for MVP 1 release.
 
