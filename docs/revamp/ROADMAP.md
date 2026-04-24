@@ -132,15 +132,15 @@ Full design in [`docs/revamp/PLATFORM_PLAN.md`](PLATFORM_PLAN.md).
 - [x] `pycaret-server` CLI with `serve` / `version` subcommands shipped in `pycaret-server`.
 - [ ] Separate `pycaret-cli/` package (project-export, YAML-driven runs, admin) — session 10+.
 
-### Phase 8 — Database layer — ✅ COMPLETE (session 9)
+### Phase 8 — Database layer — ✅ COMPLETE (sessions 9, 11)
 
 - [x] `pycaret-server/pycaret_server/db/` with full SQLAlchemy 2.x models + session factory + FastAPI `get_db` dependency.
 - [x] SQLite default (`sqlite:///./pycaret.db`); Postgres / MySQL driver selection via `PYCARET_DATABASE_URL`.
 - [x] 14 tables (matches `PLATFORM_PLAN.md § 3` exactly): `users`, `workspaces`, `workspace_members`, `projects`, `data_sources`, `experiments`, `runs`, `events`, `artifacts`, `fold_metrics`, `pipelines`, `pipeline_project_links`, `deployments`, `api_keys`, `sessions`.
 - [x] First-run bootstrap flow implemented end-to-end (`POST /api/v1/setup/bootstrap` creates admin + workspace + workspace_member + session, returns token pair).
-- [ ] Alembic baseline migration — session 10 (currently boot-time `Base.metadata.create_all` on SQLite).
+- [x] *(session 11)* **Alembic baseline migration** — `alembic.ini` + `pycaret_server/migrations/` (env.py, script template, baseline revision) with autogen enabled. `ensure_schema(engine, dev_auto_migrate=True)` auto-applies on fresh SQLite; production Postgres raises unless `alembic upgrade head` (or `pycaret-server migrate`) has been run.
 
-### Phase 9 — Backend API (`pycaret-server`) — 🟢 CORE COMPLETE (sessions 9-10)
+### Phase 9 — Backend API (`pycaret-server`) — ✅ COMPLETE (sessions 9-11)
 
 - [x] FastAPI app factory with CORS + lifespan (creates tables on first boot).
 - [x] Auth: bcrypt password hashing + JWT access-token + rotating refresh-token with session-row storage. `/api/v1/auth/{login,refresh,logout,me}`.
@@ -153,10 +153,10 @@ Full design in [`docs/revamp/PLATFORM_PLAN.md`](PLATFORM_PLAN.md).
 - [x] *(session 10)* `GET /api/v1/runs/{id}`, `GET /api/v1/experiments/{id}/runs`, `GET /api/v1/runs/{id}/events` (polling with `after_id` cursor), `POST /api/v1/runs/{id}/wait` (block).
 - [x] *(session 10)* `WebSocket /api/v1/runs/{id}/events/ws?token=…` — replays stored events on connect, then live-streams new events via the `EventBroker` (thread → asyncio bridge through `call_soon_threadsafe`), sends `run.closed` sentinel at terminal state.
 - [x] *(session 10)* **6 run-lifecycle tests** covering submit-validation, setup plan, create plan + artifact persistence, list, WebSocket replay, WebSocket auth reject. 20/20 server suite green in ~10 s.
-- [ ] `/api/v1/deployments/*` + in-house serving (`DeploymentRegistry`, catch-all `/predict` route) — session 11.
-- [ ] Data-source connectors (CSV upload, S3, Postgres) — session 11.
-- [ ] Alembic baseline migration replacing boot-time `create_all` — session 11.
-- [ ] Run cancellation (cooperative `threading.Event`) — session 11.
+- [x] *(session 11)* **Data-source connectors** — `POST /workspaces/{id}/data-sources/upload` (multipart CSV, 64 MB cap, SHA-256 + column sample), `POST /workspaces/{id}/data-sources` (register S3/Postgres config), full list/get/delete. Runs accept `data_source_id` + `target` override; the orchestrator resolves the CSV path at dispatch time.
+- [x] *(session 11)* **Deployments + in-house serving** — `POST /runs/{id}/promote` turns a Run's fitted pipeline into a workspace-scoped `pipelines` row, `POST /pipelines/{id}/deployments` registers a slug-addressable `Deployment`, `POST /deployments/{slug}/predict` dispatches through `DeploymentRegistry` (in-process LRU over cloudpickle, p50/p95 latency + inference counters, rolling 100-sample window).
+- [x] *(session 11)* **Run cancellation** — `POST /runs/{id}/cancel` signals the orchestrator's `threading.Event`; worker checks at every stage boundary and raises `_CancelledError` mapped to `Run.status = "cancelled"`.
+- [x] *(session 11)* **10 new integration tests** covering CSV upload + run-from-CSV, S3 connector registration, file cleanup on delete, cancel-queued, cancel-terminal (no-op), promote + serve end-to-end, promote-rejects-unfinished, pipeline-with-deployment-refusal, slug collision + format, alembic-fresh-db. **30/30 server suite green.**
 
 ### Phase 10 — Frontend (`pycaret-ui`) — 🔴 NOT STARTED
 

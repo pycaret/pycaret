@@ -1,6 +1,78 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 10*
+*Updated: 2026-04-24, end of session 11*
+
+## Session 11 — Phase 9 finish: data sources, deployments, cancel, alembic — ✅
+
+Closes Phase 9. The backend is now feature-complete for Part-2's API surface — a client can upload real data, train a model, promote it, deploy it behind a slug, and serve predictions through the same process — all under migration control.
+
+### What landed
+
+- **Data-source module** (`pycaret_server/api/data_sources.py`, ~220 LOC)
+  - `POST /api/v1/workspaces/{id}/data-sources/upload` — streaming multipart CSV with 64 MB cap, on-the-fly SHA-256, quick `pd.read_csv(nrows=5)` sample for column metadata, uploaded file stored under `${ARTIFACT_DIR}/data-sources/<uuid>.csv`.
+  - `POST /api/v1/workspaces/{id}/data-sources` — register S3 or Postgres connector config (no connectivity check yet).
+  - `GET /api/v1/workspaces/{id}/data-sources`, `GET /api/v1/data-sources/{id}`, `DELETE /api/v1/data-sources/{id}` (cleans the uploaded file).
+  - Run submit now accepts `data_source_id` + optional `target` override. The orchestrator resolves the CSV path at dispatch time; unsupported kinds reject early with 400.
+- **Serving module** (`pycaret_server/serving.py` + `api/deployments.py`, ~400 LOC combined)
+  - `DeploymentRegistry` — process-local LRU caching fitted pipelines keyed by slug, with rolling 100-sample latency window → p50/p95.
+  - `POST /api/v1/runs/{id}/promote` — promote a succeeded Run's `pipeline_pickle` artifact to a workspace-scoped `pipelines` row.
+  - Pipeline CRUD: `GET /workspaces/{id}/pipelines`, `GET/DELETE /pipelines/{id}` (409 if deployments still reference it).
+  - `POST /api/v1/pipelines/{id}/deployments` — create a `Deployment` with `endpoint_slug` (lowercased slug regex), `auth_mode` (workspace|api-key|public).
+  - `GET /api/v1/workspaces/{id}/deployments`, `GET/DELETE /api/v1/deployments/{id}`.
+  - **`POST /api/v1/deployments/{slug}/predict`** — slug → load → predict, updates inference_count + last_inference_at + p50/p95 on the row. Errors tick `error_count`.
+- **Run cancellation** (`pycaret_server/runs/orchestrator.py`, diff ~40 LOC)
+  - `RunOrchestrator.cancel(run_id)` sets a per-run `threading.Event`.
+  - Worker polls the event via `_checkpoint()` at every stage boundary (pre-load, post-load, post-fit, post-plan). Raises `_CancelledError` → `Run.status = "cancelled"`.
+  - `POST /api/v1/runs/{id}/cancel` returns the current row; terminal states are a no-op.
+- **Alembic baseline** (`pycaret-server/alembic.ini`, `pycaret_server/migrations/`)
+  - 1 revision (`9f9b7c770df0_baseline_schema`) capturing all 14 app tables + all indexes + all unique constraints.
+  - `pycaret_server/db/bootstrap.py::ensure_schema` replaces lifespan's `create_all`. Auto-migrates empty SQLite (dev); demands explicit migration on Postgres/MySQL (prod).
+  - **`pycaret-server migrate [--url ... --revision head]`** CLI subcommand for ops.
+  - A legacy `create_all`-seeded DB is detected (`users` table present, no `alembic_version`) and auto-stamped to baseline, so upgrading existing deployments is transparent.
+- **App factory** tears down the `DeploymentRegistry` alongside the `RunOrchestrator` on shutdown so reload mode doesn't carry stale pipelines across processes.
+
+### Headline metrics
+
+| | Session 10 end | Session 11 end |
+|---|---|---|
+| Total tests | 52 (32 engine + 20 server) | **62** (32 engine + 30 server) |
+| API routes (under /api/v1) | 26 + 1 WS | **39** + 1 WS |
+| pycaret-server LOC | ~2,400 | **~3,600** |
+| Alembic revisions | 0 | **1 (baseline)** |
+| Platform phases done | 🟢 9 core | ✅ **Phase 9 fully complete, Phase 8 fully complete** |
+
+### What works today — end-to-end demo flow
+
+```bash
+export TOKEN=...  # from /api/v1/auth/login
+# 1. upload a CSV
+curl -sX POST .../data-sources/upload \
+  -H "authorization: bearer $TOKEN" \
+  -F "name=iris.csv" -F "file=@iris.csv"
+# 2. submit a run from it
+curl -sX POST .../experiments/$EXP/runs \
+  -d '{"plan":"create","model_id":"lr","data_source_id":"'$DS'","target":"target"}'
+# 3. wait until done
+curl -sX POST .../runs/$RUN/wait?timeout_s=120
+# 4. promote the fitted pipeline
+curl -sX POST .../runs/$RUN/promote -d '{"name":"iris-v1"}'
+# 5. deploy it
+curl -sX POST .../pipelines/$PIPE/deployments -d '{"endpoint_slug":"iris-v1"}'
+# 6. SERVE predictions
+curl -sX POST .../deployments/iris-v1/predict \
+  -d '{"rows":[{"sepal length (cm)":5.1,"sepal width (cm)":3.5,...}]}'
+```
+
+### What's next (session 12)
+
+Two credible paths:
+
+- **Phase 10 start — Frontend (React UI).** 8 screens: setup / login / workspaces / project / experiment / run / admin-users / admin-workspace. Vite + React 18 + TanStack Query + Plotly.js. First session scaffolds the Vite app, typed API client from `/openapi.json`, auth + bootstrap + workspace screens; subsequent sessions do experiment / run / deploy.
+- **Phase 5 — God-class drain.** 10 verbs on `pycaret/core/experiment.py` still delegate to `self._legacy`. Migrate them onto `sklearn.pipeline.Pipeline` directly, in `save_model → predict_model → create_model → tune_model → ensemble_model → blend_models → stack_models → calibrate_model → compare_models → finalize_model` order. Each verb = ~1 session.
+
+Either route is independent; the frontend can consume the current API immediately.
+
+---
 
 ## Session 10 — Run execution + event stream (Phase 9 core complete) — ✅
 
