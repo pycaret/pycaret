@@ -1,6 +1,59 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 26*
+*Updated: 2026-04-24, end of session 27*
+
+## Session 27 — God-class drain: ensemble / blend / stack / calibrate / finalize — ✅
+
+**The supervised drain is COMPLETE.** All 13 OOP verbs (4 persistence + 9 model) on classification + regression now run without ever calling `self._legacy.<verb>`. The remaining 5 verbs landed in one batch this session — each is a thin sklearn-meta-estimator wrapper that reuses the already-drained `create_model` to assemble Pipelines + run CV.
+
+### What landed
+
+- **`packages/engine/pycaret/core/supervised.py`** — drained the final 5 supervised verbs:
+  - **`ensemble_model`** — `method="Bagging"` → `BaggingClassifier`/`BaggingRegressor`. `method="Boosting"` → `AdaBoostClassifier`/`AdaBoostRegressor`. Returns a Pipeline named `Bagging[<base_id>]` or `AdaBoost[<base_id>]`.
+  - **`blend_models`** — wraps `VotingClassifier` / `VotingRegressor`. Classification `method="auto"` picks `"soft"` when every base model has `predict_proba`, else `"hard"`. Each base estimator is added with a unique name (`{model_id}_{i}`) so sklearn's named-step constraint holds even if the same model is included twice.
+  - **`stack_models`** — wraps `StackingClassifier` / `StackingRegressor`. Default meta-learner: `LogisticRegression(max_iter=1000)` for classification, `LinearRegression()` for regression. `meta_model=` overrides. Returns a Pipeline named `Stacking[<meta_id>]`.
+  - **`calibrate_model`** — wraps `CalibratedClassifierCV` (classification only — raises `ValueError` for regression). `method` is `"sigmoid"` (Platt) or `"isotonic"`.
+  - **`finalize_model`** — re-fits on `X_transformed` + `y_transformed` (the FULL dataset, train + holdout combined). Returns a fresh fitted Pipeline; the input is left untouched.
+- **Two new helpers**: `_unwrap_estimator(obj)` returns `(bare_model, model_id)` from a Pipeline / registry-ID / bare estimator (single source of truth for unwrapping). `_wrap_in_pipeline(model, name)` is the canonical Pipeline-assembly helper used by `finalize_model` (and conceptually mirrored inside `create_model`).
+- **`packages/engine/tests/test_session27_combine.py`** — 13 tests, ~30s total. One drain-lock per verb (poison `self._legacy.<verb>` + assert native success), happy-path classification + regression where applicable, edge cases (`calibrate_model` rejects regression). All 13 verbs predict-chain back through `predict_model` cleanly.
+
+### Headline metrics
+
+| | Session 26 end | Session 27 end |
+|---|---|---|
+| Supervised OOP verbs still on `self._legacy` | 1 | **0** ✅ |
+| Engine tests (fast + slow) | 80 | **93** (+13) |
+| **Combined tests** | **226** | **239** |
+| `pycaret/internal/pycaret_experiment/` deletable for supervised | no | **yes** (pending TS / clustering / anomaly drain) |
+
+### Drain progress: ALL 13 supervised verbs done
+
+```
+[✓] save_model          (session 22)
+[✓] load_model          (session 22)
+[✓] save_experiment     (session 22)
+[✓] load_experiment     (session 22)
+[✓] predict_model       (session 23)
+[✓] create_model        (session 24)
+[✓] tune_model          (session 25)
+[✓] compare_models      (session 26)
+[✓] ensemble_model      (session 27)  ← THIS BATCH
+[✓] blend_models        (session 27)  ← THIS BATCH
+[✓] stack_models        (session 27)  ← THIS BATCH
+[✓] calibrate_model     (session 27)  ← THIS BATCH
+[✓] finalize_model      (session 27)  ← THIS BATCH
+```
+
+### What's next
+
+The supervised pipeline is fully native. The remaining work to ship `4.0.0` non-alpha:
+
+1. **Drain unsupervised + time-series verbs** (`create_model` / `predict_model` / `assign_model` for clustering & anomaly; the time-series `Experiment` subclass). Smaller scope — clustering/anomaly already use sklearn-native flows; mostly removing the `_legacy` wrappers.
+2. **Strip the transitional bare-estimator branch in `predict_model`** — now that `create_model` returns a real Pipeline, the bare-estimator path can be deleted for supervised tasks (kept only for clustering/anomaly until those drain).
+3. **Delete `pycaret/internal/pycaret_experiment/`** entirely once nothing reads from it. The model + metric registries (`pycaret.containers.*`) need a small refactor to read from `Experiment` directly instead of from the legacy object.
+4. **Cut `4.0.0` to PyPI** — non-alpha release.
+
+---
 
 ## Session 26 — God-class drain: `compare_models` (supervised) — ✅
 

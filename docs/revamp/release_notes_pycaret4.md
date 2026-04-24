@@ -115,6 +115,63 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 27 — 2026-04-24 — God-class drain: ensemble / blend / stack / calibrate / finalize
+
+**The supervised drain is complete.** All 13 OOP verbs on classification + regression now run without `self._legacy`. This session lands the final 5 in one batch — each is a thin sklearn-meta-estimator wrapper that reuses the already-drained `create_model`.
+
+## CHANGED — engine
+
+- `CHANGED, BREAKING` — **`SupervisedExperiment.ensemble_model`** (supervised path). No longer delegates to `self._legacy.ensemble_model`. `method="Bagging"` → `BaggingClassifier`/`BaggingRegressor`. `method="Boosting"` → `AdaBoostClassifier`/`AdaBoostRegressor`. Returns a Pipeline whose last step is named `Bagging[<base_id>]` or `AdaBoost[<base_id>]`. Signature trimmed to `(estimator, *, method="Bagging", n_estimators=10, fold, round, fit_kwargs, verbose)` — dropped legacy `choose_better`, `optimize`, `experiment_custom_tags`, `groups`, `return_train_score`.
+- `CHANGED, BREAKING` — **`SupervisedExperiment.blend_models`** (supervised path). Wraps `VotingClassifier` / `VotingRegressor`. Classification `method="auto"` (default) picks `"soft"` when every base model has `predict_proba`, else `"hard"`. Each base is added under a unique name (`{model_id}_{i}`). Signature: `(estimators, *, method="auto", weights=None, fold, round, fit_kwargs, verbose)`.
+- `CHANGED, BREAKING` — **`SupervisedExperiment.stack_models`** (supervised path). Wraps `StackingClassifier` / `StackingRegressor`. Default meta-learner: `LogisticRegression(max_iter=1000)` for classification, `LinearRegression()` for regression — overridable via `meta_model=`. CV is `fold or self._legacy.fold_generator`. Signature: `(estimators, *, meta_model=None, fold, round, fit_kwargs, verbose)`.
+- `CHANGED, BREAKING` — **`SupervisedExperiment.calibrate_model`** (supervised path). Wraps `CalibratedClassifierCV`. Classification only — raises `ValueError` for regression (calibration is undefined for continuous targets). Signature: `(estimator, *, method="sigmoid", cv=None, fold, round, fit_kwargs, verbose)`.
+- `CHANGED, BREAKING` — **`SupervisedExperiment.finalize_model`** (supervised path). Re-fits the bare estimator on `X_transformed` + `y_transformed` (the FULL dataset, train + holdout combined) and returns a fresh fitted Pipeline. Input pipeline is untouched. Signature: `(estimator)` — dropped `model_only`, `groups`, `experiment_custom_tags`.
+
+## ADDED — internal helpers
+
+- `ADDED` — **`SupervisedExperiment._unwrap_estimator(obj)`** — single source of truth for converting any of {Pipeline, registry ID string, bare estimator} into `(bare_model, model_id)`. Used by all 5 new verb implementations + reusable for future drain work on unsupervised verbs.
+- `ADDED` — **`SupervisedExperiment._wrap_in_pipeline(model, name)`** — the canonical Pipeline-assembly helper. `deepcopy(self.preprocess_pipeline) + [(name, model)]`. Used by `finalize_model` directly; the same construction is inlined in `create_model` for historical reasons (could be DRY-ed up in a follow-up).
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session27_combine.py`** — 13 tests:
+  - `test_ensemble_model_bagging` / `..._boosting` — wrapper produces the right sklearn meta + named pipeline step. End-to-end `predict` chain.
+  - `test_ensemble_model_does_not_call_legacy_ensemble_model` — drain-lock.
+  - `test_blend_models_voting_classifier_soft` — `voting=="soft"` auto-detected when all bases have `predict_proba`.
+  - `test_blend_models_regressor` — uses `VotingRegressor`.
+  - `test_blend_models_does_not_call_legacy_blend_models` — drain-lock.
+  - `test_stack_models_classifier_with_default_meta` — default meta is `LogisticRegression`; result is a `StackingClassifier`.
+  - `test_stack_models_does_not_call_legacy_stack_models` — drain-lock.
+  - `test_calibrate_model_classification` — `CalibratedClassifierCV` with sigmoid.
+  - `test_calibrate_model_rejects_regression` — `ValueError` when called on a regression experiment.
+  - `test_finalize_model_refits_on_full_data` — predict on the (now-training-included) holdout still returns valid predictions.
+  - `test_finalize_model_does_not_call_legacy_finalize_model` — drain-lock.
+  - `test_combine_verbs_require_fit` — all 5 raise `NotFittedError` on unfit experiments.
+
+## INTERNAL
+
+- `INTERNAL` — **Why batch 5 verbs in one session.** ensemble / blend / stack / calibrate / finalize are all variations on "wrap a model in a sklearn meta-estimator + train as if it were a regular model". They share `_unwrap_estimator` + reuse `create_model` for CV. Each individual drain is ~30-50 LoC; batching them together makes the diff coherent and the test file unified.
+- `INTERNAL` — **Renaming the final pipeline step.** Each of the 5 new verbs reuses `create_model` to do the actual training. `create_model` names the last step with the bare estimator's class name (e.g. `BaggingClassifier`); we then mutate `pipeline.steps[-1] = (descriptive_name, fitted_estimator)` to give it a more readable name (`Bagging[lr]`, `Voting`, `Stacking[LogisticRegression]`, `Calibrated[lr]`). This keeps the user-facing pipeline repr informative without complicating `create_model`'s contract.
+- `INTERNAL` — **`finalize_model` reads `X_transformed` not `X_train_transformed`.** The legacy splits the full dataset into train + holdout; CV runs on train only. `finalize_model`'s contract is "include the holdout now too" → `self._legacy.X_transformed` is the union. The pipeline returned by finalize doesn't have a holdout — predictions on the holdout are now in-sample. Caller's responsibility to track which model is finalized vs not (the `FinalizeResult` dataclass exists precisely so the type system makes that visible).
+- `INTERNAL` — **`calibrate_model` regression rejection.** `CalibratedClassifierCV` doesn't have a regression analogue. Sigmoid / isotonic calibration are about mapping scores to probabilities; regression has no analogous concept. Raising up-front rather than letting sklearn's "no `decision_function`" error surface 30s into a CV gives the caller a clear error. (3.x's `calibrate_model` similarly didn't support regression but failed implicitly.)
+- `INTERNAL` — **Drain progress.** With session 27, all 13 OOP verbs on supervised tasks (4 persistence + 9 modeling) are native. Remaining drain work for `4.0.0`:
+  1. Unsupervised verbs (`create_model` / `predict_model` / `assign_model` for clustering + anomaly).
+  2. Time-series `Experiment` subclass.
+  3. Strip transitional branches: the bare-estimator path in supervised `predict_model` is dead now (kept only for clustering/anomaly).
+  4. Refactor model + metric registries to take an `Experiment` (not `_legacy`).
+  5. Delete `pycaret/internal/pycaret_experiment/`.
+  6. Ship `4.0.0` non-alpha to PyPI.
+
+## Session 27 delta summary
+
+| Metric | Session 26 end | Session 27 end |
+|---|---:|---:|
+| Supervised OOP verbs still on `self._legacy` | 1 | **0** ✅ |
+| Engine tests (fast + slow) | 80 | **93** |
+| **Combined tests** | **226** | **239** |
+
+---
+
 # Session 26 — 2026-04-24 — God-class drain: `compare_models` (supervised)
 
 Baseline: session 25 drained `tune_model`. Session 26 drains the heart of the AutoML loop — `compare_models` — by reusing the already-drained `create_model` in a per-model loop.
