@@ -4,6 +4,40 @@ ADR-style. Newest at top. Each entry: **date | decision | alternatives considere
 
 ---
 
+## 2026-04-24 (session 13 · restructure decision 4) · Product name is "PyCaret"; UI brand is "PyCaret Control Plane"
+
+- **Decision:** The product — library + platform together — is branded **PyCaret**. The web UI's top-level title and marketing surface is **PyCaret Control Plane** (to communicate "this is not just the library, it's the managed platform"). Package names on registries stay simple: `pycaret` on PyPI (engine), `pycaret-server` on PyPI (backend), `@pycaret/ui` on npm (web app). OpenAPI `info.title` = "PyCaret Control Plane" so `/docs` looks like the right product.
+- **Alternatives:** Rename the product entirely (`pycaret-platform`, `pycaret-cp`, etc.) — rejected, bad for brand continuity; silo the platform as a sub-brand — rejected, fragments community attention.
+- **Why:** Keeps 10 years of PyCaret brand equity while distinguishing the new platform story. Package-name stability matters for PyPI import paths that are scattered across a decade of notebooks; product-name polish matters for the "open-source Databricks/DataRobot" positioning. Owner answer: "PyCaret Control Plane is fine for UI. The name itself is PyCaret only."
+
+## 2026-04-24 (session 13 · restructure decision 3) · LLM router, not a single provider
+
+- **Decision:** Build an `LLMRouter` abstraction in `services/api/pycaret_server/llm/` from day one. Implement **Anthropic (Claude)** and **OpenAI** as the two first-class backends. Every LLM consultation call flows through the router: provider selection driven by `LLMProviderSetting` rows; request shape normalised to chat-completion + tool-use; responses coerced into the `LLMConsultation` schema. Additional providers (Google / Azure / Ollama / custom OpenAI-compatible) are added by implementing one `LLMProvider` subclass.
+- **Alternatives:** Ship Claude-only first and "add OpenAI in session 14" (rejected — architectural entrenchment tends to stick; cheaper to do the abstraction up front); pass a raw OpenAI client through (rejected — leaks the provider's quirks into every call site).
+- **Why:** The platform is meant to be the open-source choice in an agentic-ML world; not supporting the two dominant LLM providers out of the box is a credibility problem. The abstraction cost is small (one dispatcher class, one `LLMProvider` Protocol, two implementations) and it keeps the LLM layer swappable as provider APIs evolve. Owner answer: "we should have a router that works with claude as well as openai api."
+
+## 2026-04-24 (session 13 · restructure decision 2) · Electron desktop app is V2, not MVP
+
+- **Decision:** Ship the desktop distribution in V2, after: (a) `services/api` is stable, (b) `apps/web` covers all 8 screens, (c) the engine has 4.0.0 on PyPI (not an alpha). The `apps/desktop/` directory is scaffolded now with a README stub explaining the scope, so the structure is locked in but no code is written yet.
+- **Alternatives:** Ship Electron in the MVP (rejected — adds signed-installer tooling, per-OS CI, bundled-Python packaging, auto-update infra, all before the core web flow is polished); skip Electron entirely (rejected — a desktop installer is the cleanest "try it in 5 minutes" onboarding for analysts without Docker).
+- **Why:** Local dev already works via `uv run pycaret-server serve` + `npm run dev`. Electron is a polish item, not a gating one; doing it in V2 lets the core product stabilise before we spend a session per OS on installers. Owner answer: "Lets roadmap Electron and we will do once our backend, frontend everything is stable, pycaret engine is mature and 4.0 released on pip."
+
+## 2026-04-24 (session 13 · restructure decision 1) · Monorepo restructure — apps / services / packages / infra
+
+- **Decision:** Adopt the canonical monorepo layout from `CONTROL_PLANE_SPEC.md § 19`:
+  ```
+  apps/            web, desktop (stub)
+  services/        api, worker (stub), deployment-runtime (stub)
+  packages/        engine, sdk-python (stub), shared-schemas (stub)
+  infra/           docker, helm (stub), terraform/{aws,gcp,azure} (stubs)
+  docs/            unchanged
+  ```
+  Concretely: `pycaret/` → `packages/engine/pycaret/`, `pycaret-server/` → `services/api/`, `pycaret-ui/` → `apps/web/`, `docker/` → `infra/docker/`. Root `pyproject.toml` becomes a pure workspace manifest (no package metadata); engine pyproject moves alongside the engine source at `packages/engine/pyproject.toml`.
+- **Alternatives:** Keep flat (`pycaret-server`, `pycaret-ui` at root) and add missing pieces as top-level dirs as they arrive (rejected — drifts progressively from spec, every new piece forces a rename discussion); delay restructure until V2 (rejected — restructuring later = more churn, every session adds call sites to update).
+- **Why:** "Wash away all the old sins" — the flat layout was an incremental artefact; the canonical structure is what the spec describes and what operators expect when they clone the repo. Python package names are unchanged (`import pycaret` / `import pycaret_server` still work exactly the same), so users + PyPI are unaffected. Notebook users are unaffected. Only the source-tree paths change, and that pain is paid once now instead of distributed across every future session. Owner answer: "Restructure now. … setup a solid foundation for structure now and wash away all the old sins."
+
+---
+
 ## 2026-04-23 (session 6 · platform-plan decision 6) · Metrics storage = summary AND per-fold (both, comprehensive)
 
 - **Decision:** Every Run stores two metric representations: (a) `runs.metrics_summary` — leaderboard-shape aggregates (one row per model, `mean_*` / `std_*` columns), (b) `fold_metrics` — per-fold × per-model × per-metric rows (`roughly n_models × n_folds × n_metrics` per Run).

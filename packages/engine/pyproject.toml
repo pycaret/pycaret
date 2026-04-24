@@ -1,0 +1,164 @@
+[project]
+name = "pycaret"
+version = "4.0.0a1"
+description = "PyCaret 4.0 — the modern, minimalistic ML control pane on top of scikit-learn."
+readme = "README.md"
+keywords = [
+  "automl",
+  "machine-learning",
+  "scikit-learn",
+  "classification",
+  "regression",
+  "clustering",
+  "anomaly-detection",
+  "time-series",
+  "llm-agents",
+]
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "PyCaret developers" }]
+maintainers = [{ name = "Moez Ali", email = "moez.ali@queensu.ca" }]
+requires-python = ">=3.11"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX",
+  "Operating System :: Unix",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development",
+  "Typing :: Typed",
+]
+
+# Core runtime dependencies. Keep this list MINIMAL.
+#
+# Rule: only the packages we cannot function without. Everything model-family
+# specific (xgboost / catboost / lightgbm / optuna / shap / …) is a soft dep,
+# either installed separately by the user or behind a named extra.
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "scipy>=1.11",
+  "scikit-learn>=1.7",  # no upper cap — we align with sklearn, not against it
+  "joblib>=1.4",
+  "plotly>=5.22",
+  "tqdm>=4.66",
+  "requests>=2.32",     # pycaret.datasets dataset loaders
+  "jinja2>=3.1",        # pandas.io.formats.style.Styler (notebook display)
+  "ipython>=8.18",      # display detection + rich repr; 4 call sites
+  # ↓ transitional — removed when Phase 4 rewrites preprocessor on native sklearn.
+  "imbalanced-learn>=0.13",  # internal Pipeline inherits imblearn.pipeline.Pipeline
+  "category-encoders>=2.6",  # legacy preprocessor: BaseN/OneHot/Ordinal/Target encoders
+]
+
+[project.optional-dependencies]
+
+# Progress-bar widget + notebook-artifact generation (run.ipynb rendering).
+# ipython itself is in core; these are the extras only notebook users need.
+notebook = [
+  "ipywidgets>=8.1",
+  "nbformat>=5.10",
+]
+
+# Static image export for Plotly figures (png / svg / pdf rendering without a
+# browser). Needed when the platform layer persists plot previews; not needed
+# for interactive Jupyter use.
+export = [
+  "kaleido>=0.2",
+]
+
+# Anomaly-detection task dependencies (pyod registry backs AnomalyExperiment).
+anomaly = [
+  "pyod>=2.0",
+  "numba>=0.60",
+]
+
+# Time-series forecasting task dependencies. Heavy (sktime chain) so kept
+# isolated from the default install.
+timeseries = [
+  "statsmodels>=0.14",
+  "sktime>=0.36",
+  "pmdarima>=2.0.4",
+]
+
+# Everything a notebook / power user wants in one line.
+full = [
+  "pycaret[notebook,export,anomaly,timeseries]",
+]
+
+# Developer tooling.
+dev = [
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "pre-commit>=3.8",
+]
+
+# CI test dependencies.
+test = [
+  "pytest>=8.3",
+  "pytest-xdist>=3.6",
+  "pytest-cov>=5.0",
+  "nbval>=0.11",
+]
+
+[project.urls]
+Homepage = "https://pycaret.org/"
+Repository = "https://github.com/pycaret/pycaret"
+Documentation = "https://pycaret.gitbook.io/"
+Issues = "https://github.com/pycaret/pycaret/issues"
+Changelog = "https://github.com/pycaret/pycaret/blob/v4/CHANGELOG.md"
+"Release notes (engineering)" = "https://github.com/pycaret/pycaret/blob/v4/docs/revamp/release_notes_pycaret4.md"
+"4.0 status" = "https://github.com/pycaret/pycaret/blob/v4/docs/revamp/STATUS.md"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Package source sits alongside this pyproject (packages/engine/pycaret/).
+packages = ["pycaret"]
+exclude = [
+  "**/__pycache__",
+  "**/.pytest_cache",
+  "**/*.pyc",
+  "**/*.pyo",
+  "**/*.pyd",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/pycaret",
+  "/README.md",
+  "/pyproject.toml",
+]
+exclude = [
+  "**/__pycache__",
+  "**/.pytest_cache",
+  "**/*.pyc",
+  "**/*.pyo",
+  "**/*.pyd",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+markers = [
+  "plotting: tests that render plots",
+  "slow: tests that take > 5s",
+]
+filterwarnings = [
+  "ignore::DeprecationWarning:sktime",
+  "ignore::FutureWarning:sktime",
+]
+
+[dependency-groups]
+dev = ["pycaret[dev,test]"]

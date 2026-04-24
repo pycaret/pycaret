@@ -22,6 +22,12 @@ members = [
     "pycaret-server",
 ]
 
+[manifest.dependency-groups]
+dev = [
+    { name = "pycaret", extras = ["dev", "test"], editable = "packages/engine" },
+    { name = "pycaret-server", extras = ["dev", "test"], editable = "services/api" },
+]
+
 [[package]]
 name = "alembic"
 version = "1.18.4"
@@ -2474,7 +2480,7 @@ wheels = [
 [[package]]
 name = "pycaret"
 version = "4.0.0a1"
-source = { editable = "." }
+source = { editable = "packages/engine" }
 dependencies = [
     { name = "category-encoders" },
     { name = "imbalanced-learn" },
@@ -2553,7 +2559,7 @@ requires-dist = [
     { name = "plotly", specifier = ">=5.22" },
     { name = "pmdarima", marker = "extra == 'timeseries'", specifier = ">=2.0.4" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.8" },
-    { name = "pycaret", extras = ["notebook", "export", "anomaly", "timeseries"], marker = "extra == 'full'", editable = "." },
+    { name = "pycaret", extras = ["notebook", "export", "anomaly", "timeseries"], marker = "extra == 'full'", editable = "packages/engine" },
     { name = "pyod", marker = "extra == 'anomaly'", specifier = ">=2.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=5.0" },
@@ -2569,12 +2575,12 @@ requires-dist = [
 provides-extras = ["notebook", "export", "anomaly", "timeseries", "full", "dev", "test"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pycaret", extras = ["dev", "test"], editable = "." }]
+dev = [{ name = "pycaret", extras = ["dev", "test"], editable = "packages/engine" }]
 
 [[package]]
 name = "pycaret-server"
 version = "0.1.0a0"
-source = { editable = "pycaret-server" }
+source = { editable = "services/api" }
 dependencies = [
     { name = "alembic" },
     { name = "bcrypt" },
@@ -2635,7 +2641,7 @@ requires-dist = [
     { name = "nbconvert", marker = "extra == 'notebook'", specifier = ">=7.16" },
     { name = "nbformat", marker = "extra == 'notebook'", specifier = ">=5.10" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.2" },
-    { name = "pycaret", editable = "." },
+    { name = "pycaret", editable = "packages/engine" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.9" },
     { name = "pydantic-settings", specifier = ">=2.6" },
     { name = "pyjwt", specifier = ">=2.9" },
@@ -2653,7 +2659,7 @@ requires-dist = [
 provides-extras = ["postgres", "mysql", "s3", "notebook", "dev", "test"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pycaret-server", extras = ["dev", "test"], editable = "pycaret-server" }]
+dev = [{ name = "pycaret-server", extras = ["dev", "test"], editable = "services/api" }]
 
 [[package]]
 name = "pycparser"

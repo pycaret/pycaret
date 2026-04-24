@@ -251,8 +251,6 @@ def test_legacy_import_paths_re_export_new_classes():
 
 
 def test_all_task_subclasses_are_sklearn_compatible():
-    from sklearn.base import clone
-
     from pycaret.tasks import (
         AnomalyExperiment,
         ClassificationExperiment,
@@ -260,6 +258,7 @@ def test_all_task_subclasses_are_sklearn_compatible():
         RegressionExperiment,
         TimeSeriesExperiment,
     )
+    from sklearn.base import clone
 
     for Cls, init_kwargs in [
         (ClassificationExperiment, dict(target="y", session_id=1)),
@@ -276,9 +275,8 @@ def test_all_task_subclasses_are_sklearn_compatible():
 
 
 def test_top_level_save_load_model_roundtrip(tmp_path):
-    from sklearn.linear_model import LogisticRegression
-
     from pycaret import load_model, save_model
+    from sklearn.linear_model import LogisticRegression
 
     model = LogisticRegression()
     path = tmp_path / "model"

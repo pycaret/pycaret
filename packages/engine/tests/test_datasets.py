@@ -1,6 +1,5 @@
 import pandas as pd
 import pytest
-
 from pycaret.datasets import get_data
 
 

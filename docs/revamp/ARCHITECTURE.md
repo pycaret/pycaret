@@ -1,265 +1,354 @@
-# PyCaret 4.0 — Engine Architecture
+# PyCaret — System Architecture
 
-*Authored: 2026-04-22 (session 2) · Part of the PyCaret 4.0 revamp.*
+*Last revised: session 13 (2026-04-24). Covers the full Control Plane (engine + backend + UI + infra). For the engine-internal architecture (class hierarchy, event system, legacy god-class drain plan) see [`ARCHITECTURE_ENGINE.md`](ARCHITECTURE_ENGINE.md).*
 
-## Why this exists
+---
 
-PyCaret 1.x was a 100% functional API, designed at a workshop pace. PyCaret 3.0 bolted an OOP layer on top without removing the functional plumbing. The result (in 3.4.0) is:
+## 1. Monorepo layout
 
-- `internal/pycaret_experiment/supervised_experiment.py` — **5,855 LOC god-class**.
-- `internal/pycaret_experiment/tabular_experiment.py` — 2,894 LOC.
-- `classification/functional.py` — 3,323 LOC mostly re-declared signatures.
-- `classification/oop.py` — 3,446 LOC mostly re-declared signatures.
-- Module-level global `_current_experiment` mutated by `setup()`.
-- Nested `InternalPipeline` subclass that is *almost* a `sklearn.pipeline.Pipeline`.
-- Mixed responsibilities: data loading, preprocessing, model training, metric calculation, plotting, logging, and serialization all collapsed into two base classes.
-
-The user correctly called this "a college project." The 4.0 revamp replaces it with a **proper sklearn-composable engine** designed to power:
-
-1. The legacy notebook golden path (`setup → compare_models → ...`) **unchanged at the call site**.
-2. A forthcoming React UI that talks to the engine in-process.
-3. LLM agents that introspect the engine and drive it programmatically.
-
-## Core design principles
-
-### 1. The engine is a `BaseEstimator`.
-
-`Experiment` is a proper sklearn-compatible object — it implements `get_params`, `set_params`, `__sklearn_tags__`, `__sklearn_is_fitted__`. This is not cosmetic; it means:
-
-- An `Experiment` can be pickled cleanly.
-- An `Experiment` can be nested inside sklearn's `Pipeline` / `GridSearchCV` when that makes sense.
-- Anyone who knows sklearn *already knows* 80% of the pycaret API.
-- `clone(exp)` works; immutable config is preserved, fitted state is dropped.
-
-### 2. `fit()` is the setup. `setup()` is a functional alias.
-
-```python
-# OOP (the real API):
-exp = ClassificationExperiment(target="Purchase", session_id=42)
-exp.fit(data)                 # runs preprocessing, splits, caches
-best = exp.compare_models()   # returns a sklearn Pipeline
-
-# Functional (thin adapter, unchanged notebook UX):
-from pycaret.classification import setup, compare_models
-exp = setup(data, target="Purchase", session_id=42)
-best = compare_models()
-```
-
-The functional API uses a `contextvars.ContextVar` holding the current experiment. Thread-safe, async-safe, explicit — not a module-level global.
-
-### 3. Every method returns a typed dataclass.
-
-No more `pycaret.pull()` as the canonical way to get metrics. Each operation returns a dataclass like `CompareResult(models: list[Pipeline], leaderboard: DataFrame, best: Pipeline, events: list[Event])`. The DataFrame is still there for notebook users — it's a property. Agents and the UI consume the structured fields.
-
-### 4. Build on `sklearn.pipeline.Pipeline`, don't replace it.
-
-`create_model` returns a `sklearn.pipeline.Pipeline` with the preprocessor + fitted estimator. `tune_model`, `ensemble_model`, `calibrate_model` all return the same shape. `predict_model(pipeline, X)` is `pipeline.predict(X)` plus output formatting. No custom pipeline class.
-
-### 5. Preprocessing is a `ColumnTransformer` + `Pipeline`, not a bespoke graph.
-
-`PreprocessorBuilder` composes sklearn's own transformers (imputers, encoders, scalers, feature selectors). The custom pycaret pieces (iterative imputer adaptations, rare-category encoder) are single-purpose transformers that follow the sklearn protocol, not god-class methods.
-
-### 6. Tuning uses canonical sklearn searches + optuna, nothing custom.
-
-`GridSearchCV`, `RandomizedSearchCV`, `HalvingGridSearchCV`, `HalvingRandomSearchCV`, `optuna.integration.OptunaSearchCV`. The `Tuner` abstraction picks one and drives it. No reimplementation of CV loops.
-
-### 7. Logging is an event stream, not a tracker adapter.
-
-`pycaret.logging` emits structured `Event` dataclasses (`ExperimentStarted`, `PreprocessorFitted`, `ModelCompared`, `ModelTuned`, …) through a `BaseLogger` interface. The default logger is in-memory + file; the React UI will consume the same stream over websocket. mlflow/comet/wandb are not mentioned anywhere in the core.
-
-### 8. No prints. No interactive input. No hidden state.
-
-Every long-running operation emits events that a UI renders as progress. The engine never writes to stdout directly.
-
-## New package layout
+One git repo, uv workspace + npm workspace, four top-level homes:
 
 ```
-pycaret/
-├── __init__.py                  # version, public re-exports
-├── core/                        # NEW — engine primitives
-│   ├── __init__.py
-│   ├── experiment.py            # Experiment (BaseEstimator subclass)
-│   ├── results.py               # CompareResult, CreateResult, TuneResult, PredictResult, etc.
-│   ├── tasks.py                 # TaskType enum
-│   ├── state.py                 # ContextVar for current-experiment (functional API)
-│   └── errors.py                # PyCaretError hierarchy
-├── api/                         # NEW — introspection surface for UI + agents
-│   ├── __init__.py
-│   ├── cards.py                 # ModelCard, MetricCard, ParameterCard
-│   ├── schemas.py               # SetupParamSchema (drives React dynamic forms)
-│   └── describe.py              # list_models(task), describe_model(id), ...
-├── logging/                     # NEW — event-stream logger
-│   ├── __init__.py
-│   ├── base.py                  # BaseLogger (no-op)
-│   ├── events.py                # Event dataclasses
-│   └── memory.py                # In-memory + file-backed logger, UI-ready
-├── tasks/                       # NEW — task-specific Experiment subclasses
-│   ├── __init__.py
-│   ├── classification.py        # ClassificationExperiment
-│   ├── regression.py            # (future session)
-│   ├── clustering.py            # (future session)
-│   ├── anomaly.py               # (future session)
-│   └── time_series.py           # (future session)
-├── classification/              # PRESERVED — thin adapter over tasks.classification
-│   ├── __init__.py
-│   ├── functional.py            # setup(), compare_models(), ... delegate to ContextVar
-│   └── oop.py                   # re-exports ClassificationExperiment
-├── regression/                  # same pattern (session 3+)
-├── clustering/
-├── anomaly/
-├── time_series/
-├── internal/                    # LEGACY — kept until operations are migrated
-│   ├── pycaret_experiment/      # god-class, delegated-to during transition
-│   ├── preprocess/
-│   └── ...
-├── containers/                  # LEGACY — model/metric registries, migrating to pycaret/models + pycaret/metrics
-├── datasets.py
-└── utils/
+pycaret/                              repo root
+├── pyproject.toml                    workspace manifest only (no package)
+├── uv.lock                           Python lockfile
+├── README.md  AGENTS.md  CONTRIBUTING.md
+│
+├── packages/                         SHIPPABLE LIBRARIES (pip / npm install)
+│   ├── engine/                       → published as `pycaret` on PyPI
+│   │   ├── pyproject.toml            hatchling; 4.0.0a1
+│   │   ├── pycaret/                  the importable package
+│   │   └── tests/                    32 engine tests
+│   ├── sdk-python/                   (V2) python client → `pycaret-client` on PyPI
+│   └── shared-schemas/               (V2) JSON schemas shared between Python + TS
+│
+├── services/                         LONG-RUNNING DEPLOYABLES
+│   ├── api/                          FastAPI backend → `pycaret-server` on PyPI
+│   │   ├── pyproject.toml
+│   │   ├── pycaret_server/           importable package
+│   │   ├── alembic.ini + migrations/
+│   │   └── tests/                    30 server tests
+│   ├── worker/                       (V2) background job runner
+│   └── deployment-runtime/           (V2) standalone inference server
+│
+├── apps/                             USER-FACING APPLICATIONS
+│   ├── web/                          React SPA → `@pycaret/ui` (internal package)
+│   │   ├── package.json
+│   │   ├── src/                      6 vitest tests
+│   │   └── dist/                     (built)
+│   └── desktop/                      (V2) Electron wrapper
+│
+├── infra/                            DEPLOYMENT & OPS
+│   ├── docker/                       Dockerfile.api, Dockerfile.ui, compose
+│   ├── helm/                         (V2) Kubernetes chart
+│   └── terraform/                    (V2) AWS / GCP / Azure modules
+│
+├── docs/
+│   └── revamp/                       VISION, SPEC, ROADMAP, STATUS, DECISIONS
+│
+└── .github/workflows/                CI: lint, pytest matrix, UI pipeline
 ```
 
-**The key insight for this multi-session migration:** `pycaret.tasks.ClassificationExperiment` wraps an instance of the legacy `pycaret.internal.pycaret_experiment.supervised_experiment._SupervisedExperiment` during the transition. Each verb (`compare_models`, `tune_model`, ...) starts as a thin delegation (`return self._legacy.compare_models(...)`) and is progressively rewritten in-place. The public API never breaks; the god-class is drained one method at a time.
+Three rules:
 
-## Interface contracts
+1. **`packages/` publishes, `services/` runs, `apps/` is UI, `infra/` is ops.** Every directory at the root has exactly one reason to exist.
+2. **Python package names are independent of source-tree paths.** `pip install pycaret` and `import pycaret` continue to work exactly as they did before the restructure; only the source location changed. Same for `pycaret-server`.
+3. **No cross-contamination.** `packages/engine` has zero knowledge of `services/api`. `services/api` imports `pycaret` as a normal dependency. `apps/web` talks only to `services/api` over HTTP + WebSocket.
 
-### `Experiment(BaseEstimator)`
+---
 
-```python
-class Experiment(BaseEstimator):
-    # Configuration — all `__init__` parameters are stored verbatim.
-    # No preprocessing, no data loading, no side effects during construction.
-    def __init__(self, *, task, target=None, session_id=42, fold=10, ...): ...
+## 2. Service topology
 
-    # Sklearn-canonical fit — runs setup, splits, preprocessing.
-    def fit(self, X, y=None) -> "Experiment": ...
-
-    # Returns raw transformed data — useful for introspection and UIs.
-    def transform(self, X) -> pd.DataFrame: ...
-
-    # Operations — each returns a typed result dataclass.
-    def compare_models(self, **kwargs) -> CompareResult: ...
-    def create_model(self, model_id, **kwargs) -> CreateResult: ...
-    def tune_model(self, pipeline, **kwargs) -> TuneResult: ...
-    def ensemble_model(self, pipeline, **kwargs) -> EnsembleResult: ...
-    def blend_models(self, pipelines, **kwargs) -> BlendResult: ...
-    def stack_models(self, pipelines, **kwargs) -> StackResult: ...
-    def calibrate_model(self, pipeline, **kwargs) -> CalibrateResult: ...
-    def finalize_model(self, pipeline) -> Pipeline: ...
-    def predict_model(self, pipeline, data=None) -> PredictResult: ...
-    def plot_model(self, pipeline, kind, **kwargs) -> "plotly.graph_objects.Figure": ...
-
-    # Persistence
-    def save_model(self, pipeline, path) -> None: ...
-    @staticmethod
-    def load_model(path) -> Pipeline: ...
-
-    # Introspection (also exposed as module-level functions under pycaret.api)
-    def list_models(self) -> list[ModelCard]: ...
-    def list_metrics(self) -> list[MetricCard]: ...
-    def describe_model(self, model_id) -> ModelCard: ...
-    def describe_setup_params(self) -> SetupParamSchema: ...
-
-    # Config access for notebook users (replaces get_config/set_config pattern)
-    @property
-    def X_train(self) -> pd.DataFrame: ...
-    @property
-    def X_test(self) -> pd.DataFrame: ...
-    @property
-    def y_train(self) -> pd.Series: ...
-    @property
-    def y_test(self) -> pd.Series: ...
-    @property
-    def pipeline(self) -> Pipeline: ...     # the fitted preprocessor
-    @property
-    def logger(self) -> BaseLogger: ...
-    @property
-    def events(self) -> list[Event]: ...    # the event stream, for UI replay
-
-    # Sklearn tag surface
-    def __sklearn_tags__(self) -> Tags: ...
-    def __sklearn_is_fitted__(self) -> bool: ...
+```
+         ┌─────────────────┐      ┌────────────────────────┐
+         │   apps/web      │      │   apps/desktop (V2)    │
+         │   React SPA     │      │   Electron shell       │
+         └────────┬────────┘      └───────────┬────────────┘
+                  │ HTTP + WS                 │ (hosts both)
+                  ▼                           ▼
+         ┌──────────────────────────────────────────────────┐
+         │              services/api                       │
+         │     FastAPI + SQLAlchemy + JWT auth             │
+         │                                                  │
+         │  /api/v1/workspaces  …projects  …experiments    │
+         │  /api/v1/runs        …artifacts …deployments    │
+         │  /api/v1/describe    …llm       …monitoring     │
+         │  /api/v1/deployments/{slug}/predict  ← serving  │
+         │  /ws runs/{id}/events                ← stream   │
+         └────┬───────────────┬────────────┬────────────┬──┘
+              │               │            │            │
+              ▼               ▼            ▼            ▼
+        ┌─────────┐     ┌──────────┐ ┌──────────┐ ┌──────────┐
+        │ engine  │     │    DB    │ │ artifact │ │   LLM    │
+        │ in-proc │     │ Postgres │ │  store   │ │ provider │
+        │ (thread │     │ / SQLite │ │ fs/S3/.. │ │ router   │
+        │  pool)  │     │          │ │          │ │          │
+        └─────────┘     └──────────┘ └──────────┘ └──────────┘
+              ▲
+              │ (V2 promotion)
+              ▼
+        ┌─────────────────────────┐
+        │ services/worker (V2)    │
+        │   Job queue consumer    │
+        └─────────────────────────┘
 ```
 
-### `ClassificationExperiment(Experiment)`
+Current MVP: in-process `ThreadPoolExecutor` inside the API process runs engine work. V2 moves that to a separate `services/worker` pulling `Job` rows. Same interface on both sides (the `RunOrchestrator` abstraction hides it).
 
-```python
-class ClassificationExperiment(Experiment):
-    def __init__(self, *, target=None, ...):
-        super().__init__(task=TaskType.CLASSIFICATION, target=target, ...)
+---
 
-    def __sklearn_tags__(self):
-        tags = super().__sklearn_tags__()
-        tags.estimator_type = "classifier"
-        return tags
-```
+## 3. Engine layer (`packages/engine`)
 
-Same pattern for `RegressionExperiment`, `ClusteringExperiment`, `AnomalyExperiment`, `TimeSeriesExperiment`.
+See [`ARCHITECTURE_ENGINE.md`](ARCHITECTURE_ENGINE.md) for depth. Summary:
 
-### Result dataclasses (`pycaret.core.results`)
+- **`pycaret.tasks`** — 5 task subclasses (`ClassificationExperiment`, `RegressionExperiment`, `ClusteringExperiment`, `AnomalyExperiment`, `TimeSeriesExperiment`), all sklearn-composable (`BaseEstimator` subclasses).
+- **`pycaret.api`** — typed introspection: `list_models`, `describe_model`, `list_metrics`, `describe_setup_params`. Drives the dynamic form in `/experiments/:id`.
+- **`pycaret.logging`** — `BaseLogger` + `Event` + `EventKind`. The backend's `DBEventLogger` subclasses this to persist + broadcast.
+- **`pycaret.core.results`** — typed dataclasses for every verb (`CompareResult`, `TuneResult`, `CreateResult`, ...).
 
-All frozen dataclasses. All JSON-serializable (except the fitted pipeline, which carries its own pickling). Fields that every UI/agent cares about are first-class.
+**Future direction** (MVP 1 exit): `pycaret.engine.run(config: RunConfig) → RunResult` as a single stateless entry. Wraps the task subclasses. Same contract as notebook / API / UI / LLM-generated config use.
 
-```python
-@dataclass(frozen=True)
-class CompareResult:
-    best: Pipeline                             # top-ranked fitted pipeline
-    models: list[Pipeline]                     # top-N by score, in rank order
-    leaderboard: pd.DataFrame                  # score table, notebook-friendly
-    ranked_ids: list[str]                      # ordered pycaret model ids
-    events: list[Event]                        # the per-model timings + scores
+---
 
-@dataclass(frozen=True)
-class TuneResult:
-    pipeline: Pipeline                         # the tuned fitted pipeline
-    params: dict                               # best params found
-    search: BaseSearchCV                       # the underlying search object, for power users
-    cv_results: pd.DataFrame                   # the full CV grid
-    events: list[Event]
-```
+## 4. Backend (`services/api`)
 
-### Event stream (`pycaret.logging.events`)
+### 4.1 Routers (current surface, ~40 endpoints under `/api/v1/`)
 
-```python
-@dataclass(frozen=True)
-class Event:
-    kind: str                                  # "experiment.started", "model.created", ...
-    timestamp: datetime
-    duration_ms: float | None = None
-    payload: dict[str, Any] = field(default_factory=dict)
-```
-
-Concrete kinds include `experiment.started`, `preprocessor.fitted`, `model.created`, `model.compared`, `model.tuned`, `model.predicted`, `error.raised`. The React UI subscribes to the stream and renders progress; LLM agents reason over the events as trace data.
-
-### Introspection surface (`pycaret.api`)
-
-```python
-# Zero-argument introspection — works without an experiment, for static docs
-def list_models(task: TaskType, include_extras: bool = True) -> list[ModelCard]: ...
-def describe_model(task: TaskType, model_id: str) -> ModelCard: ...
-def list_metrics(task: TaskType) -> list[MetricCard]: ...
-def describe_setup_params(task: TaskType) -> SetupParamSchema: ...
-
-# With an experiment — runtime state included
-def list_available_models(experiment: Experiment) -> list[ModelCard]: ...  # filters by installed extras
-```
-
-`ModelCard`, `MetricCard`, `ParameterCard`, `SetupParamSchema` are serializable dataclasses that carry enough structure for a React form to render them directly (field types, enums, ranges, dependencies).
-
-## What lands when
-
-| Layer | Session 2 | Session 3+ |
+| Router | File | Responsibility |
 |---|---|---|
-| `ARCHITECTURE.md` design doc | ✅ written | — |
-| `pycaret/core/` primitives | ✅ skeleton | grow as verbs are migrated |
-| `pycaret/api/` introspection | ✅ implemented for classification | extend to all tasks |
-| `pycaret/logging/` event stream | ✅ implemented | real UI consumption tests |
-| `pycaret/tasks/classification.py` | ✅ delegating implementation | progressively absorb god-class methods |
-| `pycaret/classification/` functional + oop | ✅ thinned to adapter | — |
-| Regression/clustering/anomaly/time_series tasks | — | session 3 |
-| Preprocessor rewrite as native `ColumnTransformer` | — | session 4 |
-| Full god-class retirement | — | session 5+ |
+| setup | `api/setup.py` | First-run bootstrap + status |
+| auth | `api/auth.py` | login / refresh / logout / me |
+| describe | `api/describe.py` | Engine introspection proxy |
+| workspaces | `api/workspaces.py` | Workspace CRUD + members |
+| projects | `api/projects.py` | Project CRUD |
+| experiments | `api/experiments.py` | Experiment CRUD |
+| runs | `api/runs.py` | Run submit / list / get / events / wait / cancel + WebSocket |
+| data_sources | `api/data_sources.py` | CSV upload + S3/Postgres register |
+| deployments | `api/deployments.py` | Pipeline promote + deployment CRUD + `/predict` |
 
-## Non-goals for this session
+### 4.2 Data model (14 tables, [`CONTROL_PLANE_SPEC.md § 4`](CONTROL_PLANE_SPEC.md#4-main-domain-model))
 
-- We are **not** deleting `internal/pycaret_experiment/` yet. Its existence is what lets the golden path keep working while the new surface grows.
-- We are **not** rewriting preprocessing, metric, or model containers yet.
-- We are **not** implementing Phase 3 (Plotly plot rewrite) yet.
+```
+User ─┬─ Session (refresh tokens)
+      └─ ApiKey
+
+Workspace ─┬─ WorkspaceMember (user × role)
+           ├─ DataSource       (CSV / S3 / Postgres)
+           ├─ Pipeline ─────┐  (workspace-scoped model registry)
+           ├─ Deployment ←──┘
+           └─ Project ─┬─ Experiment ─┬─ Run ─┬─ Event   (event stream)
+                       │               │       ├─ Artifact
+                       │               │       └─ FoldMetric
+                       └─ PipelineProjectLink  (m2m to Pipeline)
+```
+
+Additions planned for MVP 2 completion (see ROADMAP):
+
+- **Trial** — one row per AutoML candidate inside a Run.
+- **PredictionLog** — per-request log for deployed endpoints.
+- **DriftReport** — periodic drift scores.
+- **ModelLibrary** — admin-editable model catalogue (today: hardcoded in engine).
+- **Job** — background work queue ([`CONTROL_PLANE_SPEC.md § 16`](CONTROL_PLANE_SPEC.md#16-background-jobs)).
+- **LLMProviderSetting** + **LLMConsultation** — AI assistant ([§ 12](CONTROL_PLANE_SPEC.md#12-llm--ai-assistant-system)).
+- **AuditLog** — every admin-relevant action.
+
+### 4.3 Run execution
+
+```
+POST /experiments/{id}/runs
+   │
+   ▼
+Run row (status=queued) + Run.snapshot (full reproducibility)
+   │
+   ▼
+RunOrchestrator.submit(RunSpec)
+   │  threading.Event for cancellation
+   ▼
+Worker thread
+   ├─ _load_data()              sklearn_dataset | data_inline | data_source_path
+   ├─ _build_experiment()       dispatches to pycaret.tasks.*
+   ├─ exp.logger = DBEventLogger(run_id=…, event_broker)
+   ├─ exp.fit(df)
+   ├─ execute_plan(setup | create | compare)
+   │  _checkpoint()             — cancellation poll at stage boundaries
+   ├─ _save_pipeline()          cloudpickle → artifact row
+   └─ transition(status=succeeded, leaderboard, duration_ms, …)
+   │
+   ▼
+event_broker.close_run(run_id)  → WS subscribers receive {kind: "run.closed"}
+```
+
+Every engine `Event` flows through `DBEventLogger.emit()`:
+
+1. Write an `events` row (synchronous, scoped session).
+2. `event_broker.publish(run_id, event.to_dict())` — fans out to any WebSocket subscribers via `loop.call_soon_threadsafe(queue.put_nowait, event)`.
+
+### 4.4 Deployment + serving
+
+```
+Run (succeeded + pipeline_pickle artifact)
+   │  POST /runs/{id}/promote
+   ▼
+Pipeline row        (workspace-scoped, shareable across projects)
+   │  POST /pipelines/{id}/deployments
+   ▼
+Deployment row      (slug + auth_mode + metrics counters)
+   │
+   ▼
+DeploymentRegistry  (in-process LRU + p50/p95 rolling window)
+   │
+   ▼
+POST /api/v1/deployments/{slug}/predict
+```
+
+Auth modes per deployment: `workspace` (JWT) / `api-key` (V2) / `public` (V2, rate-limited).
+
+---
+
+## 5. Frontend (`apps/web`)
+
+### 5.1 Stack
+
+Vite 5 + React 18 + TypeScript 5 (strict, `verbatimModuleSyntax`) + Tailwind 3 (dark-mode-first) + TanStack Query + Zustand + React Router 6 + axios. Production bundle: 83 kB gzipped.
+
+### 5.2 Directory
+
+```
+apps/web/src/
+├── main.tsx                  React root + QueryClient
+├── App.tsx                   route table
+├── index.css                 Tailwind + component primitives
+├── api/
+│   ├── client.ts             axios instance + single-flight 401 refresh
+│   ├── endpoints.ts          one function per backend route
+│   └── types.ts              hand-written mirrors of Pydantic schemas
+├── state/
+│   └── auth.ts               Zustand store; refresh token in localStorage
+├── components/
+│   ├── AuthGate.tsx          guards authenticated routes
+│   └── Layout.tsx            top-nav shell for authed screens
+└── pages/
+    ├── Setup.tsx             /setup
+    ├── Login.tsx             /login
+    ├── Workspaces.tsx        /
+    └── WorkspaceDetail.tsx   /workspaces/:id
+```
+
+### 5.3 Design
+
+Per [`CONTROL_PLANE_SPEC.md § 13`](CONTROL_PLANE_SPEC.md#13-ui--navigation-specification):
+
+- **Minimalistic.** No chrome, no noise. Single-column forms, keyboard-first.
+- **Dark-mode first.** Tailwind `darkMode: 'class'` with `<html class="dark">`. Light mode opt-in (V2).
+- **Desktop-first.** Analyst tool, not a mobile app.
+- **No icons without labels.** No mystery meat navigation.
+
+---
+
+## 6. Infra (`infra/`)
+
+Currently: `infra/docker/` runs the full local stack.
+
+```bash
+docker compose -f infra/docker/docker-compose.yml up --build
+# → http://localhost:3000
+```
+
+UI container's nginx reverse-proxies `/api` + `/ws` to the API container so the browser sees a single origin (no CORS headaches). WebSocket upgrade on `/api/v1/runs/*` with 1h timeouts for long AutoML runs.
+
+`infra/helm/` + `infra/terraform/{aws,gcp,azure}/` are V2 stubs.
+
+---
+
+## 7. LLM router (new in MVP 2 final stretch)
+
+Per [decision 3 of session 13](DECISIONS.md#2026-04-24-session-13--restructure-decision-3--llm-router-not-a-single-provider):
+
+```
+services/api/pycaret_server/llm/
+├── router.py               LLMRouter (provider selection + retries + usage)
+├── providers/
+│   ├── base.py             LLMProvider Protocol (chat_completion, tool_use)
+│   ├── anthropic.py        Claude via anthropic SDK
+│   ├── openai.py           GPT-4 / o-series via openai SDK
+│   └── __init__.py         registry
+├── consultations/
+│   ├── dataset_analysis.py Per-type prompt templates + output schemas
+│   ├── experiment_design.py
+│   ├── run_explainer.py
+│   ├── failure_debugger.py
+│   ├── deployment_review.py
+│   └── drift_analyst.py
+└── schemas.py              Pydantic: LLMConsultation, LLMProviderSetting
+```
+
+**Crucial constraint**: LLM output is *advisory*. Every consultation returns `suggested_config_json` + `suggested_action` + `reasoning_summary` + `risk_flags`. The deterministic engine executes what the user approves. See [`CONTROL_PLANE_SPEC.md § 12.3`](CONTROL_PLANE_SPEC.md#123-important-constraint).
+
+---
+
+## 8. RunConfig — the single contract
+
+One JSON schema drives four interfaces:
+
+```
+               ┌─────────────────────────────────────────┐
+               │              RunConfig (JSON)           │
+               │  dataset + task + preprocessing +       │
+               │  model_selection + evaluation +         │
+               │  automl + tuning + explainability       │
+               └───────┬─────────┬───────────┬───────────┘
+                       │         │           │
+                notebook    API/CLI       UI wizard
+                `engine.    POST          dynamic
+                 run(cfg)`  /runs         form from
+                                          describe_setup_params
+                       │         │           │
+                       └─────────┼───────────┘
+                                 ▼
+                       LLM-generated config
+                        (reviewed + approved)
+```
+
+Schema lives in `packages/shared-schemas/` (V2 implementation); today the API accepts it as a loose dict on `Run.snapshot.setup_params`. MVP 1 exit requires migrating to a strict Pydantic `RunConfig`.
+
+See [`CONTROL_PLANE_SPEC.md § 6`](CONTROL_PLANE_SPEC.md#6-run-configuration-system) for the full schema.
+
+---
+
+## 9. CI
+
+`.github/workflows/test.yml` runs on every push to `v4`:
+
+| Job | Matrix | Gate |
+|---|---|---|
+| Lint (ruff) | ubuntu-latest | blocking |
+| Tests | Ubuntu + Windows × Python 3.11/3.12/3.13 | blocking |
+| Web (tsc + eslint + vitest + vite build) | ubuntu-latest, Node 22 | blocking |
+| Notebooks (re-execute canonical) | ubuntu-latest, nightly only | advisory |
+| ci-status | aggregate gate | blocking |
+
+Test counts after session 13: **32 engine + 30 server + 6 web = 68 total**.
+
+---
+
+## 10. What the architecture deliberately is *not*
+
+- **No microservice hell.** One API process. One worker process (eventually). One UI bundle. That's it.
+- **No GraphQL.** REST + OpenAPI is simpler for this surface.
+- **No home-grown ORM.** SQLAlchemy 2.x.
+- **No home-grown auth.** JWT + bcrypt, both standard.
+- **No lock-in to one LLM provider.** Router abstraction covers Claude + OpenAI from day one.
+- **No dependency on MLflow, Comet, Weights & Biases.** All mechanisms we needed from them (event stream, artifact registry) we own. Third-party trackers can be added as optional adapters in V3.
+- **No implicit global state in the engine.** 3.x's `ContextVar`-based session state is gone. `Experiment` instances are independent. `RunConfig` is the only input.
+
+---
+
+## 11. Links
+
+- [`VISION.md`](VISION.md) — 1-page product statement.
+- [`CONTROL_PLANE_SPEC.md`](CONTROL_PLANE_SPEC.md) — full spec (24 sections).
+- [`ROADMAP.md`](ROADMAP.md) — MVP 1–4 / V2 / V3 phase breakdown.
+- [`STATUS.md`](STATUS.md) — where we are right now.
+- [`DECISIONS.md`](DECISIONS.md) — ADR log.
+- [`ARCHITECTURE_ENGINE.md`](ARCHITECTURE_ENGINE.md) — engine-internal detail (god-class, events, class hierarchy).
+- [`PLATFORM_QUICKSTART.md`](PLATFORM_QUICKSTART.md) — clone-to-running in 5 minutes.

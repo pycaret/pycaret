@@ -10,10 +10,9 @@ constructor parameter, not a setup kwarg.
 from unittest.mock import patch
 
 import numba
+import pycaret.datasets
 import pytest
 from numba.core.dispatcher import Dispatcher
-
-import pycaret.datasets
 from pycaret.tasks import (
     AnomalyExperiment,
     ClassificationExperiment,

@@ -42,6 +42,76 @@
 
 ---
 
+# Session 13 — 2026-04-24 — Monorepo restructure + Control Plane vision lock-in
+
+Baseline: session 12 landed the 4-screen frontend scaffold. Three sibling packages at the root (`pycaret/`, `pycaret-server/`, `pycaret-ui/`), plus `docker/`, `tests/`, and everything else flat.
+
+Theme: owner shared a comprehensive "PyCaret Control Plane" technical spec (24 sections, ~300 planned endpoints, full LLM + monitoring + drift + K8s + multi-cloud story). Locked it in as canonical. Restructured the monorepo to the spec's `apps/` + `services/` + `packages/` + `infra/` layout. Overhauled every agent-facing doc.
+
+## ADDED — canonical directory structure
+
+- `ADDED` — **`packages/engine/`** — engine source moved here (from repo-root `pycaret/`). Now has its own `pyproject.toml` (split out of the root) and a dedicated README. Hatchling wheel target: `packages = ["pycaret"]` resolved relative to the engine dir.
+- `ADDED` — **`packages/engine/tests/`** — engine pytest suite moved here (from repo-root `tests/`). 32 tests; CI invokes via `uv run pytest packages/engine/tests/ -q`.
+- `ADDED` — **`services/api/`** — FastAPI backend moved here (from `pycaret-server/`). Internal package name `pycaret_server` unchanged.
+- `ADDED` — **`apps/web/`** — React UI moved here (from `pycaret-ui/`). Package name `@pycaret/ui` unchanged.
+- `ADDED` — **`infra/docker/`** — Dockerfiles + compose moved here (from repo-root `docker/`).
+- `ADDED` — **11 empty stub READMEs** documenting future directories: `apps/desktop/` (V2 Electron), `services/worker/` (V2 job runner), `services/deployment-runtime/` (V2 serving), `packages/sdk-python/` (V2 Python client), `packages/shared-schemas/` (V2 JSON schemas), `infra/helm/` (V2 K8s chart), `infra/terraform/{aws,gcp,azure}/` (V2 IaC). Each README explains scope, when the work starts, and what files will live there.
+- `ADDED` — **Root `pyproject.toml`** now a pure workspace manifest — declares `[tool.uv.workspace] members = ["packages/engine", "services/api"]` + shared ruff defaults. No package metadata; that moved to `packages/engine/pyproject.toml`. `uv sync --all-packages --all-extras` resolves both members from their new homes.
+
+## CHANGED — Docker + CI + docs paths
+
+- `CHANGED` — **`infra/docker/Dockerfile.api`** — all `COPY` paths updated (`pycaret-server/` → `services/api/`, `pycaret/` → `packages/engine/pycaret/`). Editable install line now `uv pip install -e ./packages/engine -e ./services/api`. Default image tag renamed `pycaret-server:dev` → `pycaret-api:dev`.
+- `CHANGED` — **`infra/docker/Dockerfile.ui`** — `COPY pycaret-ui/` → `COPY apps/web/`. Image tag `pycaret-ui:dev` → `pycaret-web:dev`. Labels updated to "PyCaret Control Plane — React frontend".
+- `CHANGED` — **`infra/docker/docker-compose.yml`** — build context `..` → `../..` (deeper nesting), volume mount `../data` → `../../data`, service rename `ui:` → `web:`. Invocation: `docker compose -f infra/docker/docker-compose.yml up --build`.
+- `CHANGED` — **`.github/workflows/test.yml`** — ruff paths changed to `packages/engine services/api`; pytest paths changed to `packages/engine/tests/` + `services/api/tests/`; web CI job `working-directory: apps/web` + `cache-dependency-path: apps/web/package-lock.json`; job renamed "UI" → "Web".
+- `CHANGED` — **`docs/revamp/PLATFORM_QUICKSTART.md`** — all path references updated (`pycaret-server/` → `services/api/`, `pycaret-ui/` → `apps/web/`, `docker/` → `infra/docker/`, compose invocation with new file path).
+
+## ADDED — vision & spec docs
+
+- `ADDED` — **`docs/revamp/CONTROL_PLANE_SPEC.md`** — owner's 24-section technical spec checked in verbatim (with minor markdown fixes so tables + code blocks render). Supersedes the earlier `PLATFORM_PLAN.md`. Canonical product scope.
+- `ADDED` — **`docs/revamp/VISION.md`** — 1-page product statement: what we're building (engine + Control Plane), who it's for, deployment modes, three engineering principles, what success looks like. Distilled from `CONTROL_PLANE_SPEC.md § 1 / § 2 / § 24`.
+
+## CHANGED — architecture + roadmap
+
+- `DOCS` — **`docs/revamp/ARCHITECTURE.md`** — rewritten end-to-end for the full Control Plane (engine + backend + UI + infra). 11 sections: monorepo layout rules, service topology (ASCII diagram), engine layer, backend routers + domain model + run execution + deployment flow, frontend stack + directory, infra story, LLM router design, RunConfig single-contract principle, CI job matrix, deliberate non-goals. Supersedes the prior engine-only content.
+- `DOCS` — **`docs/revamp/ARCHITECTURE_ENGINE.md`** (renamed) — the previous `ARCHITECTURE.md` content (engine internals: god-class, class hierarchy, event system, migration plan) preserved under this new filename. Referenced from the new `ARCHITECTURE.md`.
+- `DOCS` — **`docs/revamp/ROADMAP.md`** — rewritten around MVP 1 (engine) / MVP 2 (backend) / MVP 3 (UI) / MVP 4 (self-hosted) / V2 (enterprise) / V3 (scale + governance). Every already-shipped phase remapped into its MVP bucket with concrete exit criteria. Forward work laid out through session ~20. Current-session ledger at the bottom.
+
+## CHANGED — agent + contributor docs
+
+- `DOCS` — **`AGENTS.md`** — rewritten for the new structure. New 60-second briefing, new repo map, "which phase am I in?" decision tree, updated workflow, new common-task playbooks (add-a-backend-route, add-a-frontend-screen, drain-a-god-class-verb, add-an-LLM-advisory-feature). Removes stale references to old paths.
+- `DOCS` — **`CONTRIBUTING.md`** — rewritten. New setup flow (uv + npm dual pipeline), new test commands, new PR checklist, updated non-negotiables, licensing section.
+- `DOCS` — **`README.md`** — repositioned as the platform's landing page (not just an engine README). Engine + Control Plane quickstarts side by side. Three-mode deployment table. Links to VISION, SPEC, ARCHITECTURE, ROADMAP.
+
+## CHANGED — DECISIONS.md (4 new ADRs)
+
+- `DOCS` — **`2026-04-24 · restructure decision 1`** — adopt `apps/services/packages/infra` monorepo layout now. Rationale: "wash away all the old sins"; one-time pain beats spread-across-every-future-session pain. Python package names unchanged; PyPI + notebook users unaffected.
+- `DOCS` — **`2026-04-24 · restructure decision 2`** — Electron desktop is V2, not MVP. Defers signed-installer tooling, per-OS CI, bundled-Python packaging, auto-update infra. Local dev already works via `uv run pycaret-server serve` + `npm run dev`.
+- `DOCS` — **`2026-04-24 · restructure decision 3`** — LLM **router** supporting Anthropic (Claude) + OpenAI as first-class from day one, not single-provider. Rationale: provider abstraction cost is small, credibility matters in an agentic-ML world, provider APIs will drift.
+- `DOCS` — **`2026-04-24 · restructure decision 4`** — product name = "PyCaret"; UI branding = "PyCaret Control Plane". Package names on registries (`pycaret` on PyPI, `pycaret-server` on PyPI, `@pycaret/ui` on npm) unchanged. OpenAPI `info.title` = "PyCaret Control Plane". Preserves 10 years of brand equity while distinguishing the new platform story.
+
+## INTERNAL
+
+- `INTERNAL` — **4 ruff import-order auto-fixes** across `services/api/pycaret_server/` triggered by running ruff on the new paths. No semantic changes; just `ruff check --fix`.
+- `INTERNAL` — **Path-sensitive code check.** The only hardcoded `Path(__file__).resolve().parents[N]` in the codebase is `services/api/pycaret_server/db/bootstrap.py::_ALEMBIC_INI`, which uses `parents[2]`. After the move, that still resolves correctly because only the outer directory changed — the package-internal structure (`services/api/pycaret_server/db/bootstrap.py` → `services/api/alembic.ini`) maintains the same depth.
+- `INTERNAL` — **Tests green through the move.** Verified post-restructure: 32 engine + 30 server + 6 web = 68 total. No test changes required; `uv sync` resolved both workspace members from their new paths without complaint.
+
+## TESTS
+
+- `TESTS` — **68/68 combined green** after restructure (32 engine + 30 server + 6 web). No test file changes; only invocation paths changed.
+
+## Session 13 delta summary
+
+| Metric | Session 12 end | Session 13 end |
+|---|---:|---:|
+| Top-level directories (code) | 5 flat | **4 hierarchical** (`apps/` `services/` `packages/` `infra/`) |
+| Documented future-stub dirs | 0 | **11** (V2 scaffolds with READMEs) |
+| Docs in `docs/revamp/` | 9 | **11** (+ VISION, + CONTROL_PLANE_SPEC; ARCHITECTURE split into 2) |
+| Tests | 68 | **68** (unchanged) |
+| DECISIONS entries | 12 | **16** (+ 4 session-13 ADRs) |
+
+---
+
 # Session 12 — 2026-04-24 — Frontend scaffold + bootstrap flow (Phase 10 start)
 
 Baseline: session 11 closed Phase 9. The backend is feature-complete (62/62 tests, 39 routes + 1 WS). No UI exists yet.

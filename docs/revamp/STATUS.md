@@ -1,6 +1,82 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 12*
+*Updated: 2026-04-24, end of session 13*
+
+## Session 13 — Monorepo restructure + Control Plane vision lock-in — ✅
+
+Largest structural change since the Part-2 platform kickoff. The flat layout (`pycaret/`, `pycaret-server/`, `pycaret-ui/`, `docker/` all at root) is gone; replaced by the canonical `apps/` + `services/` + `packages/` + `infra/` layout from the Control Plane spec. All 68 tests remain green.
+
+Also: the product vision got materially bigger. The owner's side-research produced a comprehensive "PyCaret Control Plane" technical spec (24 sections, ~300 planned endpoints, full LLM + monitoring + drift + Kubernetes + multi-cloud story). We accepted it as the canonical scope and updated every relevant doc.
+
+### What landed — structure
+
+```
+BEFORE                          AFTER
+pycaret/                        packages/engine/pycaret/
+tests/                          packages/engine/tests/
+pycaret-server/                 services/api/
+pycaret-ui/                     apps/web/
+docker/                         infra/docker/
+
+(+ new empty stubs)
+                                apps/desktop/           (V2 Electron)
+                                services/worker/        (V2 job runner)
+                                services/deployment-runtime/  (V2 serving)
+                                packages/sdk-python/    (V2 Python client)
+                                packages/shared-schemas/ (V2 JSON schemas)
+                                infra/helm/             (V2 K8s chart)
+                                infra/terraform/aws|gcp|azure  (V2 IaC)
+```
+
+Root `pyproject.toml` is now a **pure workspace manifest** — no package metadata, just `[tool.uv.workspace]` + shared ruff defaults. Engine metadata moved to `packages/engine/pyproject.toml` alongside the source. Root `tests/` folder absorbed into `packages/engine/tests/` (the server already had its own under `services/api/tests/`; the UI under `apps/web/src/*.test.tsx`).
+
+All Python package names are unchanged: `import pycaret` + `import pycaret_server` work identically. `pip install pycaret` still builds from `packages/engine/`. PyPI + notebook users are unaffected.
+
+### What landed — docs
+
+- **`CONTROL_PLANE_SPEC.md`** (new) — owner's 24-section spec checked in verbatim. Canonical product scope.
+- **`VISION.md`** (new) — 1-page product statement distilled from the spec.
+- **`ARCHITECTURE.md`** (rewritten) — full system architecture: monorepo layout, service topology, engine/backend/frontend/infra breakdown, LLM router plan, RunConfig contract. The previous engine-internal content moved to `ARCHITECTURE_ENGINE.md` (preserved for history).
+- **`ROADMAP.md`** (rewritten) — restructured around MVP 1 (engine) / MVP 2 (backend) / MVP 3 (UI) / MVP 4 (self-hosted) / V2 / V3. Every already-shipped phase mapped into its MVP bucket; forward work laid out through session ~20.
+- **`DECISIONS.md`** — 4 new entries: (1) restructure now, (2) Electron deferred to V2, (3) LLM **router** supporting Claude + OpenAI from day one (not single-provider), (4) product name = "PyCaret" + UI brand = "PyCaret Control Plane".
+- **`AGENTS.md`** (rewritten) — new 60-second briefing, new repo map, new "which phase am I in?" decision tree, new common-task playbooks for backend routes / frontend screens / LLM features.
+- **`CONTRIBUTING.md`** (rewritten) — new local setup flow (uv + npm dual pipeline), new test commands, new PR checklist.
+- **`README.md`** (rewritten) — repositioned as the platform's landing page (not just an engine README). Three deployment-mode table. Both notebook quickstart + Control Plane quickstart side by side.
+- **`PLATFORM_QUICKSTART.md`** — all paths updated to new structure.
+- **11 new scaffolded stub READMEs** — every empty future directory has a README explaining its future role so the structure is self-documenting.
+
+### What landed — code
+
+- Root `pyproject.toml` restructured; `packages/engine/pyproject.toml` + `packages/engine/README.md` written.
+- `infra/docker/Dockerfile.api` updated: `COPY packages/engine/...` + `COPY services/api/...` + `uv pip install -e ./packages/engine -e ./services/api`.
+- `infra/docker/Dockerfile.ui` updated: `COPY apps/web/...`.
+- `infra/docker/docker-compose.yml` updated: build context `../..`, service renamed `ui` → `web`, image `pycaret-web:dev`.
+- `.github/workflows/test.yml` updated: ruff paths, pytest paths, UI job `working-directory: apps/web`, cache path `apps/web/package-lock.json`, UI job name "Web (…)".
+- 4 ruff import-order auto-fixes applied during the first check on the new paths.
+
+### Headline metrics (unchanged by restructure)
+
+| | Session 12 end | Session 13 end |
+|---|---|---|
+| Monorepo packages | 3 | **3** (structure only) |
+| Total tests | 68 | **68** (32 engine + 30 server + 6 web) |
+| Top-level dirs with real code | 5 (engine + server + ui + docker + tests) | **4** (`apps/`, `services/`, `packages/`, `infra/`) |
+| Doc count in `docs/revamp/` | 9 | **11** (+ VISION, + CONTROL_PLANE_SPEC; ARCHITECTURE split into 2) |
+| Forward-roadmap scope | ~5 sessions (Phase 10 finish) | **~8 sessions to full MVP + multi-session V2 backlog** |
+
+### What's next (session 14)
+
+Per the refreshed roadmap:
+
+- **Session 14** — `/projects/:id` + `/experiments/:id` experiment wizard (dynamic form from `describe_setup_params`, 4 config modes: manual / assisted / auto / expert).
+- **Session 15** — `/runs/:id` with live WebSocket event stream + leaderboard + artifact actions.
+- **Session 16** — Trial entity + Model Library DB sync.
+- **Session 17** — LLM router (Claude + OpenAI providers) + first 2 advisory endpoints.
+- **Session 18** — Dataset upload UI + profile screen.
+- **Session 19** — Admin screens + API keys + audit logs (V2 foundations).
+- **Session 20+** — God-class drain → 4.0.0 (non-alpha) release.
+
+---
 
 ## Session 12 — Frontend scaffold + bootstrap flow (Phase 10 start) — ✅
 

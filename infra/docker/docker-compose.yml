@@ -1,22 +1,24 @@
-# PyCaret 4.0 platform — local development compose.
+# PyCaret Control Plane — local development compose.
 #
 # Run from the repo root:
-#   docker compose -f docker/docker-compose.yml up --build
+#   docker compose -f infra/docker/docker-compose.yml up --build
 #
-# Then open http://localhost:8000/docs
+# Then open http://localhost:3000 (UI). The UI container proxies /api and /ws
+# to the API at :8000 (same origin from the browser's perspective).
+#
 # SQLite DB + artifacts persist in ./data/ on the host.
 
 services:
   api:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.api
-    image: pycaret-server:dev
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    image: pycaret-api:dev
     container_name: pycaret-api
     ports:
       - "8000:8000"
     volumes:
-      - ../data:/data            # SQLite + artifacts persistence
+      - ../../data:/data            # SQLite + artifacts persistence
     environment:
       PYCARET_DATABASE_URL: sqlite:////data/pycaret.db
       PYCARET_ARTIFACT_DIR: /data/artifacts
@@ -33,12 +35,12 @@ services:
       retries: 3
       start_period: 10s
 
-  ui:
+  web:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.ui
-    image: pycaret-ui:dev
-    container_name: pycaret-ui
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.ui
+    image: pycaret-web:dev
+    container_name: pycaret-web
     ports:
       - "3000:8080"
     depends_on:

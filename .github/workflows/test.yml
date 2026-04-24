@@ -36,9 +36,9 @@ jobs:
           python-version: "3.13"
           enable-cache: true
       - name: ruff check
-        run: uv run --with ruff ruff check pycaret tests pycaret-server
+        run: uv run --with ruff ruff check packages/engine services/api
       - name: ruff format --check
-        run: uv run --with ruff ruff format --check pycaret tests pycaret-server
+        run: uv run --with ruff ruff format --check packages/engine services/api
 
   # --------------------------------------------------------------- test
 
@@ -73,27 +73,27 @@ jobs:
           uv run --package pycaret-server python -c "from pycaret_server import __version__; print(f'pycaret-server {__version__}')"
 
       - name: pytest engine
-        run: uv run pytest tests/ -q --durations=10
+        run: uv run pytest packages/engine/tests/ -q --durations=10
 
       - name: pytest server
-        run: uv run --package pycaret-server pytest pycaret-server/tests/ -q --durations=10
+        run: uv run --package pycaret-server pytest services/api/tests/ -q --durations=10
 
   # --------------------------------------------------------------- ui
 
   ui:
     # Fast, independent job — doesn't need the Python matrix.
     runs-on: ubuntu-latest
-    name: UI (typecheck + lint + test + build)
+    name: Web (typecheck + lint + test + build)
     defaults:
       run:
-        working-directory: pycaret-ui
+        working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: pycaret-ui/package-lock.json
+          cache-dependency-path: apps/web/package-lock.json
       - name: npm install
         run: npm ci --include=dev 2>/dev/null || npm install
       - name: typecheck

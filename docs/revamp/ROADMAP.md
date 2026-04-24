@@ -1,202 +1,188 @@
 # PyCaret 4.0 — Phased Roadmap
 
-A phase is not "done" until its exit criteria are met and a `DECISIONS.md` entry is written. Items checked off are complete; items unchecked are either in-flight or not-yet-started.
+*Last revised: session 13 (2026-04-24). Restructured around Control Plane spec.*
+
+This roadmap maps the product vision in [`VISION.md`](VISION.md) and the
+full technical specification in [`CONTROL_PLANE_SPEC.md`](CONTROL_PLANE_SPEC.md)
+onto concrete engineering phases. A phase is "done" when its exit criteria are
+met and an entry has been appended to [`DECISIONS.md`](DECISIONS.md).
+
+Checkbox legend: [x] complete · [ ] not started · 🟡 in flight · 🟢 mostly done · ✅ fully done · 🔴 not started.
 
 ---
 
-## Part 1: Engine revamp (sessions 1-6+)
+## MVP 1 — Engine (pip-installable PyCaret 4)
 
-### Phase 0 — Groundwork — ✅ COMPLETE (session 1)
+Status: 🟢 **MOSTLY DONE** (sessions 1–8). 4.0.0a1 on PyPI.
 
-- [x] Clone upstream, install `uv`
-- [x] Verify sklearn support matrix ⇒ Python 3.13 as primary dev target (see DECISIONS.md for the 3.14/PEP-649 finding)
-- [x] Scaffold `docs/revamp/`
-- [x] Complete baseline audit (`AUDIT.md`) and kill list (`KILL_LIST.md`)
-- [x] Write new `pyproject.toml` v4 (lean deps, uv-first, hatchling)
-- [x] Create `.venv` via `uv sync`, verify `import pycaret` + all 6 public submodules import
-- [x] End-to-end smoke (`setup → compare_models → predict_model`) green on `juice` dataset
-- [x] Full test-suite run captured in `thinking/phase0_pytest_run1.log`
+- [x] Python 3.11+ / sklearn 1.7+ / NumPy 2 / pandas 2 modernization (Phases 0–2).
+- [x] Kill-list removal: 9 killed verbs (`check_fairness`, `check_drift`, `dashboard`, `create_api`, `create_docker`, `create_app`, `convert_model`, `deploy_model`, `eda`), mlflow/comet/wandb/dagshub/yellowbrick/fugue/dask/ray/etc.
+- [x] Functional API killed; OOP-only (`Experiment` / `ClassificationExperiment` / ...).
+- [x] Typed introspection (`pycaret.api.list_models`, `describe_model`, `list_metrics`, `describe_setup_params`).
+- [x] Structured event logger (`pycaret.logging.BaseLogger` + `MemoryLogger` + subscriber pattern).
+- [x] 32 engine tests green across Ubuntu + Windows × Python 3.11 / 3.12 / 3.13.
+- [x] Dep floor dropped to ~13 packages (from ~65 pre-revamp).
+- [x] Published to PyPI as `4.0.0a1`.
+- [ ] **Stateless `engine.run(config)` entry point** on top of the existing OOP surface — session 14 kickoff.
+- [ ] **RunConfig Pydantic model** (§ 6.1 spec) as the single contract driving notebook / API / UI / LLM-generated runs. Ships in `packages/shared-schemas` once built.
+- [ ] **God-class drain (Phase 5)** — the 10 OOP verbs still delegate to `self._legacy`. Migrate verb-by-verb to native sklearn. ~10 sessions worth of work. Order: `save_model → predict_model → create_model → tune_model → ensemble_model → blend_models → stack_models → calibrate_model → compare_models → finalize_model`.
+- [ ] **Plotly plot rewrite (Phase 3)** — new `pycaret/plots/` flat module. Enables dropping matplotlib/schemdraw/kaleido from core.
+- [ ] **Release 4.0.0 (non-alpha)** to PyPI once god-class is drained.
 
-### Phase 1 — Amputation (remove the kill list) — ✅ COMPLETE (sessions 1 + 6)
-
-- [x] Removed `pycaret/parallel/` and `pycaret/internal/parallel/`; dropped `parallel` args from 7 files.
-- [x] Removed `loggers/{mlflow,comet,wandb,dagshub,dashboard}_logger.py`.
-- [x] Removed `internal/patches/yellowbrick.py`; plot branches stubbed.
-- [x] Deleted 11 initial kill-list test files + mlflow-custom-tag blocks.
-- [x] *(session 6)* Removed `pycaret.loggers` shim; 7 import sites re-pointed to `pycaret.logging.base`.
-- [x] *(session 6)* Removed `pycaret/distributions.py` (0 callers).
-- [x] *(session 6)* Removed `pycaret/internal/cloudpickle_compat.py` (0 callers).
-- [x] *(session 6)* Removed `pycaret/internal/cuml_wrappers.py` (143 LOC) + replaced GPU-fallback call sites with `NotImplementedError`.
-- [x] *(session 6)* Removed 9 killed verb methods from the god-class + task oop wrappers: `check_fairness`, `check_drift`, `dashboard`, `create_api`, `create_docker`, `create_app`, `convert_model`, `deploy_model`, `eda`. **~1,156 LOC dropped.**
-
-### Phase 2 — Modernization (sklearn 1.7 / NumPy 2 / pandas 2 / Python 3.13) — ✅ MOSTLY COMPLETE (sessions 1 + 6)
-
-- [x] Replaced `distutils.LooseVersion` with `packaging.version.Version` (Python 3.12+).
-- [x] Replaced `np.NaN` with `np.nan` (NumPy 2.0).
-- [x] Replaced `np.product` with `np.prod` (NumPy 2.0).
-- [x] Fixed `joblib.Memory(bytes_limit=...)` → `Memory.reduce_size(bytes_limit=...)` (joblib 1.4+).
-- [x] Fixed `sklearn.metrics._regression._check_reg_targets` signature change (sklearn 1.7: added `sample_weight`, returns 5-tuple).
-- [x] BATS / TBATS containers guard missing `tbats` (its `numpy<2` pin conflicts with ours).
-- [x] scikitplot removed from `internal/plots/helper.py` (replaced with direct matplotlib).
-- [x] Unpinned `sktime` (0.31 → 0.36+); absorbed API drift into `time_series/` container guards.
-- [ ] *(Phase 3 sweep)* Any remaining `FutureWarning`s from the sklearn 1.7 / pandas 2 transition.
-- [ ] Full sklearn `__sklearn_tags__` rollout across every custom transformer in `internal/preprocess/*`.
-
-**Exit criteria progress:** `pytest tests/` 32/32 green on Python 3.13 + sklearn 1.7.2 + NumPy 2.3.5 in ~2 min. ✅
-
-### Phase 3 — Plotly plot rewrite — 🟡 PLANNED
-
-Goal: replace the remaining yellowbrick / scikit-plot path with a flat Plotly module.
-
-1. [ ] New `pycaret/plots/` (flat, no `internal/plots/`). One file per plot family:
-   - `classification_curves.py` (ROC, PR, threshold)
-   - `classification_matrix.py` (confusion, class prediction error, classification report)
-   - `regression_diagnostics.py` (residuals, prediction error, Cook's distance)
-   - `clustering.py` (elbow, silhouette, intercluster distance)
-   - `feature.py` (RadViz, manifold)
-   - `model_selection.py` (learning curve, validation curve, RFECV)
-2. [ ] `plot_model` dispatches via a registry `dict[str, Callable]`; no giant if/elif chain.
-3. [ ] Unified Plotly theme, dark-mode-friendly.
-4. [ ] Retire `matplotlib`, `schemdraw`, `kaleido` from core deps after this lands.
-
-**Exit criteria:** `plot_model(kind=...)` returns a `plotly.graph_objects.Figure` for every `kind`; `matplotlib` removed from `pyproject.toml` core deps.
-
-### Phase 3.5 — Functional API killed, OOP-only — ✅ COMPLETE (session 3)
-
-- [x] All 5 `functional.py` files deleted (~11,300 LOC).
-- [x] `pycaret.tasks` exports all 5 task subclasses.
-- [x] `pycaret.core.SupervisedExperiment` / `UnsupervisedExperiment` intermediate bases.
-- [x] `pycaret.save_model` / `pycaret.load_model` stateless top-level utilities.
-- [x] `pycaret/core/state.py` deleted (no ContextVar, no implicit state).
-- [x] All 6 task-module `__init__.py`s collapsed to thin re-exports.
-- [x] 41 functional-API-coupled tests deleted; 4 OOP-native test files remain (32/32 pass).
-- [x] README rewritten for 4.0 positioning; tutorials doc updated; 3.x notebooks archived.
-
-### Phase 4 — API for agents / React UI — ✅ ARCHITECTURE LANDED (session 2)
-
-- [x] Public `pycaret.api` submodule: `list_models(task)`, `describe_model(task, id)`, `list_metrics(task)`, `describe_setup_params(task)` returning JSON-serializable dataclasses.
-- [x] Typed return objects for every verb in `pycaret.core.results`.
-- [x] Streaming events through `pycaret.logging.MemoryLogger`; `BaseLogger.subscribe(callback)` fans out.
-- [x] `Experiment(BaseEstimator)` in `pycaret.core.experiment` — sklearn-compatible.
-- [x] 5 task subclasses in `pycaret.tasks.*`.
-- [ ] Progress-bar prints inside legacy god-class still go to stdout — audit remains for Phase 5.
-
-### Phase 5 — God-class drain + release — 🟡 IN FLIGHT
-
-Goal: empty `pycaret/internal/pycaret_experiment/` verb by verb and cut `4.0.0alpha0`.
-
-Recommended verb-migration order (see `docs/for_developers/DRAINING_THE_GODCLASS.md`):
-1. [ ] `save_model` / `load_model` — thinnest, reference implementation.
-2. [ ] `predict_model` — no CV, no training.
-3. [ ] `create_model` — single-model CV via `sklearn.model_selection.cross_validate`.
-4. [ ] `tune_model` — `GridSearchCV` / `HalvingRandomSearchCV` / `optuna.integration.OptunaSearchCV` wrap.
-5. [ ] `ensemble_model` — `BaggingClassifier` / `AdaBoostClassifier` wrap.
-6. [ ] `blend_models` — `VotingClassifier` / `VotingRegressor` wrap.
-7. [ ] `stack_models` — `StackingClassifier` / `StackingRegressor` wrap.
-8. [ ] `calibrate_model` — `CalibratedClassifierCV` wrap.
-9. [ ] `compare_models` — the heaviest; loop over registry + rank.
-10. [ ] `finalize_model` — refit on full data.
-
-Between verbs:
-- [ ] `pytest tests/test_e2e_oop.py` must stay green.
-- [ ] Legacy method deleted from `internal/pycaret_experiment/*`.
-- [ ] Release-notes `CHANGED, INTERNAL` entry appended.
-
-After all verbs drained:
-- [ ] Delete `pycaret/internal/pycaret_experiment/` entirely.
-- [ ] Delete `Experiment._legacy` and `_build_legacy_experiment()`.
-- [ ] Core dep count drops to ~15.
-- [ ] **Release `pycaret==4.0.0alpha0` to PyPI.**
-
-### Phase 6 — Engine docs + notebooks + CI matrix — 🟡 PARTIAL (docs done; notebooks+CI in CI section)
-
-- [x] `docs/revamp/` complete.
-- [x] `docs/for_agents/` + `docs/for_developers/`.
-- [x] `AGENTS.md` + `CONTRIBUTING.md` rewritten for 4.0.
-- [x] README rewritten with 4.0 positioning + WIP banner + master-branch announcement.
-- [x] 5 executed end-to-end notebooks (`notebooks/01-05`).
-- [x] CI green across Python 3.11 / 3.12 / 3.13 × Ubuntu + Windows (`v4` branch, `ci-status` job).
-- [ ] CI notebook-execution nightly job stays green for 7 consecutive days.
-- [ ] Open-issue triage executed (224 bulk-closable per `docs/revamp/github_issues/PLAYBOOK.md`).
+### Exit criteria
+- `pip install pycaret` gives you a stateless engine driven by `RunConfig`.
+- God-class drained; `pycaret/internal/pycaret_experiment/` deleted.
+- 4.0.0 on PyPI.
 
 ---
 
-## Part 2: Application Platform (new scope — starts after Phase 5 released)
+## MVP 2 — Backend (`services/api`)
 
-Full design in [`docs/revamp/PLATFORM_PLAN.md`](PLATFORM_PLAN.md).
+Status: ✅ **FULLY DONE** (sessions 9–11). 30 integration tests green.
 
-**Gate:** Part 2 does not start until Phase 5 is done — that is, `pycaret==4.0.0alpha0` is on PyPI, the god-class is drained, and the library is demonstrably lightweight with extremely few deps.
+- [x] FastAPI app factory + CORS + lifespan.
+- [x] SQLAlchemy 2.x + Alembic baseline migration. 14 tables: `users`, `sessions`, `api_keys`, `workspaces`, `workspace_members`, `data_sources`, `projects`, `experiments`, `runs`, `events`, `artifacts`, `fold_metrics`, `pipelines`, `pipeline_project_links`, `deployments`.
+- [x] Auth: bcrypt + JWT access + rotating refresh tokens + session revocation.
+- [x] First-run bootstrap (`/setup/status`, `/setup/bootstrap`).
+- [x] Engine introspection proxy (`/describe/models`, `/describe/metrics`, `/describe/setup-params`).
+- [x] Workspace / Project / Experiment CRUD.
+- [x] **Run execution** — `RunOrchestrator` with `ThreadPoolExecutor`, `DBEventLogger(BaseLogger)` bridging engine events to DB + WebSocket. Plans: `setup` / `create` / `compare`.
+- [x] **WebSocket event stream** — `/runs/{id}/events/ws?token=…` with `EventBroker` bridging worker-thread emission to asyncio via `call_soon_threadsafe`.
+- [x] **Data sources** — CSV upload (64 MB cap, SHA-256, column sample) + S3/Postgres connector registration.
+- [x] **Deployments + in-house serving** — `/runs/{id}/promote` → `Pipeline` row → `/pipelines/{id}/deployments` → `/deployments/{slug}/predict`. `DeploymentRegistry` in-process LRU + p50/p95 rolling window.
+- [x] **Run cancellation** — cooperative `threading.Event` polled at stage boundaries.
+- [x] Alembic migrations (auto-migrate SQLite dev; explicit `pycaret-server migrate` for prod).
+- [x] 30 integration tests green (server) + 62/62 combined with engine.
+- [ ] **Trial entity** — expand `Run.leaderboard` JSON into first-class `trials` table rows (one per AutoML candidate). Needed for the Trials tab in the UI.
+- [ ] **Prediction Log + Drift Report tables + routes** — § 4.11 / § 4.12 of spec.
+- [ ] **Model Library DB entity** — move engine's hardcoded registry into editable `model_library` rows synced from engine metadata.
+- [ ] **Job queue** — upgrade from `ThreadPoolExecutor` to a `Job` table + `services/worker` runner (Celery / RQ / Arq pluggable).
+- [ ] **LLM gateway** (see MVP 3 below — provider router + 6 advisory endpoints).
+- [ ] **Audit logs** + **API keys** tables + routes.
+- [ ] **Secrets encryption** for LLM keys, cloud credentials.
 
-### Phase 7 — CLI utility (`pycaret-cli`) — 🟡 PARTIAL (session 9)
-
-- [x] `pycaret-server` CLI with `serve` / `version` subcommands shipped in `pycaret-server`.
-- [ ] Separate `pycaret-cli/` package (project-export, YAML-driven runs, admin) — session 10+.
-
-### Phase 8 — Database layer — ✅ COMPLETE (sessions 9, 11)
-
-- [x] `pycaret-server/pycaret_server/db/` with full SQLAlchemy 2.x models + session factory + FastAPI `get_db` dependency.
-- [x] SQLite default (`sqlite:///./pycaret.db`); Postgres / MySQL driver selection via `PYCARET_DATABASE_URL`.
-- [x] 14 tables (matches `PLATFORM_PLAN.md § 3` exactly): `users`, `workspaces`, `workspace_members`, `projects`, `data_sources`, `experiments`, `runs`, `events`, `artifacts`, `fold_metrics`, `pipelines`, `pipeline_project_links`, `deployments`, `api_keys`, `sessions`.
-- [x] First-run bootstrap flow implemented end-to-end (`POST /api/v1/setup/bootstrap` creates admin + workspace + workspace_member + session, returns token pair).
-- [x] *(session 11)* **Alembic baseline migration** — `alembic.ini` + `pycaret_server/migrations/` (env.py, script template, baseline revision) with autogen enabled. `ensure_schema(engine, dev_auto_migrate=True)` auto-applies on fresh SQLite; production Postgres raises unless `alembic upgrade head` (or `pycaret-server migrate`) has been run.
-
-### Phase 9 — Backend API (`pycaret-server`) — ✅ COMPLETE (sessions 9-11)
-
-- [x] FastAPI app factory with CORS + lifespan (creates tables on first boot).
-- [x] Auth: bcrypt password hashing + JWT access-token + rotating refresh-token with session-row storage. `/api/v1/auth/{login,refresh,logout,me}`.
-- [x] `POST /api/v1/setup/{status,bootstrap}` first-run flow.
-- [x] `GET /api/v1/describe/{models,models/{id},metrics,setup-params}` engine-introspection proxy over `pycaret.api`.
-- [x] CRUD on `/api/v1/workspaces`, `/api/v1/workspaces/{id}/projects`, `/api/v1/projects/{id}/experiments`.
-- [x] OpenAPI at `/docs` + `/openapi.json`; health at `/healthz`.
-- [x] **14 integration tests for CRUD + auth + setup + describe** — green in ~8 s.
-- [x] *(session 10)* `POST /api/v1/experiments/{id}/runs` → threaded `RunOrchestrator` that instantiates `pycaret.tasks.*Experiment`, wires `DBEventLogger(BaseLogger)` for live event persistence, pickles the fitted pipeline as an `Artifact` row, writes the leaderboard + summary back onto the Run. Plans: `setup` | `create` | `compare`.
-- [x] *(session 10)* `GET /api/v1/runs/{id}`, `GET /api/v1/experiments/{id}/runs`, `GET /api/v1/runs/{id}/events` (polling with `after_id` cursor), `POST /api/v1/runs/{id}/wait` (block).
-- [x] *(session 10)* `WebSocket /api/v1/runs/{id}/events/ws?token=…` — replays stored events on connect, then live-streams new events via the `EventBroker` (thread → asyncio bridge through `call_soon_threadsafe`), sends `run.closed` sentinel at terminal state.
-- [x] *(session 10)* **6 run-lifecycle tests** covering submit-validation, setup plan, create plan + artifact persistence, list, WebSocket replay, WebSocket auth reject. 20/20 server suite green in ~10 s.
-- [x] *(session 11)* **Data-source connectors** — `POST /workspaces/{id}/data-sources/upload` (multipart CSV, 64 MB cap, SHA-256 + column sample), `POST /workspaces/{id}/data-sources` (register S3/Postgres config), full list/get/delete. Runs accept `data_source_id` + `target` override; the orchestrator resolves the CSV path at dispatch time.
-- [x] *(session 11)* **Deployments + in-house serving** — `POST /runs/{id}/promote` turns a Run's fitted pipeline into a workspace-scoped `pipelines` row, `POST /pipelines/{id}/deployments` registers a slug-addressable `Deployment`, `POST /deployments/{slug}/predict` dispatches through `DeploymentRegistry` (in-process LRU over cloudpickle, p50/p95 latency + inference counters, rolling 100-sample window).
-- [x] *(session 11)* **Run cancellation** — `POST /runs/{id}/cancel` signals the orchestrator's `threading.Event`; worker checks at every stage boundary and raises `_CancelledError` mapped to `Run.status = "cancelled"`.
-- [x] *(session 11)* **10 new integration tests** covering CSV upload + run-from-CSV, S3 connector registration, file cleanup on delete, cancel-queued, cancel-terminal (no-op), promote + serve end-to-end, promote-rejects-unfinished, pipeline-with-deployment-refusal, slug collision + format, alembic-fresh-db. **30/30 server suite green.**
-
-### Phase 10 — Frontend (`pycaret-ui`) — 🟡 IN FLIGHT (session 12)
-
-- [x] *(session 12)* `pycaret-ui/` scaffolded as a third monorepo sibling: Vite 5 + React 18 + TypeScript 5 (strict, verbatimModuleSyntax) + Tailwind 3 (dark-mode first) + TanStack Query + Zustand + React Router 6 + axios.
-- [x] *(session 12)* Typed API client (hand-written mirrors in `src/api/types.ts` covering setup/auth/workspaces/projects/experiments/runs/events). `npm run gen:api` regenerates `src/api/schema.ts` from live `/openapi.json` when needed.
-- [x] *(session 12)* Auth store (Zustand) + `localStorage`-persisted refresh token + single-flight axios refresh interceptor + `<AuthGate>` that restores sessions across reloads.
-- [x] *(session 12)* 4 screens: `/setup`, `/login`, `/` (workspaces), `/workspaces/:id` (projects). All wired to the live API.
-- [x] *(session 12)* Vitest + Testing Library harness; 6 tests across auth store + AuthGate + Setup form.
-- [x] *(session 12)* ESLint flat config, TypeScript strict check, production build (~83 kB gzipped).
-- [x] *(session 12)* `docker/Dockerfile.ui` (Node-build → nginx-runtime, non-root) + `docker-compose.yml` service (proxies `/api` + WS to `api`).
-- [x] *(session 12)* CI job `ui` runs typecheck + lint + test + build on every push; wired into `ci-status` gate.
-- [ ] 4 remaining screens: project detail (experiments list), experiment setup (dynamic form driven by `describe_setup_params`), run view (live event stream via WebSocket + leaderboard + artifacts), admin (users + workspace settings) — session 13+.
-- [ ] Setup form 100% driven by `describe_setup_params` (zero UI code hard-codes param names) — session 13.
-- [ ] Light-mode support — deferred.
-
-### Phase 11 — Docker / deploy — 🟢 MOST OF THE WAY (sessions 9, 12)
-
-- [x] `docker/Dockerfile.api` (multi-stage Python 3.13-slim + uv + non-root runtime user + healthcheck).
-- [x] `docker/docker-compose.yml` (dev compose; SQLite + artifact volume at `./data/`; now includes UI service).
-- [x] *(session 12)* `docker/Dockerfile.ui` — two-stage Node 22 → nginx 1.27-alpine, non-root, healthcheck, SPA fallback, `/api` + `/ws` reverse proxy.
-- [x] *(session 12)* `docker/nginx.ui.conf` — upstream to `api:8000`, long-poll timeouts for WebSocket upgrade on `/api/v1/runs/*`.
-- [ ] `docker/docker-compose.prod.yml` with reverse-proxy + TLS (Caddy or Traefik) — after admin screens.
-- [ ] `deploy/k8s/` manifests as stretch goal.
-
-### Phase 12 — Platform release — 🔴 NOT STARTED
-
-- [ ] Per-package READMEs.
-- [ ] 5-minute quickstart (clone → compose up → first experiment).
-- [ ] Deployment guide (local / docker / k8s / cloud).
-- [ ] Video walkthrough.
-- [ ] Tag `pycaret-server==0.1.0` + `pycaret-cli==0.1.0` + `@pycaret/ui@0.1.0`.
+### Exit criteria
+- Every endpoint listed in [`CONTROL_PLANE_SPEC.md § 14`](CONTROL_PLANE_SPEC.md#14-api-surface) implemented (current: ~40 of ~300 planned).
+- Trials, Jobs, LLM, Drift, Model-Library tables all exist and are exercised by tests.
 
 ---
 
-## Out of scope (explicit non-goals for the whole programme)
+## MVP 3 — Web UI (`apps/web`)
 
-- Multi-GPU / distributed training — no parallel.
-- Hosted experiment-tracking SaaS (mlflow, comet, wandb) — out of core.
-- Model serving — MLServer / Seldon / BentoML already do this; we link, don't replace.
-- Multi-tenant hosted SaaS with billing — someone else builds this on top of the self-hostable platform.
+Status: 🟡 **IN FLIGHT** (session 12). 4/8 screens. 6 tests green.
+
+- [x] Vite 5 + React 18 + TypeScript 5 + Tailwind 3 + TanStack Query + Zustand + React Router 6 scaffold.
+- [x] Typed API client (hand-written; `npm run gen:api` wired for growth).
+- [x] Auth: Zustand store + localStorage refresh token + axios single-flight refresh interceptor + `<AuthGate>` session restore.
+- [x] Dark-mode-first Tailwind palette + component primitives (`.btn-*`, `.input`, `.card`, etc.).
+- [x] Screens shipped: `/setup`, `/login`, `/` (workspaces), `/workspaces/:id` (projects).
+- [x] Production bundle: 83 kB gzipped. 6 tests green. Docker image + CI job live.
+- [ ] **`/projects/:id`** — project detail: experiments list + New Experiment button.
+- [ ] **`/experiments/:id`** — experiment setup form **100% driven by `describe_setup_params`** (zero UI code hard-codes a parameter name). RunConfig modes: manual / assisted / auto / expert.
+- [ ] **`/runs/:id`** — live event stream via WebSocket + leaderboard table + artifact download + promote-to-pipeline.
+- [ ] **`/datasets/:id`** — dataset overview / schema / profile / quality / versions.
+- [ ] **`/deployments/:id`** — endpoint details + test form + logs + metrics + drift tab.
+- [ ] **`/monitoring`** — deployment health + drift alerts.
+- [ ] **`/admin/users`** + **`/admin/workspace`** + **`/admin/integrations`** — workspace admin surface.
+- [ ] **AI Assistant widget** — surfaces LLM suggestions inline (design generator on `/experiments/new`, run explainer on `/runs/:id`, drift analyst on `/monitoring`).
+- [ ] Light-mode opt-in (dark-mode-first remains default).
+
+### Exit criteria
+- All 14 sidebar entries in [`CONTROL_PLANE_SPEC.md § 13.1`](CONTROL_PLANE_SPEC.md#131-sidebar) wired.
+- Every backend endpoint has a UI touchpoint.
+- Live event stream renders during an AutoML run.
+
+---
+
+## MVP 4 — Self-hosted distribution (`infra/docker`)
+
+Status: 🟢 **MOSTLY DONE** (sessions 9, 12).
+
+- [x] `infra/docker/Dockerfile.api` (multi-stage, non-root, healthchecked).
+- [x] `infra/docker/Dockerfile.ui` (multi-stage, nginx runtime, SPA fallback + `/api` + WebSocket reverse proxy).
+- [x] `infra/docker/docker-compose.yml` (api + web services, SQLite + artifact volume, one-command startup).
+- [x] `infra/docker/nginx.ui.conf` with 1h WS upgrade timeouts for long AutoML runs.
+- [ ] **`infra/docker/docker-compose.prod.yml`** with Postgres + MinIO + Redis (optional) + reverse-proxy (Caddy / Traefik) + TLS.
+- [ ] **`services/worker` container** wired into compose once the Job queue lands.
+- [ ] **`services/deployment-runtime` container** for prod serving (separate from the API process).
+
+### Exit criteria
+- `docker compose up` = full stack with managed Postgres + object storage.
+- Prod compose variant with TLS + reverse proxy in under 10 minutes from clone.
+
+---
+
+## V2 — Enterprise readiness
+
+Status: 🔴 **NOT STARTED**. Each bullet is roughly one session.
+
+- [ ] **User roles** — expand from admin/member to owner / admin / project_admin / ml_engineer / data_scientist / viewer / service_account (§ 17.2).
+- [ ] **Audit logs** — append-only table, UI viewer, retention policy.
+- [ ] **API keys** — programmatic access with scoped permissions.
+- [ ] **SSO / SAML / OAuth / LDAP** — one provider per session.
+- [ ] **Secrets encryption** — KMS / Vault integration for LLM keys + cloud credentials.
+- [ ] **Backup / restore** — DB snapshot + artifact archive workflow.
+- [ ] **Model Library UI** — admin enable/disable, edit search spaces.
+- [ ] **LLM Assistant UI** — all 6 advisory features wired into their screens (§ 12.2).
+- [ ] **AutoML full pipeline search** — preprocessing + model + hyperparameters in one search (§ 7).
+- [ ] **Drift monitoring** — § 11.2. PSI / KS / Jensen-Shannon feature drift, prediction drift, periodic cron.
+- [ ] **Deployment rollback + scaling** — version history + replica control.
+- [ ] **Scheduled retraining** — cron jobs that re-run an experiment on a fresh dataset snapshot.
+- [ ] **Cloud deployment templates** — `infra/terraform/{aws,gcp,azure}` each fully implemented.
+- [ ] **Kubernetes** — `infra/helm/pycaret/` chart with prod-grade values.
+- [ ] **Electron desktop** — `apps/desktop/` fully built; signed installers per OS; auto-update.
+- [ ] **Python SDK** — `packages/sdk-python/` published to PyPI as `pycaret-client`.
+
+### Exit criteria
+- SSO-authed, audit-logged Control Plane runs on EKS / GKE / AKS from Terraform.
+- Electron desktop installer works on macOS / Windows / Linux.
+- `pip install pycaret-client` + Control-Plane instance reproduces the UI's full workflow in code.
+
+---
+
+## V3 — Scale + governance
+
+Status: 🔴 **NOT STARTED**. Long-term.
+
+- [ ] Kubernetes-native execution (runs as K8s Jobs, not in-process workers).
+- [ ] Distributed AutoML (Ray / Dask opt-in backend).
+- [ ] Approval workflows (reviewer required before `promote` / `deploy`).
+- [ ] Model cards + governance reports.
+- [ ] Multi-environment deployments (dev / staging / prod promotion).
+- [ ] Feature store integrations (Feast / Tecton / Snowflake Feature Store).
+- [ ] Advanced monitoring (Prometheus metrics export, OpenTelemetry traces).
+- [ ] Plugin system (custom preprocessors + models loaded at runtime).
+- [ ] Marketplace for community models + preprocessors.
+
+---
+
+## Current session ledger
+
+| Session | Theme | Ships |
+|---|---|---|
+| 1–6 | Engine revamp Phases 0–3.5 | 4.0.0 OOP engine scaffold |
+| 7–8 | Dep cut + `4.0.0a1` to PyPI | Lean install |
+| 9 | Backend scaffold (Part 2 kickoff) | 14 tables + auth + CRUD |
+| 10 | Run execution + WebSocket | Event-streamed AutoML |
+| 11 | Phase 9 finish | Data sources + deployments + cancel + Alembic |
+| 12 | Frontend scaffold (Phase 10 start) | 4 screens live |
+| **13** | **Monorepo restructure + Control Plane spec** | **Canonical structure + docs** |
+| 14 | `/projects/:id` + `/experiments/:id` setup wizard (dynamic form) | Experiment creation UI |
+| 15 | `/runs/:id` with live WebSocket + leaderboard | Run view |
+| 16 | Trial entity + Model Library table sync | DB expansion |
+| 17 | LLM router + first 2 advisory endpoints | AI assist MVP |
+| 18 | Dataset upload UI + profile screen | Data-source UI |
+| 19 | Admin screens + API keys + audit logs | V2 foundation |
+| 20+ | God-class drain → 4.0.0 release | Engine finish |
+
+Roughly **7–8 sessions to MVP 3 completion** (all 8 UI screens wired + LLM assist + full AutoML flow). Then a handful of V2 items. Then god-class drain for MVP 1 release.
+
+---
+
+## Out of scope (forever)
+
+- Multi-GPU / distributed training in the engine (V3 opt-in via Ray).
+- Hosted experiment-tracking SaaS (mlflow / comet / wandb) — out of core.
+- Notebook-as-a-service / data warehouse / job scheduler — not us.
 - Backward compatibility with PyCaret 3.x internal APIs — only the OOP golden path is stable.
-- Kubernetes operator — Compose is the default; K8s is thin manifests.
 - GraphQL — REST + OpenAPI is simpler for this surface.

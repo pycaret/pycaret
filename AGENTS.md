@@ -1,165 +1,186 @@
-# AGENTS.md — PyCaret 4.0 agent instructions
+# AGENTS.md — PyCaret agent instructions
 
-> This file is read by AI coding agents (Claude, Cursor, Copilot, etc.) before they touch the repo. It is the single-source briefing for any agent contributing to PyCaret 4.0. If you are a human: read it too; it's short and useful.
+> Read by AI coding agents (Claude, Cursor, Copilot, etc.) before touching the repo. Single-source briefing for any agent contributing to PyCaret. Humans should read it too.
 
 ## TL;DR — the 60-second briefing
 
-- **PyCaret 4.0 is a ground-up revamp** of a ~62K-LOC ML library that was unmaintained for 3 years. It's a clean break from 3.x — the functional API, mlflow, comet, wandb, dagshub, fugue, dask, yellowbrick, m2cgen, gradio, fastapi, boto3, evidently, fairlearn, and ~20 other dependencies are gone.
-- **The public API is OOP-only.** One sklearn-compatible `Experiment` subclass per task. `Experiment.fit(data)` replaces the 3.x `setup(data)`.
-- **`pycaret/internal/pycaret_experiment/` is a 16,000-LOC god-class** that's still alive during the migration. The new `Experiment` wraps it via `self._legacy`. **Do not rewrite it in one pass.** Drain it verb-by-verb.
-- **The notebook golden path must always work.** `setup` → `compare_models` → `tune_model` → `predict_model` → `save_model`. If your change breaks that on the `juice` / `boston` / `jewellery` / `anomaly` / `airline` datasets, revert.
-- **Everything non-trivial gets logged** in `docs/revamp/release_notes_pycaret4.md` under the appropriate category tag (`BREAKING`, `REMOVED`, `ADDED`, `CHANGED`, `FIXED`, `DOCS`, `BUILD`, `TESTS`, `DEPS`, `INTERNAL`). Newest session at the top; append-only.
+- **We are building PyCaret — an open-source, self-hosted ML platform** (engine + backend + web UI). Product name: **PyCaret**. UI branding: **PyCaret Control Plane**. See `docs/revamp/VISION.md` for the one-pager.
+- **Monorepo: `apps/`, `services/`, `packages/`, `infra/`.** Every top-level dir has one reason to exist. See `docs/revamp/ARCHITECTURE.md § 1` for the layout rules.
+- **Engine (`packages/engine/`) is stateless.** Built on sklearn 1.7+. Shipped on PyPI as `pycaret`. OOP-only; the 3.x functional API is gone.
+- **Backend (`services/api/`) is FastAPI + SQLAlchemy.** Shipped on PyPI as `pycaret-server`. Hosts the Control Plane.
+- **Web (`apps/web/`) is Vite + React 18 + TypeScript.** Dark-mode-first, single-column forms, no mystery meat.
+- **The single contract is `RunConfig`.** A strict JSON schema that drives notebook / API / UI / LLM-generated runs. Spec: `docs/revamp/CONTROL_PLANE_SPEC.md § 6`.
+- **Every non-trivial change gets logged** in `docs/revamp/release_notes_pycaret4.md` under the current session block (tags: `BREAKING`, `REMOVED`, `ADDED`, `CHANGED`, `FIXED`, `DOCS`, `BUILD`, `TESTS`, `DEPS`, `INTERNAL`).
 
 ## Start here
 
 Read these in order before writing code:
 
-1. **`README.md`** — what PyCaret 4.0 is and the canonical usage pattern.
-2. **`docs/revamp/ARCHITECTURE.md`** — 8 core design principles, package layout, `Experiment` interface contract, migration plan.
-3. **`docs/revamp/STATUS.md`** — what's landed and what's still in play. Newest session first.
-4. **`docs/revamp/ROADMAP.md`** — phased plan. Find the phase you're contributing to.
-5. **`docs/revamp/DECISIONS.md`** — ADRs. If an option "feels wrong," check here; it's probably already been litigated.
-6. **`docs/revamp/KILL_LIST.md`** — everything deliberately removed from 4.0. Don't reintroduce any of it.
-7. **`docs/revamp/release_notes_pycaret4.md`** — engineering change log. You'll append to this.
+1. **`docs/revamp/VISION.md`** — 1-page product statement.
+2. **`docs/revamp/CONTROL_PLANE_SPEC.md`** — full technical spec (24 sections). The canonical scope.
+3. **`docs/revamp/ARCHITECTURE.md`** — live system architecture. Maps spec onto current code.
+4. **`docs/revamp/ROADMAP.md`** — MVP 1–4 / V2 / V3 phase breakdown. Find the phase you're contributing to.
+5. **`docs/revamp/STATUS.md`** — what's landed and what's in play. Newest session first.
+6. **`docs/revamp/DECISIONS.md`** — ADRs. If an option "feels wrong," check here; it's probably already been litigated.
+7. **`docs/revamp/KILL_LIST.md`** — everything deliberately removed from the engine. Never reintroduce any of it.
+8. **`docs/revamp/release_notes_pycaret4.md`** — engineering change log. You'll append to this.
 
 ## Non-negotiables
 
-### Rules
+### Universal rules
 
-1. **OOP-only API.** No module-level `setup` / `compare_models` / etc. If you catch yourself writing one, stop.
-2. **No new module-level mutable state.** No `_CURRENT_EXPERIMENT`. No `ContextVar` implicit-state. If state needs to flow, put it on the `Experiment` instance.
-3. **Every public verb returns a typed result dataclass** — `CompareResult`, `TuneResult`, `PredictResult`, etc. Never return a bare DataFrame or bare estimator.
-4. **Every long-running operation emits a structured event** through `self.logger.log(EventKind.X, ...)`. No `print()` inside the engine. (Top-level `save_model(..., verbose=True)` is an explicit opt-in exception.)
-5. **No upper-bound version pins** on NumPy, pandas, scipy, sklearn, joblib. The whole point of 4.0 was removing those.
-6. **No reintroducing kill-listed dependencies.** See `docs/revamp/KILL_LIST.md`.
-7. **Don't delete `internal/pycaret_experiment/`** wholesale. Delegation is the escape hatch keeping the public API stable while verbs are rewritten.
-8. **Don't add backward-compat shims for the 3.x functional API.** 4.0 is a clean break; "nobody will migrate 3 → 4" (project owner).
+1. **Engine is stateless.** `result = engine.run(config)`, not `setup() + compare_models()`. No module-level `_CURRENT_EXPERIMENT`. No `ContextVar` implicit-state.
+2. **Config is the contract.** The same `RunConfig` JSON must work from a notebook, the REST API, the UI wizard, and an LLM-generated payload. Don't invent a parallel shape for any single surface.
+3. **Artifacts are immutable.** Every promotion / retrain creates a new `pipeline_pickle`. Never mutate a completed artifact.
+4. **Deployments are versioned.** Every `Deployment` row points at one specific `Pipeline` row. No "moving target" endpoints.
+5. **LLM is advisory.** LLM calls return `suggested_config_json` + `reasoning_summary` + `risk_flags`. The user approves. The deterministic engine executes. **Never let the LLM directly trigger a destructive action.** (See CONTROL_PLANE_SPEC § 12.3.)
+6. **Every public verb returns a typed result dataclass** — `CompareResult`, `TuneResult`, `PredictResult`. Never a bare DataFrame.
+7. **Every long-running operation emits a structured event** through `self.logger.log(EventKind.X, ...)`. No `print()` inside the engine.
+8. **No upper-bound version pins** on NumPy, pandas, scipy, sklearn, joblib. The whole point of 4.0 was removing those.
+9. **No reintroducing kill-listed dependencies.** See `docs/revamp/KILL_LIST.md`.
 
-### Conventions
+### Tooling conventions
 
-- **Python target:** 3.13 primary; 3.11 floor. 3.14 is tracked but currently blocked on upstream joblib/cloudpickle PEP 649 support — do not write 3.14-only code.
-- **Tooling:** `uv` for env + lockfile, `hatchling` build backend, `ruff` for lint + format, `pytest` for tests.
-- **Imports:** absolute only inside `pycaret/`. No star imports. Lazy-import heavy optional deps inside the function that needs them.
-- **Type hints:** everywhere on new code. `from __future__ import annotations` at the top of every module.
-- **Docstrings:** numpydoc style, as short as truthful. Describe *why*, not *what* (the code already says what).
-- **Filenames:** `snake_case.py`. Task subclasses named `{Task}Experiment`.
-- **Tests live in `tests/`.** The canonical OOP smoke set is in `tests/test_e2e_oop.py`; the architecture unit tests are in `tests/test_core_architecture.py`.
-
-### Workflow
-
-1. **Make a plan.** For any non-trivial change, sketch what you'll edit + why in the response to the user before editing.
-2. **Write the code.** Small diffs, one concern per commit.
-3. **Run the relevant test subset** (`uv run pytest tests/test_core_architecture.py tests/test_e2e_oop.py`) — it's fast.
-4. **Append a release-notes entry** in `docs/revamp/release_notes_pycaret4.md` under the current session block. Every non-trivial change.
-5. **Update `docs/revamp/STATUS.md` / `ROADMAP.md`** if you finished a roadmap item.
-6. **If you made a non-obvious design choice**, record it in `docs/revamp/DECISIONS.md` as a new ADR entry (newest first).
+- **Python target:** 3.13 primary; 3.11 floor.
+- **Node target:** 22 primary; 20 floor.
+- **Python env:** `uv` for env + lockfile, `hatchling` build backend, `ruff` for lint + format, `pytest` for tests, Alembic for migrations.
+- **Node env:** `npm` (workspace) with `package-lock.json` checked in, Vite for dev/build, Vitest for tests, ESLint flat config, TypeScript 5.6+ with `verbatimModuleSyntax`.
+- **Imports (Python):** absolute only inside `pycaret/` and `pycaret_server/`. No star imports. Lazy-import heavy optional deps inside the function that needs them.
+- **Imports (TS):** use `@/` alias to `src/`. Prefer named exports. Use `import type` for types (enforced by `verbatimModuleSyntax`).
+- **Type hints:** everywhere on new Python code. `from __future__ import annotations` at the top of every module. TS strict mode is on.
+- **Docstrings:** numpydoc style, as short as truthful. Describe *why*, not *what*.
 
 ## Repo map
 
 ```
-pycaret/
-├── README.md                       <- user-facing entry point
-├── AGENTS.md                       <- this file
-├── CONTRIBUTING.md                 <- human contributor guide
-├── LICENSE                         <- MIT
-├── pyproject.toml                  <- deps, tool config, build
-├── uv.lock                         <- locked resolution
+pycaret/                              repo root
+├── pyproject.toml                    workspace manifest only (no package)
+├── uv.lock
+├── AGENTS.md  CONTRIBUTING.md  README.md  LICENSE
 │
-├── pycaret/                        <- the engine (~49K LOC, shrinking)
-│   ├── __init__.py                 <- version + save_model / load_model re-exports
-│   ├── persistence.py              <- stateless save/load utilities
-│   ├── core/                       <- Experiment base + typed results + errors
-│   │   ├── experiment.py           <- Experiment(BaseEstimator), task-agnostic verbs
-│   │   ├── supervised.py           <- SupervisedExperiment (classification/regression/TS)
-│   │   ├── unsupervised.py         <- UnsupervisedExperiment (clustering/anomaly)
-│   │   ├── results.py              <- CompareResult, TuneResult, PredictResult, ...
-│   │   ├── tasks.py                <- TaskType enum
-│   │   └── errors.py               <- PyCaretError hierarchy
-│   ├── tasks/                      <- 5 task subclasses (the public API)
-│   │   ├── classification.py
-│   │   ├── regression.py
-│   │   ├── clustering.py
-│   │   ├── anomaly.py
-│   │   └── time_series.py
-│   ├── api/                        <- typed introspection (for UI / agents)
-│   │   ├── cards.py                <- ModelCard, MetricCard, ParameterCard
-│   │   ├── schemas.py              <- SetupParamSchema
-│   │   └── describe.py             <- list_models, describe_model, ...
-│   ├── logging/                    <- event-stream logger
-│   │   ├── events.py               <- Event dataclass + EventKind enum
-│   │   ├── base.py                 <- BaseLogger + NullLogger
-│   │   └── memory.py               <- MemoryLogger (in-mem + optional JSONL file)
-│   ├── classification/             <- thin re-export shim (BC for import paths)
-│   ├── regression/                 <- thin re-export shim
-│   ├── clustering/                 <- thin re-export shim
-│   ├── anomaly/                    <- thin re-export shim
-│   ├── time_series/                <- thin re-export shim
-│   ├── datasets.py                 <- dataset loaders (kept)
-│   ├── loggers/                    <- legacy import path; re-exports pycaret.logging
-│   ├── distributions.py            <- re-export of pycaret.internal.distributions
-│   ├── containers/                 <- legacy model/metric registries (still used)
-│   ├── internal/                   <- LEGACY god-class (Experiment._legacy)
-│   │   ├── pycaret_experiment/     <- ~10K LOC supervised/tabular god-class — to drain
-│   │   ├── preprocess/             <- transformers, imputers (migrating in Phase 4)
-│   │   ├── plots/                  <- legacy plot helpers (Phase 3 replacement: Plotly)
-│   │   └── patches/                <- sklearn monkey-patches (remove as sklearn catches up)
-│   └── utils/                      <- version checks, soft-dep introspection
+├── packages/                         SHIPPABLE LIBRARIES
+│   ├── engine/                       → `pycaret` on PyPI (4.0.0a1)
+│   │   ├── pyproject.toml            hatchling build config
+│   │   ├── pycaret/                  the importable package
+│   │   │   ├── api/                  typed introspection (for UI + agents)
+│   │   │   ├── core/                 Experiment, results, errors, tasks
+│   │   │   ├── tasks/                5 task subclasses (public API)
+│   │   │   ├── logging/              event-stream logger
+│   │   │   ├── containers/           model-registry containers (being drained)
+│   │   │   └── internal/             LEGACY god-class (drain in Phase 5)
+│   │   └── tests/                    32 engine tests
+│   ├── sdk-python/                   (V2) Python client (README stub)
+│   └── shared-schemas/               (V2) JSON schemas shared Python ↔ TS
 │
-├── tests/                          <- pytest suite
-│   ├── conftest.py                 <- minimal; no implicit-state fixtures
-│   ├── test_core_architecture.py   <- fast unit tests for core primitives
-│   ├── test_e2e_oop.py             <- end-to-end smoke per task
-│   ├── test_models.py              <- model-registry equality tests (OOP)
-│   └── test_datasets.py
+├── services/                         LONG-RUNNING DEPLOYABLES
+│   ├── api/                          → `pycaret-server` on PyPI (0.1.0a0)
+│   │   ├── pyproject.toml
+│   │   ├── alembic.ini
+│   │   ├── pycaret_server/
+│   │   │   ├── api/                  HTTP routers (setup, auth, describe,
+│   │   │   │                           workspaces, projects, experiments,
+│   │   │   │                           runs, data_sources, deployments)
+│   │   │   ├── auth/                 bcrypt + JWT helpers
+│   │   │   ├── db/                   SQLAlchemy models + session + bootstrap
+│   │   │   ├── migrations/           Alembic env + versions
+│   │   │   ├── runs/                 RunOrchestrator + broker + logger_bridge
+│   │   │   ├── serving.py            DeploymentRegistry (in-proc inference)
+│   │   │   ├── config.py             pydantic-settings
+│   │   │   ├── app.py                FastAPI factory
+│   │   │   └── cli.py                `pycaret-server serve | migrate`
+│   │   └── tests/                    30 server tests
+│   ├── worker/                       (V2) background job runner (README stub)
+│   └── deployment-runtime/           (V2) standalone serving (README stub)
 │
-├── notebooks/                      <- working end-to-end examples
-│   ├── 01_classification.ipynb
-│   ├── 02_regression.ipynb
-│   ├── 03_clustering.ipynb
-│   ├── 04_anomaly_detection.ipynb
-│   └── 05_time_series.ipynb
+├── apps/                             USER-FACING APPLICATIONS
+│   ├── web/                          → `@pycaret/ui` (internal)
+│   │   ├── package.json
+│   │   ├── src/
+│   │   │   ├── api/                  typed client (client + endpoints + types)
+│   │   │   ├── state/                Zustand stores (auth)
+│   │   │   ├── components/           AuthGate, Layout
+│   │   │   └── pages/                Setup, Login, Workspaces, WorkspaceDetail
+│   │   └── (6 vitest tests)
+│   └── desktop/                      (V2) Electron wrapper (README stub)
 │
-├── datasets/                       <- bundled sample CSVs
-├── scripts/                        <- maintenance scripts (notebook build, etc.)
-└── docs/
-    ├── images/                     <- logo, diagrams for README
-    ├── revamp/                     <- THE revamp narrative (read first)
-    ├── for_agents/                 <- agent-specific deep dives
-    └── for_developers/             <- dev onboarding
+├── infra/                            OPS & DEPLOYMENT
+│   ├── docker/                       Dockerfile.api, Dockerfile.ui, compose, nginx
+│   ├── helm/                         (V2) Kubernetes chart (README stub)
+│   └── terraform/                    (V2) AWS / GCP / Azure modules (stubs)
+│
+├── docs/revamp/                      VISION + SPEC + ROADMAP + STATUS + DECISIONS
+│                                     + release_notes + PLATFORM_QUICKSTART
+│                                     + ARCHITECTURE + ARCHITECTURE_ENGINE
+│                                     + AUDIT + KILL_LIST
+├── notebooks/                        5 working end-to-end notebooks (01–05)
+├── scripts/                          maintenance scripts
+└── .github/workflows/                CI: lint + test matrix + web + notebooks
 ```
+
+## Which phase am I in?
+
+Quick decision tree:
+
+- **Are you changing Python code inside `packages/engine/pycaret/`?** You're working on the engine (MVP 1). Follow `docs/for_developers/DRAINING_THE_GODCLASS.md` if you're migrating a verb off `_legacy`.
+- **Are you adding a route / table / service under `services/api/`?** MVP 2. Add the SQLAlchemy model, write an Alembic migration (autogenerate works well here), add the router, write the integration test.
+- **Are you adding a screen / component to `apps/web/`?** MVP 3. Match the existing dark-mode palette + component primitives. 100% TypeScript strict. Tests in `vitest`.
+- **Are you editing Docker / Helm / Terraform?** MVP 4 (docker) or V2 (helm / terraform). Stay within `infra/`.
+- **Are you wiring LLM functionality?** Uses the `services/api/pycaret_server/llm/` router (Claude + OpenAI). Every call returns an advisory `LLMConsultation` row; the user approves before execution.
+
+## Workflow
+
+1. **Plan.** For any non-trivial change, sketch what you'll edit + why in the response to the user before editing.
+2. **Write small, cohesive diffs.** One concern per commit.
+3. **Run the relevant test subset locally.** For the engine: `uv run pytest packages/engine/tests/ -q`. For the API: `uv run --package pycaret-server pytest services/api/tests/ -q`. For the web: `cd apps/web && npm run typecheck && npm run lint && npm test && npm run build`.
+4. **Append a release-notes entry** in `docs/revamp/release_notes_pycaret4.md` under the current session block.
+5. **Update `docs/revamp/STATUS.md`** if you finished a roadmap item.
+6. **Update `docs/revamp/ROADMAP.md`** if you closed a phase or added scope.
+7. **Record non-obvious design choices** in `docs/revamp/DECISIONS.md` as a new ADR entry (newest first).
 
 ## Common tasks
 
-### Add a new verb / rewrite a legacy verb natively
+### Add a new backend route
+
+1. Define the SQLAlchemy model(s) in `services/api/pycaret_server/db/models.py` if needed.
+2. Generate the migration: `cd services/api && uv run alembic revision --autogenerate -m "<slug>"`. Review + format the generated file.
+3. Add the Pydantic schemas in `services/api/pycaret_server/api/schemas.py`.
+4. Create / extend the router in `services/api/pycaret_server/api/<module>.py`.
+5. Mount it in `services/api/pycaret_server/app.py`.
+6. Write the integration test in `services/api/tests/test_<module>.py` using the TestClient fixture pattern.
+7. Run the server suite: `uv run --package pycaret-server pytest services/api/tests/ -q`.
+
+### Add a new frontend screen
+
+1. Add the typed endpoint(s) to `apps/web/src/api/endpoints.ts` and the response types to `apps/web/src/api/types.ts`.
+2. Create the page under `apps/web/src/pages/<Name>.tsx`.
+3. Route it in `apps/web/src/App.tsx` (inside the `<Layout>` for authed, outside for public).
+4. Write at least one Vitest component test.
+5. Check everything: `cd apps/web && npm run typecheck && npm run lint && npm test && npm run build`.
+
+### Drain a god-class verb (engine, Phase 5)
 
 1. Current state: the verb calls `self._legacy.<verb>(*args, **kwargs)` and wraps the return in a typed dataclass.
-2. Replacement: reimplement the verb natively using `sklearn.pipeline.Pipeline`, `sklearn.model_selection`, and whatever upstream helpers fit.
-3. Keep the signature identical. Keep the return type identical.
-4. Emit the same structured events (`MODEL_TUNE_STARTED` / `MODEL_TUNED`, etc.).
-5. Add a test in `tests/test_e2e_oop.py`; do not bring back the old test.
-6. Release-notes entry under `CHANGED` + `INTERNAL` (not `BREAKING` — external API is identical).
+2. Reimplement natively using `sklearn.pipeline.Pipeline`, `sklearn.model_selection`, etc.
+3. Keep the signature + return type identical.
+4. Emit the same structured events.
+5. Add a test in `packages/engine/tests/test_e2e_oop.py`.
+6. Release-notes entry under `CHANGED` + `INTERNAL`.
 
-### Add a new task
+### Add an LLM advisory feature
 
-1. Add `TaskType.NEW_TASK` to `pycaret/core/tasks.py`.
-2. Decide: `SupervisedExperiment` or `UnsupervisedExperiment`?
-3. Create `pycaret/tasks/<new_task>.py` with the subclass; pre-configure `task`, override `__sklearn_tags__` if useful, override `_build_legacy_experiment()` if a legacy target exists.
-4. Extend `pycaret.api.describe` with model/metric cards.
-5. Release-notes entry under `ADDED`.
-
-### Fix an issue from the open-issue list
-
-1. Find it in `docs/revamp/github_issues/triage.md` and its bucket.
-2. If it's in the **fixed-in-4.0** bucket, close with a link to the relevant commit / release note.
-3. If it's in the **still-relevant** bucket, fix it; reference the issue number in the release-notes entry.
-4. If it's in the **out-of-scope** bucket, reply pointing at `KILL_LIST.md` and close.
+1. Add a new file under `services/api/pycaret_server/llm/consultations/<type>.py` with the prompt template + output schema.
+2. Route through the existing `LLMRouter` — don't import `anthropic` or `openai` directly outside `services/api/pycaret_server/llm/providers/`.
+3. Persist results as an `LLMConsultation` row.
+4. Output must include `suggested_config_json`, `suggested_action`, `reasoning_summary`, `risk_flags`. The user sees all four before anything runs.
+5. Never let the LLM cause a side effect directly.
 
 ## Deep dives
 
+- `docs/revamp/ARCHITECTURE_ENGINE.md` — engine-internal architecture (god-class, class hierarchy, event system).
 - `docs/for_agents/ENGINE_WALKTHROUGH.md` — what happens at every step of `fit` → `compare_models` → `predict_model`.
-- `docs/for_agents/TYPED_RESULTS.md` — every result dataclass, its fields, and when it's produced.
-- `docs/for_agents/EVENT_STREAM.md` — the 22 canonical `EventKind`s, what they carry, how to subscribe.
-- `docs/for_agents/INTROSPECTION_API.md` — `list_models` / `describe_model` / `describe_setup_params` contract for UI / form-building.
+- `docs/for_agents/TYPED_RESULTS.md` — every result dataclass, its fields, when it's produced.
+- `docs/for_agents/EVENT_STREAM.md` — the canonical `EventKind`s, what they carry, how to subscribe.
+- `docs/for_agents/INTROSPECTION_API.md` — `list_models` / `describe_model` / `describe_setup_params` contract.
 - `docs/for_developers/SETUP.md` — dev environment, linting, test matrix.
 - `docs/for_developers/TESTING.md` — how to run / add tests.
 - `docs/for_developers/DRAINING_THE_GODCLASS.md` — the playbook for migrating a verb off `_legacy`.
