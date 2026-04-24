@@ -9,6 +9,10 @@ import { ProjectDetail } from '@/pages/ProjectDetail';
 import { NewExperiment } from '@/pages/NewExperiment';
 import { ExperimentDetail } from '@/pages/ExperimentDetail';
 import { RunDetail } from '@/pages/RunDetail';
+import { Pipelines } from '@/pages/Pipelines';
+import { PipelineDetail } from '@/pages/PipelineDetail';
+import { Deployments } from '@/pages/Deployments';
+import { DeploymentDetail } from '@/pages/DeploymentDetail';
 
 export default function App() {
   return (
@@ -37,6 +41,13 @@ export default function App() {
           element={<ExperimentDetail />}
         />
         <Route path="/runs/:runId" element={<RunDetail />} />
+        <Route path="/workspaces/:wsId/pipelines" element={<Pipelines />} />
+        <Route
+          path="/workspaces/:wsId/pipelines/:pipelineId"
+          element={<PipelineDetail />}
+        />
+        <Route path="/workspaces/:wsId/deployments" element={<Deployments />} />
+        <Route path="/deployments/:deploymentId" element={<DeploymentDetail />} />
       </Route>
       <Route
         path="*"

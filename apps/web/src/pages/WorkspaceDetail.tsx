@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { projectsApi, workspacesApi } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
+import { DataSourcesCard } from '@/components/DataSourcesCard';
 
 /** /workspaces/:id  — workspace summary + project list + create. */
 export function WorkspaceDetail() {
@@ -52,10 +53,30 @@ export function WorkspaceDetail() {
           <span className="mx-1">/</span>
           <span>{ws.data?.name ?? '…'}</span>
         </nav>
-        <h1 className="text-xl font-semibold">{ws.data?.name ?? 'Loading…'}</h1>
-        {ws.data?.description && (
-          <p className="text-sm text-ink-200/70 mt-1">{ws.data.description}</p>
-        )}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold">{ws.data?.name ?? 'Loading…'}</h1>
+            {ws.data?.description && (
+              <p className="text-sm text-ink-200/70 mt-1">{ws.data.description}</p>
+            )}
+          </div>
+          {id && (
+            <div className="flex items-center gap-2 text-sm shrink-0">
+              <Link
+                to={`/workspaces/${id}/pipelines`}
+                className="btn-secondary"
+              >
+                Pipelines
+              </Link>
+              <Link
+                to={`/workspaces/${id}/deployments`}
+                className="btn-secondary"
+              >
+                Deployments
+              </Link>
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="grid gap-8 md:grid-cols-[1fr_auto]">
@@ -100,7 +121,7 @@ export function WorkspaceDetail() {
           </ul>
         </section>
 
-        <aside className="md:w-80">
+        <aside className="md:w-80 space-y-4">
           <div className="card">
             <h2 className="text-sm font-medium text-ink-100 mb-4">New project</h2>
             <form
@@ -156,6 +177,7 @@ export function WorkspaceDetail() {
               </button>
             </form>
           </div>
+          {id && <DataSourcesCard workspaceId={id} />}
         </aside>
       </div>
     </div>

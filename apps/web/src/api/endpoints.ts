@@ -8,6 +8,7 @@ import { api } from './client';
 import type {
   BootstrapRequest,
   DataSource,
+  Deployment,
   Experiment,
   ExperimentCreate,
   LoginRequest,
@@ -127,6 +128,57 @@ export const runsApi = {
       .then((r) => r.data),
   promote: (run_id: string, body: { name: string; description?: string; tags?: string[] }) =>
     api.post<Pipeline>(`/runs/${run_id}/promote`, body).then((r) => r.data),
+};
+
+// ───────────────────────────── pipelines (workspace-scoped fitted-model registry)
+
+export const pipelinesApi = {
+  list: (workspace_id: string) =>
+    api
+      .get<Pipeline[]>(`/workspaces/${workspace_id}/pipelines`)
+      .then((r) => r.data),
+  get: (pipeline_id: string) =>
+    api.get<Pipeline>(`/pipelines/${pipeline_id}`).then((r) => r.data),
+  remove: (pipeline_id: string) =>
+    api.delete<void>(`/pipelines/${pipeline_id}`).then((r) => r.data),
+};
+
+// ───────────────────────────── deployments (in-house serving)
+
+export interface PredictRequest {
+  rows: Record<string, unknown>[];
+}
+export interface PredictResponse {
+  deployment_id: string;
+  endpoint_slug: string;
+  predictions: Array<{ index: number; prediction: unknown }>;
+  latency_ms: number;
+  request_id: string;
+}
+
+export const deploymentsApi = {
+  list: (workspace_id: string) =>
+    api
+      .get<Deployment[]>(`/workspaces/${workspace_id}/deployments`)
+      .then((r) => r.data),
+  get: (deployment_id: string) =>
+    api.get<Deployment>(`/deployments/${deployment_id}`).then((r) => r.data),
+  create: (
+    pipeline_id: string,
+    body: {
+      endpoint_slug: string;
+      auth_mode?: 'workspace' | 'api-key' | 'public';
+    },
+  ) =>
+    api
+      .post<Deployment>(`/pipelines/${pipeline_id}/deployments`, body)
+      .then((r) => r.data),
+  remove: (deployment_id: string) =>
+    api.delete<void>(`/deployments/${deployment_id}`).then((r) => r.data),
+  predict: (endpoint_slug: string, body: PredictRequest) =>
+    api
+      .post<PredictResponse>(`/deployments/${endpoint_slug}/predict`, body)
+      .then((r) => r.data),
 };
 
 // ───────────────────────────── data sources (listing + register; upload is separate)

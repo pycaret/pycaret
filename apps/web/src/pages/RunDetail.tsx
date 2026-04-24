@@ -177,8 +177,13 @@ export function RunDetail() {
           {promote.data && (
             <p className="hint mt-2">
               Created pipeline{' '}
-              <code className="font-mono">{promote.data.id}</code>. Deploy it from the
-              pipelines screen (coming session 16).
+              <Link
+                to={`/workspaces/${promote.data.workspace_id}/pipelines/${promote.data.id}`}
+                className="font-mono text-accent-400 hover:underline"
+              >
+                {promote.data.name}
+              </Link>
+              . Visit its page to deploy it behind a slug.
             </p>
           )}
         </section>
