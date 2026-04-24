@@ -1,6 +1,89 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 13*
+*Updated: 2026-04-24, end of session 14*
+
+## Session 14 — Project detail + Experiment wizard (100% data-driven dynamic form) — ✅
+
+The centerpiece of MVP 3: a data scientist can now bootstrap → pick a workspace → pick a project → **configure a full experiment through a dynamic form that the UI has never heard of**, then submit runs against it. Zero hard-coded parameter names in the UI — the engine's `describe_setup_params(task)` is the single source of truth.
+
+### What landed
+
+- **Dynamic form infrastructure** — two new files that between them are the load-bearing contract from the engine to the UI:
+  - **`apps/web/src/components/DynamicForm.tsx`** — `<ParamInput>` dispatches on `kind` (bool / int / float / enum / column / string) and returns the right native HTML input with validation hints (min/max, required, choices). `<DynamicForm>` groups params by `group` in the order declared by `schema.groups` and preserves user input as the form re-renders.
+  - **`apps/web/src/components/DynamicForm.helpers.ts`** — pure helpers: `applyDefaults(schema, values)` seeds missing fields from schema defaults without clobbering user input; `stripDefaults(schema, values)` removes values equal to defaults so the API payload captures *user intent* only (engine owns defaults).
+- **Three new screens**:
+  - **`/workspaces/:wsId/projects/:projectId`** (`ProjectDetail.tsx`) — project header, tags, experiments list, "New experiment" button. Breadcrumb: Workspaces / {workspace} / {project}.
+  - **`/workspaces/:wsId/projects/:projectId/experiments/new`** (`NewExperiment.tsx`) — two-card wizard. Card 1: name + task dropdown + target column (shown only for supervised tasks). Card 2: the dynamic form, seeded with schema defaults, reloaded whenever the task changes. Submits `POST /projects/{id}/experiments` with stripped (user-intent-only) `setup_params`.
+  - **`/workspaces/:wsId/projects/:projectId/experiments/:experimentId`** (`ExperimentDetail.tsx`) — two-column layout. Main: config overview (param diff vs. engine defaults) + runs table (status-coloured + auto-polls every 2s while any run is queued/running). Sidebar: "New run" form — plan (setup|create|compare), model id (for create), sklearn sample dataset selector. Status column colour-coded via `STATUS_COLOR` map.
+- **API + type bindings**:
+  - `apps/web/src/api/types.ts` — new types: `SetupParam`, `SetupParamSchema`, `ModelCard`, `MetricCard`, `ExperimentCreate`.
+  - `apps/web/src/api/endpoints.ts` — new `experimentsApi` (list / get / create / remove) and `describeApi` (setupParams / models / metrics).
+- **Route wiring** — 3 new authenticated routes in `App.tsx`. `WorkspaceDetail.tsx` projects are now clickable links through the new hierarchy.
+- **Tests** — 13 new vitest tests lock in the dynamic-form contract:
+  - `<ParamInput>` renders the correct input type per `kind` (bool → checkbox, int/float → number with step, enum → select, column with columns → select, column without → text).
+  - `applyDefaults` / `stripDefaults` round-trip correctly.
+  - `<DynamicForm>` groups preserve `schema.groups` order; `hide` works; `onChange` bubbles merged values; empty schema doesn't crash.
+
+### Headline metrics
+
+| | Session 13 end | Session 14 end |
+|---|---|---|
+| UI screens | 4 (Setup / Login / Workspaces / WorkspaceDetail) | **7** (+ ProjectDetail + NewExperiment + ExperimentDetail) |
+| UI components | 2 (AuthGate + Layout) | **3** (+ DynamicForm) |
+| UI tests | 6 | **19** (+ 13 for DynamicForm / ParamInput / helpers) |
+| UI LOC | ~1,300 | **~2,100** (+800) |
+| Production bundle | 83 kB gz | **86 kB gz** (+3 kB) |
+| Combined tests | 68 | **81** (32 engine + 30 server + 19 web) |
+
+### What works today
+
+The first beautiful product loop is about to be real. From a fresh clone, in two terminals:
+
+```bash
+# terminal 1
+uv run --package pycaret-server pycaret-server serve --reload
+# terminal 2
+cd apps/web && npm run dev
+```
+
+Then in a browser:
+
+1. http://localhost:3000/setup → bootstrap admin
+2. Sign in → see workspaces → click a workspace
+3. Click a project (or create one)
+4. **"New experiment"** → pick classification, target=`target`, tune `fold=5` + `normalize=true` via the dynamic form → submit
+5. Land on the experiment detail → pick `plan=compare`, `dataset=iris` in the sidebar → **"Submit run"**
+6. Watch the runs table auto-refresh; status flips `queued` → `running` → `succeeded` with the duration filled in.
+
+All without typing Python.
+
+### Zero hard-coded parameter names
+
+This is the design principle session 14 locks in: the UI has never heard of `normalize`, `fold`, `train_size`, etc. The engine's `describe_setup_params` is rendered to a form via a single `kind → JSX` dispatcher. Tomorrow the engine can add `transformation_method: "quantile" | "yeo-johnson"` (enum, group "Preprocessing") and the form picks it up with zero UI changes.
+
+Verified end-to-end against the live backend:
+
+```
+setup-params: 13 params in 6 groups
+  groups: ['Data', 'Experiment', 'Cross-Validation', 'Preprocessing', 'Compute', 'Logging']
+experiment created: task=classification, target=target
+  stored setup_params: {'fold': 5, 'normalize': True, 'session_id': 42}
+```
+
+### What's next (session 15)
+
+- **`/runs/:id`** — dedicated run detail screen with **live WebSocket event stream** (every engine `Event` rendered in real time), leaderboard table with sortable columns, artifact download, promote-to-pipeline button, cancel button.
+- **Data source integration** in the New Run form — replace the "sklearn sample dataset" picker with a proper `data_source_id` selector (drives against the existing CSV upload endpoint).
+- **Better model picker** — replace the free-text `model_id` with a dropdown driven by `describeApi.models(task)`.
+
+### What's next (session 16+)
+
+- Dataset upload UI + profile screen.
+- LLM router + first 2 advisory endpoints (dataset analyst + experiment designer).
+- Admin screens.
+- God-class drain → 4.0.0 release.
+
+---
 
 ## Session 13 — Monorepo restructure + Control Plane vision lock-in — ✅
 

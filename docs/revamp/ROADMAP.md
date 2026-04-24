@@ -69,17 +69,19 @@ Status: ✅ **FULLY DONE** (sessions 9–11). 30 integration tests green.
 
 ## MVP 3 — Web UI (`apps/web`)
 
-Status: 🟡 **IN FLIGHT** (session 12). 4/8 screens. 6 tests green.
+Status: 🟡 **IN FLIGHT** (sessions 12 + 14). 7/10 screens. 19 tests green.
 
 - [x] Vite 5 + React 18 + TypeScript 5 + Tailwind 3 + TanStack Query + Zustand + React Router 6 scaffold.
 - [x] Typed API client (hand-written; `npm run gen:api` wired for growth).
 - [x] Auth: Zustand store + localStorage refresh token + axios single-flight refresh interceptor + `<AuthGate>` session restore.
 - [x] Dark-mode-first Tailwind palette + component primitives (`.btn-*`, `.input`, `.card`, etc.).
-- [x] Screens shipped: `/setup`, `/login`, `/` (workspaces), `/workspaces/:id` (projects).
+- [x] Screens shipped (session 12): `/setup`, `/login`, `/` (workspaces), `/workspaces/:id` (projects).
 - [x] Production bundle: 83 kB gzipped. 6 tests green. Docker image + CI job live.
-- [ ] **`/projects/:id`** — project detail: experiments list + New Experiment button.
-- [ ] **`/experiments/:id`** — experiment setup form **100% driven by `describe_setup_params`** (zero UI code hard-codes a parameter name). RunConfig modes: manual / assisted / auto / expert.
-- [ ] **`/runs/:id`** — live event stream via WebSocket + leaderboard table + artifact download + promote-to-pipeline.
+- [x] *(session 14)* **`<DynamicForm>` + `<ParamInput>`** — 100%-data-driven form infrastructure dispatching on `ParamKind` (bool / int / float / enum / column / string) and grouped by engine-declared `group`. `applyDefaults` / `stripDefaults` helpers so API payloads carry user intent only. 13 tests locking the contract.
+- [x] *(session 14)* **`/workspaces/:wsId/projects/:projectId`** — project detail with experiments list + "New experiment" link.
+- [x] *(session 14)* **`/workspaces/:wsId/projects/:projectId/experiments/new`** — experiment setup wizard **100% driven by `describe_setup_params(task)`**. Zero UI code hard-codes a parameter name.
+- [x] *(session 14)* **`/workspaces/:wsId/projects/:projectId/experiments/:experimentId`** — experiment detail with config overview, runs table (auto-polls while pending), and a minimal new-run sidebar (plan / model / sklearn sample dataset).
+- [ ] **`/runs/:id`** — dedicated run detail with live WebSocket event stream + leaderboard + artifact download + promote-to-pipeline + cancel — session 15.
 - [ ] **`/datasets/:id`** — dataset overview / schema / profile / quality / versions.
 - [ ] **`/deployments/:id`** — endpoint details + test form + logs + metrics + drift tab.
 - [ ] **`/monitoring`** — deployment health + drift alerts.
@@ -166,9 +168,9 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 10 | Run execution + WebSocket | Event-streamed AutoML |
 | 11 | Phase 9 finish | Data sources + deployments + cancel + Alembic |
 | 12 | Frontend scaffold (Phase 10 start) | 4 screens live |
-| **13** | **Monorepo restructure + Control Plane spec** | **Canonical structure + docs** |
-| 14 | `/projects/:id` + `/experiments/:id` setup wizard (dynamic form) | Experiment creation UI |
-| 15 | `/runs/:id` with live WebSocket + leaderboard | Run view |
+| 13 | Monorepo restructure + Control Plane spec | Canonical structure + docs |
+| **14** | **Project detail + Experiment wizard (dynamic form)** | **Experiment creation UI + runs sidebar + 13 new tests** |
+| 15 | `/runs/:id` with live WebSocket + leaderboard + data-source picker | Run view |
 | 16 | Trial entity + Model Library table sync | DB expansion |
 | 17 | LLM router + first 2 advisory endpoints | AI assist MVP |
 | 18 | Dataset upload UI + profile screen | Data-source UI |

@@ -42,6 +42,70 @@
 
 ---
 
+# Session 14 — 2026-04-24 — Project detail + Experiment wizard (dynamic form)
+
+Baseline: session 13 locked in the Control Plane vision and restructured the monorepo. Structure is sound; now time to push the first beautiful product loop past the workspace/project screens into the actual ML workflow.
+
+Theme: the centerpiece of MVP 3 — an experiment setup form that is **100% driven by the engine's `describe_setup_params`**. Zero UI code hard-codes a parameter name. When the engine adds / removes / renames a setup parameter, the form just works.
+
+## ADDED — dynamic-form infrastructure
+
+- `ADDED` — **`apps/web/src/components/DynamicForm.tsx`** — the load-bearing component.
+  - `<ParamInput>` — one function, one switch on `kind` (bool / int / float / enum / column / string). Each case returns the right native HTML input with proper validation attributes (min/max for numbers, choices for enums, optional "— none —" for non-required enums, column-text-fallback when no columns are supplied).
+  - `<DynamicForm>` — groups parameters by their `group` field in the order declared by `schema.groups`, renders one fieldset per group with the param name, required indicator, inline description, and range hint where applicable. Preserves user input across re-renders.
+- `ADDED` — **`apps/web/src/components/DynamicForm.helpers.ts`** — pure helpers in a separate file so ESLint's react-refresh rule is happy.
+  - `applyDefaults(schema, current)` — merges schema defaults into a values object without clobbering user input.
+  - `stripDefaults(schema, values)` — removes values equal to defaults so the API payload captures *user intent* only. Engine owns defaults; we only record what the user chose to override.
+
+## ADDED — API bindings
+
+- `ADDED` — **`apps/web/src/api/types.ts`** — 5 new types: `ParamKind` (literal union of 6 kinds), `SetupParam`, `SetupParamSchema`, `ModelCard`, `MetricCard`, `ExperimentCreate`.
+- `ADDED` — **`apps/web/src/api/endpoints.ts`** — 2 new API modules:
+  - `experimentsApi` — `list(project_id)`, `get(project_id, experiment_id)`, `create(project_id, body)`, `remove(project_id, experiment_id)`.
+  - `describeApi` — `setupParams(task)`, `models(task)`, `metrics(task)`. 10-min `staleTime` on setup schemas (effectively static per engine release).
+
+## ADDED — three new screens
+
+- `ADDED` — **`apps/web/src/pages/ProjectDetail.tsx`** — `/workspaces/:wsId/projects/:projectId`. Project header with name + description + tags + breadcrumb. Experiments list with per-row `kbd`-styled task chip + target display. "New experiment" link in the top-right.
+- `ADDED` — **`apps/web/src/pages/NewExperiment.tsx`** — `/workspaces/:wsId/projects/:projectId/experiments/new`. Two-card single-column wizard. Card 1 collects name + task (5-option dropdown) + target column (hidden for clustering / anomaly). Card 2 renders `<DynamicForm>` against `describeApi.setupParams(task)`. Switching task resets params (previous values are likely invalid against the new schema). On submit, `stripDefaults` removes engine-default values; only user overrides travel to the API. Redirects to the experiment detail on success.
+- `ADDED` — **`apps/web/src/pages/ExperimentDetail.tsx`** — `/workspaces/:wsId/projects/:projectId/experiments/:experimentId`. Two-column layout:
+  - **Main:** config overview (diffed against defaults), runs table with status colour map (`succeeded` green, `running` teal accent, `failed` red, `cancelled` warn, `queued` muted). Table auto-polls every 2 s while any run is queued or running, stops polling when everything is terminal.
+  - **Sidebar:** minimal new-run form — plan (setup / create / compare) + model id (shown only for `create`) + sklearn sample dataset (iris / wine / breast_cancer / diabetes for session 14; data-source picker lands in session 15).
+
+## CHANGED — routing + navigation
+
+- `CHANGED` — **`apps/web/src/App.tsx`** — 3 new authenticated routes wired inside the `<AuthGate><Layout>` wrapper: `/workspaces/:wsId/projects/:projectId`, `/workspaces/:wsId/projects/:projectId/experiments/new`, `/workspaces/:wsId/projects/:projectId/experiments/:experimentId`.
+- `CHANGED` — **`apps/web/src/pages/WorkspaceDetail.tsx`** — project list items are now `<Link>`s into the new project detail route. Hover border flips to accent (`hover:border-accent-500`).
+
+## TESTS
+
+- `TESTS` — **`apps/web/src/components/DynamicForm.test.tsx`** — 13 new tests locking in the dynamic-form contract:
+  - `<ParamInput>` per kind: bool renders checkbox with correct `checked` state and dispatch; int renders number input with min/max round-trip, parses digits to Number, clears to null on empty string; float uses `step="0.01"`; enum renders `<select>` with all choices + "— none —" only when not required; column falls back to text input when no columns supplied, switches to `<select>` when columns are present.
+  - `applyDefaults` seeds missing fields, preserves existing; `stripDefaults` removes values equal to defaults + empty values.
+  - `<DynamicForm>` groups preserve `schema.groups` order; `hide` removes named params; `onChange` bubbles fully-merged values object; empty schema doesn't crash.
+- `TESTS` — **UI suite: 19/19 green** (was 6). **Combined across programme: 81/81** (32 engine + 30 server + 19 web) — was 68.
+
+## INTERNAL
+
+- `INTERNAL` — **Controlled-input + vitest userEvent trap.** `userEvent.clear()` on a controlled number input with a mocked onChange doesn't actually reset the DOM value (React doesn't re-render because `value` prop is stale). First iteration's `fold=10` + `userEvent.type("5")` produced `105` instead of `5`. Switched to `fireEvent.change(..., { target: { value: "5" } })` for atomic value replacement. Pattern for future controlled-input tests.
+- `INTERNAL` — **Split `DynamicForm.helpers.ts` from `DynamicForm.tsx`.** ESLint's `react-refresh/only-export-components` rule rejects mixing component exports with pure-function exports; pure helpers now live in `*.helpers.ts` so HMR works cleanly. Same split pattern applies to any future component file that acquires non-component exports.
+- `INTERNAL` — **Zero hard-coded parameter names in the UI.** This is the design principle session 14 locks in. `<NewExperiment>` knows about `name`, `task`, `target`, and `setup_params` — the three columns the `experiments` table defines. Everything under `setup_params` is renderer-agnostic: the engine's schema is the contract. Verified by smoke test — 13 parameters across 6 groups arrive from `/describe/setup-params` and render correctly without the UI knowing any of the names.
+- `INTERNAL` — **Bundle size.** 83 kB gz → 86 kB gz (+3 kB) for three new screens + `<DynamicForm>` + API bindings + 13 tests. 148 modules transformed (was 143).
+
+## Session 14 delta summary
+
+| Metric | Session 13 end | Session 14 end |
+|---|---:|---:|
+| UI screens (authenticated) | 2 | **5** (+ 3 new) |
+| UI shared components | 2 | **3** (+ DynamicForm) |
+| UI routes | 4 | **7** (+ 3 new) |
+| UI vitest | 6 | **19** |
+| Combined tests | 68 | **81** |
+| UI LOC (TSX + config) | ~1,300 | **~2,100** |
+| Production bundle (gz) | 83 kB | **86 kB** |
+
+---
+
 # Session 13 — 2026-04-24 — Monorepo restructure + Control Plane vision lock-in
 
 Baseline: session 12 landed the 4-screen frontend scaffold. Three sibling packages at the root (`pycaret/`, `pycaret-server/`, `pycaret-ui/`), plus `docker/`, `tests/`, and everything else flat.
