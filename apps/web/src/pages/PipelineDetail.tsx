@@ -16,6 +16,7 @@ import {
   workspacesApi,
 } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
+import { DeploymentReviewModal } from '@/components/DeploymentReviewModal';
 import type { Deployment } from '@/api/types';
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
@@ -54,6 +55,7 @@ export function PipelineDetail() {
 
   // ────────── deploy form
   const [slug, setSlug] = useState('');
+  const [reviewing, setReviewing] = useState(false);
   const [authMode, setAuthMode] = useState<'workspace' | 'api-key' | 'public'>(
     'workspace',
   );
@@ -231,16 +233,35 @@ export function PipelineDetail() {
 
             {deploy.error && <p className="error">{errorMessage(deploy.error)}</p>}
 
-            <button
-              className="btn-primary w-full"
-              disabled={!slugValid || deploy.isPending}
-              onClick={() => deploy.mutate()}
-            >
-              {deploy.isPending ? 'Deploying…' : 'Deploy'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setReviewing(true)}
+                title="Run a pre-deploy risk review via the LLM"
+              >
+                ✨ Review
+              </button>
+              <button
+                className="btn-primary flex-1"
+                disabled={!slugValid || deploy.isPending}
+                onClick={() => deploy.mutate()}
+              >
+                {deploy.isPending ? 'Deploying…' : 'Deploy'}
+              </button>
+            </div>
           </div>
         </aside>
       </div>
+
+      {pipeline.data && (
+        <DeploymentReviewModal
+          pipelineId={pipelineId}
+          pipelineName={pipeline.data.name}
+          open={reviewing}
+          onClose={() => setReviewing(false)}
+        />
+      )}
     </div>
   );
 }

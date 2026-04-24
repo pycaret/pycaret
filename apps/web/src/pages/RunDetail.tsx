@@ -19,6 +19,7 @@ import { errorMessage } from '@/api/client';
 import { EventStream } from '@/components/EventStream';
 import { Leaderboard } from '@/components/Leaderboard';
 import { RunExplainerCard } from '@/components/RunExplainerCard';
+import { FailureDebuggerCard } from '@/components/FailureDebuggerCard';
 import type { Run } from '@/api/types';
 
 const STATUS_TONE: Record<string, string> = {
@@ -138,8 +139,9 @@ export function RunDetail() {
         <Leaderboard rows={asLeaderboardRows(r?.leaderboard ?? null)} />
       </section>
 
-      {/* ────────── AI explainer (terminal runs only) */}
-      {terminal && runId && <RunExplainerCard runId={runId} />}
+      {/* ────────── AI explainer (succeeded runs) / debugger (failed runs) */}
+      {r?.status === 'succeeded' && runId && <RunExplainerCard runId={runId} />}
+      {r?.status === 'failed' && runId && <FailureDebuggerCard runId={runId} />}
 
       {/* ────────── Promote */}
       {r?.status === 'succeeded' && (

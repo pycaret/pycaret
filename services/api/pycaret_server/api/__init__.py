@@ -5,6 +5,7 @@ factory mounts them at ``/api/v1``.
 """
 
 from pycaret_server.api import (
+    api_keys,
     auth,
     data_sources,
     deployments,
@@ -18,6 +19,7 @@ from pycaret_server.api import (
 )
 
 __all__ = [
+    "api_keys",
     "auth",
     "data_sources",
     "deployments",

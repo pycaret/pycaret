@@ -308,3 +308,29 @@ export interface TestConnectionResponse {
   error: string | null;
   latency_ms: number | null;
 }
+
+// ──────────────────────────────────────────────────────────── API keys
+
+export interface ApiKeyRead {
+  id: string;
+  name: string;
+  prefix: string;
+  workspace_id: string | null;
+  scopes: string[] | null;
+  expires_at: string | null;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+/** Only present on the POST /auth/api-keys response. Never stored. */
+export interface ApiKeyCreateResponse extends ApiKeyRead {
+  token: string;
+}
+
+export interface ApiKeyCreateRequest {
+  name: string;
+  workspace_id?: string | null;
+  expires_in_days?: number | null;
+  scopes?: string[] | null;
+}

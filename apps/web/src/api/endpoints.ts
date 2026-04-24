@@ -6,6 +6,9 @@
 
 import { api } from './client';
 import type {
+  ApiKeyCreateRequest,
+  ApiKeyCreateResponse,
+  ApiKeyRead,
   BootstrapRequest,
   DataSource,
   Deployment,
@@ -227,6 +230,12 @@ export const llmApi = {
       .then((r) => r.data),
   explainRun: (body: { run_id: string }) =>
     api.post<LLMConsultationRead>('/llm/explain-run', body).then((r) => r.data),
+  debugRun: (body: { run_id: string }) =>
+    api.post<LLMConsultationRead>('/llm/debug-run', body).then((r) => r.data),
+  reviewDeployment: (body: { pipeline_id: string }) =>
+    api
+      .post<LLMConsultationRead>('/llm/review-deployment', body)
+      .then((r) => r.data),
   listConsultations: (workspace_id: string, limit = 50) =>
     api
       .get<LLMConsultationRead[]>(
@@ -236,6 +245,16 @@ export const llmApi = {
       .then((r) => r.data),
   getConsultation: (id: string) =>
     api.get<LLMConsultationRead>(`/llm/consultations/${id}`).then((r) => r.data),
+};
+
+// ───────────────────────────── API keys (personal programmatic tokens)
+
+export const apiKeysApi = {
+  list: () => api.get<ApiKeyRead[]>('/auth/api-keys').then((r) => r.data),
+  create: (body: ApiKeyCreateRequest) =>
+    api.post<ApiKeyCreateResponse>('/auth/api-keys', body).then((r) => r.data),
+  revoke: (id: string) =>
+    api.delete<void>(`/auth/api-keys/${id}`).then((r) => r.data),
 };
 
 export const dataSourcesApi = {

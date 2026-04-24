@@ -124,6 +124,14 @@ class ExplainRunRequest(BaseModel):
     run_id: str
 
 
+class DebugRunRequest(BaseModel):
+    run_id: str
+
+
+class ReviewDeploymentRequest(BaseModel):
+    pipeline_id: str
+
+
 class TestConnectionResponse(BaseModel):
     ok: bool
     provider: str

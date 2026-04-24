@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from pycaret_server import __version__
 from pycaret_server.api import (
+    api_keys,
     auth,
     data_sources,
     deployments,
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     for router in (
         setup.router,
         auth.router,
+        api_keys.router,
         describe.router,
         workspaces.router,
         projects.router,

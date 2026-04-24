@@ -53,6 +53,14 @@ export function Layout() {
             >
               Workspaces
             </NavLink>
+            <NavLink
+              to="/account/api-keys"
+              className={({ isActive }) =>
+                isActive ? 'text-accent-400' : 'text-ink-200 hover:text-ink-100'
+              }
+            >
+              API keys
+            </NavLink>
             {user && (
               <span className="text-ink-200/70" title={user.email}>
                 {user.display_name ?? user.email}

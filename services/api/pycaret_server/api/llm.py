@@ -30,6 +30,7 @@ from pycaret_server.db import (
     Experiment,
     LLMConsultation,
     LLMProviderSetting,
+    Pipeline,
     Project,
     Run,
     Workspace,
@@ -37,18 +38,22 @@ from pycaret_server.db import (
 )
 from pycaret_server.llm.consultations import (
     dataset_analysis,
+    deployment_risk_review,
     experiment_design,
+    failure_debugging,
     run_explanation,
 )
 from pycaret_server.llm.router import ConsultationContext, NoLLMConfigured, get_router
 from pycaret_server.llm.schemas import (
     PROVIDERS,
     AnalyzeDatasetRequest,
+    DebugRunRequest,
     DesignExperimentRequest,
     ExplainRunRequest,
     LLMConsultationRead,
     LLMProviderSettingRead,
     LLMProviderSettingWrite,
+    ReviewDeploymentRequest,
     TestConnectionResponse,
 )
 
@@ -401,6 +406,137 @@ def explain_run(
         project_id=exp.project_id,
         experiment_id=exp.id,
         run_id=run.id,
+    )
+    try:
+        _advice, row = get_router().consult(db, ctx)
+    except NoLLMConfigured as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
+    return _serialise_consultation(row)
+
+
+@router.post(
+    "/llm/debug-run",
+    response_model=LLMConsultationRead,
+)
+def debug_run(
+    payload: DebugRunRequest,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> LLMConsultationRead:
+    """Diagnose a failed run's error + event tail.
+
+    Only runs in ``status='failed'`` can be debugged; succeeded runs get
+    `explain-run`, in-flight runs have nothing to debug yet.
+    """
+    run = db.get(Run, payload.run_id)
+    if run is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "run not found")
+    exp = db.get(Experiment, run.experiment_id)
+    proj = db.get(Project, exp.project_id) if exp else None
+    workspace_id = proj.workspace_id if proj else None
+    if workspace_id is None:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "run has no workspace — data integrity issue",
+        )
+    _require_access(user, db, workspace_id)
+
+    if run.status != "failed":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"debug is for failed runs only; run is {run.status!r}. "
+            "Use /llm/explain-run for succeeded runs.",
+        )
+
+    events = [
+        {
+            "kind": e.kind,
+            "message": e.message,
+            "payload": dict(e.payload) if e.payload else {},
+            "duration_ms": e.duration_ms,
+            "emitted_at": e.emitted_at.isoformat() if e.emitted_at else None,
+        }
+        for e in db.scalars(
+            select(Event).where(Event.run_id == run.id).order_by(Event.emitted_at.asc())
+        ).all()
+    ]
+
+    system, user_prompt = failure_debugging.build_prompt(
+        run_snapshot=run.snapshot,
+        error=run.error,
+        events=events,
+    )
+    ctx = ConsultationContext(
+        workspace_id=workspace_id,
+        user_id=user.id,
+        consultation_type="failure_debugging",
+        system=system,
+        user=user_prompt,
+        output_schema=failure_debugging.OUTPUT_SCHEMA,
+        project_id=exp.project_id if exp else None,
+        experiment_id=exp.id if exp else None,
+        run_id=run.id,
+    )
+    try:
+        _advice, row = get_router().consult(db, ctx)
+    except NoLLMConfigured as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
+    return _serialise_consultation(row)
+
+
+@router.post(
+    "/llm/review-deployment",
+    response_model=LLMConsultationRead,
+)
+def review_deployment(
+    payload: ReviewDeploymentRequest,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> LLMConsultationRead:
+    """Pre-deploy safety review for a Pipeline.
+
+    Reads the Pipeline + its origin Run snapshot + leaderboard, asks the
+    LLM to flag overfit / tiny-margin / missing-preprocessing risks, and
+    deliver a verdict (APPROVE / APPROVE WITH CAVEATS / DO NOT DEPLOY).
+    Advisory: the user still decides.
+    """
+    pipeline = db.get(Pipeline, payload.pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "pipeline not found")
+    _require_access(user, db, pipeline.workspace_id)
+
+    origin_run = db.get(Run, pipeline.origin_run_id) if pipeline.origin_run_id else None
+    pipeline_payload = {
+        "id": pipeline.id,
+        "name": pipeline.name,
+        "description": pipeline.description,
+        "tags": list(pipeline.tags or []),
+        "model_id": pipeline.model_id,
+        "sha256": pipeline.sha256,
+        "origin_run_id": pipeline.origin_run_id,
+    }
+    leaderboard = (
+        origin_run.leaderboard if origin_run and isinstance(origin_run.leaderboard, list) else None
+    )
+
+    system, user_prompt = deployment_risk_review.build_prompt(
+        pipeline=pipeline_payload,
+        origin_run_snapshot=origin_run.snapshot if origin_run else None,
+        leaderboard=leaderboard,
+        origin_run_status=origin_run.status if origin_run else None,
+    )
+    ctx = ConsultationContext(
+        workspace_id=pipeline.workspace_id,
+        user_id=user.id,
+        consultation_type="deployment_risk_review",
+        system=system,
+        user=user_prompt,
+        output_schema=deployment_risk_review.OUTPUT_SCHEMA,
+        run_id=pipeline.origin_run_id,
     )
     try:
         _advice, row = get_router().consult(db, ctx)
