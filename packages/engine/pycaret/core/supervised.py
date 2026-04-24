@@ -35,12 +35,282 @@ class SupervisedExperiment(Experiment):
 
     # --------------------------------------------------------- comparison
 
-    def compare_models(self, *args: Any, **kwargs: Any) -> CompareResult:
+    # Models excluded by default when turbo=True — known to be slow on
+    # datasets larger than a few hundred rows. Mirrors the legacy default.
+    _TURBO_EXCLUDE = frozenset({"rbfsvm", "gpc", "mlp"})
+
+    def compare_models(
+        self,
+        *,
+        include: list[Any] | None = None,
+        exclude: list[str] | None = None,
+        fold: Any | None = None,
+        cross_validation: bool = True,
+        sort: str | None = None,
+        n_select: int = 1,
+        turbo: bool = True,
+        errors: str = "ignore",
+        fit_kwargs: dict | None = None,
+        round: int = 4,
+        verbose: bool = False,
+    ) -> CompareResult:
+        """Train every (or every selected) model in the registry + rank.
+
+        Session-26 drain (supervised path): no longer delegates to
+        ``self._legacy.compare_models``. Iterates the model registry,
+        calls ``self.create_model`` per model (which already runs CV via
+        the shared metric registry), and assembles the leaderboard from
+        each model's ``Mean`` metrics row.
+
+        Parameters
+        ----------
+        include : list of str or estimator objects, optional
+            Restrict the comparison to these models. Strings are looked
+            up in the registry; objects are wrapped via ``create_model``.
+            If ``None``, every active registry entry is used.
+        exclude : list of str, optional
+            Registry IDs to omit. Applied after ``include``.
+        fold : int or cross-validator, optional
+            Defaults to the experiment's configured CV generator.
+        cross_validation : bool, default=True
+            If False, each model is fit-only (no CV); leaderboard rows
+            still come from a single train-only metric pass.
+        sort : str, optional
+            Metric column to rank by. Accepts PyCaret display names
+            (``"Accuracy"``, ``"AUC"``, ``"R2"``, ...). Default:
+            ``"Accuracy"`` for classification, ``"R2"`` for regression.
+        n_select : int, default=1
+            How many top-ranked models to return.
+        turbo : bool, default=True
+            If True, ``rbfsvm`` / ``gpc`` / ``mlp`` are skipped (slow on
+            anything but tiny datasets).
+        errors : str, default="ignore"
+            ``"ignore"`` skips a model on per-model failure; ``"raise"``
+            propagates.
+        fit_kwargs : dict, optional
+            Forwarded to each model's ``.fit()``.
+        round : int, default=4
+            Decimal places for the leaderboard.
+        verbose : bool, default=False
+            Reserved; currently ignored (legacy progress hook).
+
+        Returns
+        -------
+        CompareResult
+            - ``best`` — top-1 fitted Pipeline (preprocessor + best model).
+            - ``models`` — top-K Pipelines.
+            - ``leaderboard`` — DataFrame indexed by ranked model name,
+              with metric-Mean columns + a ``Model`` ID column.
+            - ``ranked_ids`` — list of model IDs in rank order.
+        """
         self._require_fitted()
-        n_select = kwargs.get("n_select", 1)
+
+        from pycaret.core.tasks import TaskType
+
+        if self.task not in (TaskType.CLASSIFICATION, TaskType.REGRESSION):
+            return self._compare_models_legacy(
+                include=include,
+                exclude=exclude,
+                fold=fold,
+                cross_validation=cross_validation,
+                sort=sort,
+                n_select=n_select,
+                turbo=turbo,
+                fit_kwargs=fit_kwargs,
+                round=round,
+                verbose=verbose,
+            )
+
+        return self._compare_models_supervised_native(
+            include=include,
+            exclude=exclude,
+            fold=fold,
+            cross_validation=cross_validation,
+            sort=sort,
+            n_select=n_select,
+            turbo=turbo,
+            errors=errors,
+            fit_kwargs=fit_kwargs or {},
+            round=round,
+            verbose=verbose,
+        )
+
+    def _compare_models_supervised_native(
+        self,
+        *,
+        include: list[Any] | None,
+        exclude: list[str] | None,
+        fold: Any | None,
+        cross_validation: bool,
+        sort: str | None,
+        n_select: int,
+        turbo: bool,
+        errors: str,
+        fit_kwargs: dict,
+        round: int,
+        verbose: bool,
+    ) -> CompareResult:
+        """Native compare_models for classification + regression."""
+        import pandas as _pd
+
+        from pycaret.core.tasks import TaskType
+
+        t0 = time.perf_counter()
+
+        # ---- decide which models to compare
+        registry = getattr(self._legacy, "_all_models_internal", {})
+        if include is not None:
+            candidates = list(include)
+        else:
+            candidates = [mid for mid, c in registry.items() if not getattr(c, "is_special", False)]
+        if exclude:
+            candidates = [c for c in candidates if c not in set(exclude)]
+        if turbo:
+            candidates = [
+                c for c in candidates if not (isinstance(c, str) and c in self._TURBO_EXCLUDE)
+            ]
+
+        # ---- default sort metric per task
+        if sort is None:
+            sort = "Accuracy" if self.task == TaskType.CLASSIFICATION else "R2"
+
+        self.logger.log(
+            EventKind.MODEL_COMPARE_STARTED,
+            payload={"n_candidates": len(candidates), "sort": sort},
+        )
+
+        # ---- per-model training loop
+        rows: list[dict] = []
+        pipelines: dict[str, Any] = {}
+        for cand in candidates:
+            try:
+                created = self.create_model(
+                    cand,
+                    fold=fold,
+                    cross_validation=cross_validation,
+                    fit_kwargs=fit_kwargs,
+                    round=round,
+                    verbose=False,
+                )
+            except Exception:
+                if errors == "raise":
+                    raise
+                continue
+
+            mid = created.model_id
+            pipelines[mid] = created.pipeline
+
+            row: dict[str, Any] = {"Model": mid}
+            if created.metrics is not None and "Mean" in created.metrics.index:
+                mean_row = created.metrics.loc["Mean"].to_dict()
+                row.update(mean_row)
+            rows.append(row)
+
+        if not rows:
+            # Nothing succeeded — return an empty CompareResult rather than
+            # raising, matching the documented `errors="ignore"` semantics.
+            self.logger.log(
+                EventKind.MODEL_COMPARE_FINISHED,
+                duration_ms=(time.perf_counter() - t0) * 1000,
+                payload={"n_select": n_select, "n_succeeded": 0},
+            )
+            return CompareResult(
+                best=None,
+                models=[],
+                leaderboard=_pd.DataFrame(),
+                ranked_ids=[],
+            )
+
+        # ---- assemble leaderboard
+        leaderboard = _pd.DataFrame(rows)
+        # Sort: descending for greater-is-better metrics, ascending for error.
+        ascending = self._sort_metric_is_ascending(sort)
+        if sort in leaderboard.columns:
+            leaderboard = leaderboard.sort_values(by=sort, ascending=ascending).reset_index(
+                drop=True
+            )
+        leaderboard = leaderboard.round(round)
+
+        ranked_ids: list[str] = leaderboard["Model"].astype(str).tolist()
+        top_ids = ranked_ids[: max(1, n_select)]
+        models = [pipelines[mid] for mid in top_ids]
+
+        self.logger.log(
+            EventKind.MODEL_COMPARE_FINISHED,
+            duration_ms=(time.perf_counter() - t0) * 1000,
+            payload={
+                "n_select": n_select,
+                "n_succeeded": len(rows),
+                "winner": ranked_ids[0] if ranked_ids else None,
+            },
+        )
+
+        return CompareResult(
+            best=models[0] if models else None,
+            models=models,
+            leaderboard=leaderboard,
+            ranked_ids=ranked_ids,
+        )
+
+    @staticmethod
+    def _sort_metric_is_ascending(sort: str) -> bool:
+        """Return True if the metric is "smaller is better" (errors etc.)."""
+        ascending_metrics = {
+            "MAE",
+            "mae",
+            "MSE",
+            "mse",
+            "RMSE",
+            "rmse",
+            "RMSLE",
+            "rmsle",
+            "MAPE",
+            "mape",
+            "neg_mean_absolute_error",
+            "neg_mean_squared_error",
+            "neg_root_mean_squared_error",
+            "neg_mean_absolute_percentage_error",
+        }
+        # neg_* sklearn names: bigger is better (less negative). Treat as desc.
+        if sort.startswith("neg_"):
+            return False
+        return sort in ascending_metrics
+
+    def _compare_models_legacy(
+        self,
+        *,
+        include: Any | None = None,
+        exclude: Any | None = None,
+        fold: Any | None = None,
+        cross_validation: bool = True,
+        sort: str | None = None,
+        n_select: int = 1,
+        turbo: bool = True,
+        fit_kwargs: dict | None = None,
+        round: int = 4,
+        verbose: bool = False,
+    ) -> CompareResult:
+        """Fallback for tasks whose compare_models hasn't been drained yet."""
         t0 = time.perf_counter()
         self.logger.log(EventKind.MODEL_COMPARE_STARTED)
-        models = self._legacy.compare_models(*args, **kwargs)
+        kwargs: dict[str, Any] = {
+            "n_select": n_select,
+            "turbo": turbo,
+            "verbose": verbose,
+        }
+        if include is not None:
+            kwargs["include"] = include
+        if exclude is not None:
+            kwargs["exclude"] = exclude
+        if fold is not None:
+            kwargs["fold"] = fold
+        if sort is not None:
+            kwargs["sort"] = sort
+        if fit_kwargs is not None:
+            kwargs["fit_kwargs"] = fit_kwargs
+        kwargs["cross_validation"] = cross_validation
+        kwargs["round"] = round
+        models = self._legacy.compare_models(**kwargs)
         leaderboard = self._safe_pull()
         self.logger.log(
             EventKind.MODEL_COMPARE_FINISHED,
