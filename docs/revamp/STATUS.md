@@ -1,6 +1,57 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-23, end of session 6*
+*Updated: 2026-04-24, end of session 9*
+
+## Session 9 — Backend scaffolding (Phase 8 + Phase 9 + Phase 11 partial) — ✅
+
+Major Part-2 milestone. With engine 4.0.0a1 shipped (41-dep lean install, sklearn 1.8 / NumPy 2.4 / pandas 3.0), the backend comes online as a monorepo sibling.
+
+### What landed
+
+- **`pycaret-server/` monorepo sibling** — new package with its own `pyproject.toml`, installed via uv workspace.
+- **14 SQLAlchemy tables** (matches `PLATFORM_PLAN.md § 3`): `users`, `workspaces`, `workspace_members`, `projects`, `data_sources`, `experiments`, `runs`, `events`, `artifacts`, `fold_metrics`, `pipelines`, `pipeline_project_links`, `deployments`, `api_keys`, `sessions`. Full relationships mapped; delete cascades in place.
+- **Auth** — bcrypt password hashing + JWT access-token (60 min default) + rotating refresh-token (30 d, session-row storage, hashed server-side).
+- **29 routes** mounted at `/api/v1/*`:
+  - `setup/{status,bootstrap}` — first-run flow
+  - `auth/{login,refresh,logout,me}` — JWT auth
+  - `describe/{models,models/{id},metrics,setup-params}` — engine introspection proxy
+  - `workspaces/*` CRUD
+  - `workspaces/{id}/projects/*` CRUD
+  - `projects/{id}/experiments/*` CRUD
+- **FastAPI app factory** with CORS + lifespan that auto-creates SQLite tables on first boot.
+- **CLI** — `pycaret-server serve [--reload]` starts uvicorn.
+- **Multi-stage Dockerfile** (Python 3.13-slim + uv + non-root runtime user + healthcheck).
+- **`docker-compose.yml`** for local dev (SQLite + artifact volume at `./data/`).
+- **14 integration tests** (pytest + httpx TestClient) — green in ~8 s.
+- **CI updated** to test both engine (32 tests) and server (14 tests).
+- **docs/revamp/PLATFORM_QUICKSTART.md** — 5-min clone-to-running walkthrough.
+
+### Headline metrics
+
+| | Session 6 end | Session 9 end |
+|---|---|---|
+| Packages in the monorepo | 1 (pycaret) | **2** (pycaret + pycaret-server) |
+| Total tests | 32 (engine) | **46** (32 engine + 14 server) |
+| SQLAlchemy tables | 0 | **14** |
+| API routes | 0 | **29** (8 meta, 21 under `/api/v1`) |
+| Docker artifacts | — | Dockerfile.api + compose |
+| Core platform phases | 🔴 0/6 not started | ✅ Phase 8 complete, 🟡 Phase 9 mostly done, 🟡 Phase 11 partial |
+
+### What works today
+
+Clone the repo, `uv sync --all-packages --all-extras`, `uv run --package pycaret-server pycaret-server serve --reload`, open http://localhost:8000/docs, POST to `/api/v1/setup/bootstrap`, get a token, create workspaces / projects / experiments through the Swagger UI. The engine's `list_models` / `describe_model` / `describe_setup_params` are exposed as live endpoints that a React form can render from.
+
+### What's next (session 10)
+
+- `POST /api/v1/experiments/{id}/runs` → background-worker dispatch to `pycaret.tasks.*Experiment` (thread-based for v1).
+- `GET /ws/runs/{id}/events` WebSocket fan-out from the engine's `BaseLogger`.
+- `/api/v1/deployments/*` + in-house serving (catch-all `/predict` route).
+- Data-source connectors (CSV upload + S3 + Postgres).
+- Alembic baseline migration replacing boot-time `create_all`.
+
+---
+
+*Session 6 status (previous engine cleanup + platform plan):*
 
 ## Session 6 — Cleanup pass 2 + Platform-Plan authored — ✅
 

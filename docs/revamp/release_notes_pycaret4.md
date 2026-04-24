@@ -42,6 +42,91 @@
 
 ---
 
+# Session 9 — 2026-04-24 — `pycaret-server` backend scaffolded (Phase 8 + 9 + 11 partial)
+
+Baseline: 4.0.0a1 engine released; 41-dep lean install runs on sklearn 1.8 / NumPy 2.4 / pandas 3.0.
+Environment: monorepo with uv workspace (engine + server share the lockfile).
+
+Theme: owner: "lets do the next major phase." Part-2 platform kickoff — a FastAPI + SQLAlchemy backend sibling package (`pycaret-server`) that fronts the engine with a typed REST API, matching the design in `PLATFORM_PLAN.md`.
+
+## ADDED — `pycaret-server` package (new monorepo sibling)
+
+- `ADDED` — **`pycaret-server/pyproject.toml`** — new hatchling-built package, Python 3.11+, depends on `pycaret >= 4.0.0a1` (resolved via uv workspace during dev). Extras: `postgres` / `mysql` / `s3` / `notebook` / `dev` / `test`. Entry point: `pycaret-server` console script. Dual-licensed (MIT / BSL-1.1) per `DECISIONS.md § decision 5`.
+- `ADDED` — **`pyproject.toml` (root)** — `[tool.uv.workspace]` with `members = ["pycaret-server"]` and `[tool.uv.sources]` pinning both packages to the workspace. `uv sync --all-packages --all-extras` resolves both in one go.
+- `ADDED` — **`pycaret-server/pycaret_server/config.py`** — pydantic-settings reading `PYCARET_*` env vars; `.env` file support. Settings: database URL (SQLite default), JWT secret + TTLs, artifact dir, CORS origins, feature flags.
+- `ADDED` — **`pycaret-server/pycaret_server/db/base.py`** — SQLAlchemy 2.x declarative base + `UUIDMixin` + `TimestampMixin`.
+- `ADDED` — **`pycaret-server/pycaret_server/db/session.py`** — engine + session factory + FastAPI `get_db` dependency with per-backend pool kwargs (SQLite cross-thread safe).
+- `ADDED` — **`pycaret-server/pycaret_server/db/models.py`** — **14 tables** matching `PLATFORM_PLAN.md § 3`:
+
+  | Table | Purpose |
+  |---|---|
+  | `users` | Local user store (email + bcrypt hash). |
+  | `sessions` | Refresh-token storage (hashed). |
+  | `api_keys` | Programmatic-access tokens. |
+  | `workspaces` | Top-level container. |
+  | `workspace_members` | User × workspace × role (admin / member). |
+  | `data_sources` | CSV upload / S3 / Postgres connection config. |
+  | `projects` | Inside a workspace. |
+  | `experiments` | Configured Experiment (task + target + setup_params). |
+  | `runs` | One invocation of an experiment; status + leaderboard + metrics_summary. |
+  | `events` | Append-only engine Event stream per run. |
+  | `artifacts` | Run outputs (pickle / notebook / html preview / leaderboard.json / events.jsonl). |
+  | `fold_metrics` | Per-fold × per-model × per-metric (composite PK). |
+  | `pipelines` | Workspace-scoped fitted Pipeline registry. |
+  | `pipeline_project_links` | Many-to-many between pipelines and projects. |
+  | `deployments` | In-house serving record. |
+
+- `ADDED` — **`pycaret-server/pycaret_server/auth/`** — bcrypt password hashing (`passwords.py`); JWT access + rotating refresh tokens with session-row storage (`tokens.py`); FastAPI `CurrentUser` / `require_admin` dependencies (`deps.py`).
+- `ADDED` — **`pycaret-server/pycaret_server/api/schemas.py`** — Pydantic request/response models for bootstrap, login/refresh, workspaces, projects, experiments.
+- `ADDED` — **`pycaret-server/pycaret_server/api/setup.py`** — `GET /api/v1/setup/status`, `POST /api/v1/setup/bootstrap` (first-run admin + workspace creation, returns token pair).
+- `ADDED` — **`pycaret-server/pycaret_server/api/auth.py`** — `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh` (with rotation + old-token revocation), `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`.
+- `ADDED` — **`pycaret-server/pycaret_server/api/describe.py`** — `GET /api/v1/describe/{models,models/{id},metrics,setup-params}` — thin proxy over `pycaret.api`.
+- `ADDED` — **`pycaret-server/pycaret_server/api/workspaces.py`** — workspace CRUD + `_require_access` / `_require_admin` helpers.
+- `ADDED` — **`pycaret-server/pycaret_server/api/projects.py`** — project CRUD nested under workspace.
+- `ADDED` — **`pycaret-server/pycaret_server/api/experiments.py`** — experiment CRUD nested under project; validates `task` against `pycaret.core.tasks.TaskType`.
+- `ADDED` — **`pycaret-server/pycaret_server/app.py`** — FastAPI app factory with CORS + lifespan. On first boot, `Base.metadata.create_all` seeds the SQLite schema. Mounts all 6 routers at `/api/v1`. OpenAPI at `/docs`, `/redoc`, `/openapi.json`. Health at `/healthz`.
+- `ADDED` — **`pycaret-server/pycaret_server/cli.py`** — argparse CLI with `serve [--host] [--port] [--reload]` and `version` subcommands. Console entry: `pycaret-server`.
+- `ADDED` — **`pycaret-server/tests/test_api.py`** — **14 integration tests** exercising every route via `fastapi.testclient.TestClient` + in-memory SQLite. Covers: meta (root, healthz, openapi schema), setup (status, bootstrap, idempotency), auth (login + refresh + rotation + revocation), workspaces CRUD, projects CRUD, experiments CRUD, describe proxy, unauthenticated-route rejection. 14/14 green in ~8 s.
+- `ADDED` — **`pycaret-server/README.md`** — package-level README.
+- `ADDED` — **`docker/Dockerfile.api`** — multi-stage build (Python 3.13-slim + uv cache layer + non-root runtime user + healthcheck). `uvicorn pycaret_server.app:create_app --factory` as entrypoint.
+- `ADDED` — **`docker/docker-compose.yml`** — dev compose: api service with SQLite + artifact volume at `./data/`, env vars, healthcheck, restart policy.
+- `ADDED` — **`docs/revamp/PLATFORM_QUICKSTART.md`** — 5-minute clone-to-running walkthrough (both local-dev and docker-compose paths), config reference, first-run flow, curl examples, troubleshooting.
+
+## CHANGED
+
+- `CHANGED` — **`.github/workflows/test.yml`** — lint job now covers `pycaret-server/` too; test job installs both workspace packages (`uv sync --all-packages --all-extras`) and runs `pytest pycaret-server/tests/` alongside the engine suite.
+- `CHANGED` — **`pycaret-server/pycaret_server/api/auth.py::refresh`** — handles SQLite's tz-stripping behaviour on `DateTime(timezone=True)` columns: coerces both sides to tz-aware before comparing `expires_at <= now`.
+
+## FIXED
+
+- `FIXED` — During initial server scaffolding, `pydantic`'s `EmailStr` required an extra runtime dep (`email-validator`). Added via `pydantic[email]>=2.9` in `pycaret-server/pyproject.toml` core deps.
+
+## TESTS
+
+- `TESTS` — **Engine**: 32/32 green in 1:36.
+- `TESTS` — **Server**: 14/14 green in 7.4 s.
+- `TESTS` — **Combined**: 46/46 green. CI runs both in the same workflow job for every push.
+
+## Session 9 delta summary
+
+| Metric | 4.0.0a1 (engine only) | Session 9 end |
+|---|---:|---:|
+| Monorepo packages | 1 | **2** (+ pycaret-server) |
+| Total tests | 32 | **46** |
+| SQLAlchemy tables | 0 | **14** |
+| API routes (HTTP endpoints) | 0 | **29** |
+| OpenAPI schema | — | **valid, live at `/openapi.json`** |
+| Docker artifacts | — | **Dockerfile.api + docker-compose.yml** |
+| Part-2 phases | all 🔴 NOT STARTED | **Phase 8 ✅, Phase 9 🟡 mostly, Phase 11 🟡 partial** |
+
+Coming next session:
+- `POST /api/v1/experiments/{id}/runs` with a threading-based worker that loads the data source, constructs the engine's `Experiment` class, runs the full `compare_models → predict_model → save artifacts` chain, streams events through `BaseLogger.subscribe(...)` into a WebSocket, and persists everything into `runs` / `events` / `artifacts` / `fold_metrics`.
+- Data-source connectors (CSV upload, S3, Postgres).
+- Deployment subsystem (`DeploymentRegistry` + catch-all `/api/v1/deployments/{slug}/predict`).
+- Alembic baseline migration.
+
+---
+
 # Session 8 — 2026-04-23 — Aggressive dependency cut → 4.0.0a1
 
 Baseline: end of session 7 (4.0.0a0 tag pushed, GitHub Release published, user testing on Google Colab surfaced "deps still too heavy").

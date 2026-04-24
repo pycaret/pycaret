@@ -127,31 +127,32 @@ Full design in [`docs/revamp/PLATFORM_PLAN.md`](PLATFORM_PLAN.md).
 
 **Gate:** Part 2 does not start until Phase 5 is done — that is, `pycaret==4.0.0alpha0` is on PyPI, the god-class is drained, and the library is demonstrably lightweight with extremely few deps.
 
-### Phase 7 — CLI utility (`pycaret-cli`) — 🔴 NOT STARTED
+### Phase 7 — CLI utility (`pycaret-cli`) — 🟡 PARTIAL (session 9)
 
-- [ ] New package: `pycaret-cli/` in the monorepo.
-- [ ] `pycaret serve` — start backend + optional UI dev server.
-- [ ] `pycaret run <experiment.yaml>` — YAML-driven headless runs.
-- [ ] `pycaret admin create-user`, `pycaret admin list-workspaces`.
-- [ ] `pycaret export <project-id>` / `pycaret import` — round-trip to git-friendly YAML.
+- [x] `pycaret-server` CLI with `serve` / `version` subcommands shipped in `pycaret-server`.
+- [ ] Separate `pycaret-cli/` package (project-export, YAML-driven runs, admin) — session 10+.
 
-### Phase 8 — Database layer — 🔴 NOT STARTED
+### Phase 8 — Database layer — ✅ COMPLETE (session 9)
 
-- [ ] `pycaret-server/db/` with SQLAlchemy models + Alembic.
-- [ ] SQLite default (`sqlite:///./pycaret.db`); Postgres / MySQL via `DATABASE_URL`.
-- [ ] Tables: `users`, `workspaces`, `workspace_members`, `projects`, `data_sources`, `experiments`, `runs`, `events`, `artifacts`, `pipelines`, `sessions`.
-- [ ] First-run bootstrap flow implemented end-to-end.
+- [x] `pycaret-server/pycaret_server/db/` with full SQLAlchemy 2.x models + session factory + FastAPI `get_db` dependency.
+- [x] SQLite default (`sqlite:///./pycaret.db`); Postgres / MySQL driver selection via `PYCARET_DATABASE_URL`.
+- [x] 14 tables (matches `PLATFORM_PLAN.md § 3` exactly): `users`, `workspaces`, `workspace_members`, `projects`, `data_sources`, `experiments`, `runs`, `events`, `artifacts`, `fold_metrics`, `pipelines`, `pipeline_project_links`, `deployments`, `api_keys`, `sessions`.
+- [x] First-run bootstrap flow implemented end-to-end (`POST /api/v1/setup/bootstrap` creates admin + workspace + workspace_member + session, returns token pair).
+- [ ] Alembic baseline migration — session 10 (currently boot-time `Base.metadata.create_all` on SQLite).
 
-### Phase 9 — Backend API (`pycaret-server`) — 🔴 NOT STARTED
+### Phase 9 — Backend API (`pycaret-server`) — 🟡 MOSTLY DONE (session 9)
 
-- [ ] FastAPI app factory with auth (JWT), CORS, OpenAPI at `/docs`.
-- [ ] `POST /api/v1/setup/bootstrap` first-run flow.
-- [ ] Full CRUD on workspaces / projects / experiments.
-- [ ] `POST /api/v1/experiments/{id}/runs` enqueues a run.
-- [ ] `GET /api/v1/describe/*` proxies `pycaret.api.*`.
-- [ ] WebSocket `/ws/runs/{run_id}/events` for real-time event stream.
-- [ ] Background worker (threading for v1) dispatches engine runs.
-- [ ] Full pytest coverage of every endpoint.
+- [x] FastAPI app factory with CORS + lifespan (creates tables on first boot).
+- [x] Auth: bcrypt password hashing + JWT access-token + rotating refresh-token with session-row storage. `/api/v1/auth/{login,refresh,logout,me}`.
+- [x] `POST /api/v1/setup/{status,bootstrap}` first-run flow.
+- [x] `GET /api/v1/describe/{models,models/{id},metrics,setup-params}` engine-introspection proxy over `pycaret.api`.
+- [x] CRUD on `/api/v1/workspaces`, `/api/v1/workspaces/{id}/projects`, `/api/v1/projects/{id}/experiments`.
+- [x] OpenAPI at `/docs` + `/openapi.json`; health at `/healthz`.
+- [x] **14 integration tests (pytest + httpx TestClient)** — green in ~8 s.
+- [ ] `POST /api/v1/experiments/{id}/runs` → background-worker dispatch to `pycaret.tasks.*Experiment` — session 10.
+- [ ] WebSocket `/ws/runs/{id}/events` — session 10.
+- [ ] `/api/v1/deployments/*` + in-house serving (`DeploymentRegistry`, catch-all `/predict` route) — session 10.
+- [ ] Data-source connectors (CSV upload, S3, Postgres) — session 10.
 
 ### Phase 10 — Frontend (`pycaret-ui`) — 🔴 NOT STARTED
 
@@ -162,10 +163,12 @@ Full design in [`docs/revamp/PLATFORM_PLAN.md`](PLATFORM_PLAN.md).
 - [ ] Live event-stream rendering via WebSocket.
 - [ ] Dark-mode first.
 
-### Phase 11 — Docker / deploy — 🔴 NOT STARTED
+### Phase 11 — Docker / deploy — 🟡 PARTIAL (session 9)
 
-- [ ] `Dockerfile.api`, `Dockerfile.ui`, `docker-compose.yml` (dev), `docker-compose.prod.yml`.
-- [ ] `docker compose up` from fresh clone → working app at `http://localhost:3000` with no extra config.
+- [x] `docker/Dockerfile.api` (multi-stage Python 3.13-slim + uv + non-root runtime user + healthcheck).
+- [x] `docker/docker-compose.yml` (dev compose; SQLite + artifact volume at `./data/`).
+- [ ] `docker/Dockerfile.ui` — after frontend phase.
+- [ ] `docker/docker-compose.prod.yml` with reverse-proxy + TLS — after frontend.
 - [ ] `deploy/k8s/` manifests as stretch goal.
 
 ### Phase 12 — Platform release — 🔴 NOT STARTED
