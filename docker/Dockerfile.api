@@ -1,0 +1,80 @@
+# syntax=docker/dockerfile:1.7
+#
+# PyCaret 4.0 backend image.
+#
+# Multi-stage build:
+#   - deps: resolve + install dependencies with uv (cached across rebuilds)
+#   - runtime: copy the venv + source, run as a non-root user
+#
+# Build from the repo root:
+#   docker build -f docker/Dockerfile.api -t pycaret-server:dev .
+
+############################################################
+# Stage 1 — deps
+############################################################
+FROM python:3.13-slim AS deps
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_SYSTEM_PYTHON=1 \
+    UV_LINK_MODE=copy
+
+# Install uv (pinned). We copy the binary from the astral-sh/uv image to avoid
+# shipping a compiler into the deps stage.
+COPY --from=ghcr.io/astral-sh/uv:0.11.7 /uv /uvx /usr/local/bin/
+
+WORKDIR /app
+
+# Copy just the metadata needed for dependency resolution so this layer is
+# cached when only source (not deps) changes.
+COPY pyproject.toml uv.lock README.md LICENSE ./
+COPY pycaret/__init__.py ./pycaret/__init__.py
+COPY pycaret-server/pyproject.toml ./pycaret-server/pyproject.toml
+COPY pycaret-server/pycaret_server/__init__.py ./pycaret-server/pycaret_server/__init__.py
+
+# Install only the runtime deps into a system Python (no venv inside container).
+RUN uv sync \
+    --package pycaret-server \
+    --no-dev \
+    --frozen \
+    --no-install-project
+
+############################################################
+# Stage 2 — runtime
+############################################################
+FROM python:3.13-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:${PATH}"
+
+# Non-root runtime user
+RUN useradd --create-home --uid 10001 pycaret
+
+WORKDIR /app
+
+# Pull the resolved venv from the deps stage
+COPY --from=deps /app/.venv /app/.venv
+
+# Copy the actual source
+COPY --chown=pycaret:pycaret pycaret ./pycaret
+COPY --chown=pycaret:pycaret pycaret-server ./pycaret-server
+COPY --chown=pycaret:pycaret pyproject.toml uv.lock README.md LICENSE ./
+
+# Final editable install of the two workspace members
+RUN --mount=from=ghcr.io/astral-sh/uv:0.11.7,source=/uv,target=/usr/local/bin/uv \
+    uv pip install --python /app/.venv/bin/python --no-deps -e . -e pycaret-server && \
+    mkdir -p /data && chown -R pycaret:pycaret /data
+
+ENV PYCARET_DATABASE_URL=sqlite:////data/pycaret.db \
+    PYCARET_ARTIFACT_DIR=/data/artifacts
+
+USER pycaret
+VOLUME ["/data"]
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request, sys; \
+                   sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz').status == 200 else 1)"
+
+CMD ["uvicorn", "pycaret_server.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]

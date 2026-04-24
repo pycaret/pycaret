@@ -1,0 +1,34 @@
+# PyCaret 4.0 platform — local development compose.
+#
+# Run from the repo root:
+#   docker compose -f docker/docker-compose.yml up --build
+#
+# Then open http://localhost:8000/docs
+# SQLite DB + artifacts persist in ./data/ on the host.
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    image: pycaret-server:dev
+    container_name: pycaret-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/data            # SQLite + artifacts persistence
+    environment:
+      PYCARET_DATABASE_URL: sqlite:////data/pycaret.db
+      PYCARET_ARTIFACT_DIR: /data/artifacts
+      PYCARET_CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
+      # Override in a real environment — .env file loaded by pydantic-settings.
+      PYCARET_JWT_SECRET: ${PYCARET_JWT_SECRET:-dev-only-secret-do-not-ship}
+      PYCARET_ENVIRONMENT: dev
+      PYCARET_DEBUG: "false"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz').status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

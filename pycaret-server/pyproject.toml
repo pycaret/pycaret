@@ -1,0 +1,95 @@
+[project]
+name = "pycaret-server"
+version = "0.1.0a0"
+description = "FastAPI backend for the PyCaret 4.0 application platform."
+readme = "README.md"
+license = { text = "MIT OR BUSL-1.1" }  # dual-licensed per DECISIONS.md · session 6 · § decision 5
+authors = [{ name = "PyCaret developers" }]
+maintainers = [{ name = "Moez Ali", email = "moez.ali@queensu.ca" }]
+requires-python = ">=3.11"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: FastAPI",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Typing :: Typed",
+]
+
+# Core: FastAPI stack + SQLAlchemy + auth + pycaret engine.
+# Everything else is an optional extra.
+dependencies = [
+  "pycaret>=4.0.0a1",                # the engine we front
+  "fastapi>=0.115",                  # web framework
+  "uvicorn[standard]>=0.32",         # ASGI server
+  "pydantic[email]>=2.9",            # settings + request/response shapes (incl. EmailStr)
+  "pydantic-settings>=2.6",          # env-driven config
+  "sqlalchemy>=2.0",                 # ORM
+  "alembic>=1.13",                   # schema migrations
+  "bcrypt>=4.2",                     # password hashing
+  "pyjwt>=2.9",                      # JWT auth
+  "python-multipart>=0.0.12",        # CSV upload support
+  "python-dateutil>=2.9",            # date parsing
+]
+
+[project.optional-dependencies]
+
+# Postgres backend (production deploys). Default is SQLite (no extra needed).
+postgres = ["psycopg[binary]>=3.2"]
+
+# MySQL backend.
+mysql = ["pymysql>=1.1", "cryptography>=43"]
+
+# S3 data-source connector + object storage for artifacts.
+s3 = ["boto3>=1.35"]
+
+# Notebook-artifact rendering (HTML preview of Run notebooks).
+notebook = ["nbformat>=5.10", "nbconvert>=7.16", "jupyter-client>=8.6"]
+
+# Dev tooling.
+dev = ["ruff>=0.6", "mypy>=1.11", "types-requests"]
+
+# CI test deps.
+test = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "httpx>=0.27",                    # test client for FastAPI
+  "pytest-cov>=5.0",
+]
+
+[project.scripts]
+pycaret-server = "pycaret_server.cli:main"
+
+[project.urls]
+Repository = "https://github.com/pycaret/pycaret"
+Issues = "https://github.com/pycaret/pycaret/issues"
+"Platform plan" = "https://github.com/pycaret/pycaret/blob/v4/docs/revamp/PLATFORM_PLAN.md"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pycaret_server"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501", "E731"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"**/migrations/**" = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[dependency-groups]
+dev = ["pycaret-server[dev,test]"]

@@ -36,9 +36,9 @@ jobs:
           python-version: "3.13"
           enable-cache: true
       - name: ruff check
-        run: uv run --with ruff ruff check pycaret tests
+        run: uv run --with ruff ruff check pycaret tests pycaret-server
       - name: ruff format --check
-        run: uv run --with ruff ruff format --check pycaret tests
+        run: uv run --with ruff ruff format --check pycaret tests pycaret-server
 
   # --------------------------------------------------------------- test
 
@@ -63,16 +63,20 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
 
-      - name: uv sync --all-extras
-        run: uv sync --all-extras
+      - name: uv sync (all workspace packages + all extras)
+        run: uv sync --all-packages --all-extras
 
       - name: Environment summary
         run: |
           uv run python -c "import sys; print('Python', sys.version)"
           uv run python -c "import sklearn, numpy, pandas, pycaret; print(f'pycaret {pycaret.__version__}  sklearn {sklearn.__version__}  numpy {numpy.__version__}  pandas {pandas.__version__}')"
+          uv run --package pycaret-server python -c "from pycaret_server import __version__; print(f'pycaret-server {__version__}')"
 
-      - name: pytest (full suite)
+      - name: pytest engine
         run: uv run pytest tests/ -q --durations=10
+
+      - name: pytest server
+        run: uv run --package pycaret-server pytest pycaret-server/tests/ -q --durations=10
 
   # --------------------------------------------------------------- notebooks
 

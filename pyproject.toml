@@ -201,3 +201,13 @@ filterwarnings = [
 dev = [
   "pycaret[dev,test]",
 ]
+
+# uv workspace: pycaret + pycaret-server share a lockfile and resolve each
+# other from source during development. On publish each package's wheel is
+# built independently via its own hatchling config.
+[tool.uv.workspace]
+members = ["pycaret-server"]
+
+[tool.uv.sources]
+pycaret = { workspace = true }
+pycaret-server = { workspace = true }
