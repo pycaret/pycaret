@@ -115,6 +115,56 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 24 — 2026-04-24 — God-class drain: `create_model` (supervised)
+
+Baseline: session 23 drained `predict_model`. Session 24 drains `create_model` for classification + regression. Unlocks the 4.0 invariant "`CreateResult.pipeline` is a real sklearn Pipeline".
+
+## CHANGED — engine
+
+- `CHANGED, BREAKING` — **`packages/engine/pycaret/core/experiment.py` — `Experiment.create_model`** (supervised). No longer delegates to `self._legacy.create_model` for classification + regression experiments. Rewritten as a task-aware dispatcher:
+  - Supervised (classification / regression) → native `_create_model_supervised_native`.
+  - Clustering / anomaly / time-series → still delegate via `_create_model_legacy` (their drains land in future sessions).
+- `CHANGED, BREAKING` — **Signature slim-down** (supervised path). Kept: `estimator`, `fold`, `cross_validation`, `fit_kwargs`, `round`, `verbose`, `**estimator_kwargs`. Dropped: `probability_threshold`, `experiment_custom_tags`, `refit`, `return_train_score`, `groups`, `predict`, plus all the `system=True` / `add_to_model_list=True` / `X_train_data=...` / `metrics=...` / `display=...` internal hooks. All gone because they either (a) never made sense in 4.0's clean-room design, (b) belonged to MLflow integration that's already dead, or (c) are recoverable via a couple of lines post-hoc.
+- `CHANGED` — **`CreateResult.pipeline` is now always a sklearn Pipeline on supervised tasks.** Previously it was a bare estimator (e.g. `LogisticRegression`), and downstream code had to either know to wrap it or run its own `transform` against `self.preprocess_pipeline`. Now the returned Pipeline is `deepcopy(self.preprocess_pipeline).steps + [(model_id, trained_model)]` — a true end-to-end predict chain.
+- `CHANGED` — **Cross-validation runs manually instead of via `sklearn.model_selection.cross_validate`.** Rationale: the engine's metric registry doesn't map 1-1 to `sklearn.metrics.get_scorer(...)` — several registry entries take `pred_proba`, not `pred`, and the sklearn scorer interface doesn't cleanly expose that. Manual fold loop + shared `calculate_metrics` gives identical columns to legacy `predict_model` output (`Accuracy` / `AUC` / `Recall` / `Prec.` / `F1` / `Kappa` / `MCC` for classification; `MAE` / `MSE` / `RMSE` / `R2` / `RMSLE` / `MAPE` for regression). Per-fold failures are swallowed (empty row) so CV degrades gracefully.
+- `CHANGED` — **`self._legacy._all_models_internal` is still the model registry source** (for now). The registry module itself is a separate concern from the god-class; its current `get_all_model_containers(experiment, ...)` signature reads a bunch of fields off the experiment object. Refactoring the registry to take an `Experiment` (not `_legacy`) is a separate follow-up — tracked as session 27+ "registry decoupling". For now the drain reads `self._legacy._all_models_internal` directly without calling `self._legacy.create_model`.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session24_create_model.py`** — 10 tests:
+  - `test_create_model_returns_real_sklearn_pipeline_classification` — pipeline shape + last-step name = `model_id`.
+  - `test_create_model_cv_metrics_have_mean_and_std_rows` — `Fold 0..N-1`, `Mean`, `Std` index + classification metric columns present.
+  - `test_create_model_no_cross_validation_skips_metrics` — `cross_validation=False` → `metrics is None`, pipeline still fitted.
+  - `test_create_model_regression_uses_regression_metric_registry` — MAE / R2 columns.
+  - `test_create_model_unknown_id_raises` — `ConfigurationError` on bad ID.
+  - `test_create_model_accepts_preconstructed_estimator` — user's `LogisticRegression(C=2.0)` survives into the final Pipeline step.
+  - `test_create_model_predict_model_roundtrip_no_bare_branch` — the killer test. Monkey-patches `self.preprocess_pipeline` to raise; runs `predict_model(created.pipeline)` end-to-end. Passes because the returned Pipeline is already complete — `predict_model` doesn't need to touch the preprocessor for supervised create_model output.
+  - `test_create_model_does_not_call_legacy_create_model` — drain-lock. Poisons `self._legacy.create_model` + asserts native path succeeds.
+  - `test_create_model_clustering_still_delegates_to_legacy` — keeps the fallback working.
+  - `test_create_model_requires_fit` — `NotFittedError` on unfit.
+
+## CHANGED — existing tests
+
+- `CHANGED` — **`packages/engine/tests/test_models.py`**. The `check_exp` helper's loop now unwraps `exp.create_model(id).pipeline` via a `_unwrap_pipeline` helper (grabs `.steps[-1][1]` if it's a `Pipeline`). Rationale: the registry's `Equality` predicate is `lambda m: isinstance(m, <Class>)`, which failed against a Pipeline wrapper. Clustering / anomaly bypass the unwrap (they still return bare estimators).
+
+## INTERNAL
+
+- `INTERNAL` — **Why `self._legacy` for `X_train_transformed` + `fold_generator`.** The drain's scope is "this verb doesn't *call* `self._legacy.create_model`". Reading transformed data + the pre-built CV generator from the legacy state is a separate (also-to-be-drained-later) delegation point. Splitting the drain this way keeps each session's diff manageable.
+- `INTERNAL` — **Deep-copy per fold.** `deepcopy(model)` before each fold's fit prevents state leakage from the previous fold (sklearn estimators are generally stateful — `_n_features_in_` etc.). Costs O(K) copies for K folds; cheap vs. CV work itself. The final fit uses the *original* `model` object so the Pipeline that comes out carries the estimator's full final state.
+- `INTERNAL` — **Pipeline assembly ordering.** The returned Pipeline is `[preprocessing_steps..., (model_id, trained_model)]`. Why this order: the preprocessor's `label_encoding` step is a `TransformerWrapperWithInverse` which inverse-transforms predictions back to the original label space; appending it *before* the model would mean predictions are inverse-transformed on the way in. sklearn Pipeline semantics (`fit(X, y)` transforms all non-final steps, `predict(X)` transforms then predicts) give us the right behavior when the model is the last step.
+- `INTERNAL` — **3.x-style CV semantics intentionally preserved.** Legacy runs CV on `X_train_transformed` (preprocessing fit on all training rows, then CV over transformed data). Strictly, this leaks test-fold information into the preprocessor's fit, which a pure sklearn `cross_validate(Pipeline([preproc, model]), X_raw, y)` would avoid. For the drain we preserve legacy semantics — purity can be revisited post-4.0.0 once we have a baseline to regression-test against.
+
+## Session 24 delta summary
+
+| Metric | Session 23 end | Session 24 end |
+|---|---:|---:|
+| Supervised OOP verbs still on `self._legacy` | 4 | **3** |
+| Supervised `CreateResult.pipeline` type | bare estimator | **sklearn `Pipeline`** |
+| Engine tests (fast + slow) | 51 | **61** |
+| **Combined tests** | **197** | **207** |
+
+---
+
 # Session 23 — 2026-04-24 — God-class drain: `predict_model`
 
 Baseline: session 22 drained the 4 persistence verbs. Session 23 drains the 5th OOP verb — `predict_model`. The heart of the rewrite is a task-aware dispatch that handles classification / regression / clustering / anomaly without ever touching `self._legacy`.

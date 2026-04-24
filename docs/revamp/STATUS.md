@@ -1,6 +1,53 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 23*
+*Updated: 2026-04-24, end of session 24*
+
+## Session 24 — God-class drain: `create_model` (supervised) — ✅
+
+Third drain in the session-22→32 sweep. **`Experiment.create_model` on classification + regression** no longer delegates to `self._legacy.create_model`. It resolves the estimator from the engine's model registry, runs k-fold CV manually with the task's metric registry, refits on the full training set, and assembles a **real sklearn `Pipeline`** (preprocessor + trained model).
+
+This unlocks a big 4.0 invariant: **`CreateResult.pipeline` is now a real Pipeline** for supervised tasks. Downstream verbs (`predict_model`, soon-to-be-drained `tune_model`, `ensemble_model`, etc.) can consume it directly.
+
+### What landed
+
+- **`packages/engine/pycaret/core/experiment.py`** — rewrote `create_model` into a task-aware dispatcher:
+  - Supervised (classification / regression) → native path (`_create_model_supervised_native`).
+  - Time-series / clustering / anomaly → still delegates via `_create_model_legacy` (their drains are later sessions).
+- Native path:
+  1. Resolve `estimator` — registry ID string (e.g. `"lr"`) → `container.class_def(**container.args, **user_kwargs)`, OR a user-built sklearn estimator → use as-is.
+  2. Pull `X_train_transformed` / `y_train_transformed` from the (still-live) legacy state.
+  3. If `cross_validation=True`: run k-fold CV manually — deep-copy the model per fold, fit on train-fold, predict on val-fold, compute metrics via the shared `pycaret.utils.generic.calculate_metrics` + task-specific `get_all_metric_containers`. Aggregate with `Mean` + `Std` rows. Any per-fold failure is swallowed so CV degrades gracefully instead of crashing.
+  4. Final fit on the full training set.
+  5. Assemble the returned `Pipeline` = `deepcopy(self.preprocess_pipeline).steps + [(model_id, trained_model)]`.
+- **Signature slim-down** — dropped 3.x cruft: `probability_threshold`, `experiment_custom_tags`, `refit`, `return_train_score`, `groups`, `predict`. Kept the meaningful ones: `fold`, `cross_validation`, `fit_kwargs`, `round`, `verbose`, plus `**estimator_kwargs` forwarded to the constructor when `estimator` is a registry ID.
+- **`packages/engine/tests/test_session24_create_model.py`** — 10 new tests covering:
+  - Pipeline shape (last step = model under `model_id` name, preprocessing steps before).
+  - CV metrics DataFrame (`Fold 0..N-1`, `Mean`, `Std`; classification + regression metric registries pull the right columns).
+  - `cross_validation=False` → metrics None, pipeline still fitted.
+  - Unknown registry ID raises `ConfigurationError`.
+  - Pre-constructed estimator is accepted + user hyperparameters survive (`C=2.0`).
+  - Chained `create_model → predict_model` works without touching `self.preprocess_pipeline` — a monkeypatch test proves the transitional bare-estimator branch in `predict_model` is dead for supervised tasks.
+  - Drain-lock: `self._legacy.create_model` is poisoned to raise; native `create_model` still returns a valid `CreateResult`.
+  - Clustering fallback still works (legacy delegation).
+  - `NotFittedError` on unfit experiment.
+- **`packages/engine/tests/test_models.py`** — updated the existing `check_exp` helper to unwrap the final step from the returned Pipeline before calling each registry container's `Equality` predicate. The predicates check `isinstance(obj, <class>)` against the bare class; the Pipeline wrapper made them fail. Now 5/5 test_models tests green on the drain.
+
+### Headline metrics
+
+| | Session 23 end | Session 24 end |
+|---|---|---|
+| OOP verbs still delegating to `self._legacy` (supervised) | 5 | **4** |
+| Supervised `CreateResult.pipeline` type | bare estimator | **sklearn `Pipeline`** |
+| Engine tests (fast + slow) | 51 | **61** (+10) |
+| **Combined tests** | **197** | **207** |
+
+### What's next (session 25+)
+
+Next on the drain list: **`tune_model`**. It does hyperparameter search (grid/random/optuna) on top of the already-fitted model. The native version will build a proper `GridSearchCV` / `RandomizedSearchCV` over the Pipeline + return the best Pipeline. No more `self._legacy.tune_model`.
+
+Remaining: `tune_model` → `ensemble_model` → `blend_models` → `stack_models` → `calibrate_model` → `compare_models` → `finalize_model` → then delete `pycaret/internal/pycaret_experiment/` + ship `4.0.0`.
+
+---
 
 ## Session 23 — God-class drain: `predict_model` — ✅
 
