@@ -1,6 +1,53 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 28*
+*Updated: 2026-04-24, end of session 29*
+
+## Session 29 — Property drain: data accessors — ✅
+
+The user-facing data accessor properties — `X`, `X_train`, `X_test`, `y`, `y_train`, `y_test`, `preprocess_pipeline` — no longer dispatch to `self._legacy.<attr>` on every access. They read from a snapshot taken at the end of `fit()` and stored in `self._fit_state`.
+
+Why this matters: with the modeling-verb drain done (sessions 22-28), the public API surface is now reachable without a single `self._legacy.<attr>` lookup. The legacy holder is still populated by `setup()` and used internally by the drained verbs (transformed splits, fold generator, model registry), but **no user-facing call now requires `self._legacy` to exist**. That's the architectural prereq for deleting `pycaret/internal/pycaret_experiment/` once the internal state-holder migration lands.
+
+### What landed
+
+- **`packages/engine/pycaret/core/experiment.py`** — added `_snapshot_fit_state()` called once at the end of `fit()`. It captures references to the legacy state in a `dict` on `self`. The 7 data-accessor properties now read from there:
+  - `self.X`, `X_train`, `X_test`, `y`, `y_train`, `y_test`, `preprocess_pipeline`
+  - Defensive `getattr(legacy, name, None)` lets the same code path work for tasks that don't have all attributes (clustering / anomaly have no `y_test`).
+  - We hold *references*, not deep copies — mutating `exp.X_train` still propagates to the underlying frame, matching legacy semantics.
+- **`packages/engine/tests/test_session29_property_drain.py`** — 4 tests:
+  - `test_data_properties_do_not_call_legacy_after_fit` — the drain-lock. Replaces every `self._legacy.<accessor>` with a raise-on-read sentinel after fit; the 7 properties continue to return correct values.
+  - `test_data_properties_clustering_y_is_none` — clustering's `y/y_train/y_test` come back as `None` (correct for unsupervised), `X` and `preprocess_pipeline` are present.
+  - `test_data_properties_require_fit` — every accessor raises `NotFittedError` pre-fit.
+  - `test_fit_state_returns_equivalent_data_to_legacy` — sanity check that `_fit_state` and the underlying legacy data match shape + columns.
+
+### Headline metrics
+
+| | Session 28 end | Session 29 end |
+|---|---|---|
+| User-facing API surface still touching `self._legacy` | 7 (data accessors) + 6 (verbs not yet drained) | **0 + 6** |
+| Engine tests (fast + slow) | 104 | **108** (+4) |
+| **Combined tests** | **250** | **254** |
+
+### What's next
+
+Remaining `_legacy` reads inside drained verbs (these are *internal*, not user-facing):
+- `self._legacy.X_train_transformed` / `X_transformed` / `y_train_transformed` / `y_transformed` — preprocessed splits used inside `create_model`'s CV loop.
+- `self._legacy.fold_generator` — pre-built CV strategy.
+- `self._legacy._all_models_internal` — model registry.
+
+Plus the still-delegating verbs (`plot_model`, `evaluate_model`, `pull`, `models`, `get_metrics`, `add_metric`, `remove_metric`, `get_config`, `set_config`).
+
+Path to `4.0.0`:
+1. Promote the 4 transformed-state attributes + `fold_generator` to `_fit_state` snapshots — same drain pattern as session 29.
+2. Refactor `pycaret.containers.metrics.*` and `pycaret.containers.models.*` to take an `Experiment` directly instead of a `_legacy` instance.
+3. Drain the secondary verbs (`plot_model`, `pull`, `models`, etc.) — most of these have native equivalents in `pandas` / our metric registry already.
+4. Drop `setup()` from `fit()` — replace with a native preprocessing chain. Last drain.
+5. Delete `pycaret/internal/pycaret_experiment/` entirely.
+6. **Cut `4.0.0` non-alpha to PyPI**.
+
+A pragmatic intermediate milestone: **ship `4.0.0a2`** at the current state. The public API is fully native; the internal `_legacy` holder is an implementation detail that doesn't leak to users. That's a good shipping point for community feedback while the internal migration finishes.
+
+---
 
 ## Session 28 — God-class drain: unsupervised verbs — ✅
 

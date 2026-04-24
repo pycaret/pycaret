@@ -115,6 +115,40 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 29 — 2026-04-24 — Property drain: data accessors
+
+Baseline: session 28 finished the modeling-verb drain (16 verbs). Session 29 promotes the user-facing data accessor properties off `self._legacy` onto a snapshot in `self._fit_state`. The public API surface no longer requires `self._legacy` to exist on read paths.
+
+## CHANGED — engine
+
+- `CHANGED` — **`packages/engine/pycaret/core/experiment.py` — `Experiment.fit`** now calls `_snapshot_fit_state()` after `self._legacy.setup()` returns. The snapshot captures references (not copies) to seven legacy attributes in `self._fit_state`, a dict-backed cache.
+- `CHANGED` — **`Experiment.X` / `X_train` / `X_test` / `y` / `y_train` / `y_test` / `preprocess_pipeline`** now read from `self._fit_state` instead of dispatching to `self._legacy.<attr>` on every access. `_require_fitted()` is still called to maintain the NotFittedError contract.
+- `CHANGED` — **Defensive `getattr(legacy, name, None)`** in `_snapshot_fit_state()` lets the same code path work across task types. Clustering / anomaly experiments don't have `y_test`; the snapshot stores `None` for missing slots.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session29_property_drain.py`** — 4 tests:
+  - `test_data_properties_do_not_call_legacy_after_fit` — the property drain-lock. Wraps every drained `self._legacy.<X>` accessor with a raise-on-read sentinel post-fit; the 7 properties continue to return correct values, proving they no longer touch the legacy holder.
+  - `test_data_properties_clustering_y_is_none` — clustering experiments don't have a target; `y` / `y_train` / `y_test` come back `None`.
+  - `test_data_properties_require_fit` — every accessor raises `NotFittedError` on an unfit experiment.
+  - `test_fit_state_returns_equivalent_data_to_legacy` — sanity check on shape + columns + identity for the singleton `preprocess_pipeline`.
+
+## INTERNAL
+
+- `INTERNAL` — **References vs deep copies.** `_fit_state` holds references to the legacy attribute values, not deep copies. Mutating `exp.X_train` propagates to the underlying frame, matching legacy semantics. This decision was made deliberately: copying would (a) double memory for large datasets and (b) break code that does `exp.X_train.iloc[5:10] = …`. The cost is that `_fit_state` is implicitly tied to the legacy lifetime; once `setup()` is itself drained (last step before deleting `pycaret/internal/pycaret_experiment/`), the references will hold the data the new fit path produces directly.
+- `INTERNAL` — **Why `dict` not `dataclass`.** A `dataclass` would force a fixed schema; the snapshot-as-dict tolerates task-specific gaps (clustering's `y_test=None`) without needing typed `Optional` annotations everywhere. When the state-holder migration finishes (post-4.0.0), the dict can be promoted to a typed `FitState` dataclass; for now the dict shape gives flexibility.
+- `INTERNAL` — **The drain-lock test pattern, now applied to properties.** Sessions 22-28 used the `monkeypatch self._legacy.<verb> → raise` pattern for verb drains. Session 29 generalises it to attribute reads: `object.__setattr__(legacy, name, _BoomDescriptor())` shadows the legacy property with a raise-on-read object. The `try/except AttributeError` handles slot-bound legacy attributes that can't be shadowed (best-effort). The test passes because the drain genuinely doesn't touch those callsites — the sentinels are never read.
+
+## Session 29 delta summary
+
+| Metric | Session 28 end | Session 29 end |
+|---|---:|---:|
+| User-facing API touching `self._legacy` | 7 (props) + 6 (verbs) | **0 + 6** |
+| Engine tests (fast + slow) | 104 | **108** |
+| **Combined tests** | **250** | **254** |
+
+---
+
 # Session 28 — 2026-04-24 — God-class drain: unsupervised verbs (clustering + anomaly)
 
 Baseline: session 27 finished the supervised drain (13 verbs). Session 28 drains the 3 unsupervised verbs — clustering + anomaly experiments now run natively.
