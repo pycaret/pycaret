@@ -307,16 +307,227 @@ class Experiment(BaseEstimator):
             params=self._safe_params(model),
         )
 
-    def predict_model(self, estimator: Any, *args: Any, **kwargs: Any) -> PredictResult:
-        """Run prediction and return a typed `PredictResult`."""
+    def predict_model(
+        self,
+        estimator: Any,
+        data: pd.DataFrame | None = None,
+        *,
+        raw_score: bool = False,
+        round: int = 4,
+        verbose: bool = False,
+    ) -> PredictResult:
+        """Run prediction and return a typed ``PredictResult``.
+
+        Session-23 drain: this verb no longer delegates to
+        ``self._legacy.predict_model``. It calls ``estimator.predict`` /
+        ``estimator.predict_proba`` directly, with a transitional accommodation
+        for bare estimators.
+
+        Parameters
+        ----------
+        estimator : sklearn.pipeline.Pipeline or fitted estimator
+            Preferred: a fitted sklearn Pipeline with preprocessing baked in
+            (that's what ``create_model`` / ``compare_models`` / ``tune_model``
+            will return once their drains land in sessions 24+). For now,
+            a bare fitted estimator is also accepted — we wrap it on-the-fly
+            with ``self.preprocess_pipeline`` to transform new data. Must
+            implement ``.predict``; raises TypeError otherwise.
+        data : pandas.DataFrame, optional
+            New input. If ``None``, the holdout set is used (``self.X_test``
+            / ``self.y_test`` for supervised tasks, ``self.X`` for
+            unsupervised). If ``data`` contains the target column, it's
+            split off automatically + used to compute metrics.
+        raw_score : bool, default=False
+            Classification only. True → per-class probability columns
+            (``prediction_score_<class>``). False (default) → single
+            ``prediction_score`` column with winning-class probability.
+        round : int, default=4
+            Decimal places for probability / metric columns.
+        verbose : bool, default=False
+            Reserved for future notebook-progress hooks; currently ignored.
+
+        Returns
+        -------
+        PredictResult
+            ``predictions`` is a DataFrame with the original X + (if known)
+            the target column + ``prediction_label`` (+ optional
+            ``prediction_score`` for classification). Clustering / anomaly
+            use task-specific columns (``Cluster`` / ``Anomaly`` +
+            ``Anomaly_Score``).
+            ``metrics`` is a one-row DataFrame for supervised tasks when
+            ``y`` is known; ``None`` otherwise.
+        """
         self._require_fitted()
-        predictions = self._legacy.predict_model(estimator, *args, **kwargs)
-        metrics = self._safe_pull()
+
+        import numpy as np
+        import pandas as _pd
+        from sklearn.pipeline import Pipeline as _SkPipeline
+
+        from pycaret.core.tasks import TaskType
+        from pycaret.utils.constants import LABEL_COLUMN, SCORE_COLUMN
+
+        if not hasattr(estimator, "predict"):
+            raise TypeError(
+                "predict_model expects a fitted estimator with a `.predict` "
+                "method (ideally a sklearn Pipeline with preprocessing "
+                f"baked in). Got {type(estimator).__name__!r}."
+            )
+
+        t0 = time.perf_counter()
+
+        # -------- decide whether we need to transform data first
+        # A Pipeline knows how to transform its own input (preprocessing is
+        # step 0..n-1, the estimator is step n). A bare estimator needs the
+        # experiment's preprocessing chain applied first.
+        estimator_is_pipeline = isinstance(estimator, _SkPipeline)
+        preprocessor: Any | None = None
+        if not estimator_is_pipeline:
+            # Transitional path — falls away once create_model's drain
+            # makes `CreateResult.pipeline` a real Pipeline (session 24).
+            try:
+                preprocessor = self.preprocess_pipeline
+            except Exception:
+                preprocessor = None
+
+        # -------- source X + optional y
+        is_supervised = self._is_supervised()
+        if data is None:
+            if is_supervised:
+                X, y = self.X_test, self.y_test
+            else:
+                X, y = self.X, None
+        else:
+            if is_supervised and self.target is not None and self.target in data.columns:
+                y = data[self.target]
+                X = data.drop(columns=[self.target])
+            else:
+                X, y = data, None
+
+        # -------- predict
+        if preprocessor is not None and not estimator_is_pipeline:
+            # Transform X through the legacy preprocessing chain first.
+            X_for_pred = preprocessor.transform(X)
+            if isinstance(X_for_pred, tuple):
+                # InternalPipeline.transform can return (X, y) when y is
+                # passed in; we only want X.
+                X_for_pred = X_for_pred[0]
+        else:
+            X_for_pred = X
+
+        preds = np.asarray(estimator.predict(X_for_pred))
+
+        out = X.copy()
+        if is_supervised and y is not None:
+            # Re-attach target column so ground truth is visible next to
+            # prediction_label. Index alignment is implicit — pandas handles it.
+            out[self.target] = y
+
+        # -------- task-specific label + score columns
+        if self.task == TaskType.CLUSTERING:
+            out["Cluster"] = [f"Cluster {i}" for i in preds]
+        elif self.task == TaskType.ANOMALY:
+            out["Anomaly"] = preds
+            if hasattr(estimator, "decision_function"):
+                try:
+                    out["Anomaly_Score"] = estimator.decision_function(X)
+                except Exception:  # pragma: no cover — defensive
+                    pass
+        else:
+            # supervised: classification / regression / time-series
+            out[LABEL_COLUMN] = preds
+            if self.task == TaskType.CLASSIFICATION and hasattr(estimator, "predict_proba"):
+                try:
+                    proba = estimator.predict_proba(X_for_pred)
+                    classes = list(getattr(estimator, "classes_", range(proba.shape[1])))
+                    if raw_score:
+                        for i, cls in enumerate(classes):
+                            out[f"{SCORE_COLUMN}_{cls}"] = np.round(proba[:, i], round)
+                    elif proba.shape[1] == 2:
+                        out[SCORE_COLUMN] = np.round(proba[:, 1], round)
+                    else:
+                        out[SCORE_COLUMN] = np.round(proba.max(axis=1), round)
+                except Exception:  # pragma: no cover — not all classifiers have proba
+                    pass
+
+        # -------- metrics (supervised + y known)
+        metrics_df: _pd.DataFrame | None = None
+        if is_supervised and y is not None:
+            metrics_df = self._compute_predict_metrics(
+                estimator=estimator, X=X_for_pred, y=y, preds=preds, round=round
+            )
+
+        # -------- log + return
         self.logger.log(
             EventKind.MODEL_PREDICTED,
-            payload={"n_rows": int(len(predictions)) if predictions is not None else 0},
+            duration_ms=(time.perf_counter() - t0) * 1000,
+            payload={"n_rows": int(len(out))},
         )
-        return PredictResult(predictions=predictions, metrics=metrics)
+        return PredictResult(predictions=out, metrics=metrics_df)
+
+    # ---------- helpers for predict_model
+
+    def _compute_predict_metrics(
+        self,
+        *,
+        estimator: Any,
+        X: pd.DataFrame,
+        y: Any,
+        preds: Any,
+        round: int = 4,
+    ) -> pd.DataFrame | None:
+        """Compute one-row metrics DataFrame for a supervised prediction.
+
+        Uses the same metric registry legacy used — classification gets
+        Accuracy / AUC / Precision / Recall / F1 / ..., regression gets
+        MAE / MSE / RMSE / R² / MAPE. Returns ``None`` if the registry
+        disagrees with the task or anything else goes sideways (metrics
+        are advisory, not load-bearing; a predict should never fail
+        because a metric registry choked).
+        """
+        from pycaret.core.tasks import TaskType
+
+        try:
+            import pandas as _pd
+
+            from pycaret.utils.generic import calculate_metrics
+
+            if self.task == TaskType.CLASSIFICATION:
+                from pycaret.containers.metrics.classification import (
+                    get_all_metric_containers,
+                )
+
+                metrics_registry = get_all_metric_containers({}, raise_errors=False)
+                try:
+                    proba = estimator.predict_proba(X)
+                    pred_proba = proba[:, 1] if proba.shape[1] == 2 else proba
+                except Exception:
+                    pred_proba = None
+            elif self.task == TaskType.REGRESSION:
+                from pycaret.containers.metrics.regression import (
+                    get_all_metric_containers,
+                )
+
+                metrics_registry = get_all_metric_containers({}, raise_errors=False)
+                pred_proba = None
+            else:
+                return None
+
+            scores = calculate_metrics(
+                metrics=metrics_registry,
+                y_test=y,
+                pred=preds,
+                pred_proba=pred_proba,
+            )
+            if not scores:
+                return None
+            df = _pd.DataFrame(scores, index=[0])
+            model_name = type(
+                estimator.steps[-1][1] if hasattr(estimator, "steps") else estimator
+            ).__name__
+            df.insert(0, "Model", model_name)
+            return df.round(round)
+        except Exception:
+            return None
 
     def plot_model(self, estimator: Any, *args: Any, **kwargs: Any) -> Any:
         """Delegates to the legacy plot dispatcher. Phase 3 of the roadmap
