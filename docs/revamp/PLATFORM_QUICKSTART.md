@@ -2,7 +2,7 @@
 
 Get a working backend running locally against SQLite in under 5 minutes.
 
-> **Status:** session 9 scaffolding. Backend is API-complete for auth + workspaces / projects / experiments + engine introspection; run-dispatch + WebSocket event fan-out + deployments land next session.
+> **Status:** session 12. Backend is feature-complete (auth, workspaces, projects, experiments, runs, data sources, deployments, serving). Frontend covers the bootstrap → workspace/project flow; experiment / run / admin screens land in session 13+.
 
 ## Option A — Local dev (preferred during development)
 
@@ -10,24 +10,29 @@ Get a working backend running locally against SQLite in under 5 minutes.
 git clone -b v4 https://github.com/pycaret/pycaret.git
 cd pycaret
 
-# Install Python 3.13 + all workspace packages (engine + server)
+# 1. Install Python 3.13 + all Python workspace packages (engine + server)
 uv python install 3.13
 uv sync --all-packages --all-extras
 
-# Start the backend
+# 2. Terminal 1 — backend
 uv run --package pycaret-server pycaret-server serve --reload
-# or equivalently:
-#   uv run --package pycaret-server uvicorn pycaret_server.app:create_app --factory --reload
+#   → http://127.0.0.1:8000
+
+# 3. Terminal 2 — frontend
+cd pycaret-ui
+npm install
+npm run dev
+#   → http://127.0.0.1:3000  (proxies /api → :8000)
 ```
 
-Server listens on `http://127.0.0.1:8000`.
+Open **http://127.0.0.1:3000/setup** to run the first-run wizard.
 
-Browse:
+You can also skip the UI and hit the API directly:
 - `http://127.0.0.1:8000/docs` — interactive Swagger UI.
-- `http://127.0.0.1:8000/openapi.json` — machine-readable OpenAPI schema (the React UI will generate a typed client from this).
+- `http://127.0.0.1:8000/openapi.json` — machine-readable OpenAPI schema.
 - `http://127.0.0.1:8000/healthz` — liveness probe.
 
-## Option B — Docker compose (closer to prod)
+## Option B — Docker compose (full stack)
 
 ```bash
 git clone -b v4 https://github.com/pycaret/pycaret.git
@@ -35,7 +40,7 @@ cd pycaret
 docker compose -f docker/docker-compose.yml up --build
 ```
 
-Same URL (`http://localhost:8000/docs`). SQLite DB + artifacts persist to `./data/` on the host.
+Open **http://localhost:3000**. The UI container fronts the API (same origin), so `/api/v1/*` and `/ws/*` are reverse-proxied. SQLite DB + artifacts persist to `./data/` on the host.
 
 ## First-run flow
 

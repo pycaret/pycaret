@@ -158,21 +158,27 @@ Full design in [`docs/revamp/PLATFORM_PLAN.md`](PLATFORM_PLAN.md).
 - [x] *(session 11)* **Run cancellation** — `POST /runs/{id}/cancel` signals the orchestrator's `threading.Event`; worker checks at every stage boundary and raises `_CancelledError` mapped to `Run.status = "cancelled"`.
 - [x] *(session 11)* **10 new integration tests** covering CSV upload + run-from-CSV, S3 connector registration, file cleanup on delete, cancel-queued, cancel-terminal (no-op), promote + serve end-to-end, promote-rejects-unfinished, pipeline-with-deployment-refusal, slug collision + format, alembic-fresh-db. **30/30 server suite green.**
 
-### Phase 10 — Frontend (`pycaret-ui`) — 🔴 NOT STARTED
+### Phase 10 — Frontend (`pycaret-ui`) — 🟡 IN FLIGHT (session 12)
 
-- [ ] Vite + React 18 + TypeScript + Tailwind + TanStack Query + Zustand + Plotly.js.
-- [ ] Typed API client auto-generated from `/openapi.json`.
-- [ ] 8 screens: setup / login / workspaces / project / experiment / run / admin-users / admin-workspace.
-- [ ] Setup form 100% driven by `describe_setup_params` (zero UI code hard-codes param names).
-- [ ] Live event-stream rendering via WebSocket.
-- [ ] Dark-mode first.
+- [x] *(session 12)* `pycaret-ui/` scaffolded as a third monorepo sibling: Vite 5 + React 18 + TypeScript 5 (strict, verbatimModuleSyntax) + Tailwind 3 (dark-mode first) + TanStack Query + Zustand + React Router 6 + axios.
+- [x] *(session 12)* Typed API client (hand-written mirrors in `src/api/types.ts` covering setup/auth/workspaces/projects/experiments/runs/events). `npm run gen:api` regenerates `src/api/schema.ts` from live `/openapi.json` when needed.
+- [x] *(session 12)* Auth store (Zustand) + `localStorage`-persisted refresh token + single-flight axios refresh interceptor + `<AuthGate>` that restores sessions across reloads.
+- [x] *(session 12)* 4 screens: `/setup`, `/login`, `/` (workspaces), `/workspaces/:id` (projects). All wired to the live API.
+- [x] *(session 12)* Vitest + Testing Library harness; 6 tests across auth store + AuthGate + Setup form.
+- [x] *(session 12)* ESLint flat config, TypeScript strict check, production build (~83 kB gzipped).
+- [x] *(session 12)* `docker/Dockerfile.ui` (Node-build → nginx-runtime, non-root) + `docker-compose.yml` service (proxies `/api` + WS to `api`).
+- [x] *(session 12)* CI job `ui` runs typecheck + lint + test + build on every push; wired into `ci-status` gate.
+- [ ] 4 remaining screens: project detail (experiments list), experiment setup (dynamic form driven by `describe_setup_params`), run view (live event stream via WebSocket + leaderboard + artifacts), admin (users + workspace settings) — session 13+.
+- [ ] Setup form 100% driven by `describe_setup_params` (zero UI code hard-codes param names) — session 13.
+- [ ] Light-mode support — deferred.
 
-### Phase 11 — Docker / deploy — 🟡 PARTIAL (session 9)
+### Phase 11 — Docker / deploy — 🟢 MOST OF THE WAY (sessions 9, 12)
 
 - [x] `docker/Dockerfile.api` (multi-stage Python 3.13-slim + uv + non-root runtime user + healthcheck).
-- [x] `docker/docker-compose.yml` (dev compose; SQLite + artifact volume at `./data/`).
-- [ ] `docker/Dockerfile.ui` — after frontend phase.
-- [ ] `docker/docker-compose.prod.yml` with reverse-proxy + TLS — after frontend.
+- [x] `docker/docker-compose.yml` (dev compose; SQLite + artifact volume at `./data/`; now includes UI service).
+- [x] *(session 12)* `docker/Dockerfile.ui` — two-stage Node 22 → nginx 1.27-alpine, non-root, healthcheck, SPA fallback, `/api` + `/ws` reverse proxy.
+- [x] *(session 12)* `docker/nginx.ui.conf` — upstream to `api:8000`, long-poll timeouts for WebSocket upgrade on `/api/v1/runs/*`.
+- [ ] `docker/docker-compose.prod.yml` with reverse-proxy + TLS (Caddy or Traefik) — after admin screens.
 - [ ] `deploy/k8s/` manifests as stretch goal.
 
 ### Phase 12 — Platform release — 🔴 NOT STARTED

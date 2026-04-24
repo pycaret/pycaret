@@ -1,6 +1,79 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 11*
+*Updated: 2026-04-24, end of session 12*
+
+## Session 12 — Frontend scaffold + bootstrap flow (Phase 10 start) — ✅
+
+The platform finally has a face. A user can navigate to `http://localhost:3000`, bootstrap their admin account, sign in, create workspaces, create projects — all against the same `pycaret-server` we finished in session 11.
+
+### What landed
+
+- **`pycaret-ui/` — new monorepo sibling** (~1,300 LOC TSX + config). Vite 5 + React 18 + TypeScript 5 (strict, `verbatimModuleSyntax`) + Tailwind 3 (dark-mode first) + TanStack Query + Zustand + React Router 6 + axios.
+- **Typed API client** in `src/api/` — hand-written mirrors of the Pydantic schemas (`types.ts`) + per-route axios methods (`endpoints.ts`). `npm run gen:api` regenerates `schema.ts` from a live `/openapi.json` for when the surface grows.
+- **Auth layer**:
+  - `useAuthStore` (Zustand) — single source of truth for `{accessToken, refreshToken, user}`. Refresh token persisted to `localStorage` so page reloads don't kick the user back to `/login`.
+  - axios interceptor — single-flight `refresh()` on 401 (no thundering-herd if N requests 401 at once). Access token never touches `localStorage`; it's restored from the refresh token at load time.
+  - `<AuthGate>` — guards authenticated routes; shows a "Restoring session…" flash during the one-shot refresh, then either renders children or redirects to `/login` with `state.from` set.
+- **4 screens**, all live against the backend:
+  - `/setup` — first-run wizard. Disabled if server is already bootstrapped.
+  - `/login` — sign in. Redirects to `/setup` if server isn't bootstrapped yet.
+  - `/` — workspace list + "New workspace" side-card.
+  - `/workspaces/:id` — workspace header + project list + "New project" side-card (with comma-separated tag input).
+- **Design system primitives** in `src/index.css`: `.btn-primary/.btn-secondary/.btn-ghost/.btn-danger`, `.input`, `.field`, `.card`, `.hint`, `.error`, `.kbd`. Slate-leaning palette, teal accent.
+- **Tests** (Vitest + Testing Library, jsdom env):
+  - `auth.test.ts` — localStorage persistence + clear + no-op refresh without token.
+  - `AuthGate.test.tsx` — redirects to `/login` when no tokens; renders children when authed.
+  - `Setup.test.tsx` — renders form + submit-disabled-until-password-valid.
+- **Build pipeline** — typecheck (`tsc -b`), lint (ESLint flat config, 0 warnings), test (Vitest), production build (Vite). Current bundle: **254 kB raw / 83 kB gzipped**.
+- **Docker**:
+  - `docker/Dockerfile.ui` — two-stage (Node 22-alpine build → nginx 1.27-alpine runtime), non-root `nginx` user, healthchecked.
+  - `docker/nginx.ui.conf` — SPA history fallback, `/api/` + `/healthz` reverse proxy to `api:8000`, WebSocket upgrade on `/api/v1/runs/*` with 1h timeouts for long runs.
+  - `docker-compose.yml` now has a `ui` service depending on `api:service_healthy`, exposing port 3000.
+- **CI** — new `ui` job (typecheck + lint + test + build) on every push. Wired into `ci-status`. Uses Node 22 + npm cache.
+
+### Headline metrics
+
+| | Session 11 end | Session 12 end |
+|---|---|---|
+| Monorepo packages | 2 (pycaret + pycaret-server) | **3** (+ pycaret-ui) |
+| Total tests | 62 | **68** (+6 UI) |
+| LOC | engine ~49k + server ~3.6k | **+ ui ~1.3k TSX** |
+| Docker images | 1 (API) | **2** (API + UI) |
+| CI jobs | 3 (lint, test, notebooks) | **4** (+ ui) |
+
+### What works today
+
+```bash
+# Terminal 1 — backend
+cd pycaret-server && uv run pycaret-server serve --reload
+
+# Terminal 2 — frontend
+cd pycaret-ui && npm install && npm run dev
+
+# Open http://localhost:3000/setup → bootstrap → sign in → click around
+```
+
+Or with Docker:
+
+```bash
+docker compose -f docker/docker-compose.yml up --build
+# http://localhost:3000  — full stack
+```
+
+### What's next (session 13)
+
+4 remaining screens to close Phase 10:
+
+1. **`/workspaces/:id/projects/:id`** — project detail: experiment list + "New experiment" button.
+2. **`/projects/:id/experiments/:id`** — experiment setup form rendered **100% from `describe_setup_params`** (the single most important UX principle — zero UI code hard-codes a parameter name).
+3. **`/runs/:id`** — live event stream via WebSocket + leaderboard table + artifact download + promote-to-pipeline button.
+4. **Admin** — user management + workspace settings (single screen, admin-only).
+
+Plus polish: light-mode, error boundaries, toast system for non-form errors, keyboard shortcuts.
+
+Phase 10 is likely 2-3 more sessions before it's beta-ready.
+
+---
 
 ## Session 11 — Phase 9 finish: data sources, deployments, cancel, alembic — ✅
 

@@ -42,6 +42,74 @@
 
 ---
 
+# Session 12 — 2026-04-24 — Frontend scaffold + bootstrap flow (Phase 10 start)
+
+Baseline: session 11 closed Phase 9. The backend is feature-complete (62/62 tests, 39 routes + 1 WS). No UI exists yet.
+
+Theme: owner: "lets go." Put a face on the platform. Scaffold the React UI as a third monorepo sibling, implement the bootstrap → workspace-detail flow end-to-end, and wire it into CI + Docker.
+
+## ADDED — `pycaret-ui/` package (new monorepo sibling)
+
+- `ADDED` — **`pycaret-ui/package.json`** — `@pycaret/ui`, version `0.1.0-alpha.0`, dual-licensed `MIT OR BUSL-1.1`. Scripts: `dev`, `build` (tsc -b + vite), `typecheck`, `lint`, `test`, `gen:api` (openapi-typescript). Runtime deps: react 18, react-router 6, axios, zustand, @tanstack/react-query, plotly.js-basic-dist + react-plotly.js. Dev deps: vite 5, vitest 2, @testing-library, typescript 5.6, tailwindcss 3, eslint 9.
+- `ADDED` — **`pycaret-ui/tsconfig.{json,app.json,node.json}`** — strict TS with `verbatimModuleSyntax` (forces type-only imports, cleaner build), `target: ES2022`, path alias `@/*` → `src/*`.
+- `ADDED` — **`pycaret-ui/vite.config.ts`** — dev server on `:3000` proxying `/api`, `/ws`, `/healthz` to the FastAPI backend at `:8000` (no CORS headaches locally). Vitest config with jsdom env + `vitest.setup.ts` loading jest-dom matchers.
+- `ADDED` — **`pycaret-ui/tailwind.config.js`** — dark-mode-first palette: `ink` (slate-leaning darks/lights), `accent` (teal), `success` / `danger` / `warn`. Inter + JetBrains Mono font stacks. `maxWidth.form = 32rem` for single-column forms.
+- `ADDED` — **`pycaret-ui/eslint.config.js`** — flat config, TS + react-hooks + react-refresh, `--max-warnings 0`.
+- `ADDED` — **`pycaret-ui/index.html`** — root `<html class="dark">`, `bg-ink-950 text-ink-100` body.
+
+## ADDED — API client + auth
+
+- `ADDED` — **`src/api/client.ts`** — axios instance with bearer-token injection + **single-flight 401 refresh**. The refresh promise is stashed in a module-level `refreshing` so multiple concurrent 401s share one refresh call instead of stampeding. The `/auth/refresh` route is excluded from retry to prevent loops. `errorMessage(err)` helper pulls `detail` out of Pydantic error bodies for toast/form display.
+- `ADDED` — **`src/api/types.ts`** — hand-written mirrors of the server's Pydantic schemas: TokenPair, User, SetupStatus, BootstrapRequest, LoginRequest, Workspace, Project, Experiment, Run, RunEvent, TaskType, RunStatus. Scope limited to what session 12 touches; `npm run gen:api` regenerates `schema.ts` for the full OpenAPI surface when needed.
+- `ADDED` — **`src/api/endpoints.ts`** — one function per API route grouped by concern: `setupApi`, `authApi`, `workspacesApi`, `projectsApi`. Each method returns a typed Promise.
+- `ADDED` — **`src/state/auth.ts`** — Zustand `useAuthStore`. Access token stays in memory; refresh token persisted to `localStorage["pycaret.refresh_token"]` so a page reload doesn't kick users to login. `refresh()` uses a bare axios call (not the instance with the interceptor) to avoid recursion.
+
+## ADDED — screens + routing
+
+- `ADDED` — **`src/components/AuthGate.tsx`** — guards authenticated routes. On mount with a refresh token but no access token, one-shot refreshes and shows "Restoring session…". Redirects to `/login` on failure (with `state.from` for return-after-login).
+- `ADDED` — **`src/components/Layout.tsx`** — top nav shell with workspace link, user display name, sign-out button. Uses a `react-query`-cached `/auth/me` call to hydrate the user.
+- `ADDED` — **`src/pages/Setup.tsx`** — first-run wizard. Detects already-bootstrapped servers via `GET /setup/status` and redirects to `/login`. Form fields: admin email, password (min 8), display name (optional), workspace name. On success stores the returned token pair and jumps to `/`.
+- `ADDED` — **`src/pages/Login.tsx`** — sign in. Mirror of Setup; detects *un*-bootstrapped servers and redirects to `/setup`. Honours `state.from` for post-login redirect.
+- `ADDED` — **`src/pages/Workspaces.tsx`** — `/`. Two-pane: list of workspaces (cards with name + description + created date) + side-card "New workspace" form. `useQueryClient().invalidateQueries` on create so the list refreshes without a page reload.
+- `ADDED` — **`src/pages/WorkspaceDetail.tsx`** — `/workspaces/:id`. Breadcrumb + workspace header + project list + "New project" side-card with comma-separated tag input.
+- `ADDED` — **`src/App.tsx`** — route table. `/setup` + `/login` are unauthenticated; everything else is wrapped in `<AuthGate><Layout />` via a parent route. Unknown paths fall through to a minimal 404.
+- `ADDED` — **`src/index.css`** — Tailwind directives + component primitives (`.btn-primary/.btn-secondary/.btn-ghost/.btn-danger`, `.input`, `.field`, `.card`, `.hint`, `.error`, `.kbd`). Global focus ring, antialiasing.
+- `ADDED` — **`src/main.tsx`** — React 18 root with `StrictMode`, TanStack Query client (no refetch-on-focus, 30s staleTime), `<BrowserRouter>`.
+
+## ADDED — tests
+
+- `ADDED` — **`src/state/auth.test.ts`** — 2 tests for the auth store (localStorage persistence + clear + refresh without token returns false).
+- `ADDED` — **`src/components/AuthGate.test.tsx`** — 2 tests (redirects without tokens, renders children with access token).
+- `ADDED` — **`src/pages/Setup.test.tsx`** — 2 tests (form renders, submit disabled until password valid). Mocks `@/api/endpoints` so no network.
+- `TESTS` — **UI suite: 6/6 green in ~2 s.** Combined across the programme: **68/68** (32 engine + 30 server + 6 UI).
+
+## ADDED — Docker + CI
+
+- `ADDED` — **`docker/Dockerfile.ui`** — two-stage: `node:22-alpine` builder runs `npm ci || npm install` + `npm run build`, then `nginx:1.27-alpine` runtime serves `dist/` on port 8080 as a non-root user. Healthcheck via `wget` on `/`.
+- `ADDED` — **`docker/nginx.ui.conf`** — SPA history fallback (`try_files ... /index.html`), `/api/` + `/healthz` reverse proxy to `upstream pycaret_api { server api:8000; }`, WebSocket upgrade on `/api/v1/runs/*` with 1h idle timeouts (long-running PyCaret experiments shouldn't drop the event stream).
+- `CHANGED` — **`docker/docker-compose.yml`** — new `ui` service exposing `3000:8080`, depends on `api:service_healthy`, its own healthcheck.
+- `CHANGED` — **`.github/workflows/test.yml`** — new `ui` job runs typecheck + lint + test + build on Ubuntu Node 22 with npm cache. Added to the `ci-status` aggregate so branch protection gates on it.
+
+## Session 12 delta summary
+
+| Metric | Session 11 end | Session 12 end |
+|---|---:|---:|
+| Monorepo packages | 2 | **3** (+ @pycaret/ui) |
+| Tests total | 62 | **68** |
+| UI LOC (TSX + config) | 0 | **~1,300** |
+| API routes covered in UI | 0 | 6 (`setup/status`, `setup/bootstrap`, `auth/login+refresh+logout+me`, `workspaces`, `projects`) |
+| Docker images | 1 | **2** |
+| Production bundle | — | **83 kB gzipped** |
+
+## INTERNAL
+
+- `INTERNAL` — **Hand-written API types vs. generated schema.ts.** Chose hand-written for session 12's 6-route surface because strict TS on a codegen'd OpenAPI output for every pydantic model adds more churn than the typing payoff until the UI hits ~15+ routes. Generated client is wired (`npm run gen:api`) for the switchover.
+- `INTERNAL` — **Single-flight refresh pattern.** The axios interceptor stashes the in-flight refresh Promise in a closure variable; concurrent 401s await the same promise. Critical once parallel `useQuery` calls start happening across screens.
+- `INTERNAL` — **Why port 3000 → 8080 in the UI container.** nginx default is 80 (root-only); we run as `nginx` user on 8080 and let compose map it out as 3000 for developer familiarity. Matches how `docker/docker-compose.prod.yml` will stage the reverse proxy.
+- `INTERNAL` — **`verbatimModuleSyntax` caught a real bug.** The axios `AxiosInstance` / `InternalAxiosRequestConfig` were imported as values but are type-only; the strict flag forced the right `import type`, which also helps tree-shaking in the production build.
+
+---
+
 # Session 11 — 2026-04-24 — Phase 9 finish: data sources, deployments, cancel, alembic
 
 Baseline: session 10 landed the runs subsystem with live event streaming. The server could execute runs but had no way to ingest real data, no way to serve a trained model, no way to cancel, and no proper migration story.
