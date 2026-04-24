@@ -603,58 +603,457 @@ class SupervisedExperiment(Experiment):
         )
 
     # --------------------------------------------------------- ensembling
+    # Sessions 27 (drain): ensemble_model / blend_models / stack_models /
+    # calibrate_model / finalize_model are all native for supervised tasks.
+    # Each is a thin wrapper around an sklearn meta-estimator + the same
+    # `deepcopy(self.preprocess_pipeline) + [(name, model)]` Pipeline assembly
+    # used by `create_model`. Time-series / clustering / anomaly delegate.
 
-    def ensemble_model(self, estimator: Any, *args: Any, **kwargs: Any) -> EnsembleResult:
+    def _unwrap_estimator(self, estimator: Any) -> tuple[Any, str]:
+        """Return (bare estimator, model_id) from a Pipeline or a bare model.
+
+        Pipelines come in from create_model / tune_model / compare_models;
+        their last step is the model. Bare estimators are accepted too —
+        registry IDs are resolved via `_resolve_supervised_estimator`.
+        """
+        from sklearn.pipeline import Pipeline as SkPipeline
+
+        if isinstance(estimator, SkPipeline):
+            model_id, bare = estimator.steps[-1]
+            return bare, model_id
+        if isinstance(estimator, str):
+            return self._resolve_supervised_estimator(estimator, {})
+        return estimator, type(estimator).__name__
+
+    def _wrap_in_pipeline(self, model: Any, name: str) -> Any:
+        """Build the canonical Pipeline shape: preprocessing + (name, model)."""
+        from copy import deepcopy
+
+        pipeline = deepcopy(self.preprocess_pipeline)
+        pipeline.steps.append((name, model))
+        return pipeline
+
+    def ensemble_model(
+        self,
+        estimator: Any,
+        *,
+        method: str = "Bagging",
+        n_estimators: int = 10,
+        fold: Any | None = None,
+        round: int = 4,
+        fit_kwargs: dict | None = None,
+        verbose: bool = False,
+    ) -> EnsembleResult:
+        """Bagging or Boosting wrapper around a base estimator.
+
+        Session-27 drain. ``method="Bagging"`` uses
+        ``BaggingClassifier``/``BaggingRegressor``; ``method="Boosting"`` uses
+        ``AdaBoostClassifier``/``AdaBoostRegressor``. Returns a fitted
+        Pipeline (preprocessor + ensemble).
+        """
         self._require_fitted()
-        self.logger.log(EventKind.MODEL_ENSEMBLE_STARTED)
-        out = self._legacy.ensemble_model(estimator, *args, **kwargs)
-        metrics = self._safe_pull()
-        self.logger.log(EventKind.MODEL_ENSEMBLED)
-        return EnsembleResult(
-            pipeline=out,
-            method=kwargs.get("method", "Bagging"),
-            metrics=metrics,
+        from pycaret.core.tasks import TaskType
+
+        if self.task not in (TaskType.CLASSIFICATION, TaskType.REGRESSION):
+            return self._ensemble_model_legacy(
+                estimator,
+                method=method,
+                n_estimators=n_estimators,
+                fold=fold,
+                verbose=verbose,
+            )
+
+        from copy import deepcopy
+
+        t0 = time.perf_counter()
+        bare, model_id = self._unwrap_estimator(estimator)
+        self.logger.log(
+            EventKind.MODEL_ENSEMBLE_STARTED,
+            payload={"estimator": model_id, "method": method},
         )
 
-    def blend_models(self, estimators: list[Any], *args: Any, **kwargs: Any) -> BlendResult:
+        if method == "Bagging":
+            if self.task == TaskType.CLASSIFICATION:
+                from sklearn.ensemble import BaggingClassifier
+
+                meta = BaggingClassifier(
+                    estimator=deepcopy(bare),
+                    n_estimators=n_estimators,
+                    random_state=self.session_id,
+                    n_jobs=self.n_jobs,
+                )
+            else:
+                from sklearn.ensemble import BaggingRegressor
+
+                meta = BaggingRegressor(
+                    estimator=deepcopy(bare),
+                    n_estimators=n_estimators,
+                    random_state=self.session_id,
+                    n_jobs=self.n_jobs,
+                )
+            wrapped_name = f"Bagging[{model_id}]"
+        elif method == "Boosting":
+            if self.task == TaskType.CLASSIFICATION:
+                from sklearn.ensemble import AdaBoostClassifier
+
+                meta = AdaBoostClassifier(
+                    estimator=deepcopy(bare),
+                    n_estimators=n_estimators,
+                    random_state=self.session_id,
+                )
+            else:
+                from sklearn.ensemble import AdaBoostRegressor
+
+                meta = AdaBoostRegressor(
+                    estimator=deepcopy(bare),
+                    n_estimators=n_estimators,
+                    random_state=self.session_id,
+                )
+            wrapped_name = f"AdaBoost[{model_id}]"
+        else:
+            raise ValueError(f"method must be 'Bagging' or 'Boosting', got {method!r}")
+
+        # Train via create_model so we get CV metrics + a Pipeline.
+        created = self.create_model(
+            meta,
+            fold=fold,
+            cross_validation=True,
+            fit_kwargs=fit_kwargs or {},
+            round=round,
+            verbose=False,
+        )
+        # Replace the auto-named pipeline step with our descriptive name.
+        created.pipeline.steps[-1] = (wrapped_name, created.pipeline.steps[-1][1])
+
+        self.logger.log(
+            EventKind.MODEL_ENSEMBLED,
+            duration_ms=(time.perf_counter() - t0) * 1000,
+            payload={"estimator": wrapped_name},
+        )
+        return EnsembleResult(pipeline=created.pipeline, method=method, metrics=created.metrics)
+
+    def blend_models(
+        self,
+        estimators: list[Any],
+        *,
+        method: str = "auto",
+        weights: list[float] | None = None,
+        fold: Any | None = None,
+        round: int = 4,
+        fit_kwargs: dict | None = None,
+        verbose: bool = False,
+    ) -> BlendResult:
+        """Soft / hard voting ensemble across multiple estimators.
+
+        Session-27 drain. Wraps sklearn ``VotingClassifier`` / ``VotingRegressor``.
+        Classification ``method="auto"`` picks ``"soft"`` when every base
+        model has ``predict_proba``, else ``"hard"``.
+        """
         self._require_fitted()
+        from pycaret.core.tasks import TaskType
+
+        if self.task not in (TaskType.CLASSIFICATION, TaskType.REGRESSION):
+            return self._blend_models_legacy(
+                estimators,
+                method=method,
+                weights=weights,
+                fold=fold,
+                verbose=verbose,
+            )
+
+        from copy import deepcopy
+
+        t0 = time.perf_counter()
+        unwrapped: list[tuple[str, Any]] = []
+        for i, est in enumerate(estimators):
+            bare, mid = self._unwrap_estimator(est)
+            # Voting estimator names must be unique strings.
+            unwrapped.append((f"{mid}_{i}", deepcopy(bare)))
+
         self.logger.log(
             EventKind.MODEL_BLEND_STARTED,
-            payload={"n_models": len(estimators)},
+            payload={"n_models": len(unwrapped), "method": method},
         )
-        out = self._legacy.blend_models(estimators, *args, **kwargs)
+
+        if self.task == TaskType.CLASSIFICATION:
+            from sklearn.ensemble import VotingClassifier
+
+            voting = method
+            if voting == "auto":
+                voting = (
+                    "soft" if all(hasattr(m, "predict_proba") for _, m in unwrapped) else "hard"
+                )
+            meta = VotingClassifier(
+                estimators=unwrapped,
+                voting=voting,
+                weights=weights,
+                n_jobs=self.n_jobs,
+            )
+        else:
+            from sklearn.ensemble import VotingRegressor
+
+            meta = VotingRegressor(estimators=unwrapped, weights=weights, n_jobs=self.n_jobs)
+
+        created = self.create_model(
+            meta,
+            fold=fold,
+            cross_validation=True,
+            fit_kwargs=fit_kwargs or {},
+            round=round,
+            verbose=False,
+        )
+        created.pipeline.steps[-1] = ("Voting", created.pipeline.steps[-1][1])
+        self.logger.log(
+            EventKind.MODEL_BLENDED,
+            duration_ms=(time.perf_counter() - t0) * 1000,
+            payload={"n_models": len(unwrapped)},
+        )
+        return BlendResult(pipeline=created.pipeline, metrics=created.metrics)
+
+    def stack_models(
+        self,
+        estimators: list[Any],
+        *,
+        meta_model: Any | None = None,
+        fold: Any | None = None,
+        round: int = 4,
+        fit_kwargs: dict | None = None,
+        verbose: bool = False,
+    ) -> StackResult:
+        """Two-layer stacking ensemble with a meta-learner.
+
+        Session-27 drain. Wraps sklearn ``StackingClassifier`` /
+        ``StackingRegressor``. The meta-learner defaults to ``LogisticRegression``
+        for classification, ``LinearRegression`` for regression — matching
+        the legacy default.
+        """
+        self._require_fitted()
+        from pycaret.core.tasks import TaskType
+
+        if self.task not in (TaskType.CLASSIFICATION, TaskType.REGRESSION):
+            return self._stack_models_legacy(
+                estimators,
+                meta_model=meta_model,
+                fold=fold,
+                verbose=verbose,
+            )
+
+        from copy import deepcopy
+
+        t0 = time.perf_counter()
+        unwrapped: list[tuple[str, Any]] = []
+        for i, est in enumerate(estimators):
+            bare, mid = self._unwrap_estimator(est)
+            unwrapped.append((f"{mid}_{i}", deepcopy(bare)))
+
+        if meta_model is not None:
+            meta_bare, meta_id = self._unwrap_estimator(meta_model)
+        else:
+            if self.task == TaskType.CLASSIFICATION:
+                from sklearn.linear_model import LogisticRegression
+
+                meta_bare = LogisticRegression(max_iter=1000, random_state=self.session_id)
+                meta_id = "LogisticRegression"
+            else:
+                from sklearn.linear_model import LinearRegression
+
+                meta_bare = LinearRegression()
+                meta_id = "LinearRegression"
+
+        self.logger.log(
+            EventKind.MODEL_STACK_STARTED,
+            payload={"n_models": len(unwrapped), "meta": meta_id},
+        )
+
+        cv = fold if fold is not None else self._legacy.fold_generator
+        if self.task == TaskType.CLASSIFICATION:
+            from sklearn.ensemble import StackingClassifier
+
+            meta = StackingClassifier(
+                estimators=unwrapped,
+                final_estimator=deepcopy(meta_bare),
+                cv=cv,
+                n_jobs=self.n_jobs,
+            )
+        else:
+            from sklearn.ensemble import StackingRegressor
+
+            meta = StackingRegressor(
+                estimators=unwrapped,
+                final_estimator=deepcopy(meta_bare),
+                cv=cv,
+                n_jobs=self.n_jobs,
+            )
+
+        created = self.create_model(
+            meta,
+            fold=fold,
+            cross_validation=True,
+            fit_kwargs=fit_kwargs or {},
+            round=round,
+            verbose=False,
+        )
+        created.pipeline.steps[-1] = (
+            f"Stacking[{meta_id}]",
+            created.pipeline.steps[-1][1],
+        )
+        self.logger.log(
+            EventKind.MODEL_STACKED,
+            duration_ms=(time.perf_counter() - t0) * 1000,
+            payload={"n_models": len(unwrapped), "meta": meta_id},
+        )
+        return StackResult(pipeline=created.pipeline, metrics=created.metrics)
+
+    # --------------------------------------------------------- calibration / finalize
+
+    def calibrate_model(
+        self,
+        estimator: Any,
+        *,
+        method: str = "sigmoid",
+        cv: int | Any | None = None,
+        fold: Any | None = None,
+        round: int = 4,
+        fit_kwargs: dict | None = None,
+        verbose: bool = False,
+    ) -> CalibrateResult:
+        """Probability calibration via ``CalibratedClassifierCV``.
+
+        Session-27 drain. Classification only — calibration is undefined for
+        regression. ``method`` is ``"sigmoid"`` (Platt scaling) or
+        ``"isotonic"``.
+        """
+        self._require_fitted()
+        from pycaret.core.tasks import TaskType
+
+        if self.task != TaskType.CLASSIFICATION:
+            raise ValueError(
+                "calibrate_model is only valid for classification tasks. "
+                f"This is a {self.task.value} experiment."
+            )
+
+        from copy import deepcopy
+
+        from sklearn.calibration import CalibratedClassifierCV
+
+        t0 = time.perf_counter()
+        bare, model_id = self._unwrap_estimator(estimator)
+        self.logger.log(
+            EventKind.MODEL_CALIBRATE_STARTED,
+            payload={"estimator": model_id, "method": method},
+        )
+
+        meta = CalibratedClassifierCV(
+            estimator=deepcopy(bare),
+            method=method,
+            cv=cv if cv is not None else (fold or self._legacy.fold_generator),
+            n_jobs=self.n_jobs,
+        )
+
+        created = self.create_model(
+            meta,
+            fold=fold,
+            cross_validation=True,
+            fit_kwargs=fit_kwargs or {},
+            round=round,
+            verbose=False,
+        )
+        created.pipeline.steps[-1] = (
+            f"Calibrated[{model_id}]",
+            created.pipeline.steps[-1][1],
+        )
+        self.logger.log(
+            EventKind.MODEL_CALIBRATED,
+            duration_ms=(time.perf_counter() - t0) * 1000,
+            payload={"estimator": model_id, "method": method},
+        )
+        return CalibrateResult(pipeline=created.pipeline, method=method, metrics=created.metrics)
+
+    def finalize_model(self, estimator: Any) -> FinalizeResult:
+        """Re-fit ``estimator`` on the **full** training set (train + holdout).
+
+        Session-27 drain. Used right before deploying — the holdout has
+        already served its purpose, so squeeze it back into training. Returns
+        a fresh fitted Pipeline; the input is left untouched.
+        """
+        self._require_fitted()
+        from pycaret.core.tasks import TaskType
+
+        if self.task not in (TaskType.CLASSIFICATION, TaskType.REGRESSION):
+            return self._finalize_model_legacy(estimator)
+
+        from copy import deepcopy
+
+        t0 = time.perf_counter()
+        bare, model_id = self._unwrap_estimator(estimator)
+        # Re-fit on the FULL transformed dataset (train + test combined).
+        # `self._legacy.X_transformed` is the union; same for y.
+        X_full = self._legacy.X_transformed
+        y_full = self._legacy.y_transformed
+        finalized_model = deepcopy(bare)
+        finalized_model.fit(X_full, y_full)
+
+        pipeline = self._wrap_in_pipeline(finalized_model, model_id)
+        self.logger.log(
+            EventKind.MODEL_FINALIZED,
+            duration_ms=(time.perf_counter() - t0) * 1000,
+            payload={"estimator": model_id, "n_rows": int(len(X_full))},
+        )
+        return FinalizeResult(pipeline=pipeline)
+
+    # --- legacy fallbacks for non-supervised tasks (TS / clustering / anomaly)
+
+    def _ensemble_model_legacy(
+        self, estimator: Any, *, method: str, n_estimators: int, fold: Any | None, verbose: bool
+    ) -> EnsembleResult:
+        out = self._legacy.ensemble_model(
+            estimator, method=method, n_estimators=n_estimators, fold=fold, verbose=verbose
+        )
+        metrics = self._safe_pull()
+        self.logger.log(EventKind.MODEL_ENSEMBLED)
+        return EnsembleResult(pipeline=out, method=method, metrics=metrics)
+
+    def _blend_models_legacy(
+        self,
+        estimators: list[Any],
+        *,
+        method: str,
+        weights: list[float] | None,
+        fold: Any | None,
+        verbose: bool,
+    ) -> BlendResult:
+        kwargs: dict = {"verbose": verbose}
+        if method != "auto":
+            kwargs["method"] = method
+        if weights is not None:
+            kwargs["weights"] = weights
+        if fold is not None:
+            kwargs["fold"] = fold
+        out = self._legacy.blend_models(estimators, **kwargs)
         metrics = self._safe_pull()
         self.logger.log(EventKind.MODEL_BLENDED)
         return BlendResult(pipeline=out, metrics=metrics)
 
-    def stack_models(self, estimators: list[Any], *args: Any, **kwargs: Any) -> StackResult:
-        self._require_fitted()
-        self.logger.log(
-            EventKind.MODEL_STACK_STARTED,
-            payload={"n_models": len(estimators)},
-        )
-        out = self._legacy.stack_models(estimators, *args, **kwargs)
+    def _stack_models_legacy(
+        self,
+        estimators: list[Any],
+        *,
+        meta_model: Any | None,
+        fold: Any | None,
+        verbose: bool,
+    ) -> StackResult:
+        kwargs: dict = {"verbose": verbose}
+        if meta_model is not None:
+            kwargs["meta_model"] = meta_model
+        if fold is not None:
+            kwargs["fold"] = fold
+        out = self._legacy.stack_models(estimators, **kwargs)
         metrics = self._safe_pull()
         self.logger.log(EventKind.MODEL_STACKED)
         return StackResult(pipeline=out, metrics=metrics)
 
-    # --------------------------------------------------------- calibration / finalize
-
-    def calibrate_model(self, estimator: Any, *args: Any, **kwargs: Any) -> CalibrateResult:
-        self._require_fitted()
-        self.logger.log(EventKind.MODEL_CALIBRATE_STARTED)
-        out = self._legacy.calibrate_model(estimator, *args, **kwargs)
-        metrics = self._safe_pull()
-        self.logger.log(EventKind.MODEL_CALIBRATED)
-        return CalibrateResult(
-            pipeline=out,
-            method=kwargs.get("method", "sigmoid"),
-            metrics=metrics,
-        )
-
-    def finalize_model(self, estimator: Any, *args: Any, **kwargs: Any) -> FinalizeResult:
-        self._require_fitted()
-        out = self._legacy.finalize_model(estimator, *args, **kwargs)
+    def _finalize_model_legacy(self, estimator: Any) -> FinalizeResult:
+        out = self._legacy.finalize_model(estimator)
         self.logger.log(EventKind.MODEL_FINALIZED)
         return FinalizeResult(pipeline=out)
 
