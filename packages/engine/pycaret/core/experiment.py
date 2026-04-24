@@ -189,6 +189,12 @@ class Experiment(BaseEstimator):
         self._legacy.setup(
             **self._build_legacy_setup_kwargs(data, setup_kwargs),
         )
+        # Session-29 drain: snapshot the user-facing data accessors off the
+        # legacy state once at fit time. The properties (`self.X`, `X_train`
+        # etc.) now read these snapshots instead of going through
+        # ``self._legacy.<attr>`` on every access. Live mutation semantics
+        # are preserved because we hold references, not copies.
+        self._snapshot_fit_state()
         self._fitted = True
 
         self.logger.log(
@@ -920,42 +926,71 @@ class Experiment(BaseEstimator):
 
         return describe_setup_params(self.task)
 
-    # ----------------------------------------------- convenience properties
+    # ----------------------------------------------- data-accessor properties
+    #
+    # Session-29 drain: post-fit, these read from ``self._fit_state`` (a
+    # snapshot taken in ``fit()``) instead of dispatching to
+    # ``self._legacy.X`` etc. on every access. The legacy holder is still
+    # populated by ``setup()`` and used internally by the drained verbs
+    # (which read transformed splits + the fold generator from it), but the
+    # public API no longer requires legacy attribute lookups to function.
+
+    def _snapshot_fit_state(self) -> None:
+        """Cache references to the legacy state on ``self`` post-setup.
+
+        Called once from ``fit()`` after ``self._legacy.setup()`` returns.
+        We hold *references*, not copies — mutating ``self.X_train`` still
+        propagates to the underlying frame, matching legacy semantics.
+
+        Some legacy attributes are not present for every task (clustering /
+        anomaly don't have ``y_test`` etc.); we ``getattr`` defensively so
+        a missing attribute leaves the slot ``None`` rather than failing.
+        """
+        legacy = self._legacy
+        self._fit_state: dict[str, Any] = {
+            "X": getattr(legacy, "X", None),
+            "X_train": getattr(legacy, "X_train", None),
+            "X_test": getattr(legacy, "X_test", None),
+            "y": getattr(legacy, "y", None),
+            "y_train": getattr(legacy, "y_train", None),
+            "y_test": getattr(legacy, "y_test", None),
+            "preprocess_pipeline": getattr(legacy, "pipeline", None),
+        }
 
     @property
     def X(self) -> pd.DataFrame:
         self._require_fitted()
-        return self._legacy.X
+        return self._fit_state["X"]
 
     @property
     def X_train(self) -> pd.DataFrame:
         self._require_fitted()
-        return self._legacy.X_train
+        return self._fit_state["X_train"]
 
     @property
     def X_test(self) -> pd.DataFrame:
         self._require_fitted()
-        return self._legacy.X_test
+        return self._fit_state["X_test"]
 
     @property
     def y(self):
         self._require_fitted()
-        return self._legacy.y
+        return self._fit_state["y"]
 
     @property
     def y_train(self):
         self._require_fitted()
-        return self._legacy.y_train
+        return self._fit_state["y_train"]
 
     @property
     def y_test(self):
         self._require_fitted()
-        return self._legacy.y_test
+        return self._fit_state["y_test"]
 
     @property
     def preprocess_pipeline(self) -> Pipeline:
         self._require_fitted()
-        return self._legacy.pipeline
+        return self._fit_state["preprocess_pipeline"]
 
     @property
     def events(self) -> list:
