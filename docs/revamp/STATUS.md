@@ -1,6 +1,65 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 14*
+*Updated: 2026-04-24, end of session 15*
+
+## Session 15 — Run detail + live WebSocket event stream — ✅
+
+The final missing piece of the beautiful product loop. A user can now click any row in the experiment's runs table and land on a dedicated run-detail screen that shows engine events in real time, the sortable leaderboard, a cancel button while pending, and a promote-to-pipeline form on success.
+
+### What landed
+
+- **`<EventStream>` component** (`apps/web/src/components/EventStream.tsx`). Full WebSocket lifecycle: connects to `/api/v1/runs/:id/events/ws?token=<jwt>` using the current access token, parses each JSON message as a `WsEvent`, caps rendered history at 500 events (oldest dropped), auto-reconnects once on unexpected close (not on 4401/4403 — those are auth failures that shouldn't silently retry), resets state on run-id change, and renders events as a card list with a status indicator (connecting → live → closed / error), per-event timestamp, tone-coded kind text (started = teal, finished = green, failed = red, warning = amber), and optional duration.
+- **`<Leaderboard>` component** (`apps/web/src/components/Leaderboard.tsx`). Renders any JSON-table shape the engine emits — zero hard-coded metric names. First-row column order is preserved. Click-to-sort per column (numeric sort for number-valued cells, string sort otherwise). Number formatter: integers stay bare, floats get 4 decimals, very small values get exponential notation. Empty state fallback until `Run.leaderboard` materialises.
+- **`/runs/:runId`** screen (`apps/web/src/pages/RunDetail.tsx`). Status header with tone-coded label + ID + duration + error pre-block if failed. Cancel button (shown only while `queued` / `running`). Full-width live event stream. Leaderboard section. Promote-to-pipeline form (shown only on `succeeded`). Complete request snapshot at the bottom for reproducibility. Polls the run row every 2 s while pending; polling stops on terminal state.
+- **Upgraded `ExperimentDetail`** sidebar:
+  - **Model picker** — replaces the free-text `model_id` field with a `<select>` driven by `describeApi.models(task)`. Task-specific, with `is_available` flag propagated (unavailable models render as disabled `<option>`s with "(install required)" suffix).
+  - **Data-source picker** — single combo-valued `<select>` mixing the workspace's CSV uploads (preferred, at the top) with the built-in sklearn sample datasets (useful fallback for a fresh install demo). Submit dispatches to either `data_source_id` or `sklearn_dataset` based on the selected value's prefix (`sklearn:` vs. UUID).
+- **Runs table rows** in `ExperimentDetail` are now clickable — they link to the new `/runs/:id` screen.
+- **API + type bindings** — `runsApi` (list for experiment / submit / get / events / cancel / wait / promote), `dataSourcesApi` (list / get / remove / **uploadCsv** with multipart `FormData`). Types: `DataSource`, `DataSourceKind`, `RunPlan`, `RunCreate`, `Pipeline`, `Deployment`, `WsEvent`.
+- **8 new Vitest tests** — 4 for `<Leaderboard>` (empty state, column order preservation, numeric formatting, numeric sort round-trip) + 4 for `<EventStream>` with a controllable `FakeWebSocket` (connects to correct URL with token, renders live events, handles `run.closed` sentinel, surfaces auth-failure close codes).
+
+### Headline metrics
+
+| | Session 14 end | Session 15 end |
+|---|---|---|
+| UI screens | 7 | **8** (+ RunDetail) |
+| UI shared components | 3 | **5** (+ EventStream + Leaderboard) |
+| UI routes | 7 | **8** (+ `/runs/:runId`) |
+| UI tests | 19 | **27** (+8) |
+| Combined tests | 81 | **89** (32 engine + 30 server + 27 web) |
+| UI LOC | ~2,100 | **~2,950** (+850) |
+| Production bundle (gz) | 86 kB | **89 kB** (+3 kB) |
+
+### The beautiful product loop, end-to-end
+
+All in one session of UI work, with zero Python required:
+
+```
+1. /setup               → bootstrap admin
+2. /login               → sign in
+3. /                    → pick a workspace, or create one
+4. /workspaces/:id      → pick a project, or create one
+5. .../projects/:id     → click "New experiment"
+6. .../experiments/new  → fill wizard (dynamic form from describe_setup_params)
+7. .../experiments/:id  → pick plan (compare), sklearn:iris, click Submit
+8. /runs/:id            → watch live events stream in, leaderboard render,
+                          click "Promote" when it succeeds
+```
+
+Verified E2E against the live backend: a `create` run on `sklearn:iris` emits 4 events, produces a 4-row leaderboard with 7 metric columns, and promotes into a `Pipeline` row with a SHA-256 checksum. 19 classification models exposed for the picker.
+
+### What's next (session 16)
+
+- **Pipelines + Deployments screens** — `/pipelines/:id` and `/deployments/:id`. List, promote already runs; the missing piece is the UI for *deploying* a promoted pipeline behind a slug, plus the `/predict` test-form + request-log view.
+- **CSV upload UI** — a small card on `WorkspaceDetail` or a new `/datasets` screen, using the `dataSourcesApi.uploadCsv` binding already shipped this session.
+
+### What's next (session 17+)
+
+- **LLM router** (Claude + OpenAI) + first 2 advisory endpoints (dataset analyst + experiment designer).
+- **Admin screens** — users + API keys + audit logs.
+- **God-class drain** → 4.0.0 (non-alpha) release.
+
+---
 
 ## Session 14 — Project detail + Experiment wizard (100% data-driven dynamic form) — ✅
 

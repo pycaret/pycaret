@@ -69,7 +69,7 @@ Status: ✅ **FULLY DONE** (sessions 9–11). 30 integration tests green.
 
 ## MVP 3 — Web UI (`apps/web`)
 
-Status: 🟡 **IN FLIGHT** (sessions 12 + 14). 7/10 screens. 19 tests green.
+Status: 🟡 **IN FLIGHT** (sessions 12 + 14 + 15). 8/10 screens. 27 tests green.
 
 - [x] Vite 5 + React 18 + TypeScript 5 + Tailwind 3 + TanStack Query + Zustand + React Router 6 scaffold.
 - [x] Typed API client (hand-written; `npm run gen:api` wired for growth).
@@ -81,7 +81,8 @@ Status: 🟡 **IN FLIGHT** (sessions 12 + 14). 7/10 screens. 19 tests green.
 - [x] *(session 14)* **`/workspaces/:wsId/projects/:projectId`** — project detail with experiments list + "New experiment" link.
 - [x] *(session 14)* **`/workspaces/:wsId/projects/:projectId/experiments/new`** — experiment setup wizard **100% driven by `describe_setup_params(task)`**. Zero UI code hard-codes a parameter name.
 - [x] *(session 14)* **`/workspaces/:wsId/projects/:projectId/experiments/:experimentId`** — experiment detail with config overview, runs table (auto-polls while pending), and a minimal new-run sidebar (plan / model / sklearn sample dataset).
-- [ ] **`/runs/:id`** — dedicated run detail with live WebSocket event stream + leaderboard + artifact download + promote-to-pipeline + cancel — session 15.
+- [x] *(session 15)* **`/runs/:runId`** — dedicated run detail. Live WebSocket event stream (`<EventStream>` with connection + replay + sentinel handling + single-retry reconnect). Sortable leaderboard (`<Leaderboard>` — zero hard-coded metric names). Cancel button while pending. Promote-to-pipeline form on success. Polls run row every 2 s until terminal. Full request snapshot for reproducibility.
+- [x] *(session 15)* **Experiment sidebar upgrade** — model picker driven by `describeApi.models(task)`; data-source picker mixing workspace CSV uploads + sklearn sample fallbacks; runs-table rows now clickable through to `/runs/:id`.
 - [ ] **`/datasets/:id`** — dataset overview / schema / profile / quality / versions.
 - [ ] **`/deployments/:id`** — endpoint details + test form + logs + metrics + drift tab.
 - [ ] **`/monitoring`** — deployment health + drift alerts.
@@ -169,8 +170,8 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 11 | Phase 9 finish | Data sources + deployments + cancel + Alembic |
 | 12 | Frontend scaffold (Phase 10 start) | 4 screens live |
 | 13 | Monorepo restructure + Control Plane spec | Canonical structure + docs |
-| **14** | **Project detail + Experiment wizard (dynamic form)** | **Experiment creation UI + runs sidebar + 13 new tests** |
-| 15 | `/runs/:id` with live WebSocket + leaderboard + data-source picker | Run view |
+| 14 | Project detail + Experiment wizard (dynamic form) | Experiment creation UI + runs sidebar + 13 new tests |
+| **15** | **`/runs/:id` with live WebSocket + leaderboard + data-source + model pickers** | **Run view + promote button + 8 new tests** |
 | 16 | Trial entity + Model Library table sync | DB expansion |
 | 17 | LLM router + first 2 advisory endpoints | AI assist MVP |
 | 18 | Dataset upload UI + profile screen | Data-source UI |

@@ -42,6 +42,98 @@
 
 ---
 
+# Session 15 — 2026-04-24 — Run detail + live WebSocket event stream
+
+Baseline: session 14 shipped the experiment wizard + project detail. The runs table existed but clicking a row did nothing.
+
+Theme: close the beautiful product loop — every run gets a dedicated screen where users watch engine events stream in live, see the leaderboard render as it arrives, cancel mid-flight, and promote successful pipelines with one click.
+
+## ADDED — live event stream
+
+- `ADDED` — **`apps/web/src/components/EventStream.tsx`** — full WebSocket lifecycle.
+  - Connects to `/api/v1/runs/:id/events/ws?token=<access_token>` — same-origin ws:// / wss:// based on `window.location.protocol`, token pulled from the Zustand auth store.
+  - Parses each JSON message as a `WsEvent`; appends to a state array capped at 500 events (older events drop off — bounded memory).
+  - **Single-retry reconnect** on unexpected close. Auth-failure close codes (4401 / 4403) surface a visible error and do NOT retry — those are user-facing problems, not transient.
+  - Resets state on `runId` change so switching between runs doesn't mix streams.
+  - Renders: header with connection-status indicator (connecting/live/closed/error tone-coded) + event counter; event log as a card list with per-event timestamp, tone-coded kind text (`.started` = teal, `.finished/.created/.fitted` = green, `.failed`/`error` = red, `warning` = amber), optional duration formatted short (`850ms` / `3.5s`).
+  - Recognises the backend's `run.closed` sentinel and stops retrying once seen.
+
+## ADDED — leaderboard
+
+- `ADDED` — **`apps/web/src/components/Leaderboard.tsx`** — renders any JSON-table shape the engine emits.
+  - Zero hard-coded metric names. First-row column order is preserved exactly.
+  - Click-to-sort per column (desc default, toggle asc on second click). Numeric sort for number-valued cells; string sort via `localeCompare` otherwise.
+  - Number formatter: integers stay bare, floats render with 4 decimals, values with |x| < 1e-4 use `toExponential(2)`. Numeric cells get `font-mono tabular-nums text-right` for alignment.
+  - Empty-state hint when `rows` is null / empty.
+
+## ADDED — `/runs/:runId` screen
+
+- `ADDED` — **`apps/web/src/pages/RunDetail.tsx`** — stitches `<EventStream>` + `<Leaderboard>` + run metadata into one screen.
+  - Header: tone-coded status label (`succeeded` green / `running` teal / `failed` red / `cancelled` amber / `queued` muted) + short run id + total duration + error pre-block when failed.
+  - Polls `runsApi.get` every 2 s while status is queued/running; stops on terminal.
+  - Cancel button (only while pending) wired to `runsApi.cancel`.
+  - Promote-to-pipeline form (only on `succeeded`): inline input + submit mutates to `runsApi.promote`, on success disables with ✓.
+  - Request snapshot at the bottom — full `Run.snapshot` as a two-column `<dl>` for reproducibility.
+
+## CHANGED — ExperimentDetail sidebar
+
+- `CHANGED` — **`apps/web/src/pages/ExperimentDetail.tsx`** — upgraded the minimal new-run form from session 14:
+  - **Model picker** — free-text `model_id` replaced with a `<select>` driven by `describeApi.models(task)`. Unavailable models (`is_available=false`) render as disabled options with "(install required)" suffix.
+  - **Data-source picker** — replaces the standalone sklearn-samples dropdown. Single combo-valued `<select>`: workspace CSV uploads first, sklearn samples below. Combo values use a prefix (`sklearn:iris` vs. the DataSource UUID) so one `<select>` drives two different backend fields.
+  - Runs-table rows are now clickable → navigate to `/runs/:id`.
+  - All API calls moved to the new `runsApi.listForExperiment` wrapper — no more raw `api.get` from the page.
+
+## ADDED — API bindings
+
+- `ADDED` — **`apps/web/src/api/types.ts`**:
+  - `DataSource`, `DataSourceKind`, `Pipeline`, `Deployment`.
+  - `RunPlan` (literal union `'setup' | 'create' | 'compare'`), `RunCreate` (full POST payload).
+  - `WsEvent` — matches the engine's `Event.to_dict()` shape.
+- `ADDED` — **`apps/web/src/api/endpoints.ts`**:
+  - `runsApi` — `listForExperiment`, `submit`, `get`, `events` (with `after_id` + `limit` opts), `cancel`, `wait`, `promote`.
+  - `dataSourcesApi` — `list`, `get`, `remove`, **`uploadCsv(workspace_id, file, name, description?)`** (multipart via `FormData`; axios sets Content-Type + boundary automatically).
+
+## CHANGED — routing
+
+- `CHANGED` — **`apps/web/src/App.tsx`** — new authenticated route `/runs/:runId` wired inside the `<AuthGate><Layout>` wrapper.
+
+## TESTS
+
+- `TESTS` — **`apps/web/src/components/Leaderboard.test.tsx`** — 4 tests:
+  - Empty state renders the placeholder hint.
+  - Header cells preserve engine-declared order.
+  - Number formatter: integers bare, floats 4-decimal.
+  - Numeric sort round-trips desc ↔ asc on repeated click.
+- `TESTS` — **`apps/web/src/components/EventStream.test.tsx`** — 4 tests with a controllable `FakeWebSocket` replacing `globalThis.WebSocket` for the test scope:
+  - Connects to the right URL + includes the bearer token in the query string.
+  - Flips indicator to `live` on open; renders events with short-form duration.
+  - Recognises the `run.closed` sentinel and reflects `closed` status.
+  - Surfaces 4401 auth-failure close code as a visible error (and suppresses the normal retry).
+- `TESTS` — **UI suite: 27/27 green** (was 19). **Combined across programme: 89/89** (32 engine + 30 server + 27 web).
+
+## INTERNAL
+
+- `INTERNAL` — **WebSocket URL construction.** `${proto}//${window.location.host}/api/v1/...` works in both dev (Vite proxies `/api` and `/ws` to the backend) and prod (the nginx config in `infra/docker/nginx.ui.conf` forwards the same paths). No env-var plumbing needed for ws endpoints.
+- `INTERNAL` — **Single-retry reconnect policy.** An unexpected close (network blip, server restart) retries once after a 500 ms delay. Auth-failure close codes (4401 / 4403) never retry — they need user intervention. `retried` is a closure-scoped flag in the effect so the policy resets on run-id change.
+- `INTERNAL` — **Test-only WebSocket replacement.** `beforeEach` swaps `globalThis.WebSocket` with `FakeWebSocket` (a class that tracks all instances + exposes `_open` / `_message` / `_close` hooks). Tests use `act(() => { ws._message(...) })` to drive the component deterministically. Pattern for any future component that opens a network connection.
+- `INTERNAL` — **Leaderboard sort indicator overloaded header text.** A regex like `/closed/i` would match both the `"● closed"` status indicator and a `run.closed`-kind event in the log, producing a `getByText` ambiguity. Tightened to `/●\s+closed/` — small pattern, specific to the status indicator's prefix.
+
+## Session 15 delta summary
+
+| Metric | Session 14 end | Session 15 end |
+|---|---:|---:|
+| UI screens | 7 | **8** (+ RunDetail) |
+| UI shared components | 3 | **5** (+ EventStream + Leaderboard) |
+| UI routes | 7 | **8** |
+| UI tests | 19 | **27** |
+| Combined tests | 81 | **89** |
+| UI LOC | ~2,100 | **~2,950** |
+| Production bundle (gz) | 86 kB | **89 kB** |
+
+Live E2E verification (AutoML on `sklearn:iris`): 4 events emitted, 4-row × 7-column leaderboard (`Fold / Accuracy / AUC / Recall / Prec. / F1 / Kappa`) rendered and sortable, pipeline promoted with SHA-256 checksum, 19 classification models in the picker.
+
+---
+
 # Session 14 — 2026-04-24 — Project detail + Experiment wizard (dynamic form)
 
 Baseline: session 13 locked in the Control Plane vision and restructured the monorepo. Structure is sound; now time to push the first beautiful product loop past the workspace/project screens into the actual ML workflow.
