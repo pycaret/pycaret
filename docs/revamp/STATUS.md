@@ -1,6 +1,65 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 9*
+*Updated: 2026-04-24, end of session 10*
+
+## Session 10 — Run execution + event stream (Phase 9 core complete) — ✅
+
+The scaffold from session 9 gets a heart: `POST /api/v1/experiments/{id}/runs` now actually runs a PyCaret experiment and streams events back to any client that asks.
+
+### What landed
+
+- **`pycaret_server/runs/` subsystem** — 4 new modules, ~580 LOC:
+  - `broker.py` — `EventBroker`, a thread-safe fan-out that bridges worker-thread event emission to asyncio-consumer WebSocket handlers via `loop.call_soon_threadsafe`.
+  - `logger_bridge.py` — `DBEventLogger(pycaret.logging.BaseLogger)` that persists every engine `Event` as an `events` row and republishes through the broker.
+  - `plans.py` — pure "plan executor": `setup` | `create` | `compare` mapped onto engine verbs, plus a `load_sklearn_dataset(name)` helper that pulls tiny iris / wine / breast_cancer / diabetes frames from sklearn (no network required).
+  - `orchestrator.py` — `RunOrchestrator` with a 2-thread `ThreadPoolExecutor`, full lifecycle transitions (queued → running → succeeded|failed), pipeline pickling to `${PYCARET_ARTIFACT_DIR}/runs/<run_id>/pipeline.pkl`, SHA-256 checksums, leaderboard → JSON on the Run row, `Artifact` row written for every fitted pipeline.
+- **`pycaret_server/api/runs.py`** — 5 HTTP routes + 1 WebSocket:
+  - `POST /api/v1/experiments/{id}/runs` → 202 + queued Run.
+  - `GET /api/v1/experiments/{id}/runs` → list.
+  - `GET /api/v1/runs/{id}` → status + leaderboard + metrics summary.
+  - `GET /api/v1/runs/{id}/events?limit=&after_id=` → paginated replay.
+  - `POST /api/v1/runs/{id}/wait?timeout_s=30` → block until terminal (notebook + test convenience).
+  - `WS /api/v1/runs/{id}/events/ws?token=<jwt>` → replays stored events then live-streams until `run.closed`.
+- **Request snapshot** — every Run stores the full submit payload (task, target, setup params, plan, data source) on `Run.snapshot` for reproducibility.
+- **App lifespan** now tears down the orchestrator cleanly on shutdown so worker threads stop between tests.
+- **6 new integration tests** — submit validation (3 bad shapes), setup-only lifecycle, create-plan + artifact persistence, list-by-experiment, WebSocket replay, WebSocket 4401 on missing token. All green.
+
+### Headline metrics
+
+| | Session 9 end | Session 10 end |
+|---|---|---|
+| Total tests | 46 (32 engine + 14 server) | **52** (32 engine + 20 server) |
+| API routes (under `/api/v1`) | 21 | **26** + 1 WebSocket |
+| pycaret-server LOC | ~1,800 | **~2,400** |
+| Platform phases | 🟡 9 partial, 🟡 11 partial | 🟢 **Phase 9 core complete** |
+
+### What works today
+
+```bash
+# 1. bootstrap + login
+curl -sX POST localhost:8000/api/v1/setup/bootstrap \
+  -H 'content-type: application/json' \
+  -d '{"email":"me@x","password":"supersecret","workspace_name":"demo"}' | jq -r .access_token
+# 2. create workspace -> project -> experiment (classification on iris)
+# 3. submit a run
+curl -sX POST localhost:8000/api/v1/experiments/$EXP/runs \
+  -H "authorization: bearer $TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"plan":"create","model_id":"lr","sklearn_dataset":"iris"}'
+# 4. wait until done
+curl -sX POST "localhost:8000/api/v1/runs/$RUN/wait?timeout_s=60" \
+  -H "authorization: bearer $TOKEN" | jq .status
+```
+
+### What's next (session 11)
+
+- `/api/v1/deployments/*` + in-house serving (catch-all `/predict` route; promote a `Pipeline` row to a `Deployment` row).
+- Data-source connectors (CSV upload + S3 + Postgres); move the `sklearn_dataset` field into a fallback-only niche.
+- Alembic baseline migration — stop relying on `Base.metadata.create_all` in lifespan.
+- Fold-metric extraction — unpack `leaderboard` into per-fold × per-model × per-metric rows.
+- Run cancellation (cooperative `threading.Event` consumed by a periodic check hook in the engine).
+
+---
 
 ## Session 9 — Backend scaffolding (Phase 8 + Phase 9 + Phase 11 partial) — ✅
 

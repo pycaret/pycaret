@@ -140,7 +140,7 @@ Full design in [`docs/revamp/PLATFORM_PLAN.md`](PLATFORM_PLAN.md).
 - [x] First-run bootstrap flow implemented end-to-end (`POST /api/v1/setup/bootstrap` creates admin + workspace + workspace_member + session, returns token pair).
 - [ ] Alembic baseline migration — session 10 (currently boot-time `Base.metadata.create_all` on SQLite).
 
-### Phase 9 — Backend API (`pycaret-server`) — 🟡 MOSTLY DONE (session 9)
+### Phase 9 — Backend API (`pycaret-server`) — 🟢 CORE COMPLETE (sessions 9-10)
 
 - [x] FastAPI app factory with CORS + lifespan (creates tables on first boot).
 - [x] Auth: bcrypt password hashing + JWT access-token + rotating refresh-token with session-row storage. `/api/v1/auth/{login,refresh,logout,me}`.
@@ -148,11 +148,15 @@ Full design in [`docs/revamp/PLATFORM_PLAN.md`](PLATFORM_PLAN.md).
 - [x] `GET /api/v1/describe/{models,models/{id},metrics,setup-params}` engine-introspection proxy over `pycaret.api`.
 - [x] CRUD on `/api/v1/workspaces`, `/api/v1/workspaces/{id}/projects`, `/api/v1/projects/{id}/experiments`.
 - [x] OpenAPI at `/docs` + `/openapi.json`; health at `/healthz`.
-- [x] **14 integration tests (pytest + httpx TestClient)** — green in ~8 s.
-- [ ] `POST /api/v1/experiments/{id}/runs` → background-worker dispatch to `pycaret.tasks.*Experiment` — session 10.
-- [ ] WebSocket `/ws/runs/{id}/events` — session 10.
-- [ ] `/api/v1/deployments/*` + in-house serving (`DeploymentRegistry`, catch-all `/predict` route) — session 10.
-- [ ] Data-source connectors (CSV upload, S3, Postgres) — session 10.
+- [x] **14 integration tests for CRUD + auth + setup + describe** — green in ~8 s.
+- [x] *(session 10)* `POST /api/v1/experiments/{id}/runs` → threaded `RunOrchestrator` that instantiates `pycaret.tasks.*Experiment`, wires `DBEventLogger(BaseLogger)` for live event persistence, pickles the fitted pipeline as an `Artifact` row, writes the leaderboard + summary back onto the Run. Plans: `setup` | `create` | `compare`.
+- [x] *(session 10)* `GET /api/v1/runs/{id}`, `GET /api/v1/experiments/{id}/runs`, `GET /api/v1/runs/{id}/events` (polling with `after_id` cursor), `POST /api/v1/runs/{id}/wait` (block).
+- [x] *(session 10)* `WebSocket /api/v1/runs/{id}/events/ws?token=…` — replays stored events on connect, then live-streams new events via the `EventBroker` (thread → asyncio bridge through `call_soon_threadsafe`), sends `run.closed` sentinel at terminal state.
+- [x] *(session 10)* **6 run-lifecycle tests** covering submit-validation, setup plan, create plan + artifact persistence, list, WebSocket replay, WebSocket auth reject. 20/20 server suite green in ~10 s.
+- [ ] `/api/v1/deployments/*` + in-house serving (`DeploymentRegistry`, catch-all `/predict` route) — session 11.
+- [ ] Data-source connectors (CSV upload, S3, Postgres) — session 11.
+- [ ] Alembic baseline migration replacing boot-time `create_all` — session 11.
+- [ ] Run cancellation (cooperative `threading.Event`) — session 11.
 
 ### Phase 10 — Frontend (`pycaret-ui`) — 🔴 NOT STARTED
 
