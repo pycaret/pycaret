@@ -634,14 +634,13 @@ class Experiment(BaseEstimator):
 
         t0 = time.perf_counter()
 
-        # -------- decide whether we need to transform data first
-        # A Pipeline knows how to transform its own input (preprocessing is
-        # step 0..n-1, the estimator is step n). A bare estimator needs the
-        # experiment's preprocessing chain applied first.
-        # Post session 24: supervised create_model returns a real Pipeline
-        # so this branch is dead for classification/regression. Clustering
-        # + anomaly still delegate to legacy create_model which can return
-        # bare estimators; the branch lives until those drains land.
+        # -------- decide whether we need to transform data first.
+        # Post session 24 + session 28: supervised + unsupervised create_model
+        # both return real Pipelines, so the transitional bare-estimator
+        # branch is dead for the supported task types. We keep it as a
+        # belt-and-braces fallback for callers passing in their own bare
+        # estimators (uncommon but legal — `predict_model` accepts any
+        # object with `.predict`).
         estimator_is_pipeline = isinstance(estimator, _SkPipeline)
         preprocessor: Any | None = None
         if not estimator_is_pipeline:
