@@ -115,6 +115,50 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 23 — 2026-04-24 — God-class drain: `predict_model`
+
+Baseline: session 22 drained the 4 persistence verbs. Session 23 drains the 5th OOP verb — `predict_model`. The heart of the rewrite is a task-aware dispatch that handles classification / regression / clustering / anomaly without ever touching `self._legacy`.
+
+## CHANGED — engine
+
+- `CHANGED, BREAKING` — **`packages/engine/pycaret/core/experiment.py` — `Experiment.predict_model`**. No longer delegates to `self._legacy.predict_model`. Rewritten as ~170 LoC of native dispatch. Signature slimmed from `(estimator, *args, **kwargs)` to `(estimator, data=None, *, raw_score=False, round=4, verbose=False)`. All 3.x-era params are gone:
+  - `probability_threshold` — removed. Callers thresholding on positive-class probability can do `out["prediction_label"] = out["prediction_score"] >= t`.
+  - `encoded_labels` — removed. Label encoding happens inside the preprocessor; for integer labels, `out["prediction_label"].map(class_to_int)` is a one-liner.
+  - `preprocess` — removed. In 4.0 the pipeline either preprocesses itself (Pipeline case) or we apply `self.preprocess_pipeline` automatically (bare estimator case, transitional).
+  - `ml_usecase` — removed. Comes from `self.task` directly now.
+- `CHANGED` — **Transitional bare-estimator accommodation.** `CreateResult.pipeline` today is a bare sklearn estimator (e.g. `LogisticRegression`), not a Pipeline. Once `create_model`'s drain lands (session 24), it becomes a proper Pipeline with preprocessing baked in, and the transitional code-path in `predict_model` collapses to a one-line `estimator.predict(X)`. Flagged in the docstring + guarded by `isinstance(estimator, sklearn.pipeline.Pipeline)`.
+- `CHANGED` — **Metric computation inlined.** Native `predict_model` uses the existing metric registry (`pycaret.containers.metrics.{classification,regression}.get_all_metric_containers` + `pycaret.utils.generic.calculate_metrics`) directly — no longer depends on `self._legacy.pull()` to surface the holdout metrics DataFrame. Wraps the whole metric block in a broad try/except → returns `None` on any registry hiccup. Rationale: metrics are advisory; a predict must never fail because a metric choked.
+- `CHANGED` — **Per-task output columns**:
+  - Classification binary → `prediction_label` + `prediction_score` (positive-class probability).
+  - Classification multiclass, `raw_score=False` → `prediction_label` + `prediction_score` (winning-class probability).
+  - Classification multiclass, `raw_score=True` → `prediction_label` + `prediction_score_<class>` per class.
+  - Regression → `prediction_label` only.
+  - Clustering → `Cluster` column with `"Cluster {i}"` labels.
+  - Anomaly → `Anomaly` + `Anomaly_Score` (when the detector exposes `decision_function`).
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session23_predict.py`** — 12 new tests, split by speed:
+  - **Fast (7 tests)** — fabricate a tiny `StandardScaler + {LogReg,LinReg}` pipeline + a fit-sentinel Experiment; exercise raw predict paths. Confirms: non-estimator rejection (`TypeError` on dict), NotFittedError without fit, metrics absent when data lacks target, metrics present + model name set when data has target, regression has no score column, multiclass `prediction_score` is winning-class prob, multiclass `raw_score` sums to ~1 per row.
+  - **Slow (5 tests, @slow marker)** — full engine E2E on `juice` / `boston`. Covers binary classification output columns, classification `raw_score`, regression output + metrics, event stream captures `MODEL_PREDICTED` with `n_rows` + `duration_ms`, and the drain-lock test (`test_predict_model_does_not_call_legacy_predict_model`).
+- `ADDED` — **Drain-lock test pattern.** Monkeypatches `exp._legacy.predict_model` with a raise-on-call function, then calls `exp.predict_model(pipeline)` and asserts it succeeds. Any future refactor that accidentally re-delegates will fail on the Ubuntu + Windows matrix. Same shape as session 22's `test_save_model_does_not_touch_legacy`.
+
+## INTERNAL
+
+- `INTERNAL` — **Why bare estimators are still accepted (temporarily).** The pyramid of the 10-verb drain is `save_model → predict_model → create_model → ...`. Sessions 22–23 drain verbs that consume the output of `create_model`. `create_model` still returns a bare estimator today, so strictly rejecting that in `predict_model` would red-light the slow E2E suite (and would also break every notebook in the wild). Session 24 drains `create_model`, replacing the returned bare estimator with a Pipeline. At that point the transitional branch in `predict_model` (+ the `self.preprocess_pipeline` transform call, + the `estimator_is_pipeline` check) can be deleted in a follow-up cleanup commit.
+- `INTERNAL` — **Task dispatch via `self.task` not `isinstance`.** The legacy code used `self._ml_usecase` (a `MLUsecase` enum on the god-class). The native code reads `self.task` (a `pycaret.core.tasks.TaskType` enum on the Experiment). Cleaner because `TaskType` already lives on the 4.0 surface; no import needed from the internal module.
+- `INTERNAL` — **Metric registry called with empty `globals_dict`.** `get_all_metric_containers(globals_dict, raise_errors=False)` — we pass `{}` for `globals_dict` because the default-behavior metrics don't need the legacy experiment's variables. If any metric registers via `globals_dict` reads, the `raise_errors=False` means it gets silently skipped rather than crashing the predict. This is consistent with the legacy behavior (which also had try/except around `calculate_metrics` calls for robustness).
+
+## Session 23 delta summary
+
+| Metric | Session 22 end | Session 23 end |
+|---|---:|---:|
+| OOP verbs still on `self._legacy` | 6 | **5** |
+| Engine tests (fast + slow) | 35 | **51** |
+| **Combined tests** | **181** | **197** |
+
+---
+
 # Session 22 — 2026-04-24 — God-class drain kickoff: persistence verbs
 
 Baseline: sessions 9–21 completed the entire platform side of the 4.0 revamp (backend + frontend + 6 LLM copilots + multi-user + auth + audit). Session 22 pivots back to the engine: the ~10 OOP verbs that still delegate to `self._legacy` (the 3.x god-class) are drained one at a time onto native sklearn. This session targets the 4 persistence verbs.

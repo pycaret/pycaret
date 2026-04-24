@@ -1,6 +1,47 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 22*
+*Updated: 2026-04-24, end of session 23*
+
+## Session 23 — God-class drain: `predict_model` — ✅
+
+Second pass of the drain. `Experiment.predict_model` no longer calls `self._legacy.predict_model`. It dispatches directly on the estimator + handles the 4 task shapes (classification / regression / clustering / anomaly) natively.
+
+### What landed
+
+- **`packages/engine/pycaret/core/experiment.py`** — rewrote `predict_model` (~170 LoC). Key design choices:
+  - Accepts either a fitted sklearn `Pipeline` (the clean 4.0 shape, what create_model will return post-drain) OR a bare fitted estimator (the current transitional reality — `CreateResult.pipeline` today is a `LogisticRegression`, not a Pipeline). For the bare case, we apply `self.preprocess_pipeline` to transform X first. This accommodation is flagged in the docstring as transitional and will collapse once session 24 drains `create_model`.
+  - Task-specific output columns dispatched on `self.task`:
+    - Classification binary → `prediction_label` + `prediction_score` (positive-class prob).
+    - Classification multiclass, `raw_score=False` → `prediction_label` + `prediction_score` (winning-class prob).
+    - Classification multiclass, `raw_score=True` → `prediction_label` + `prediction_score_<class>` per class (summing to ~1 per row).
+    - Regression → `prediction_label` only.
+    - Clustering → `Cluster` column with `"Cluster {i}"` labels.
+    - Anomaly → `Anomaly` + `Anomaly_Score` (when `decision_function` exists).
+  - Metrics DataFrame computed on the holdout when y is known; reuses the existing metric registry via `pycaret.utils.generic.calculate_metrics` + `pycaret.containers.metrics.{classification,regression}.get_all_metric_containers`. Falls through to `None` on any registry hiccup — metrics are advisory, a predict must never fail because of them.
+- **Parameter cleanup** (all 3.x cruft removed):
+  - Dropped `probability_threshold` (was a binary-classification hack; callers can do the same thresholding on `prediction_score` directly).
+  - Dropped `encoded_labels` (label encoding is handled by the preprocessor already; users wanting integer labels can `map` the column).
+  - Dropped `preprocess` / `ml_usecase` (both were v3.x internal dispatch).
+- **`packages/engine/tests/test_session23_predict.py`** — 12 new tests. Split into two tiers:
+  - **Fast (7 tests, ~3s total)** — fabricate a tiny fitted Pipeline + a fit-sentinel Experiment and exercise the raw predict dispatch: rejects non-estimator input, binary/multiclass/regression output shapes, multiclass `raw_score` per-class columns sum to ~1, NotFittedError raised without fit, metrics present when data has target / absent when data has only features.
+  - **Slow (5 tests, ~15s each)** — full engine E2E on `juice` + `boston` datasets. Includes the drain-lock test (`test_predict_model_does_not_call_legacy_predict_model`) that monkeypatches `exp._legacy.predict_model` to raise + then calls `exp.predict_model` and asserts it succeeds.
+
+### Headline metrics
+
+| | Session 22 end | Session 23 end |
+|---|---|---|
+| OOP verbs still delegating to `self._legacy` | 6 | **5** |
+| Engine tests (fast + slow) | 35 | **51** (+16) |
+| **Combined tests** | **181** | **197** |
+| Engine-side 3.x params still in `predict_model` signature | 6 | **0** (all 3.x cruft dropped) |
+
+### What's next (session 24+)
+
+Next on the drain list: **`create_model`**. More invasive than the previous two — it has to materialise the right sklearn estimator from the engine's model registry (`get_all_model_containers`), wrap it in a Pipeline with the preprocessor, cross-validate it, and populate the results container. That work will also unlock a clean "CreateResult.pipeline is always a sklearn Pipeline" invariant, at which point the transitional bare-estimator path in `predict_model` can be deleted.
+
+Remaining: `create_model` → `tune_model` → `ensemble_model` → `blend_models` → `stack_models` → `calibrate_model` → `compare_models` → `finalize_model`.
+
+---
 
 ## Session 22 — God-class drain kickoff: persistence verbs — ✅
 
