@@ -19,6 +19,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pycaret_server import __version__
 from pycaret_server.api import (
     auth,
+    data_sources,
+    deployments,
     describe,
     experiments,
     projects,
@@ -28,26 +30,39 @@ from pycaret_server.api import (
 )
 from pycaret_server.config import get_settings
 from pycaret_server.db import Base, engine
+from pycaret_server.db.bootstrap import ensure_schema
 from pycaret_server.runs.orchestrator import reset_orchestrator
+from pycaret_server.serving import reset_registry
 
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    """Lifespan hook: create tables on first run if missing, then yield.
+    """Lifespan hook: make sure the schema exists, then yield.
 
-    For v1 (single-process, SQLite default), Base.metadata.create_all gives
-    us a working schema from a blank database in ~10ms. Production deploys
-    should run ``alembic upgrade head`` instead.
+    Strategy:
+    - If the DB already has the alembic_version table, no-op — the operator
+      is managing migrations manually.
+    - Else, if this is SQLite (dev / CI), apply the Alembic baseline. That
+      keeps local dev one-command (`pycaret-server serve`) while still routing
+      every schema change through a proper migration.
+    - Else (Postgres / MySQL in production), fail loudly: explicit
+      `alembic upgrade head` is required so schema drift is never silent.
     """
     settings = get_settings()
-    if settings.database_url.startswith("sqlite"):
-        Base.metadata.create_all(engine)
+    ensure_schema(engine, dev_auto_migrate=settings.database_url.startswith("sqlite"))
+    # Side-channel for tests + factory reuse: keep Base.metadata as a known-good
+    # target in case an alternate runner wants to bypass Alembic entirely.
+    _ = Base
+
     settings.artifact_dir.mkdir(parents=True, exist_ok=True)
     try:
         yield
     finally:
-        # Tear down the run-orchestrator singleton so worker threads stop.
+        # Tear down the run-orchestrator singleton so worker threads stop,
+        # and drop the in-memory deployment registry so cached pipelines
+        # aren't carried into the next process (matters in reload mode).
         reset_orchestrator()
+        reset_registry()
 
 
 def create_app() -> FastAPI:
@@ -85,6 +100,8 @@ def create_app() -> FastAPI:
         projects.router,
         experiments.router,
         runs.router,
+        data_sources.router,
+        deployments.router,
     ):
         app.include_router(router, prefix="/api/v1")
 

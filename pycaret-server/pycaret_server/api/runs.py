@@ -31,7 +31,7 @@ from pycaret_server.api.schemas import EventResponse, RunCreate, RunResponse
 from pycaret_server.api.workspaces import _require_access
 from pycaret_server.auth import CurrentUser
 from pycaret_server.auth.tokens import decode_token
-from pycaret_server.db import Event, Experiment, Project, Run, User, get_db
+from pycaret_server.db import DataSource, Event, Experiment, Project, Run, User, get_db
 from pycaret_server.runs.broker import event_broker
 from pycaret_server.runs.orchestrator import RunSpec, get_orchestrator
 
@@ -117,22 +117,51 @@ def submit_run(
             status.HTTP_400_BAD_REQUEST,
             "plan='create' requires model_id",
         )
-    if not payload.sklearn_dataset and not payload.data_inline:
+    if not (payload.sklearn_dataset or payload.data_inline or payload.data_source_id):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "must supply sklearn_dataset or data_inline",
+            "must supply sklearn_dataset, data_inline, or data_source_id",
         )
+
+    # Resolve data_source_id -> CSV path + guard workspace access.
+    data_source_path: str | None = None
+    if payload.data_source_id:
+        ds = db.get(DataSource, payload.data_source_id)
+        if ds is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "data source not found")
+        project_ws = db.get(Project, e.project_id).workspace_id
+        if ds.workspace_id != project_ws:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "data source belongs to a different workspace than the experiment",
+            )
+        if ds.kind != "csv_upload":
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"data source kind {ds.kind!r} not yet supported for runs; "
+                "only 'csv_upload' is implemented",
+            )
+        data_source_path = (ds.config or {}).get("path")
+        if not data_source_path:
+            raise HTTPException(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "data source missing 'path' in config",
+            )
+
+    # Resolve target: prefer explicit payload.target, fall back to experiment.target.
+    effective_target = payload.target or e.target
 
     # Snapshot the experiment config into the run for reproducibility.
     snapshot = {
         "task": e.task,
-        "target": e.target,
+        "target": effective_target,
         "setup_params": dict(e.setup_params or {}),
         "plan": payload.plan,
         "model_id": payload.model_id,
         "plan_params": dict(payload.plan_params or {}),
         "sklearn_dataset": payload.sklearn_dataset,
         "data_inline_rows": len(payload.data_inline) if payload.data_inline else 0,
+        "data_source_id": payload.data_source_id,
     }
 
     r = Run(
@@ -149,16 +178,39 @@ def submit_run(
         run_id=r.id,
         experiment_id=e.id,
         task=TaskType(e.task),
-        target=e.target,
+        target=effective_target,
         setup_params=dict(e.setup_params or {}),
         plan=payload.plan,  # type: ignore[arg-type]
         model_id=payload.model_id,
         plan_params=dict(payload.plan_params or {}),
         sklearn_dataset=payload.sklearn_dataset,
         data_inline=list(payload.data_inline) if payload.data_inline else None,
+        data_source_path=data_source_path,
+        target_override=payload.target,
     )
     get_orchestrator().submit(spec)
 
+    return _serialise_run(r)
+
+
+@router.post("/runs/{run_id}/cancel", response_model=RunResponse)
+def cancel_run(
+    run_id: str,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> RunResponse:
+    """Cooperatively cancel a queued or running run.
+
+    Signals the orchestrator's `threading.Event`; the worker picks it up at the
+    next stage boundary. If the run is already in a terminal state, the current
+    row is returned unchanged.
+    """
+    r = _run_access(run_id, user, db)
+    if r.status in ("succeeded", "failed", "cancelled"):
+        return _serialise_run(r)
+    get_orchestrator().cancel(run_id)
+    # Don't refresh — the worker may still be running. The status flip happens
+    # when the checkpoint trips; the client can poll or watch the WS for it.
     return _serialise_run(r)
 
 

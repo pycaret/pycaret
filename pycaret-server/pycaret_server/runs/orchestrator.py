@@ -37,11 +37,17 @@ from pycaret_server.runs.logger_bridge import DBEventLogger
 from pycaret_server.runs.plans import (
     PlanName,
     execute_plan,
+    load_csv,
     load_inline,
     load_sklearn_dataset,
 )
 
 _log = logging.getLogger(__name__)
+
+
+class _CancelledError(RuntimeError):
+    """Raised inside a worker when its cancel_event is set. Mapped to
+    ``Run.status = "cancelled"`` by the outer catch block."""
 
 
 # ----------------------------------------------------------------------- spec
@@ -65,6 +71,12 @@ class RunSpec:
     # Exactly one of these must be set.
     sklearn_dataset: str | None = None
     data_inline: list[dict] | None = None
+    data_source_path: str | None = None  # resolved CSV path from DataSource.config
+    # Override target column (e.g. data source didn't embed one).
+    target_override: str | None = None
+    # Cooperative cancellation: submit() stamps this; the worker checks it
+    # between stages. The API route's cancel endpoint sets it.
+    cancel_event: Any | None = None
 
 
 # -------------------------------------------------------------- engine factory
@@ -106,12 +118,19 @@ class RunOrchestrator:
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="pyc-run")
         # Tracks in-flight Futures so shutdown can wait on them.
         self._futures: dict[str, Future] = {}
+        # Per-run cancellation flags the worker polls between stages.
+        self._cancel_events: dict[str, threading.Event] = {}
         self._lock = threading.Lock()
 
     # --------------------------------------------------- public submit / status
 
     def submit(self, spec: RunSpec) -> Future:
         """Queue `spec` for background execution. Returns a Future for tests."""
+        # Install a cancellation event every submit so the worker can poll it.
+        if spec.cancel_event is None:
+            spec.cancel_event = threading.Event()
+        with self._lock:
+            self._cancel_events[spec.run_id] = spec.cancel_event
         fut = self._executor.submit(self._execute, spec)
         with self._lock:
             self._futures[spec.run_id] = fut
@@ -119,9 +138,24 @@ class RunOrchestrator:
         def _cleanup(_f: Future) -> None:
             with self._lock:
                 self._futures.pop(spec.run_id, None)
+                self._cancel_events.pop(spec.run_id, None)
 
         fut.add_done_callback(_cleanup)
         return fut
+
+    def cancel(self, run_id: str) -> bool:
+        """Signal cooperative cancellation. Returns True if a worker was notified.
+
+        The worker checks the event between plan stages and raises a
+        `_CancelledError` if set, which the `_execute` catch block maps to
+        ``Run.status = "cancelled"``.
+        """
+        with self._lock:
+            ev = self._cancel_events.get(run_id)
+        if ev is None:
+            return False
+        ev.set()
+        return True
 
     def wait_for(self, run_id: str, timeout: float | None = None) -> None:
         """Block until a given run finishes (tests + synchronous clients)."""
@@ -137,13 +171,22 @@ class RunOrchestrator:
 
     def _execute(self, spec: RunSpec) -> None:
         """Run the plan. Catches every exception and writes it back to the row."""
+
+        def _checkpoint() -> None:
+            """Raise if cancellation was signalled. Called at stage boundaries."""
+            if spec.cancel_event is not None and spec.cancel_event.is_set():
+                raise _CancelledError("run cancelled by user")
+
         self._transition(spec.run_id, status="running", started_at=datetime.now(UTC))
         t0 = datetime.now(UTC)
         try:
+            _checkpoint()
             df, target = self._load_data(spec)
+            _checkpoint()
             exp = _build_experiment(spec.task, target or spec.target, spec.setup_params)
             exp.logger = DBEventLogger(run_id=spec.run_id, experiment_id=spec.experiment_id)
             exp.fit(df)
+            _checkpoint()
 
             outcome = execute_plan(
                 exp,
@@ -151,6 +194,7 @@ class RunOrchestrator:
                 model_id=spec.model_id,
                 plan_params=spec.plan_params,
             )
+            _checkpoint()
 
             artifact_row = None
             if outcome.best_model is not None:
@@ -165,6 +209,15 @@ class RunOrchestrator:
                 leaderboard=leaderboard,
                 metrics_summary=_summarise_metrics(leaderboard),
                 extra_artifact=artifact_row,
+            )
+        except _CancelledError:
+            _log.info("run %s cancelled", spec.run_id)
+            self._transition(
+                spec.run_id,
+                status="cancelled",
+                finished_at=datetime.now(UTC),
+                duration_ms=(datetime.now(UTC) - t0).total_seconds() * 1000,
+                error="cancelled by user",
             )
         except Exception as exc:  # noqa: BLE001 — persist *everything* the worker throws
             _log.exception("run %s failed", spec.run_id)
@@ -184,10 +237,14 @@ class RunOrchestrator:
     def _load_data(self, spec: RunSpec) -> tuple[pd.DataFrame, str | None]:
         if spec.sklearn_dataset:
             df, tgt = load_sklearn_dataset(spec.sklearn_dataset)
-            return df, tgt
+            # An explicit override wins (useful if the frame has the target
+            # under a different column name).
+            return df, spec.target_override or tgt
         if spec.data_inline:
-            return load_inline(spec.data_inline), None
-        raise ValueError("run spec must supply sklearn_dataset or data_inline")
+            return load_inline(spec.data_inline), spec.target_override
+        if spec.data_source_path:
+            return load_csv(spec.data_source_path), spec.target_override
+        raise ValueError("run spec must supply sklearn_dataset, data_inline, or data_source_path")
 
     def _save_pipeline(self, run_id: str, model: Any) -> dict[str, Any] | None:
         """Pickle `model` under the artifact dir and return a dict describing the Artifact row."""

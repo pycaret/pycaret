@@ -2,6 +2,7 @@
 
 Usage:
     pycaret-server serve [--host 0.0.0.0] [--port 8000] [--reload]
+    pycaret-server migrate [--url sqlite:///...] [--revision head]
     pycaret-server version
 """
 
@@ -26,6 +27,16 @@ def _serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _migrate(args: argparse.Namespace) -> int:
+    from pycaret_server.config import get_settings
+    from pycaret_server.db.bootstrap import _run_alembic
+
+    url = args.url or get_settings().database_url
+    _run_alembic("upgrade", args.revision, url=url)
+    print(f"migrated {url} to revision {args.revision}")
+    return 0
+
+
 def _version(_args: argparse.Namespace) -> int:
     print(__version__)
     return 0
@@ -40,6 +51,13 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--reload", action="store_true", help="auto-reload on code change")
     serve.set_defaults(fn=_serve)
+
+    migrate = sub.add_parser("migrate", help="Run Alembic migrations")
+    migrate.add_argument(
+        "--url", default=None, help="override database URL (default: PYCARET_DATABASE_URL)"
+    )
+    migrate.add_argument("--revision", default="head", help="target revision (default: head)")
+    migrate.set_defaults(fn=_migrate)
 
     ver = sub.add_parser("version", help="Print the server version and exit")
     ver.set_defaults(fn=_version)

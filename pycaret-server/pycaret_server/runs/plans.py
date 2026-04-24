@@ -98,3 +98,13 @@ def load_inline(rows: list[dict]) -> pd.DataFrame:
     if not rows:
         raise ValueError("data_inline must contain at least one row")
     return pd.DataFrame.from_records(rows)
+
+
+def load_csv(path: str) -> pd.DataFrame:
+    """Load a CSV uploaded via a DataSource. Path comes from DataSource.config."""
+    import pathlib
+
+    p = pathlib.Path(path)
+    if not p.is_file():
+        raise ValueError(f"uploaded CSV no longer exists at {path!r}")
+    return pd.read_csv(p)

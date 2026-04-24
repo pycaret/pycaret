@@ -126,6 +126,17 @@ class RunCreate(BaseModel):
 
     sklearn_dataset: str | None = None
     data_inline: list[dict] | None = None
+    data_source_id: str | None = Field(
+        default=None,
+        description="UUID of a DataSource (csv_upload) registered in the workspace.",
+    )
+    target: str | None = Field(
+        default=None,
+        description=(
+            "Target column override. Required when the data source doesn't embed "
+            "one (e.g. CSV uploads)."
+        ),
+    )
 
 
 class RunResponse(BaseModel):

@@ -6,6 +6,8 @@ factory mounts them at ``/api/v1``.
 
 from pycaret_server.api import (
     auth,
+    data_sources,
+    deployments,
     describe,
     experiments,
     projects,
@@ -16,6 +18,8 @@ from pycaret_server.api import (
 
 __all__ = [
     "auth",
+    "data_sources",
+    "deployments",
     "describe",
     "experiments",
     "projects",
