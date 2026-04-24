@@ -115,6 +115,51 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 22 — 2026-04-24 — God-class drain kickoff: persistence verbs
+
+Baseline: sessions 9–21 completed the entire platform side of the 4.0 revamp (backend + frontend + 6 LLM copilots + multi-user + auth + audit). Session 22 pivots back to the engine: the ~10 OOP verbs that still delegate to `self._legacy` (the 3.x god-class) are drained one at a time onto native sklearn. This session targets the 4 persistence verbs.
+
+Theme: **drain `save_model` / `load_model` / `save_experiment` / `load_experiment` off the legacy god-class**.
+
+## CHANGED — engine
+
+- `CHANGED` — **`packages/engine/pycaret/core/experiment.py`** — `Experiment.save_model` / `load_model` / `save_experiment` / `load_experiment` no longer call `self._legacy.save_model` / etc. They now delegate to `pycaret.persistence.save_model` / `load_model` — thin `joblib.dump` / `joblib.load` wrappers with a `.pkl` suffix fallback.
+  - Contract change: `save_model(model, path, *args, **kwargs)` → `save_model(model, path, *, verbose=False)`. The `*args, **kwargs` were only ever forwarded to the legacy path (`model_only`, `prep_pipe_`, cloud kwargs). None of those survive the drain; if callers need to persist only a sub-step they can `save_model(pipeline.named_steps["trained_model"], path)` directly.
+  - Contract change: `save_model` no longer requires the Experiment to be fitted. A caller may have obtained a pipeline from elsewhere (loaded from disk, handed over by a colleague, produced by `finalize_model` in another Experiment) and still want a normalised save. The 3.x path enforced fitting for no technical reason.
+  - Contract change: `save_experiment(path)` requires `fit` (an unfit Experiment is just constructor kwargs), and `Experiment.load_experiment(path)` is now a `@staticmethod` that raises `TypeError` if the pickled object is not an Experiment. Previously it silently returned whatever was in the file.
+  - Added: `MODEL_SAVED` event is logged on the experiment's event stream with `payload={"path": str(written)}` (and `"kind": "experiment"` for `save_experiment`). Skipped gracefully when `self.logger is None` (pre-fit state).
+- `REMOVED` — **Cloud-credential path for `load_model`.** The 3.x `load_model` accepted `platform="aws"|"gcp"|"azure"` + `authentication=...` kwargs to pull from S3 / GCS / Blob. That's gone. Cloud serving is Control Plane territory — the `services/api` backend loads pipelines from the configured artifact backend (local dir today, MinIO / S3 once prod-compose lands). If a notebook user needs to fetch a remote model, they pull the file themselves (boto3, gcloud, azure-storage) and pass the path to `load_model`.
+- `REMOVED` — **MLflow artifact logging on save.** The 3.x path, when `logging_param.loggers` included a remote-capable logger, would auto-push the saved file to MLflow / Comet / W&B. The 4.0 logger base class doesn't have this hook (MLflow/Comet/W&B all killed from the engine in phase 0–1); artifact promotion is now an explicit server-side step (`POST /runs/{id}/promote`).
+- `REMOVED` — **`model_only` kwarg.** Was only meaningful when the legacy path had access to `self.pipeline` (the preprocessing chain). In 4.0 the pipeline is always self-contained — preprocessing + trained model are one `sklearn.pipeline.Pipeline`. Saving "only the model" is either impossible (pipeline input is already transformed) or trivially `pipeline.named_steps[...]`.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session22_persistence.py`** — 7 new unit tests covering the drained verbs. Deliberately don't use the full engine fit path (no `setup()` / `create_model()`), so they run in ~2s total:
+  - `test_save_model_via_experiment_instance_roundtrips` — `exp.save_model` + `exp.load_model` preserve `predict()` output.
+  - **`test_save_model_does_not_touch_legacy`** — constructs an unfit Experiment (so `self._legacy` doesn't exist yet), calls save/load, asserts `_legacy` is still absent. This test locks the drain against accidental re-introduction of a `self._legacy.*` call in a future refactor.
+  - `test_save_model_accepts_path_objects_and_strings` — `Path` and `str` both work, `.pkl` suffix is added.
+  - `test_save_model_emits_model_saved_event` — event stream carries the absolute path.
+  - `test_save_experiment_requires_fit` — `NotFittedError` on an unfit Experiment.
+  - `test_load_experiment_rejects_plain_model_file` — `TypeError` with message steering the caller to `load_model`.
+  - `test_module_level_helpers_still_exposed` — `pycaret.save_model` / `pycaret.load_model` remain top-level importable.
+
+## INTERNAL
+
+- `INTERNAL` — **Drain ordering + test affordance.** The 10-verb drain list (`save_model` → `predict_model` → `create_model` → `tune_model` → `ensemble_model` → `blend_models` → `stack_models` → `calibrate_model` → `compare_models` → `finalize_model`) is easiest-first. Persistence is trivially stateless → natural starting point. `predict_model` + `create_model` next. The stacked-models trio is the hardest because each layer's behavior has to be preserved bit-for-bit against the 3.x reference. Each session migrates one verb + writes a test of the form "this verb does NOT touch `self._legacy`" to lock the drain.
+- `INTERNAL` — **Null-logger guard in `save_model`.** `self.logger` is `None` until `fit()` installs one (either `NullLogger` or `MemoryLogger` depending on `log_experiment`). `save_model` deliberately does not require fit, so the logger can legitimately be `None` at call time. We null-check + skip the event emit rather than eagerly installing a NullLogger in `__init__` — eagerly installing would violate sklearn's `get_params` contract (constructor args must be stored verbatim).
+- `INTERNAL` — **`pycaret.persistence` vs `pycaret.internal.persistence`.** Both exist today. `pycaret.persistence` is the 4.0 clean version (`save_model(model, path)` + `load_model(path)` only — ~90 lines). `pycaret.internal.persistence` is the 3.x-era version (~800 lines including cloud + MLflow). The session-22 drain points the Experiment verbs at `pycaret.persistence`. The legacy module remains imported by `tabular_experiment.save_model` + other drain-targets; once all 10 verbs are drained, `pycaret.internal.persistence` becomes deletable (tracked as a session-32 exit criterion).
+
+## Session 22 delta summary
+
+| Metric | Session 21 end | Session 22 end |
+|---|---:|---:|
+| OOP verbs still on `self._legacy` | 10 | **6** |
+| Engine fast tests | 28 | **35** (+7) |
+| **Combined tests** | **174** | **181** |
+| `self._legacy.save_model` / `load_model` callsites on Experiment | 4 | **0** |
+
+---
+
 # Session 21 — 2026-04-24 — Drift analyst + audit logs
 
 Baseline: session 20 shipped workspace-member CRUD + the `X-PyCaret-Key` fallback for programmatic auth. This session closes out the MVP-2 punch list: the 6th / final LLM copilot (drift analyst) + the cross-cutting `AuditLog` table + middleware + viewer screen (SPEC § 17.4). After this, there is nothing left on the platform roadmap before the engine god-class drain — session 22+ pivots to engine work → `4.0.0` non-alpha release on PyPI.

@@ -1,6 +1,49 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 21*
+*Updated: 2026-04-24, end of session 22*
+
+## Session 22 — God-class drain kickoff: persistence verbs — ✅
+
+First pass of engine Phase 5 — the "10 OOP verbs still delegate to `self._legacy`" starts getting drained one verb at a time. This session targets the 4 **persistence** verbs on `Experiment` (`save_model`, `load_model`, `save_experiment`, `load_experiment`) — the simplest of the bunch, since a fitted sklearn Pipeline is just a picklable object and there's no PyCaret-specific payload.
+
+### What landed
+
+- **`packages/engine/pycaret/core/experiment.py`** — drained all 4 persistence verbs. They no longer call `self._legacy.*`; they delegate to the stateless helpers in `pycaret.persistence` (which already existed but were only wired up at the module level).
+  - `exp.save_model(model, path)` → `Path` — works **with or without fit**; writing a pipeline doesn't depend on experiment state.
+  - `exp.load_model(path)` — straight `joblib.load` on the file.
+  - `exp.save_experiment(path)` — pickle `self`. Requires fit (an unfit Experiment is just constructor kwargs you already have).
+  - `Experiment.load_experiment(path)` — classmethod; re-hydrates an Experiment, raises `TypeError` if the file contained a plain model (and the message steers the caller to `load_model`).
+- **`packages/engine/tests/test_session22_persistence.py`** — 7 new unit tests, all run in ~2s:
+  - Round-trip predictions match via `exp.save_model` + `exp.load_model`.
+  - **Crucially: `test_save_model_does_not_touch_legacy`** — constructs an unfit Experiment (so `self._legacy` doesn't exist), calls save/load, asserts no `_legacy` was lazily created. This test locks the drain against regressions.
+  - `save_model` accepts both `Path` and `str`.
+  - `MODEL_SAVED` event is emitted on the logger with the absolute path.
+  - `save_experiment` raises `NotFittedError` when called on an unfit Experiment.
+  - `load_experiment` rejects a plain model file with a helpful `TypeError`.
+  - Top-level `pycaret.save_model` / `pycaret.load_model` remain exposed.
+- **~200 LoC of dependency surface removed** — the old code path ran cloud-credential injection (AWS S3 / GCP / Azure), MLflow artifact logging, and a 3.x-era metadata header. All of that is out of scope for 4.0 (cloud serving is Control Plane territory; artifact logging is per-logger plugin territory).
+
+### Headline metrics
+
+| | Session 21 end | Session 22 end |
+|---|---|---|
+| OOP verbs still delegating to `self._legacy` | 10 | **6** |
+| Engine fast tests | 28 | **35** (+7) |
+| **Combined tests** | **174** | **181** (35 engine + 80 server + 62 web + 4 E2E slow) |
+| Engine code paths carrying 3.x-era persistence logic | 1 (tabular + internal) | **0** (fully drained) |
+
+### What's next (session 23+)
+
+Next verb on the drain list, in the order called out in the roadmap:
+
+1. ✅ **`save_model` + `load_model`** (session 22, this one).
+2. **`predict_model`** (session 23 target) — straightforward delegation; new impl should just call `pipeline.predict(X)` + optional decorated output (probabilities, prediction_label column).
+3. **`create_model`** — more invasive; needs to materialise the right sklearn estimator from the engine's model registry + wrap it in a Pipeline with the preprocessor.
+4. `tune_model` → `ensemble_model` → `blend_models` → `stack_models` → `calibrate_model` → `compare_models` → `finalize_model`.
+
+Once all 10 are drained, `pycaret/internal/pycaret_experiment/` is deleted entirely and **`4.0.0`** ships non-alpha on PyPI.
+
+---
 
 ## Session 21 — Drift analyst + audit logs — ✅
 
