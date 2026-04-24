@@ -67,11 +67,21 @@ def ensure_schema(engine: Engine, *, dev_auto_migrate: bool = True) -> None:
 
 
 def _run_alembic(*argv: str, url: str) -> None:
-    """Invoke Alembic programmatically so we can share the live engine's URL."""
+    """Invoke Alembic programmatically so we can share the live engine's URL.
+
+    Alembic's ``script_location`` is resolved against the process CWD when
+    loaded from an ``.ini``. In CI the CWD is the repo root, not the server
+    package dir, so we substitute an absolute path here. This lets the
+    bootstrap work from any working directory (pytest, uvicorn, CLI).
+    """
     from alembic import command
     from alembic.config import Config
 
     cfg = Config(str(_ALEMBIC_INI))
     cfg.set_main_option("sqlalchemy.url", url)
+    cfg.set_main_option(
+        "script_location",
+        str(_ALEMBIC_INI.parent / "pycaret_server" / "migrations"),
+    )
     cmd, *rest = argv
     getattr(command, cmd)(cfg, *rest)
