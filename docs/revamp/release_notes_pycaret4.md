@@ -115,6 +115,39 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 26 — 2026-04-24 — God-class drain: `compare_models` (supervised)
+
+Baseline: session 25 drained `tune_model`. Session 26 drains the heart of the AutoML loop — `compare_models` — by reusing the already-drained `create_model` in a per-model loop.
+
+## CHANGED — engine
+
+- `CHANGED, BREAKING` — **`packages/engine/pycaret/core/supervised.py` — `SupervisedExperiment.compare_models`** (supervised path). No longer delegates to `self._legacy.compare_models` for classification + regression. Iterates the engine's `_all_models_internal` registry (filtered by `include` / `exclude` / `turbo`), calls `self.create_model` for each candidate, and assembles the leaderboard from each candidate's `Mean` metrics row. Time-series / clustering / anomaly still delegate via `_compare_models_legacy`.
+- `CHANGED, BREAKING` — **Signature slim-down**. Kept: `include`, `exclude`, `fold`, `cross_validation`, `sort`, `n_select`, `turbo`, `errors`, `fit_kwargs`, `round`, `verbose`. Dropped 3.x cruft: `budget_time`, `experiment_custom_tags`, `probability_threshold`, `groups`, `caller_params`. All gone for the same reasons as previous session drains — either dead code, MLflow integration that was already killed, or one-line post-hoc overrides on the result.
+- `CHANGED` — **All slots are keyword-only.** Decorator-style `compare_models(include=, n_select=)` is the only valid call shape. The legacy positional form (`compare_models(["lr", "dt"], None, None, 4)`) is gone.
+- `CHANGED` — **Auto-detect ascending vs descending sort.** Error metrics (`MAE`, `MSE`, `RMSE`, `MAPE`, `RMSLE` + sklearn `neg_*` family) sort ascending; everything else descending. The legacy code required the caller to know which way each metric sorted.
+- `CHANGED` — **`CompareResult.leaderboard` row source.** Each row is the `Mean` row of `created.metrics` (the per-fold DataFrame from session 24's drained `create_model`), prepended with a `Model` column for the registry ID. So leaderboard column schema is identical across classification (`Accuracy` / `AUC` / `Recall` / `Prec.` / `F1` / `Kappa` / `MCC`) and across all 4 supervised result types now (`CreateResult`, `TuneResult`, `CompareResult`, `PredictResult`).
+- `CHANGED` — **`errors="ignore"` no longer hides errors silently.** When a candidate raises, the exception is swallowed + the candidate is dropped from the leaderboard. Future enhancement: log the exception type / message via the event stream so users can see what failed (currently the per-candidate loop is silent on failure for noise reasons; tracked as a polish item).
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session26_compare.py`** — 10 tests covering: top-N return shape, default-sort defaults, ascending sort for error metrics, `exclude=` removes models, `turbo=True` blocks slow models, drain-lock against `self._legacy.compare_models`, end-to-end `compare → predict` chain, `errors="ignore"` skips a bogus model id, NotFittedError on unfit, and that `result.best` is a real Pipeline.
+
+## INTERNAL
+
+- `INTERNAL` — **Reusing already-drained verbs.** The native `compare_models` is ~50 LoC of glue around `self.create_model`. No new search / metric registry / fold logic — that all lives in `create_model` already. Each new drain reuses upstream drained verbs, which is why later sessions are progressively shorter despite covering more surface area. The `_cross_validate_supervised` helper from session 24 is now indirectly used by every supervised verb (`create_model` calls it directly; `tune_model` and `compare_models` call `create_model`).
+- `INTERNAL` — **Empty-result soft-handling.** If every candidate fails (impossible in practice with the default registry, but ``errors="ignore"`` + a custom `include=` could trigger it), we return an empty `CompareResult(best=None, models=[], leaderboard=DataFrame(), ranked_ids=[])` rather than raising. Caller code that checks `if result.best is not None` gets a clear path; callers expecting at least one result must provide `errors="raise"` instead.
+- `INTERNAL` — **Per-candidate error swallowing keeps the leaderboard reproducible.** Without `errors="ignore"` as the default, a single new model in the registry that breaks on a particular dataset would sink every notebook in the wild. With it, the registry can grow without breaking historical comparisons.
+
+## Session 26 delta summary
+
+| Metric | Session 25 end | Session 26 end |
+|---|---:|---:|
+| Supervised OOP verbs still on `self._legacy` | 2 | **1** |
+| Engine tests (fast + slow) | 70 | **80** |
+| **Combined tests** | **216** | **226** |
+
+---
+
 # Session 25 — 2026-04-24 — God-class drain: `tune_model` (supervised)
 
 Baseline: session 24 drained `create_model`, returning real Pipelines for supervised tasks. Session 25 drains the next verb in the chain — `tune_model` — using sklearn's `RandomizedSearchCV` with the engine's registry-supplied search space.

@@ -187,8 +187,9 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 22 | God-class drain #1 — persistence verbs | save_model/load_model/save_experiment/load_experiment off self._legacy. 7 new tests (181/181). 4 of 10 god-class verbs drained. |
 | 23 | God-class drain #2 — `predict_model` | Native task-aware dispatch. 12 new tests (197/197). 5 of 10 verbs drained. |
 | 24 | God-class drain #3 — `create_model` (supervised) | CreateResult.pipeline now a real sklearn Pipeline. 10 new tests (207/207). 6 of 10 verbs drained (classification + regression only; clustering/anomaly/TS still delegate). |
-| **25** | **God-class drain #4 — `tune_model` (supervised)** | **RandomizedSearchCV with registry tune_grid. TuneResult.search populated. 9 new tests (216/216). 7 of 10 verbs drained.** |
-| 26+ | God-class drain continues → 4.0.0 release | compare_models → ensemble_model → blend_models → stack_models → calibrate_model → finalize_model |
+| 25 | God-class drain #4 — `tune_model` (supervised) | RandomizedSearchCV with registry tune_grid. TuneResult.search populated. 9 new tests (216/216). 7 of 10 verbs drained. |
+| **26** | **God-class drain #5 — `compare_models` (supervised)** | **Native iteration over registry, reuses drained create_model. 10 new tests (226/226). 8 of 10 verbs drained.** |
+| 27+ | God-class drain continues → 4.0.0 release | ensemble_model → blend_models → stack_models → calibrate_model → finalize_model |
 
 Roughly **7–8 sessions to MVP 3 completion** (all 8 UI screens wired + LLM assist + full AutoML flow). Then a handful of V2 items. Then god-class drain for MVP 1 release.
 

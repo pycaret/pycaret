@@ -1,6 +1,63 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 25*
+*Updated: 2026-04-24, end of session 26*
+
+## Session 26 — God-class drain: `compare_models` (supervised) — ✅
+
+The heart of the AutoML loop is now native. **`SupervisedExperiment.compare_models`** for classification + regression no longer delegates to `self._legacy.compare_models`. It iterates the engine's model registry, calls the (already-drained) `self.create_model` for each candidate, and assembles the leaderboard from each model's `Mean` metrics row.
+
+This unlocks the full **`compare_models` → `tune_model` → `predict_model`** notebook flow on the native path with no transitional branches. The 4.0 invariant "every CreateResult/TuneResult/CompareResult `.pipeline` (or `.best`) is a real sklearn Pipeline" now holds across all the major supervised verbs.
+
+### What landed
+
+- **`packages/engine/pycaret/core/supervised.py`** — rewrote `compare_models` into a task-aware dispatcher:
+  - Supervised → `_compare_models_supervised_native`.
+  - Time-series / clustering / anomaly → `_compare_models_legacy`.
+- Native path:
+  1. Build the candidate list: `include` if given, else every active registry entry (`is_special=False`). Drop `exclude`. Drop `_TURBO_EXCLUDE = {"rbfsvm", "gpc", "mlp"}` if `turbo=True`.
+  2. Pick default `sort` metric: `"Accuracy"` for classification, `"R2"` for regression.
+  3. Per-candidate loop: call `self.create_model(cand, fold=, cross_validation=, fit_kwargs=, round=, verbose=False)`. On per-model exception with `errors="ignore"`: skip; with `"raise"`: propagate.
+  4. Assemble leaderboard rows from each model's `Mean` row.
+  5. Sort the leaderboard. Detects ascending-vs-descending automatically: error metrics (`MAE`, `MSE`, `RMSE`, `MAPE`, `RMSLE`, `neg_*`) sort ascending / "smaller is better"; everything else descending.
+  6. Return `CompareResult(best, models[:n_select], leaderboard, ranked_ids)`.
+- **Signature slim-down** (BREAKING, supervised): kept `include`, `exclude`, `fold`, `cross_validation`, `sort`, `n_select`, `turbo`, `errors`, `fit_kwargs`, `round`, `verbose`. Dropped 3.x cruft: `budget_time`, `experiment_custom_tags`, `probability_threshold`, `groups`, `caller_params`.
+- **`packages/engine/tests/test_session26_compare.py`** — 10 new tests:
+  - Top-N Pipelines + leaderboard contains both candidates.
+  - Default sort = `Accuracy` (classification) / `R2` (regression), descending.
+  - `sort="MAE"` → ascending order (error metric).
+  - `exclude=["dt"]` drops a model.
+  - `turbo=True` skips `rbfsvm` / `gpc` / `mlp` even when explicitly included.
+  - **Drain-lock**: `self._legacy.compare_models` poisoned to raise; native path still succeeds.
+  - End-to-end chain: `compare_models → predict_model` on `result.best` (no transitional branches).
+  - `errors="ignore"` skips a bogus model id without sinking the whole run.
+  - `NotFittedError` on unfit experiment.
+
+### Headline metrics
+
+| | Session 25 end | Session 26 end |
+|---|---|---|
+| Supervised OOP verbs still on `self._legacy` | 2 | **1** |
+| Engine tests (fast + slow) | 70 | **80** (+10) |
+| **Combined tests** | **216** | **226** |
+
+### Drain progress: 8 of 10 supervised verbs done
+
+```
+[✓] save_model          (session 22)
+[✓] load_model          (session 22)
+[✓] save_experiment     (session 22)
+[✓] load_experiment     (session 22)
+[✓] predict_model       (session 23)
+[✓] create_model        (session 24)
+[✓] tune_model          (session 25)
+[✓] compare_models      (session 26)
+[ ] ensemble_model      (session 27 target)
+[ ] blend_models / stack_models / calibrate_model / finalize_model
+```
+
+After ensemble_model + the four remaining verbs land, `pycaret/internal/pycaret_experiment/` becomes deletable + **`4.0.0`** ships non-alpha to PyPI.
+
+---
 
 ## Session 25 — God-class drain: `tune_model` (supervised) — ✅
 
