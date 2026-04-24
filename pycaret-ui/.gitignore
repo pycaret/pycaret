@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-ssr
+*.local
+.vite
+.eslintcache
+*.tsbuildinfo
+
+# Editor directories
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Generated
+openapi.json

@@ -32,3 +32,22 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  ui:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ui
+    image: pycaret-ui:dev
+    container_name: pycaret-ui
+    ports:
+      - "3000:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/ | head -c 50 >/dev/null"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

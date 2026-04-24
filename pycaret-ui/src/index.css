@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Root-level global tweaks — restraint is the whole point. */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle focus ring — accessible but not clown-like. */
+:focus-visible {
+  outline: 2px solid theme('colors.accent.500');
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@layer components {
+  /* Button primitives — three tiers. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2
+           text-sm font-medium transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-accent-500 text-ink-950 hover:bg-accent-400 focus-visible:outline-accent-400;
+  }
+  .btn-secondary {
+    @apply btn bg-ink-800 text-ink-100 hover:bg-ink-700 border border-ink-700;
+  }
+  .btn-ghost {
+    @apply btn text-ink-200 hover:bg-ink-800;
+  }
+  .btn-danger {
+    @apply btn bg-danger-600 text-white hover:bg-danger-500;
+  }
+
+  .field {
+    @apply block text-sm text-ink-200 mb-1;
+  }
+  .input {
+    @apply block w-full rounded-md bg-ink-900 border border-ink-700
+           px-3 py-2 text-sm text-ink-100
+           placeholder-ink-700
+           focus:outline-none focus:border-accent-500;
+  }
+  .card {
+    @apply rounded-lg border border-ink-800 bg-ink-900 p-5;
+  }
+  .hint {
+    @apply text-xs text-ink-200/60;
+  }
+  .error {
+    @apply text-xs text-danger-500 mt-1;
+  }
+  .kbd {
+    @apply inline-block rounded border border-ink-700 bg-ink-800 px-1.5 py-0.5 font-mono text-xs;
+  }
+}

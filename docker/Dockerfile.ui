@@ -1,0 +1,43 @@
+# PyCaret UI — two-stage build: Node builder → nginx runtime.
+#
+# Build:   docker build -t pycaret-ui -f docker/Dockerfile.ui .
+# Compose: see docker/docker-compose.yml (service: ui)
+#
+# The runtime image ships only the static bundle + the nginx config needed
+# to serve it. Reverse-proxies /api and /ws to the backend service in
+# compose; in production you'd front both containers with a load balancer.
+
+# ───────────────────────────────────────── build stage
+FROM node:22-alpine AS builder
+WORKDIR /src
+# Copy package manifests first to maximise layer cache re-use.
+COPY pycaret-ui/package.json pycaret-ui/package-lock.json* ./
+# CI: use npm ci when the lockfile exists; fallback to install for first build.
+RUN npm ci --include=dev 2>/dev/null || npm install
+# Now the source.
+COPY pycaret-ui/ .
+RUN npm run build
+
+# ───────────────────────────────────────── runtime stage
+FROM nginx:1.27-alpine
+
+# Basic OCI labels so `docker inspect` shows ownership at a glance.
+LABEL org.opencontainers.image.title="pycaret-ui"
+LABEL org.opencontainers.image.description="PyCaret 4.0 React frontend"
+LABEL org.opencontainers.image.source="https://github.com/pycaret/pycaret"
+LABEL org.opencontainers.image.licenses="MIT OR BUSL-1.1"
+
+COPY docker/nginx.ui.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /src/dist /usr/share/nginx/html
+
+# Drop privileges. nginx:alpine ships with the `nginx` user.
+RUN chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx \
+    && touch /run/nginx.pid && chown nginx:nginx /run/nginx.pid
+
+USER nginx
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD wget -q -O- http://127.0.0.1:8080/ | head -c 50 >/dev/null 2>&1 || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

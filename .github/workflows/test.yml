@@ -78,6 +78,33 @@ jobs:
       - name: pytest server
         run: uv run --package pycaret-server pytest pycaret-server/tests/ -q --durations=10
 
+  # --------------------------------------------------------------- ui
+
+  ui:
+    # Fast, independent job — doesn't need the Python matrix.
+    runs-on: ubuntu-latest
+    name: UI (typecheck + lint + test + build)
+    defaults:
+      run:
+        working-directory: pycaret-ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: pycaret-ui/package-lock.json
+      - name: npm install
+        run: npm ci --include=dev 2>/dev/null || npm install
+      - name: typecheck
+        run: npm run typecheck
+      - name: lint
+        run: npm run lint
+      - name: test
+        run: npm test
+      - name: build
+        run: npm run build
+
   # --------------------------------------------------------------- notebooks
 
   notebooks:
@@ -103,13 +130,13 @@ jobs:
   ci-status:
     # Aggregate job so branch protection can require a single `ci-status` check.
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [lint, test, ui]
     if: always()
     steps:
       - name: Report status
         run: |
-          if [[ "${{ needs.lint.result }}" != "success" || "${{ needs.test.result }}" != "success" ]]; then
-            echo "lint=${{ needs.lint.result }}  test=${{ needs.test.result }}"
+          if [[ "${{ needs.lint.result }}" != "success" || "${{ needs.test.result }}" != "success" || "${{ needs.ui.result }}" != "success" ]]; then
+            echo "lint=${{ needs.lint.result }}  test=${{ needs.test.result }}  ui=${{ needs.ui.result }}"
             exit 1
           fi
           echo "All required jobs succeeded."
