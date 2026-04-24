@@ -285,15 +285,274 @@ class Experiment(BaseEstimator):
         if not self.__sklearn_is_fitted__():
             raise NotFittedError("Experiment is not fitted. Call `.fit(data)` first.")
 
-    def create_model(self, estimator: Any, *args: Any, **kwargs: Any) -> CreateResult:
-        """Train a single model and return a typed `CreateResult`."""
+    def create_model(
+        self,
+        estimator: Any,
+        *,
+        fold: Any | None = None,
+        cross_validation: bool = True,
+        fit_kwargs: dict | None = None,
+        round: int = 4,
+        verbose: bool = False,
+        **estimator_kwargs: Any,
+    ) -> CreateResult:
+        """Train a single model and return a typed ``CreateResult``.
+
+        Session-24 drain (supervised path): for classification + regression
+        experiments, this verb no longer delegates to
+        ``self._legacy.create_model``. It resolves the estimator, runs
+        cross-validation with the task's metric registry, refits on the
+        full training set, and returns a **real sklearn Pipeline**
+        (preprocessor + trained model glued together). Downstream verbs
+        like ``predict_model`` can call ``.predict`` on the returned
+        pipeline directly — no more transitional bare-estimator branch.
+
+        Clustering / anomaly / time-series still delegate to the legacy
+        engine (their create_model code paths have different shapes;
+        separate drain sessions).
+
+        Parameters
+        ----------
+        estimator : str or sklearn-compatible object
+            Either a model ID from the engine's registry (e.g. ``"lr"``,
+            ``"rf"``) or a pre-constructed estimator with ``.fit`` /
+            ``.predict``.
+        fold : int or cross-validator, optional
+            If ``None``, uses the experiment's configured CV generator
+            (``self.fold`` + ``self.fold_strategy``).
+        cross_validation : bool, default=True
+            If False, skips CV + just fits on the training set.
+        fit_kwargs : dict, optional
+            Extra kwargs forwarded to ``model.fit``.
+        round : int, default=4
+            Decimal places for the metrics DataFrame.
+        verbose : bool, default=False
+            Reserved; currently ignored (legacy progress-bar hook).
+        **estimator_kwargs
+            When ``estimator`` is a registry ID, forwarded to its
+            constructor (merged over the registry's defaults).
+
+        Returns
+        -------
+        CreateResult
+            ``pipeline`` is a real sklearn Pipeline (preprocessing +
+            trained model); ``metrics`` is the per-fold score DataFrame
+            (index: ``Fold 0..N-1``, ``Mean``, ``Std``) when CV ran, else
+            ``None``; ``model_id`` is the registry key or the estimator
+            class name; ``params`` is the estimator's `get_params(deep=False)`.
+        """
         self._require_fitted()
+
+        from pycaret.core.tasks import TaskType
+
+        # Non-supervised / time-series paths still on the legacy engine.
+        if self.task not in (TaskType.CLASSIFICATION, TaskType.REGRESSION):
+            # Forward whatever the caller passed as estimator kwargs
+            # (num_clusters= / fraction= for clustering, fh= for TS, etc.)
+            # but DROP `fold` which only applies to supervised CV.
+            return self._create_model_legacy(
+                estimator,
+                verbose=verbose,
+                **estimator_kwargs,
+            )
+
+        return self._create_model_supervised_native(
+            estimator,
+            fold=fold,
+            cross_validation=cross_validation,
+            fit_kwargs=fit_kwargs or {},
+            round=round,
+            verbose=verbose,
+            estimator_kwargs=estimator_kwargs,
+        )
+
+    # ---------------------- create_model — native supervised path
+
+    def _create_model_supervised_native(
+        self,
+        estimator: Any,
+        *,
+        fold: Any | None,
+        cross_validation: bool,
+        fit_kwargs: dict,
+        round: int,
+        verbose: bool,
+        estimator_kwargs: dict,
+    ) -> CreateResult:
+        """Native supervised create_model (classification + regression)."""
+        from copy import deepcopy
+
+        t0 = time.perf_counter()
+
+        # ---- resolve estimator: str → registry → instance; else use as-is
+        model, model_id = self._resolve_supervised_estimator(estimator, estimator_kwargs)
+
+        self.logger.log(
+            EventKind.MODEL_CREATE_STARTED,
+            payload={"estimator": model_id},
+        )
+
+        # ---- pull transformed training data from the experiment's state
+        X_train = self._legacy.X_train_transformed
+        y_train = self._legacy.y_train_transformed
+
+        # ---- CV (optional) + collect the metrics DataFrame
+        metrics_df = None
+        if cross_validation:
+            cv = fold if fold is not None else self._legacy.fold_generator
+            metrics_df = self._cross_validate_supervised(
+                model=model, X=X_train, y=y_train, cv=cv, round_=round
+            )
+
+        # ---- final fit on the full training set
+        model.fit(X_train, y_train, **fit_kwargs)
+
+        # ---- assemble a full Pipeline: preprocessor + trained model
+        pipeline = deepcopy(self.preprocess_pipeline)
+        pipeline.steps.append((model_id, model))
+
+        # ---- emit event + build result
+        self.logger.log(
+            EventKind.MODEL_CREATED,
+            duration_ms=(time.perf_counter() - t0) * 1000,
+            payload={"estimator": model_id},
+        )
+        return CreateResult(
+            pipeline=pipeline,
+            model_id=model_id,
+            metrics=metrics_df,
+            params=self._safe_params(model),
+        )
+
+    def _resolve_supervised_estimator(
+        self, estimator: Any, estimator_kwargs: dict
+    ) -> tuple[Any, str]:
+        """Return (instantiated model, model_id) from a string or object."""
+        if isinstance(estimator, str):
+            registry = getattr(self._legacy, "_all_models_internal", None)
+            if not registry or estimator not in registry:
+                raise ConfigurationError(
+                    f"Unknown model id {estimator!r}. Call "
+                    "Experiment.list_models() for available IDs."
+                )
+            container = registry[estimator]
+            merged = {**container.args, **estimator_kwargs}
+            return container.class_def(**merged), estimator
+        if not hasattr(estimator, "fit") or not hasattr(estimator, "predict"):
+            raise TypeError(
+                "`estimator` must be a registry ID string or an object with "
+                ".fit / .predict methods."
+            )
+        return estimator, type(estimator).__name__
+
+    def _cross_validate_supervised(
+        self,
+        *,
+        model: Any,
+        X: pd.DataFrame,
+        y: Any,
+        cv: Any,
+        round_: int = 4,
+    ) -> pd.DataFrame | None:
+        """Run k-fold CV + build a per-fold DataFrame of metrics.
+
+        Uses ``deepcopy(model)`` per fold so fits don't leak across folds.
+        Metric columns come from the task's metric registry (same one
+        used by ``predict_model``); index is ``Fold 0..N-1`` then
+        ``Mean`` and ``Std`` rows.
+        """
+        from copy import deepcopy
+
+        import pandas as _pd
+
+        from pycaret.core.tasks import TaskType
+        from pycaret.utils.generic import calculate_metrics
+
+        try:
+            if self.task == TaskType.CLASSIFICATION:
+                from pycaret.containers.metrics.classification import (
+                    get_all_metric_containers,
+                )
+
+                metrics_registry = get_all_metric_containers({}, raise_errors=False)
+            elif self.task == TaskType.REGRESSION:
+                from pycaret.containers.metrics.regression import (
+                    get_all_metric_containers,
+                )
+
+                metrics_registry = get_all_metric_containers({}, raise_errors=False)
+            else:
+                return None
+        except Exception:
+            return None
+
+        per_fold: list[dict] = []
+        try:
+            split_iter = cv.split(X, y)
+        except TypeError:
+            split_iter = cv.split(X)
+        for train_idx, val_idx in split_iter:
+            X_tr = X.iloc[train_idx] if hasattr(X, "iloc") else X[train_idx]
+            X_val = X.iloc[val_idx] if hasattr(X, "iloc") else X[val_idx]
+            y_tr = y.iloc[train_idx] if hasattr(y, "iloc") else y[train_idx]
+            y_val = y.iloc[val_idx] if hasattr(y, "iloc") else y[val_idx]
+
+            m = deepcopy(model)
+            try:
+                m.fit(X_tr, y_tr)
+            except Exception:
+                # A single-fold fit failure shouldn't sink the whole CV;
+                # record zeros + continue.
+                per_fold.append({})
+                continue
+            try:
+                preds = m.predict(X_val)
+            except Exception:
+                per_fold.append({})
+                continue
+            try:
+                proba = m.predict_proba(X_val)
+                pred_proba = proba[:, 1] if proba.shape[1] == 2 else proba
+            except Exception:
+                pred_proba = None
+            try:
+                scores = calculate_metrics(
+                    metrics=metrics_registry,
+                    y_test=y_val,
+                    pred=preds,
+                    pred_proba=pred_proba,
+                )
+            except Exception:
+                scores = {}
+            per_fold.append(scores)
+
+        if not per_fold or not any(per_fold):
+            return None
+
+        df = _pd.DataFrame(per_fold)
+        df.index = [f"Fold {i}" for i in range(len(df))]
+        # Mean + Std aggregate rows. Guard numeric-only so string columns
+        # (if any ever sneak in) don't break the mean call.
+        df.loc["Mean"] = df.mean(numeric_only=True)
+        df.loc["Std"] = df.std(numeric_only=True)
+        return df.round(round_)
+
+    def _create_model_legacy(
+        self, estimator: Any, *, verbose: bool = False, **kwargs: Any
+    ) -> CreateResult:
+        """Fallback for tasks whose create_model hasn't been drained yet
+        (time-series, clustering, anomaly). Delegates to the legacy engine.
+
+        ``**kwargs`` carries task-specific parameters (``num_clusters=``,
+        ``fraction=``, ``fh=``, …). Caller is responsible for not passing
+        supervised-only kwargs like ``fold=``.
+        """
         t0 = time.perf_counter()
         self.logger.log(
             EventKind.MODEL_CREATE_STARTED,
             payload={"estimator": self._describe_estimator(estimator)},
         )
-        model = self._legacy.create_model(estimator, *args, **kwargs)
+        model = self._legacy.create_model(estimator, verbose=verbose, **kwargs)
         metrics = self._safe_pull()
         self.logger.log(
             EventKind.MODEL_CREATED,
@@ -379,11 +638,13 @@ class Experiment(BaseEstimator):
         # A Pipeline knows how to transform its own input (preprocessing is
         # step 0..n-1, the estimator is step n). A bare estimator needs the
         # experiment's preprocessing chain applied first.
+        # Post session 24: supervised create_model returns a real Pipeline
+        # so this branch is dead for classification/regression. Clustering
+        # + anomaly still delegate to legacy create_model which can return
+        # bare estimators; the branch lives until those drains land.
         estimator_is_pipeline = isinstance(estimator, _SkPipeline)
         preprocessor: Any | None = None
         if not estimator_is_pipeline:
-            # Transitional path — falls away once create_model's drain
-            # makes `CreateResult.pipeline` a real Pipeline (session 24).
             try:
                 preprocessor = self.preprocess_pipeline
             except Exception:

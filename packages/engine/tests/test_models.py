@@ -41,6 +41,21 @@ def disable_numba():
     numba.config.DISABLE_JIT = old
 
 
+def _unwrap_pipeline(obj):
+    """Post session-24: supervised ``create_model`` returns a full Pipeline
+    (preprocessor + trained model). The equality predicates in the model
+    registry check ``isinstance(model, <class>)`` against the bare model
+    class — so we pull the last step out before handing to the predicate.
+    Clustering / anomaly still return bare estimators (their drain is
+    a later session).
+    """
+    from sklearn.pipeline import Pipeline as SkPipeline
+
+    if isinstance(obj, SkPipeline):
+        return obj.steps[-1][1]
+    return obj
+
+
 def check_exp(exp, **kwargs):
     """For every registered non-special model, train and assert its equality
     predicate uniquely matches itself among all other containers."""
@@ -48,7 +63,7 @@ def check_exp(exp, **kwargs):
     for id, model_definition in model_definitions.items():
         if model_definition["Special"]:
             continue
-        model = exp.create_model(id, **kwargs).pipeline
+        model = _unwrap_pipeline(exp.create_model(id, **kwargs).pipeline)
         for id_2, model_definition_2 in model_definitions.items():
             if id_2 == id:
                 assert model_definition_2["Equality"](model)
