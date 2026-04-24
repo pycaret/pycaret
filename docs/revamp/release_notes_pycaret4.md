@@ -42,6 +42,100 @@
 
 ---
 
+# Session 17 — 2026-04-24 — LLM router (Claude + OpenAI) + dataset consultant
+
+Baseline: session 16 closed the Control Plane's deterministic loop (CSV → run → promote → deploy → predict). The spec's AI-native half (§ 12) was still a stub.
+
+Theme: deliver the LLM advisory layer end-to-end, provider-agnostic from day one, with **Anthropic (Claude) + OpenAI as first-class from commit one** per DECISIONS.md § session-13 · 3. LLM is advisory (CONTROL_PLANE_SPEC § 12.3); the deterministic engine executes what the user approves.
+
+## ADDED — DB + migration
+
+- `ADDED` — **`LLMProviderSetting`** model. Per-workspace provider config. `UniqueConstraint(workspace_id, provider)` so workspaces can keep an Anthropic + OpenAI entry side-by-side; only one row carries `enabled=True`.
+  - TODO comment on `api_key_encrypted`: stored plaintext for v1; KMS / Vault wrapping tracked under V2 secrets-encryption in ROADMAP.
+- `ADDED` — **`LLMConsultation`** model. Append-only audit row. Captures prompt, raw response, normalised `LLMAdvice`, latency_ms, error. Optional FKs (project_id / experiment_id / run_id) correlate each consultation to the domain object that triggered it.
+- `ADDED` — **`services/api/pycaret_server/migrations/versions/20260424_1628_d582b350c276_add_llm_provider_settings_and_.py`** — Alembic autogen-generated. Applied clean against the baseline migration.
+
+## ADDED — `pycaret_server.llm` module
+
+- `ADDED` — **`llm/schemas.py`** — Pydantic:
+  - `LLMAdvice` — the canonical envelope every consultation returns (`suggested_config_json`, `suggested_action`, `reasoning_summary`, `risk_flags`).
+  - `LLMProviderSettingRead` deliberately drops `api_key_encrypted` + adds `has_api_key: bool` so the plaintext never hits the browser.
+  - `LLMProviderSettingWrite`, `LLMConsultationRead`, `AnalyzeDatasetRequest`, `TestConnectionResponse`.
+  - Frozen tuples for `PROVIDERS` + `CONSULTATION_TYPES` match the CONTROL_PLANE_SPEC § 4.14 / § 4.15 allowlists.
+- `ADDED` — **`llm/providers/base.py`** — `LLMProvider` Protocol with one method: `complete(system, user, output_schema, max_tokens, temperature) -> dict`. Tool-use (Anthropic) and JSON mode (OpenAI) both normalise to this.
+- `ADDED` — **`llm/providers/anthropic_provider.py`** — Claude via native tool-use. Declares an inline tool wrapping `output_schema`; consumes the first `tool_use` content block. SDK imported lazily so the base server install doesn't depend on it (`pycaret-server[llm-anthropic]` extra).
+- `ADDED` — **`llm/providers/openai_provider.py`** — OpenAI structured-output via `response_format={"type": "json_schema", ...}`. Works against native OpenAI, Azure OpenAI, and any OpenAI-compatible endpoint (Ollama, LM Studio, vLLM) via `base_url`. SDK lazy-imported (`pycaret-server[llm-openai]`).
+- `ADDED` — **`llm/providers/fake.py`** — `FakeLLMProvider` for tests + local dev. Tracks the last prompt seen; optional `canned_response` override. Zero network, zero cost, deterministic.
+- `ADDED` — **`llm/providers/__init__.py`** — registry + `get_provider(...)` factory. Keyed on provider name; adding Google / Azure / Ollama is one factory function + one entry. `register_fake_for_tests(canned_response)` installs the fake under every provider name so real SDKs are never hit in CI.
+- `ADDED` — **`llm/router.py`** — `LLMRouter` class. `consult(session, ctx)` dispatches: load active setting → build provider → call → normalise to `LLMAdvice` → persist `LLMConsultation` (even on failure — audit row still written). Auxiliary `test_connection(setting)` does a lightweight round-trip. Module-level singleton via `get_router()` / `reset_router()`.
+- `ADDED` — **`llm/consultations/dataset_analysis.py`** — the first consultation type. Reads the CSV's first 200 rows + total row count + column dtypes + cardinality + null fractions + sample values; serialises as a deterministic JSON blob in the user prompt. Output schema is strict (`additionalProperties: false` on top-level keys) so the model can't invent fields.
+
+## ADDED — API routes
+
+- `ADDED` — **`services/api/pycaret_server/api/llm.py`** — 6 operations across 5 paths:
+  - `GET /api/v1/workspaces/{id}/llm/settings` — the currently-enabled provider setting, or `null`.
+  - `PUT /api/v1/workspaces/{id}/llm/settings` — upsert. Admin-gated. Switching providers flips the previous row's `enabled=False` (audit preserved). PUT-merge on the API key: passing `null` leaves the existing key alone.
+  - `POST /api/v1/workspaces/{id}/llm/test-connection` — probe. Returns `{ok, provider, model_name, error, latency_ms}`.
+  - `POST /api/v1/llm/analyze-dataset` — runs the dataset consultant on a `csv_upload` data source. Returns the persisted consultation row.
+  - `GET /api/v1/workspaces/{id}/llm/consultations?limit=50` — history (newest first, cap 500).
+  - `GET /api/v1/llm/consultations/{id}` — single consultation.
+- `CHANGED` — **`app.py`** lifespan — now also resets the LLM router singleton on shutdown (matches the pattern for `RunOrchestrator` + `DeploymentRegistry`).
+- `ADDED` — **`pyproject.toml`** extras: `llm-anthropic` (anthropic SDK), `llm-openai` (openai SDK), `llm` (both). Neither required for the base server install.
+
+## ADDED — frontend
+
+- `ADDED` — **`apps/web/src/pages/LLMSettings.tsx`** — new route `/workspaces/:wsId/llm`. Provider picker (6 options; Anthropic + OpenAI supported, 4 more disabled as "(coming later)"). Model name with per-provider default. API key as `type="password"` (never round-tripped via `GET /settings`). Optional `base_url`. Enabled toggle. "Test connection" button wired to `llmApi.testConnection`; shows green tick + latency on success, red error on failure.
+- `ADDED` — **`apps/web/src/components/AnalyzeDatasetModal.tsx`** — opens with a `dataSourceId`, auto-fires `llmApi.analyzeDataset` on first render, renders the `LLMAdvice` envelope: suggested action as headline, reasoning as paragraph, risk flags as warn-toned chips, suggested config as pretty-printed JSON block, provider/model/latency footer. Esc + click-outside + footer "Close" all dismiss.
+- `CHANGED` — **`apps/web/src/components/DataSourcesCard.tsx`** — each CSV row now has an **"✨ AI"** button alongside delete; clicking opens `<AnalyzeDatasetModal>` for that dataset.
+- `CHANGED` — **`apps/web/src/pages/WorkspaceDetail.tsx`** — header nav gains an **"✨ LLM"** button (third alongside Pipelines + Deployments) linking to the settings screen.
+- `ADDED` — **`apps/web/src/api/types.ts`** — `LLMProviderName`, `LLMAdvice`, `LLMProviderSettingRead/Write`, `LLMConsultationRead`, `TestConnectionResponse`.
+- `ADDED` — **`apps/web/src/api/endpoints.ts`** — `llmApi` module: `getSettings`, `upsertSettings`, `testConnection`, `analyzeDataset`, `listConsultations`, `getConsultation`.
+- `CHANGED` — **`apps/web/src/App.tsx`** — new authenticated route `/workspaces/:wsId/llm`.
+
+## TESTS
+
+- `TESTS` — **`services/api/tests/test_llm.py`** — 9 new integration tests. Fake is registered under every provider name via `register_fake_for_tests(canned_response=...)` so the router's real dispatch path is exercised end-to-end.
+  - `test_settings_empty_initially` — GET returns null before any PUT.
+  - `test_upsert_settings_admin_gated_and_hides_key` — round-trip; response never contains `api_key` or `api_key_encrypted`; `has_api_key=True`.
+  - `test_upsert_settings_rejects_unknown_provider` — 400 on bad provider name.
+  - `test_switching_provider_disables_previous` — PUT anthropic → PUT openai; GET returns openai (anthropic row preserved but `enabled=False`).
+  - `test_test_connection_against_fake_provider` — 200, `ok=True`, latency set.
+  - `test_test_connection_400_when_no_provider_configured` — 400 error body.
+  - `test_analyze_dataset_happy_path` — bootstrap → configure LLM → upload iris CSV → POST analyze-dataset → assert `type=dataset_analysis`, `provider=anthropic`, `generated_config_json['task_type']=='classification'`, prompt captured for audit → list history (1 row) → get-by-id round-trips.
+  - `test_analyze_dataset_requires_configured_llm` — 400 `"No LLM provider configured"`.
+  - `test_analyze_dataset_rejects_non_csv_source` — 400 when the data source is s3.
+- `TESTS` — **`apps/web/src/components/AnalyzeDatasetModal.test.tsx`** — 3 new:
+  - Modal is inert when `open=false` (no mutation fires).
+  - On open, auto-fires `analyzeDataset` with the right args + renders every part of the advice envelope (action, reasoning, risk-flag chip, provider/model/latency footer).
+  - Footer "Close" button invokes `onClose` (disambiguated from the `aria-label="Close"` ✕ button via `textContent` filter).
+- `TESTS` — **Combined suite: 107/107 green** (32 engine + 39 server + 36 web); was 95.
+
+## INTERNAL
+
+- `INTERNAL` — **Provider SDKs are optional deps.** `anthropic` and `openai` live in `[project.optional-dependencies].llm-anthropic` / `llm-openai`. The base `pycaret-server` install never pulls them; the tests run against `FakeLLMProvider` so CI never hits a real API. The provider class imports the SDK inside its factory method and raises a clear `RuntimeError` telling operators which extra to install if it's missing.
+- `INTERNAL` — **PUT-merge on the API key.** The settings endpoint preserves an existing key when the caller passes `api_key=null`. Lets the UI re-submit the form (model name change, enabled toggle, etc.) without round-tripping the plaintext. This is also why `has_api_key: bool` exists on the read schema instead of leaking the value.
+- `INTERNAL` — **Audit row always persists.** `LLMRouter.consult` writes the `LLMConsultation` row before re-raising any provider error. This is deliberate: the audit trail of "we asked the LLM and got this error" is at least as valuable as the trail of successful calls, especially for debugging prompt regressions against a new provider release.
+- `INTERNAL` — **`additionalProperties: false` on output schemas.** The dataset-consultant schema locks top-level keys to the 4 `LLMAdvice` fields. Providers that strictly honour schemas (OpenAI with `strict: true`, Claude with tool-use) won't emit rogue top-level fields; providers that don't are normalised in the router's `LLMAdvice.model_validate(raw)` step + fall-through coerce into a best-effort `LLMAdvice` with a `malformed_response` risk flag.
+- `INTERNAL` — **Disambiguation via textContent in the modal test.** Two buttons both match `name: /close/i` — one has `aria-label="Close"` (the ✕), one has text `"Close"` (the footer). Using `.filter(el => el.textContent === 'Close')` on `getAllByRole` picks exactly the footer one. Same pattern applies anywhere we have a visually-distinct close button next to a header dismissal affordance.
+
+## Session 17 delta summary
+
+| Metric | Session 16 end | Session 17 end |
+|---|---:|---:|
+| DB tables | 16 | **18** (+2) |
+| Alembic revisions | 1 | **2** |
+| API routes | ~42 | **~47** |
+| Server integration tests | 30 | **39** |
+| UI shared components | 7 | **8** |
+| UI screens | 12 | **13** |
+| UI tests | 33 | **36** |
+| **Combined tests** | **95** | **107** |
+| Production bundle (gz) | 93 kB | **95 kB** |
+
+E2E verified end-to-end with `FakeLLMProvider` — configure Anthropic as the workspace LLM → test-connection returns `ok=True` → upload iris CSV → analyze → `suggested_action: "Run a classification compare on iris with fold=5."` → history lists the consultation.
+
+---
+
 # Session 16 — 2026-04-24 — Pipelines + Deployments + CSV upload (closes the serving loop)
 
 Baseline: session 15 closed the run-execution loop with live WebSocket events + leaderboard. A user could promote a run into a Pipeline via the API — but there was no UI for the pipeline registry, no UI for deployments, no way to hit `/predict` from the browser, and no way to upload a real CSV.

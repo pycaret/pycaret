@@ -175,9 +175,9 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 13 | Monorepo restructure + Control Plane spec | Canonical structure + docs |
 | 14 | Project detail + Experiment wizard (dynamic form) | Experiment creation UI + runs sidebar + 13 new tests |
 | 15 | `/runs/:id` with live WebSocket + leaderboard + data-source + model pickers | Run view + promote button + 8 new tests |
-| **16** | **Pipelines + Deployments + CSV upload UI — full serving loop** | **4 screens + 2 components + 6 tests + E2E verified** |
-| 17 | LLM router + first 2 advisory endpoints (dataset consultant, experiment designer) | AI assist MVP |
-| 18 | Trial entity + Model Library table sync | DB expansion |
+| 16 | Pipelines + Deployments + CSV upload UI — full serving loop | 4 screens + 2 components + 6 tests + E2E verified |
+| **17** | **LLM router (Claude + OpenAI) + dataset consultant + settings screen** | **2 DB tables + 6 API routes + 1 UI screen + 1 modal + 12 new tests + live E2E** |
+| 18 | Experiment designer + run explainer advisories | AI assist continues |
 | 19 | Admin screens + API keys + audit logs | V2 foundation |
 | 20+ | God-class drain → 4.0.0 release | Engine finish |
 
