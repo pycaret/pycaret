@@ -115,6 +115,58 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 20 — 2026-04-24 — Workspace members + programmatic API-key auth
+
+Baseline: session 19 shipped 5 of 6 LLM copilots + per-user API-key CRUD (mint / list / revoke) but the `X-PyCaret-Key` header was not yet accepted by any route. Session 20 closes that loop and adds multi-user collaboration — the platform is now usable by more than one person per workspace.
+
+Theme: deliver **workspace member CRUD + programmatic API-key auth**. Drift analyst + audit logs deferred to session 21 to keep scope honest.
+
+## ADDED — workspace members
+
+- `ADDED` — **`services/api/pycaret_server/api/members.py`** — 4-route module under `/workspaces/{workspace_id}/members`. `GET` lists members with role + active status (any member); `POST` invites an existing user by email (admins only — returns 404 if no user with that email + hint about V2 email-invite flow); `PATCH /{user_id}` changes a role (admins only); `DELETE /{user_id}` removes (admins only). Both `PATCH` demote-admin + `DELETE` remove-admin enforce the last-admin guard: refuse to drop the workspace below 1 admin (400).
+- `ADDED` — **Role model `admin | member`** — Python `Literal` matches the DB column. SPEC § 17.2 proposes a richer 6-role set; rolled forward when SSO lands. Pydantic `InviteRequest` / `PatchRoleRequest` validate against the same literal.
+- `ADDED` — **`_admin_count(db, workspace_id)` helper** — single-query count feeding both last-admin guards. Avoids a subquery in the route body + keeps the invariant in one place.
+- `ADDED` — **`services/api/tests/test_session20.py`** — 8 member-CRUD tests covering list bootstrap admin, invite-existing-user, invite-unknown-email-404, non-admin-cannot-invite-403, promote / demote, cannot-demote-last-admin-400, cannot-remove-last-admin-400, and remove-member-succeeds.
+
+## ADDED — programmatic API-key auth
+
+- `ADDED` — **`X-PyCaret-Key` header acceptance in `auth/deps.py`** — `get_current_user` now accepts `Authorization: Bearer …` (JWT) OR `X-PyCaret-Key: pck_…` (API key). JWT takes precedence when both are present (common dev pattern: long-lived key in env + short-lived UI session). Hash-and-lookup against the `ApiKey` table; checks `revoked_at is null`, `expires_at > now` (with SQLite tz coercion), and `user.is_active`. `last_used_at` is stamped on every successful auth.
+- `ADDED` — **`services/api/tests/test_session20.py` API-key tests** — 6 tests: happy-path auth with a minted key, revoked key → 401, bogus key → 401, expired key → 401 (forges `expires_at` backwards), JWT-takes-precedence when both sent, missing-both → 401.
+
+## ADDED — frontend
+
+- `ADDED` — **`apps/web/src/pages/WorkspaceMembers.tsx`** — `/workspaces/:wsId/members` screen. Admins see: invite form (email + role + submit) + members table with inline role `<select>` + Remove button per row. Non-admins see the members table only. Own row flagged `(you)`. Last-admin row has both the select + Remove button disabled with an explanatory `title` tooltip — mirrors the server guard in the UI.
+- `ADDED` — **`apps/web/src/pages/WorkspaceMembers.test.tsx`** — 4 Vitest tests: admin view shows invite + can change role, last-admin disables select + remove, non-admin hides invite + action column, invite submit fires the API with the chosen role.
+- `ADDED` — **`membersApi` in `apps/web/src/api/endpoints.ts`** — typed bindings for list / invite / changeRole / remove.
+- `ADDED` — **`MemberRead` / `InviteRequest` / `PatchRoleRequest` / `WorkspaceRole` types** in `apps/web/src/api/types.ts`.
+
+## CHANGED
+
+- `CHANGED` — **`apps/web/src/pages/WorkspaceDetail.tsx`** — header action row gains a "Members" button alongside Pipelines / Deployments / LLM. Same `btn-secondary` affordance.
+- `CHANGED` — **`apps/web/src/App.tsx`** — registers the new route `/workspaces/:wsId/members`.
+- `CHANGED` — **`services/api/pycaret_server/app.py` + `api/__init__.py`** — mount the `members` router under `/api/v1`.
+
+## INTERNAL
+
+- `INTERNAL` — **Single-flight auth priority.** The dependency checks `Authorization` first, then `X-PyCaret-Key`, but crucially only *invokes* the fallback when the bearer path returns no user — not when it's present-but-invalid. Invalid bearer → 401 even if a valid key is present. Rationale: a client that sends a bearer header is signalling "use this"; silently falling back masks config bugs.
+- `INTERNAL` — **Last-admin guard location.** Kept in the route handlers (not a DB constraint), because "admin" is a soft role in the data model + a pure count check reads cleaner than a CHECK constraint. Doubled-up in UI (disabled control + tooltip). If we ever need to atomic-ify it against concurrent demotes, switch to a `SELECT … FOR UPDATE` on the admin rows — v1 single-writer workload doesn't need it yet.
+- `INTERNAL` — **`getByText` ambiguity fixes in member tests.** `MemberRow` renders the user email twice when `display_name` is null (once as the display-name fallback, once as the small mono subtitle). Tests that assert a member is present use `getAllByText('…@example.com').length > 0` rather than `getByText`. Extending the lesson from session 19: always audit whether a text snippet appears once or many times before reaching for `getByText`.
+- `INTERNAL` — **Invite-by-email shape.** v1 looks up an existing `User` row by email, returns 404 if absent with a hint ("ask them to sign up first (email invites arrive in V2)"). V2 will either create a pending-account row + send a confirmation email, or integrate with the SSO IdP's user directory. The 404 response keeps the failure mode explicit instead of silently creating ghost accounts.
+
+## Session 20 delta summary
+
+| Metric | Session 19 end | Session 20 end |
+|---|---:|---:|
+| API routes | ~54 | **~58** |
+| Server integration tests | 54 | **68** |
+| Auth methods | JWT only | **JWT + X-PyCaret-Key** |
+| UI screens | 14 | **15** |
+| UI tests | 48 | **52** |
+| **Combined tests** | **134** | **148** |
+| Production bundle (gz) | 98 kB | **99 kB** |
+
+---
+
 # Session 18 — 2026-04-24 — Experiment designer + Run explainer advisories
 
 Baseline: session 17 shipped the LLM router + dataset consultant (1 of 6 consultation types in SPEC § 12.2). Infrastructure solid; this session demonstrates the extension pattern + completes the three classic copilots.

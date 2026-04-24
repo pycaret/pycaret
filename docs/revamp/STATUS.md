@@ -1,6 +1,60 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 19*
+*Updated: 2026-04-24, end of session 20*
+
+## Session 20 — Workspace members + programmatic API-key auth — ✅
+
+Multi-user collaboration lands. Admins can now invite + manage members from a dedicated workspace screen, and programmatic callers (CLI tools, CI jobs, notebooks) can authenticate with `X-PyCaret-Key` headers instead of JWT. Drift analyst + audit logs slipped to session 21 to keep this session's scope honest.
+
+### What landed — backend
+
+- **`services/api/pycaret_server/api/members.py`** — 4 routes under `/workspaces/{workspace_id}/members`:
+  - `GET /` — list members with role + activity status. Open to all workspace members.
+  - `POST /` — invite an existing user (by email). v1 does not send emails — if no user exists with that email, returns 404 with a hint. Email-invite-with-account-creation is V2.
+  - `PATCH /{user_id}` — change a member's role. Last-admin guard: refuses to demote the sole admin (400).
+  - `DELETE /{user_id}` — remove a member. Last-admin guard mirrors PATCH.
+- **`X-PyCaret-Key` middleware** — `get_current_user` dependency now accepts `Authorization: Bearer …` (JWT) OR `X-PyCaret-Key: pck_…` (API key). JWT wins when both are present (common dev pattern: long-lived key in env + short-lived UI session). Revoked / expired / unknown keys all return 401.
+- **Role model** — v1 restricts to `admin | member` literal. SPEC § 17.2 proposes a richer 6-role set; rolled forward when SSO lands.
+- **14 new integration tests** in `services/api/tests/test_session20.py` covering:
+  - Member CRUD: list, invite-existing, invite-unknown-404, non-admin-can't-invite, promote, demote, last-admin-guard (both demote + remove), remove.
+  - API-key auth: happy-path auth, revoked rejected, bogus rejected, expired rejected (forges `expires_at` backwards), JWT-takes-precedence, missing-both-rejected.
+
+### What landed — frontend
+
+- **`<WorkspaceMembers>`** screen at `/workspaces/:wsId/members` — full CRUD UI for admins, read-only for members:
+  - Invite form (admins only): email + role select + submit → fires `membersApi.invite`.
+  - Members table with inline role select + Remove button per row.
+  - Last-admin guard mirrored in UI: sole admin's role select is disabled (with tooltip) + Remove button disabled.
+  - Non-admins see the list without invite form + without action column.
+  - Own row flagged `(you)` next to the display name.
+- **Wiring**:
+  - `WorkspaceDetail` gains a "Members" button in the header nav alongside Pipelines / Deployments / LLM.
+  - New route `/workspaces/:wsId/members` in `App.tsx`.
+- **API bindings** — new `membersApi` module (list / invite / changeRole / remove) + `MemberRead` / `InviteRequest` / `PatchRoleRequest` / `WorkspaceRole` types.
+- **4 new Vitest tests** — admin view (shows invite form, can change role), last-admin disables both select + remove, non-admin hides both invite + action column, invite submit fires API with chosen role.
+
+### Headline metrics
+
+| | Session 19 end | Session 20 end |
+|---|---|---|
+| API routes (under `/api/v1/`) | ~54 | **~58** (+4 members CRUD) |
+| Server integration tests | 54 | **68** (+14) |
+| Auth methods | JWT only | **JWT + X-PyCaret-Key** |
+| UI screens | 14 | **15** (+ WorkspaceMembers) |
+| UI tests | 48 | **52** (+4) |
+| **Combined tests** | **134** | **148** (32 engine + 68 server + 52 web) |
+| Production bundle (gz) | 98 kB | **99 kB** (+1 kB) |
+
+### What's next (session 21)
+
+- **Drift analyst** — 7th / 6th copilot (SPEC § 12.2). Needs `DriftReport` model (SPEC § 4.12) + scheduled `drift_detection_job` + a monitoring surface.
+- **Audit logs** — SPEC § 17.4. Cross-cutting table + middleware that records every mutating call + `/admin/audit` viewer.
+
+### And then session 22+
+
+God-class drain (engine Phase 5) → 4.0.0 non-alpha release on PyPI.
+
+---
 
 ## Session 19 — Failure debugger + Deployment reviewer + API keys — ✅
 

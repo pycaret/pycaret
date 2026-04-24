@@ -58,7 +58,9 @@ Status: ✅ **FULLY DONE** (sessions 9–11). 30 integration tests green.
 - [ ] **Model Library DB entity** — move engine's hardcoded registry into editable `model_library` rows synced from engine metadata.
 - [ ] **Job queue** — upgrade from `ThreadPoolExecutor` to a `Job` table + `services/worker` runner (Celery / RQ / Arq pluggable).
 - [ ] **LLM gateway** (see MVP 3 below — provider router + 6 advisory endpoints).
-- [ ] **Audit logs** + **API keys** tables + routes.
+- [x] **API keys** — DB table + CRUD routes + `X-PyCaret-Key` auth middleware (sessions 19 + 20).
+- [x] **Workspace member management** — invite / list / PATCH role / remove + last-admin guard (session 20).
+- [ ] **Audit logs** table + middleware + viewer — SPEC § 17.4, session 21.
 - [ ] **Secrets encryption** for LLM keys, cloud credentials.
 
 ### Exit criteria
@@ -178,9 +180,10 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 16 | Pipelines + Deployments + CSV upload UI — full serving loop | 4 screens + 2 components + 6 tests + E2E verified |
 | 17 | LLM router (Claude + OpenAI) + dataset consultant + settings screen | 2 DB tables + 6 API routes + 1 UI screen + 1 modal + 12 new tests + live E2E |
 | 18 | Experiment designer + Run explainer advisories | 2 consultations + 2 routes + 2 UI components + 11 new tests (118/118 combined) |
-| **19** | **Failure debugger + Deployment reviewer + API keys** | **2 copilots + 3 API-key routes + 3 UI components + 1 screen + 16 new tests (134/134)** |
-| 20 | Workspace members + drift analyst + X-PyCaret-Key middleware + audit logs | Enterprise readiness |
-| 21+ | God-class drain → 4.0.0 release | Engine finish |
+| 19 | Failure debugger + Deployment reviewer + API keys | 2 copilots + 3 API-key routes + 3 UI components + 1 screen + 16 new tests (134/134) |
+| **20** | **Workspace members + X-PyCaret-Key auth middleware** | **4 member CRUD routes + API-key auth fallback + 1 UI screen + 18 new tests (148/148)** |
+| 21 | Drift analyst + audit logs | 6th copilot + DriftReport table + scheduled job + audit-log middleware |
+| 22+ | God-class drain → 4.0.0 release | Engine finish |
 
 Roughly **7–8 sessions to MVP 3 completion** (all 8 UI screens wired + LLM assist + full AutoML flow). Then a handful of V2 items. Then god-class drain for MVP 1 release.
 
