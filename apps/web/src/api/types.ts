@@ -166,3 +166,78 @@ export interface ExperimentCreate {
   setup_params?: Record<string, unknown>;
   data_source_id?: string | null;
 }
+
+// ───────────────────────────────────────────────────────────── data sources
+
+export type DataSourceKind = 'csv_upload' | 's3' | 'postgres';
+
+export interface DataSource {
+  id: string;
+  workspace_id: string;
+  name: string;
+  kind: DataSourceKind;
+  description: string | null;
+  config: Record<string, unknown>;
+  created_at: string;
+  created_by: string;
+}
+
+// ───────────────────────────────────────────────────────────────── runs form
+
+export type RunPlan = 'setup' | 'create' | 'compare';
+
+/** Payload for POST /experiments/:id/runs. */
+export interface RunCreate {
+  plan: RunPlan;
+  model_id?: string | null;
+  plan_params?: Record<string, unknown>;
+  sklearn_dataset?: string | null;
+  data_inline?: Record<string, unknown>[] | null;
+  data_source_id?: string | null;
+  target?: string | null;
+}
+
+// ─────────────────────────────────────────────────────────── pipelines + deployments
+
+export interface Pipeline {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  tags: string[];
+  model_id: string | null;
+  origin_run_id: string | null;
+  stored_path: string;
+  sha256: string | null;
+  params: Record<string, unknown>;
+  created_at: string;
+  created_by: string;
+}
+
+export interface Deployment {
+  id: string;
+  workspace_id: string;
+  pipeline_id: string;
+  endpoint_slug: string;
+  status: 'active' | 'paused' | 'archived';
+  auth_mode: 'workspace' | 'api-key' | 'public';
+  inference_count: number;
+  last_inference_at: string | null;
+  p50_latency_ms: number | null;
+  p95_latency_ms: number | null;
+  error_count: number;
+  created_at: string;
+  created_by: string;
+}
+
+// ──────────────────────────────────────────────────────────── WebSocket payload
+
+/** Event as delivered over the WebSocket (matches engine Event.to_dict()). */
+export interface WsEvent {
+  kind: string;
+  message: string;
+  payload: Record<string, unknown>;
+  duration_ms: number | null;
+  timestamp: number;
+  experiment_id: string | null;
+}

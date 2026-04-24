@@ -7,12 +7,17 @@
 import { api } from './client';
 import type {
   BootstrapRequest,
+  DataSource,
   Experiment,
   ExperimentCreate,
   LoginRequest,
   MetricCard,
   ModelCard,
+  Pipeline,
   Project,
+  Run,
+  RunCreate,
+  RunEvent,
   SetupParamSchema,
   SetupStatus,
   TaskType,
@@ -101,4 +106,49 @@ export const describeApi = {
     api.get<ModelCard[]>('/describe/models', { params: { task } }).then((r) => r.data),
   metrics: (task: TaskType) =>
     api.get<MetricCard[]>('/describe/metrics', { params: { task } }).then((r) => r.data),
+};
+
+// ───────────────────────────── runs
+
+export const runsApi = {
+  listForExperiment: (experiment_id: string) =>
+    api.get<Run[]>(`/experiments/${experiment_id}/runs`).then((r) => r.data),
+  submit: (experiment_id: string, body: RunCreate) =>
+    api.post<Run>(`/experiments/${experiment_id}/runs`, body).then((r) => r.data),
+  get: (run_id: string) => api.get<Run>(`/runs/${run_id}`).then((r) => r.data),
+  events: (run_id: string, opts?: { after_id?: string; limit?: number }) =>
+    api
+      .get<RunEvent[]>(`/runs/${run_id}/events`, { params: opts })
+      .then((r) => r.data),
+  cancel: (run_id: string) => api.post<Run>(`/runs/${run_id}/cancel`).then((r) => r.data),
+  wait: (run_id: string, timeout_s = 30) =>
+    api
+      .post<Run>(`/runs/${run_id}/wait`, null, { params: { timeout_s } })
+      .then((r) => r.data),
+  promote: (run_id: string, body: { name: string; description?: string; tags?: string[] }) =>
+    api.post<Pipeline>(`/runs/${run_id}/promote`, body).then((r) => r.data),
+};
+
+// ───────────────────────────── data sources (listing + register; upload is separate)
+
+export const dataSourcesApi = {
+  list: (workspace_id: string) =>
+    api
+      .get<DataSource[]>(`/workspaces/${workspace_id}/data-sources`)
+      .then((r) => r.data),
+  get: (id: string) => api.get<DataSource>(`/data-sources/${id}`).then((r) => r.data),
+  remove: (id: string) => api.delete<void>(`/data-sources/${id}`).then((r) => r.data),
+  /**
+   * CSV upload — multipart/form-data. Returns the new DataSource row.
+   * Axios sets the Content-Type + boundary automatically when we pass FormData.
+   */
+  uploadCsv: (workspace_id: string, file: File, name: string, description?: string) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('name', name);
+    if (description) fd.append('description', description);
+    return api
+      .post<DataSource>(`/workspaces/${workspace_id}/data-sources/upload`, fd)
+      .then((r) => r.data);
+  },
 };

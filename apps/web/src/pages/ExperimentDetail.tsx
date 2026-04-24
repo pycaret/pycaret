@@ -2,22 +2,29 @@
  * /workspaces/:wsId/projects/:projectId/experiments/:experimentId
  *
  * Two-column layout:
- *  - Main: experiment header, config summary, runs list (status + timing + link).
- *  - Sidebar: "New run" form (plan + model + data source).
+ *  - Main: experiment header, config summary, runs list (linked to /runs/:id).
+ *  - Sidebar: "New run" form — plan + (model picker when plan=create) +
+ *    data-source picker (workspace CSVs first, sklearn samples as fallback).
  *
- * The run form is deliberately minimal in session 14 (only sklearn_dataset
- * built-ins). Session 15 expands it with data-source selection + proper
- * live event streaming on the run-detail screen.
+ * The sidebar form's model picker is driven by `describeApi.models(task)` so
+ * it's always task-appropriate. The data-source picker pulls registered
+ * CSV uploads for the workspace; if there are none, it falls back to the
+ * built-in sklearn sample datasets (useful for a fresh install demo).
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { experimentsApi, projectsApi, workspacesApi } from '@/api/endpoints';
-import { errorMessage, api } from '@/api/client';
-import type { Run } from '@/api/types';
-
-type RunPlan = 'setup' | 'create' | 'compare';
+import {
+  dataSourcesApi,
+  describeApi,
+  experimentsApi,
+  projectsApi,
+  runsApi,
+  workspacesApi,
+} from '@/api/endpoints';
+import { errorMessage } from '@/api/client';
+import type { RunCreate, RunPlan } from '@/api/types';
 
 function formatDuration(ms: number | null): string {
   if (!ms) return '—';
@@ -35,6 +42,14 @@ const STATUS_COLOR: Record<string, string> = {
   failed: 'text-danger-500',
   cancelled: 'text-warn-500',
 };
+
+/** Sklearn sample datasets kept alive for a zero-data-source demo. */
+const SKLEARN_SAMPLES = [
+  { value: 'sklearn:iris', label: 'iris (classification)' },
+  { value: 'sklearn:wine', label: 'wine (classification)' },
+  { value: 'sklearn:breast_cancer', label: 'breast_cancer (classification)' },
+  { value: 'sklearn:diabetes', label: 'diabetes (regression)' },
+];
 
 export function ExperimentDetail() {
   const {
@@ -63,8 +78,7 @@ export function ExperimentDetail() {
   // Runs list. Polls while anything is queued/running so the table stays fresh.
   const runs = useQuery({
     queryKey: ['runs', 'for-experiment', experimentId],
-    queryFn: () =>
-      api.get<Run[]>(`/experiments/${experimentId}/runs`).then((r) => r.data),
+    queryFn: () => runsApi.listForExperiment(experimentId),
     enabled: !!experimentId,
     refetchInterval: (q) => {
       const data = q.state.data;
@@ -74,20 +88,51 @@ export function ExperimentDetail() {
     },
   });
 
-  // New run submit form (basic — session 15 replaces with full RunConfig UI).
+  // Workspace data sources (CSV uploads).
+  const dataSources = useQuery({
+    queryKey: ['data-sources', wsId],
+    queryFn: () => dataSourcesApi.list(wsId),
+    enabled: !!wsId,
+  });
+
+  // Models available for this task (drives the create-plan model picker).
+  const models = useQuery({
+    queryKey: ['describe', 'models', experiment.data?.task],
+    queryFn: () => describeApi.models(experiment.data!.task),
+    enabled: !!experiment.data?.task,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // ────────── new-run form state
   const [plan, setPlan] = useState<RunPlan>('compare');
   const [modelId, setModelId] = useState('lr');
-  const [dataset, setDataset] = useState('iris');
+  // The source picker uses a single combo-value string: either a data-source
+  // UUID or `sklearn:<name>` for the built-in samples. This keeps one `<select>`
+  // driving two different backend fields without juggling extra state.
+  const [source, setSource] = useState<string>('sklearn:iris');
+
+  // Default to the first real CSV source when the list arrives.
+  const sources = useMemo(() => {
+    const csvs = (dataSources.data ?? []).filter((d) => d.kind === 'csv_upload');
+    return [
+      ...csvs.map((d) => ({ value: d.id, label: `${d.name} (CSV)` })),
+      ...SKLEARN_SAMPLES,
+    ];
+  }, [dataSources.data]);
 
   const submitRun = useMutation({
-    mutationFn: () =>
-      api
-        .post<Run>(`/experiments/${experimentId}/runs`, {
-          plan,
-          model_id: plan === 'create' ? modelId : null,
-          sklearn_dataset: dataset,
-        })
-        .then((r) => r.data),
+    mutationFn: () => {
+      const body: RunCreate = {
+        plan,
+        model_id: plan === 'create' ? modelId : null,
+      };
+      if (source.startsWith('sklearn:')) {
+        body.sklearn_dataset = source.slice('sklearn:'.length);
+      } else {
+        body.data_source_id = source;
+      }
+      return runsApi.submit(experimentId, body);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['runs', 'for-experiment', experimentId] });
     },
@@ -196,12 +241,19 @@ export function ExperimentDetail() {
                       return (
                         <tr
                           key={r.id}
-                          className="border-t border-ink-800 hover:bg-ink-800/50"
+                          className="border-t border-ink-800 hover:bg-ink-800/50 cursor-pointer"
+                          onClick={() => {
+                            window.location.href = `/runs/${r.id}`;
+                          }}
                         >
                           <td className="px-4 py-2">
-                            <span className={STATUS_COLOR[r.status] ?? ''}>
+                            <Link
+                              to={`/runs/${r.id}`}
+                              className={STATUS_COLOR[r.status] ?? ''}
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               {r.status}
-                            </span>
+                            </Link>
                           </td>
                           <td className="px-4 py-2 font-mono text-xs">{planText}</td>
                           <td className="px-4 py-2 font-mono text-xs">{dsText}</td>
@@ -245,40 +297,45 @@ export function ExperimentDetail() {
             {plan === 'create' && (
               <div>
                 <label className="field" htmlFor="model">
-                  Model id
+                  Model
                 </label>
-                <input
+                <select
                   id="model"
                   className="input"
                   value={modelId}
                   onChange={(e) => setModelId(e.target.value)}
-                  placeholder="lr"
-                />
-                <p className="hint mt-1">
-                  PyCaret model id (e.g. <code className="font-mono">lr</code>,{' '}
-                  <code className="font-mono">rf</code>).
-                </p>
+                  disabled={models.isLoading || !models.data}
+                >
+                  {(models.data ?? []).map((m) => (
+                    <option key={m.id} value={m.id} disabled={!m.is_available}>
+                      {m.id} — {m.name}
+                      {!m.is_available ? ' (install required)' : ''}
+                    </option>
+                  ))}
+                </select>
+                {models.error && <p className="error mt-1">{errorMessage(models.error)}</p>}
               </div>
             )}
 
             <div>
-              <label className="field" htmlFor="dataset">
-                Sample dataset
+              <label className="field" htmlFor="source">
+                Data source
               </label>
               <select
-                id="dataset"
+                id="source"
                 className="input"
-                value={dataset}
-                onChange={(e) => setDataset(e.target.value)}
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
               >
-                <option value="iris">iris (classification)</option>
-                <option value="wine">wine (classification)</option>
-                <option value="breast_cancer">breast_cancer (classification)</option>
-                <option value="diabetes">diabetes (regression)</option>
+                {sources.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
               </select>
               <p className="hint mt-1">
-                Built-in sklearn datasets for quick experiments. Custom CSV uploads
-                come next session.
+                CSV uploads appear at the top of this list. Sklearn samples are
+                handy for demos.
               </p>
             </div>
 
@@ -293,7 +350,10 @@ export function ExperimentDetail() {
             >
               {submitRun.isPending ? 'Submitting…' : 'Submit run'}
             </button>
-            <p className="hint">Runs execute in the background. The list refreshes automatically.</p>
+            <p className="hint">
+              Runs execute in the background. Click any row in the table to watch
+              the event stream live.
+            </p>
           </div>
         </aside>
       </div>
