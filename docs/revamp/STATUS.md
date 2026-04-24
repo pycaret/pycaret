@@ -1,6 +1,68 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 17*
+*Updated: 2026-04-24, end of session 18*
+
+## Session 18 — Experiment designer + Run explainer advisories — ✅
+
+The **three classic copilots** the spec asks for (§ 12.2) are now live. Session 17 shipped the dataset consultant + router infrastructure; session 18 completes the trio:
+
+- **Dataset consultant** (session 17) — "what's this dataset, what task fits, what risks are hiding"
+- **Experiment designer** (session 18) — "given this dataset + this goal, design a full experiment"
+- **Run explainer** (session 18) — "this run finished, explain what happened + what to try next"
+
+All three route through the same `LLMRouter`, persist identical `LLMConsultation` rows, and hand the user an `LLMAdvice` envelope with `suggested_config_json` + `suggested_action` + `reasoning_summary` + `risk_flags`. The safety contract (SPEC § 12.3) holds: LLM proposes, user approves, deterministic engine executes.
+
+### What landed — backend
+
+- **2 new consultation modules** (~180 LOC Python):
+  - **`llm/consultations/experiment_design.py`** — reads a CSV profile + a free-text user goal, serialises as JSON, asks the LLM for a RunConfig-shaped proposal (`task_type`, `target`, `train_size`, `fold`, `primary_metric`, `preprocessing`, `model_shortlist`, `class_imbalance_strategy`). System prompt tells the model to ground every choice in the profile + never invent columns.
+  - **`llm/consultations/run_explanation.py`** — reads a completed Run's snapshot + leaderboard + full event stream, asks the LLM for a plain-prose explanation + prioritised next experiments. Event stream truncated to head-5 + tail-45 with a `__truncated__` marker so the prompt stays bounded.
+- **2 new API routes** in `api/llm.py`:
+  - `POST /api/v1/llm/design-experiment` — body `{workspace_id, data_source_id, goal}`. Same CSV-only / workspace-match guards as `analyze-dataset`. Pydantic `min_length=1` on `goal` fires 422 on empty input.
+  - `POST /api/v1/llm/explain-run` — body `{run_id}`. Walks `run → experiment → project → workspace` for access control. Rejects non-terminal runs with 400 (`"wait for a terminal state before explaining"`). Correlates the consultation to its run via the `run_id`/`experiment_id`/`project_id` FKs on `LLMConsultation`.
+- **6 new integration tests** (`services/api/tests/test_llm_advisories.py`): designer happy path + required-goal guard + non-csv-400; explainer happy path (actually runs a create-LR on iris → waits for succeeded → explains) + non-terminal guard + requires-configured-LLM.
+
+### What landed — frontend
+
+- **`<ExperimentDesignerModal>`** — opens from the New Experiment wizard. CSV picker (CSV-only; S3/Postgres filtered) + free-text goal textarea. On submit, renders the `LLMAdvice` envelope: suggested action, reasoning, risk-flag chips, suggested RunConfig as pretty-printed JSON, provider/model/latency footer.
+- **`<RunExplainerCard>`** — sits inline on `/runs/:id`, only on terminal runs (`succeeded | failed | cancelled`). Button is opt-in (doesn't auto-fire on mount — explanations cost tokens; they shouldn't happen on every run view). After the LLM responds: plain-prose explanation, "ideas to try" list extracted from `suggested_config_json.next_actions`, risk-flag chips, re-explain button for follow-ups.
+- **Wiring**:
+  - `NewExperiment` header gains an **"✨ Ask AI"** button → opens the designer modal.
+  - `RunDetail` drops `<RunExplainerCard runId={runId} />` between the Leaderboard and Promote sections, guarded on `terminal === true`.
+- **API bindings** — `llmApi.designExperiment` + `llmApi.explainRun` added to `endpoints.ts`.
+- **5 new Vitest tests** — 2 for RunExplainerCard (opt-in behaviour, click-to-fire + render), 3 for ExperimentDesignerModal (inert when closed, loads CSV-only options + keeps submit disabled, fires with correct args + renders advice).
+
+### Headline metrics
+
+| | Session 17 end | Session 18 end |
+|---|---|---|
+| LLM consultation types (of 6 planned in spec § 12.2) | 1 (dataset_analysis) | **3** (+ experiment_design, run_summary) |
+| API routes (under `/api/v1/`) | ~47 | **~49** (+2) |
+| Server integration tests | 39 | **45** (+6) |
+| UI shared components | 8 | **10** (+ ExperimentDesignerModal, RunExplainerCard) |
+| UI tests | 36 | **41** (+5) |
+| **Combined tests** | **107** | **118** (32 engine + 45 server + 41 web) |
+| Production bundle (gz) | 95 kB | **96 kB** (+1 kB) |
+
+### The "beautiful product loop" now has AI at every stage
+
+```
+Upload CSV                     → ✨ AI  "analyze this dataset"    (session 17)
+New Experiment                 → ✨ AI  "design an experiment"    (session 18)
+Run completes                  → ✨ AI  "explain this run"        (session 18)
+Promote + deploy + /predict                                        (session 16)
+```
+
+### What's next (session 19)
+
+- **Admin screens** — users list, workspace membership + roles, API keys, audit logs. V2 foundation work, per SPEC § 17.
+- **3 remaining copilot types** from § 12.2: `failure_debugging`, `deployment_risk_review`, `drift_analysis` — land alongside their UI surfaces (RunDetail on failure, DeploymentDetail, monitoring pages).
+
+### What's next (session 20+)
+
+God-class drain (engine Phase 5) → 4.0.0 (non-alpha) release.
+
+---
 
 ## Session 17 — LLM router (Claude + OpenAI) + dataset consultant — ✅
 

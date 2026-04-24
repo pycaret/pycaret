@@ -42,6 +42,70 @@
 
 ---
 
+# Session 18 — 2026-04-24 — Experiment designer + Run explainer advisories
+
+Baseline: session 17 shipped the LLM router + dataset consultant (1 of 6 consultation types in SPEC § 12.2). Infrastructure solid; this session demonstrates the extension pattern + completes the three classic copilots.
+
+Theme: deliver **experiment_design + run_summary** consultation types end-to-end. All three copilots now live under one router, one audit shape, one envelope.
+
+## ADDED — experiment designer
+
+- `ADDED` — **`services/api/pycaret_server/llm/consultations/experiment_design.py`** — reads a CSV column profile + a free-text user goal, asks the LLM for a RunConfig-shaped proposal. System prompt enumerates expected `suggested_config_json` keys (`task_type`, `target`, `train_size`, `fold`, `primary_metric`, `preprocessing.*`, `model_shortlist`, `class_imbalance_strategy`) and tells the model to ground every choice in the profile + never invent columns. Output schema locks top-level keys via `additionalProperties: false`.
+- `ADDED` — **`POST /api/v1/llm/design-experiment`** — body `{workspace_id, data_source_id, goal}`. CSV-only guard; `min_length=1` on `goal` surfaces as 422 on empty input.
+
+## ADDED — run explainer
+
+- `ADDED` — **`services/api/pycaret_server/llm/consultations/run_explanation.py`** — reads a completed Run's snapshot + leaderboard + full event stream, asks the LLM for plain-prose explanation + prioritised next experiments. System prompt pushes metric-grounded reasoning (AUC margin, CV-std vs mean-diff, AUC=1.0 suspicion) over model-class-alone takes. Event stream truncated to head-5 + tail-45 with a `__truncated__` marker.
+- `ADDED` — **`POST /api/v1/llm/explain-run`** — body `{run_id}`. Access control traverses `run → experiment → project → workspace`. Non-terminal runs rejected with 400 ("wait for a terminal state"). Consultation row carries `run_id`/`experiment_id`/`project_id` FKs for audit correlation.
+
+## ADDED — frontend AI surfaces
+
+- `ADDED` — **`apps/web/src/components/ExperimentDesignerModal.tsx`** — modal from the New Experiment wizard. CSV picker (workspace data sources, filtered to `csv_upload`) + free-text goal textarea. Renders standard `LLMAdvice` envelope + pretty-printed suggested RunConfig. No one-click apply in v1 (the UI says so explicitly — waits on MVP-1 exit: canonical `RunConfig` Pydantic model).
+- `ADDED` — **`apps/web/src/components/RunExplainerCard.tsx`** — inline card on `/runs/:id`, only on terminal runs. Opt-in: button click fires the LLM call (explanations cost tokens; they don't auto-run on every page view). "Ideas to try" list rendered from `suggested_config_json.next_actions`. Button flips "Explain" → "Re-explain" after first success.
+
+## CHANGED — screens
+
+- `CHANGED` — **`apps/web/src/pages/NewExperiment.tsx`** — header gains an **"✨ Ask AI"** button alongside the title; opens the designer modal. Modal mounts at page bottom so it doesn't disrupt the single-column wizard flow.
+- `CHANGED` — **`apps/web/src/pages/RunDetail.tsx`** — imports `<RunExplainerCard>`; drops it between Leaderboard and Promote sections, guarded on `terminal === true`.
+
+## ADDED — API bindings
+
+- `ADDED` — **`apps/web/src/api/endpoints.ts`**: `llmApi.designExperiment` + `llmApi.explainRun`.
+
+## TESTS
+
+- `TESTS` — **`services/api/tests/test_llm_advisories.py`** — 6 new integration tests using `FakeLLMProvider`:
+  - `test_design_experiment_happy_path` — upload iris → configure LLM → POST design-experiment → assert `type=experiment_design`, `cfg.task_type=classification`, `cfg.primary_metric=auc`, `lr` in shortlist, user goal reaches prompt verbatim.
+  - `test_design_experiment_requires_goal` — 422 on empty goal (Pydantic).
+  - `test_design_experiment_rejects_non_csv` — 400 on S3 data source.
+  - `test_explain_run_happy_path` — actually runs a create-LR on iris, waits, explains; asserts `type=run_summary`, `run_id` correlated.
+  - `test_explain_run_rejects_in_progress` — race-tolerant guard (accepts 400 or 200 depending on whether the tiny-iris run beat the POST).
+  - `test_explain_run_requires_configured_llm` — 400 "No LLM provider configured" when workspace has no LLM setting.
+- `TESTS` — **`apps/web/src/components/RunExplainerCard.test.tsx`** — 2 new: opt-in behaviour on mount, click-fires + envelope-renders + button-label-flip.
+- `TESTS` — **`apps/web/src/components/ExperimentDesignerModal.test.tsx`** — 3 new: inert when closed, CSV-only options + submit-disabled-until-filled, fires with correct payload + renders advice.
+- `TESTS` — **Combined suite: 118/118 green** (32 engine + 45 server + 41 web); was 107.
+
+## INTERNAL
+
+- `INTERNAL` — **Extension pattern locked in.** Adding a consultation type is now three files (one consultation module, one server test, one UI surface) + one route. The 3 consultation modules are structurally identical (SYSTEM string, strict OUTPUT_SCHEMA dict, `build_prompt(...)` → `(system, user)` tuple, `parse_response` → `LLMAdvice` with defensive fallback). Future copilots (`failure_debugging`, `deployment_risk_review`, `drift_analysis`) drop into this slot.
+- `INTERNAL` — **Race tolerance in explain-run test.** A `POST /runs` followed immediately by `POST /llm/explain-run` hits either the `queued/running` guard (400) or the `succeeded` happy path depending on worker-pool timing on a setup-plan iris run. Test asserts either outcome + waits for the run in teardown. Lesson: unit tests should specify invariants, not timing.
+- `INTERNAL` — **Button labels as state indicators.** `<RunExplainerCard>` flips "Explain" → "Re-explain" after first success. Small UX signal: the advice below may be stale if you've run something since. Same pattern as `test-connection`'s green-tick after verification.
+- `INTERNAL` — **Defensive `_truncate_events(..., 50)`.** Head-5 + tail-45 + `__truncated__` marker when there are more than 50 events. Keeps both "what started" and "what crashed" visible to the LLM for long experiments without blowing the context window.
+
+## Session 18 delta summary
+
+| Metric | Session 17 end | Session 18 end |
+|---|---:|---:|
+| Consultation types | 1 | **3** |
+| API routes | ~47 | **~49** |
+| Server integration tests | 39 | **45** |
+| UI shared components | 8 | **10** |
+| UI tests | 36 | **41** |
+| **Combined tests** | **107** | **118** |
+| Production bundle (gz) | 95 kB | **96 kB** |
+
+---
+
 # Session 17 — 2026-04-24 — LLM router (Claude + OpenAI) + dataset consultant
 
 Baseline: session 16 closed the Control Plane's deterministic loop (CSV → run → promote → deploy → predict). The spec's AI-native half (§ 12) was still a stub.

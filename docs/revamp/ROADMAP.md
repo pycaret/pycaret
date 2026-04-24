@@ -176,9 +176,9 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 14 | Project detail + Experiment wizard (dynamic form) | Experiment creation UI + runs sidebar + 13 new tests |
 | 15 | `/runs/:id` with live WebSocket + leaderboard + data-source + model pickers | Run view + promote button + 8 new tests |
 | 16 | Pipelines + Deployments + CSV upload UI — full serving loop | 4 screens + 2 components + 6 tests + E2E verified |
-| **17** | **LLM router (Claude + OpenAI) + dataset consultant + settings screen** | **2 DB tables + 6 API routes + 1 UI screen + 1 modal + 12 new tests + live E2E** |
-| 18 | Experiment designer + run explainer advisories | AI assist continues |
-| 19 | Admin screens + API keys + audit logs | V2 foundation |
+| 17 | LLM router (Claude + OpenAI) + dataset consultant + settings screen | 2 DB tables + 6 API routes + 1 UI screen + 1 modal + 12 new tests + live E2E |
+| **18** | **Experiment designer + Run explainer advisories** | **2 consultations + 2 routes + 2 UI components + 11 new tests (118/118 combined)** |
+| 19 | Admin screens + API keys + audit logs + remaining 3 copilots | V2 foundation |
 | 20+ | God-class drain → 4.0.0 release | Engine finish |
 
 Roughly **7–8 sessions to MVP 3 completion** (all 8 UI screens wired + LLM assist + full AutoML flow). Then a handful of V2 items. Then god-class drain for MVP 1 release.
