@@ -217,6 +217,16 @@ export const llmApi = {
     api
       .post<LLMConsultationRead>('/llm/analyze-dataset', body)
       .then((r) => r.data),
+  designExperiment: (body: {
+    workspace_id: string;
+    data_source_id: string;
+    goal: string;
+  }) =>
+    api
+      .post<LLMConsultationRead>('/llm/design-experiment', body)
+      .then((r) => r.data),
+  explainRun: (body: { run_id: string }) =>
+    api.post<LLMConsultationRead>('/llm/explain-run', body).then((r) => r.data),
   listConsultations: (workspace_id: string, limit = 50) =>
     api
       .get<LLMConsultationRead[]>(

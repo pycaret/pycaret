@@ -18,6 +18,7 @@ import { runsApi } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
 import { EventStream } from '@/components/EventStream';
 import { Leaderboard } from '@/components/Leaderboard';
+import { RunExplainerCard } from '@/components/RunExplainerCard';
 import type { Run } from '@/api/types';
 
 const STATUS_TONE: Record<string, string> = {
@@ -136,6 +137,9 @@ export function RunDetail() {
         <h2 className="text-sm font-medium text-ink-100 mb-3">Leaderboard</h2>
         <Leaderboard rows={asLeaderboardRows(r?.leaderboard ?? null)} />
       </section>
+
+      {/* ────────── AI explainer (terminal runs only) */}
+      {terminal && runId && <RunExplainerCard runId={runId} />}
 
       {/* ────────── Promote */}
       {r?.status === 'succeeded' && (

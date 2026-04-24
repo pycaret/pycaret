@@ -110,6 +110,20 @@ class AnalyzeDatasetRequest(BaseModel):
     )
 
 
+class DesignExperimentRequest(BaseModel):
+    data_source_id: str
+    workspace_id: str
+    goal: str = Field(
+        min_length=1,
+        max_length=2000,
+        description="Plain-English goal — 'predict churn', 'baseline regression on prices'.",
+    )
+
+
+class ExplainRunRequest(BaseModel):
+    run_id: str
+
+
 class TestConnectionResponse(BaseModel):
     ok: bool
     provider: str

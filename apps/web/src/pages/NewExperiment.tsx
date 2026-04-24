@@ -29,6 +29,7 @@ import {
   stripDefaults,
   type ParamValues,
 } from '@/components/DynamicForm.helpers';
+import { ExperimentDesignerModal } from '@/components/ExperimentDesignerModal';
 
 const TASKS: { value: TaskType; label: string }[] = [
   { value: 'classification', label: 'Classification' },
@@ -63,6 +64,7 @@ export function NewExperiment() {
   const [task, setTask] = useState<TaskType>('classification');
   const [target, setTarget] = useState('');
   const [params, setParams] = useState<ParamValues>({});
+  const [askAI, setAskAI] = useState(false);
 
   // Engine-driven schema. Reloads whenever the task changes.
   const schema = useQuery({
@@ -126,7 +128,17 @@ export function NewExperiment() {
           <span className="mx-1">/</span>
           <span>New experiment</span>
         </nav>
-        <h1 className="text-xl font-semibold">New experiment</h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-xl font-semibold">New experiment</h1>
+          <button
+            type="button"
+            className="btn-secondary shrink-0"
+            onClick={() => setAskAI(true)}
+            title="Ask AI to propose a config"
+          >
+            ✨ Ask AI
+          </button>
+        </div>
         <p className="text-sm text-ink-200/70 mt-1">
           Configure the task + preprocessing. You'll pick a data source + run plan on
           the next screen.
@@ -238,6 +250,12 @@ export function NewExperiment() {
           </button>
         </div>
       </form>
+
+      <ExperimentDesignerModal
+        workspaceId={wsId}
+        open={askAI}
+        onClose={() => setAskAI(false)}
+      />
     </div>
   );
 }
