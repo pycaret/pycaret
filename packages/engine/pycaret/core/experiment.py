@@ -350,23 +350,86 @@ class Experiment(BaseEstimator):
     def set_config(self, *args: Any, **kwargs: Any) -> Any:
         return self._legacy.set_config(*args, **kwargs)
 
-    def save_model(self, model: Pipeline, path: Any, *args: Any, **kwargs: Any) -> Any:
+    # -------------------------------------------------------- persistence verbs
+    #
+    # Session-22 drain: these four verbs no longer delegate to `self._legacy`.
+    # They are now thin wrappers around the stateless helpers in
+    # `pycaret.persistence` (a fitted sklearn Pipeline is just a picklable
+    # object — there is nothing PyCaret-specific to persist). The legacy
+    # persistence path ran a lot of code (cloud-credential injection, MLflow
+    # artifact logging, 3.x-era metadata headers) that is either out of scope
+    # for 4.0 or handled by the Control Plane. Dropping it removes ~200 LoC of
+    # dependency surface.
+    #
+    # Contract:
+    #   save_model(model, path)        → Path to the written `.pkl`.
+    #   load_model(path)               → the loaded object (typically Pipeline).
+    #   save_experiment(path)          → Path to the written `.pkl` of *self*.
+    #   Experiment.load_experiment(path) → restored Experiment instance.
+    #
+    # ``save_model`` does NOT require the experiment to be fitted — a caller
+    # may have loaded a pipeline from elsewhere and want a normalised save.
+    # ``save_experiment`` DOES require fit — an unfitted Experiment is just
+    # its constructor kwargs, which you already have.
+
+    def save_model(self, model: Any, path: Any, *, verbose: bool = False) -> Any:
+        """Persist a fitted model / pipeline to ``path`` (joblib-dumped).
+
+        Returns the absolute `Path` of the file written.
+
+        ``save_model`` is legal before ``fit`` — the verb is about the passed
+        ``model``, not about experiment state. When the logger has not yet
+        been installed (``fit`` is where that happens), the MODEL_SAVED event
+        is silently dropped rather than raising.
+        """
+        from pycaret.persistence import save_model as _save
+
+        written = _save(model, path, verbose=verbose)
+        if self.logger is not None:
+            self.logger.log(EventKind.MODEL_SAVED, payload={"path": str(written)})
+        return written
+
+    def load_model(self, path: Any, *, verbose: bool = False) -> Any:
+        """Load a model previously written by ``save_model``."""
+        from pycaret.persistence import load_model as _load
+
+        return _load(path, verbose=verbose)
+
+    def save_experiment(self, path: Any, *, verbose: bool = False) -> Any:
+        """Persist the full Experiment (including fit state) to ``path``.
+
+        The Experiment must be fitted. To re-hydrate, use
+        ``Experiment.load_experiment(path)``.
+        """
         self._require_fitted()
-        out = self._legacy.save_model(model, path, *args, **kwargs)
-        self.logger.log(EventKind.MODEL_SAVED, payload={"path": str(path)})
-        return out
+        from pycaret.persistence import save_model as _save
 
-    def load_model(self, *args: Any, **kwargs: Any) -> Any:
-        return self._legacy.load_model(*args, **kwargs)
-
-    def save_experiment(self, *args: Any, **kwargs: Any) -> Any:
-        return self._legacy.save_experiment(*args, **kwargs)
+        written = _save(self, path, verbose=verbose)
+        # After `fit()`, `self.logger` is guaranteed to be installed
+        # (NullLogger at minimum). Still null-check for belt-and-braces.
+        if self.logger is not None:
+            self.logger.log(
+                EventKind.MODEL_SAVED,
+                payload={"path": str(written), "kind": "experiment"},
+            )
+        return written
 
     @staticmethod
-    def load_experiment(*args: Any, **kwargs: Any) -> Any:
-        from pycaret.internal.pycaret_experiment.supervised_experiment import _SupervisedExperiment
+    def load_experiment(path: Any, *, verbose: bool = False) -> Experiment:
+        """Re-hydrate an Experiment previously saved by ``save_experiment``.
 
-        return _SupervisedExperiment.load_experiment(*args, **kwargs)
+        Returns the loaded Experiment. Raises ``TypeError`` if the file on
+        disk was not a PyCaret Experiment.
+        """
+        from pycaret.persistence import load_model as _load
+
+        restored = _load(path, verbose=verbose)
+        if not isinstance(restored, Experiment):
+            raise TypeError(
+                f"File at {path!r} contained a {type(restored).__name__!r}, "
+                "not a PyCaret Experiment. Use `load_model` for plain models."
+            )
+        return restored
 
     # ---------------------------------------------------------- introspection
 
