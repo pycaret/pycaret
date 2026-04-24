@@ -115,6 +115,74 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 21 — 2026-04-24 — Drift analyst + audit logs
+
+Baseline: session 20 shipped workspace-member CRUD + the `X-PyCaret-Key` fallback for programmatic auth. This session closes out the MVP-2 punch list: the 6th / final LLM copilot (drift analyst) + the cross-cutting `AuditLog` table + middleware + viewer screen (SPEC § 17.4). After this, there is nothing left on the platform roadmap before the engine god-class drain — session 22+ pivots to engine work → `4.0.0` non-alpha release on PyPI.
+
+Theme: deliver the **drift_analysis** consultation type end-to-end + make every mutating API call auditable.
+
+## ADDED — drift reports
+
+- `ADDED` — **`services/api/pycaret_server/db/models.py` — `DriftReport`** (SPEC § 4.12). Columns: `deployment_id` FK (cascade), `baseline_artifact_id` FK (set-null), `window_start` / `window_end`, `drift_score` (0..1), bucketed `drift_status` (`none | mild | moderate | severe`), `feature_drift_json` (shape `{feature: {score, kind}}` where kind ∈ psi/ks/chi2/missing_rate), `prediction_drift_json` (JS divergence), `sample_size`, `created_by` FK.
+- `ADDED` — **`services/api/pycaret_server/api/drift.py`** — 3 routes under `/api/v1/`. `POST /deployments/{id}/drift-reports` creates a snapshot + server-buckets `drift_status` from `drift_score` (thresholds 0.10 / 0.25 / 0.40, aligned with the PSI convention) + guards `window_end >= window_start` (400). `GET /deployments/{id}/drift-reports` lists reports for a deployment (newest first, capped 500). `GET /drift-reports/{id}` returns a single row with full feature/prediction JSON.
+- `ADDED` — **`services/api/pycaret_server/llm/consultations/drift_analysis.py`** — 6th LLM copilot. Prompt tells the model to look for concentration (one dominant feature → data-source change) vs diffuse drift (genuine concept shift), factor in sample size (skepticism when < 200), and classify prediction-drift-without-feature-drift / missing-rate-spike as specific risk flags. Verdict is prefixed with one of `RETRAIN NOW` / `INVESTIGATE` / `MONITOR` / `NO ACTION` so the UI can tone-code via `.startsWith()`. Output schema locks top-level keys with `additionalProperties: false`.
+- `ADDED` — **`POST /api/v1/llm/analyze-drift`** — body `{drift_report_id}`. Pulls the DriftReport + Deployment + owning Pipeline snapshot, consults the workspace's active LLM provider via the shared `ConsultationContext` path (free-rides on provider routing + audit trail). 404 on unknown report or missing deployment.
+- `ADDED` — **Migration `0cd9d5ea2e17`** — adds `drift_reports` + `audit_logs` in one revision. Auto-generated then reviewed; FK cascades match the model.
+
+## ADDED — audit logs
+
+- `ADDED` — **`services/api/pycaret_server/db/models.py` — `AuditLog`** (SPEC § 17.4). Append-only: `id`, `workspace_id` (nullable for global events), `user_id` (nullable for unauth calls), `action` (dotted `{namespace}.{verb}`), `method`, `path`, `target_type`, `target_id`, `status_code`, `payload` (scrubbed JSON), `ip_address`, `user_agent`, `created_at`. Explicitly *no* `updated_at` — rows are immutable by design.
+- `ADDED` — **`services/api/pycaret_server/audit.py` — `AuditLogMiddleware`** — FastAPI `BaseHTTPMiddleware` that records one row per `POST/PATCH/PUT/DELETE` on `/api/v1/*`. Captures the request body via `request.body()` + re-injects it into `request._body` so route handlers can still read it. Scrubs sensitive fields (`password`, `password_hash`, `api_key`, `token`, `refresh_token`, `access_token`, `api_key_encrypted`, `plaintext_token` — case-insensitive). Derives `{entity}.{verb}` action by walking path segments + classifying UUIDs vs nouns vs known sub-verbs. Extracts `workspace_id` from `/workspaces/{id}/…` URLs. Skips `/auth/refresh`, `/healthz`, `/openapi.json`, `/docs`, `/redoc`. Best-effort — never blocks or fails the request; DB errors are logged + swallowed.
+- `ADDED` — **`services/api/pycaret_server/api/audit.py`** — 2 viewer routes. `GET /admin/audit-logs` is superuser-gated (via the `require_admin` dependency). `GET /workspaces/{id}/audit-logs` is workspace-admin-gated. Both support pagination (limit/offset) + filters on action, user_id, target_type, target_id, since, until. Reads are not themselves audited (that would be infinite recursion once the admin opens the viewer).
+- `ADDED` — **`services/api/tests/test_session21.py`** — 12 integration tests. Drift CRUD (4): buckets drift_status correctly, bucket-boundary parameterisation (0.05 → none, 0.15 → mild, 0.6 → severe), list + get round-trip, window_end < window_start → 400. Drift analyst (2): happy path runs the LLM + returns the canned INVESTIGATE verdict with risk flags, 404 on unknown report. Audit logs (6): mutating request is recorded + user-attributed, bootstrap password is REDACTED in the stored payload, workspace-scoped viewer returns 403 for a non-member, admin route returns 403 for a non-superuser, action filter narrows results, workspace-scoped viewer returns only that workspace's rows.
+
+## CHANGED
+
+- `CHANGED` — **`services/api/pycaret_server/auth/deps.py`** — `get_current_user` now stashes the resolved `User` onto `request.state.audit_user` so the audit-log middleware can attribute rows without re-resolving the header. Best-effort — routes that don't depend on `CurrentUser` simply don't have `audit_user` set + the middleware tolerates that (row persists with `user_id=NULL`, still useful for intrusion forensics on failed-auth attempts).
+- `CHANGED` — **`services/api/pycaret_server/api/llm.py`** — imports `drift_analysis` + `AnalyzeDriftRequest` + `DriftReport` + `Deployment` + registers the `/llm/analyze-drift` route.
+- `CHANGED` — **`services/api/pycaret_server/app.py`** — registers `AuditLogMiddleware` + mounts `drift.router` and `audit.router` under `/api/v1`.
+- `CHANGED` — **`services/api/pycaret_server/db/__init__.py`** — re-exports `DriftReport` + `AuditLog`.
+- `CHANGED` — **`services/api/pycaret_server/llm/schemas.py`** — adds `AnalyzeDriftRequest` (pydantic body: `{drift_report_id}`).
+
+## ADDED — frontend
+
+- `ADDED` — **`apps/web/src/components/DriftAnalysisModal.tsx`** — modal rendering the canonical `LLMAdvice` envelope for a specific drift report. Auto-fires the consultation on open (same pattern as `<DeploymentReviewModal>`). Verdict tone-coded via the 4-prefix classifier (`RETRAIN NOW` → danger-500, `INVESTIGATE` → warn-500, `MONITOR` → ink-200, `NO ACTION` → success-500). Shows the feature-drift snapshot sorted by score desc so the dominant drivers sit at the top.
+- `ADDED` — **`apps/web/src/components/DriftReportsCard.tsx`** — inline card on `/deployments/:id`. Lists existing reports with window / score / status / sample columns + a "✨ Analyze" button per row that opens the modal. "Record snapshot" button toggles an inline form: `drift_score` input + optional `sample_size` + pasted `feature_drift_json` / `prediction_drift_json` textareas with sensible placeholders. Client-side JSON parsing + 0–1 range guard on score, with inline error rendering before the network round-trip.
+- `ADDED` — **`apps/web/src/pages/AuditLogViewer.tsx`** at `/admin/audit` — superuser-gated screen. Reads `auditApi.listAdmin` with debounced filters (action + target_type + limit). Table with When / Action / Method / Path / Status / User columns; clicking a row expands an inline panel showing the scrubbed payload + workspace_id / target_type / target_id / ip_address / user_agent. Status codes tone-coded (5xx → danger-500, 4xx → warn-500, 2xx/3xx → ink-200/80). Non-superusers see a forbidden message + pointer to the workspace-scoped view.
+- `ADDED` — **`apps/web/src/api/types.ts`** — `DriftStatus`, `DriftKind`, `FeatureDriftEntry`, `PredictionDrift`, `DriftReportRead`, `DriftReportCreate`, `AuditLogRead`, `AuditLogFilters`.
+- `ADDED` — **`apps/web/src/api/endpoints.ts`** — `driftApi` (list/create/get), `auditApi` (listAdmin/listForWorkspace), `llmApi.analyzeDrift`.
+- `ADDED` — **10 new Vitest tests** — 3 for `<DriftAnalysisModal>` (inert-when-closed, danger-toned `RETRAIN NOW` + feature rows sorted desc, success-toned `NO ACTION`), 4 for `<DriftReportsCard>` (empty state, list + open modal + auto-fire, create form submit with parsed JSON, out-of-range score triggers a form error without hitting the API), 3 for `<AuditLogViewer>` (row-expand reveals scrubbed payload, non-superuser sees forbidden + API call is skipped, filter form triggers a new fetch with the right params).
+
+## CHANGED — frontend
+
+- `CHANGED` — **`apps/web/src/App.tsx`** — registers `/admin/audit`.
+- `CHANGED` — **`apps/web/src/pages/DeploymentDetail.tsx`** — renders `<DriftReportsCard>` below the PredictTester in the left column.
+- `CHANGED` — **`apps/web/src/components/Layout.tsx`** — top nav gains an "Audit log" link that renders only when `user.is_superuser === true`.
+
+## INTERNAL
+
+- `INTERNAL` — **Drift bucket thresholds.** Chose 0.10 / 0.25 / 0.40 to align with the common PSI convention (below 0.10 = no drift, 0.10–0.25 = mild investigation, above 0.25 = significant). The verdict strings the LLM returns don't have to match the bucket label — the analyst decides severity in context of sample size + feature concentration.
+- `INTERNAL` — **No scheduled drift-detection job in v1.** Real drift detection needs a prediction log + a scheduled Job queue runner, neither of which is built yet. For v1 the `POST /deployments/{id}/drift-reports` route accepts a pre-computed snapshot — CI jobs / notebooks / external monitors can POST reports with an `X-PyCaret-Key` header, and the UI is a read/analyse surface. When the Job queue lands (post-4.0.0), we add `drift_detection_job` that does the compute itself.
+- `INTERNAL` — **Why the middleware resolves `session_factory` lazily.** First test run hit an empty `audit_logs` table because the middleware captured `session_factory` at import time, before the test fixture rebound `pycaret_server.db.session.session_factory` to a test-scoped factory. Fixed by importing the module (`from pycaret_server.db import session as _session_mod`) and reading `_session_mod.session_factory` at call-time. The pattern applies to any module that caches a session factory across test fixtures.
+- `INTERNAL` — **Action derivation.** Rather than statically mapping routes to action strings (would need to be maintained in lockstep with new routes), the middleware folds URL segments into `{namespace}.{verb}` at runtime. UUIDs are skipped; "verb" segments are recognised from a known allowlist (`promote`, `cancel`, `predict`, `analyze-drift`, `invite`, …). A dotted namespace makes filter-by-action ergonomic (`workspaces.create` vs `runs.cancel`) without needing prior registration.
+- `INTERNAL` — **Scrubbing rule is field-name-based, not value-based.** We redact by key name (`password`, `api_key`, …), not by pattern-matching the value (which would miss passwords that happen to look like normal strings). Tradeoff: if a field is named something innocuous but contains a secret, it'll leak. Acceptable for v1 — SPEC § 17.3 promises KMS-wrapped secrets anyway; the audit log is a transparency surface, not a secret store.
+- `INTERNAL` — **Verdict-string classifier vs enum.** Same design as session 19's deployment reviewer: the LLM emits a string prefixed with one of 4 literal verdicts, and the UI classifies with `.startsWith()`. Beats an enum because the LLM can tack on reasoning (`"RETRAIN NOW: amount feature missing-rate 0.42"`) that shows up verbatim in the verdict line. UI tests assert tone-coded class names on the DOM to lock the contract.
+
+## Session 21 delta summary
+
+| Metric | Session 20 end | Session 21 end |
+|---|---:|---:|
+| LLM copilots (of 6 in spec) | 5 | **6** (all) |
+| API routes | ~58 | **~63** |
+| Server integration tests | 68 | **80** |
+| UI components | 12 | **14** |
+| UI screens | 15 | **16** |
+| UI tests | 52 | **62** |
+| **Combined tests** | **148** | **174** |
+| Production bundle (gz) | 99 kB | **101 kB** |
+
+---
+
 # Session 20 — 2026-04-24 — Workspace members + programmatic API-key auth
 
 Baseline: session 19 shipped 5 of 6 LLM copilots + per-user API-key CRUD (mint / list / revoke) but the `X-PyCaret-Key` header was not yet accepted by any route. Session 20 closes that loop and adds multi-user collaboration — the platform is now usable by more than one person per workspace.

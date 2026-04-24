@@ -1,6 +1,75 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 20*
+*Updated: 2026-04-24, end of session 21*
+
+## Session 21 — Drift analyst + audit logs — ✅
+
+The 6th and final LLM copilot lands (drift analyst) alongside the last enterprise-readiness item on the MVP-2 punch list (audit logs). After this session there's nothing left on the platform roadmap before the god-class drain — session 22 pivots to engine work → `4.0.0` non-alpha.
+
+### What landed — backend
+
+- **`DriftReport` model** (SPEC § 4.12) — new `drift_reports` table: window_start / window_end, overall `drift_score` (0..1), bucketed `drift_status` (`none | mild | moderate | severe`), per-feature `feature_drift_json` (`{feature: {score, kind}}` where kind ∈ PSI / KS / chi² / missing_rate), `prediction_drift_json` (JS divergence), optional `sample_size`, FK to owning `Deployment`.
+- **3 drift CRUD routes** under `/api/v1/`:
+  - `POST /deployments/{id}/drift-reports` — create a snapshot. Server buckets `drift_status` from `drift_score` (thresholds 0.10 / 0.25 / 0.40, aligned with PSI convention). Guards `window_end >= window_start`.
+  - `GET /deployments/{id}/drift-reports` — list (newest first).
+  - `GET /drift-reports/{id}` — single report.
+- **`drift_analysis` consultation** (6th LLM copilot) — reads a `DriftReport` + its Deployment + the owning Pipeline, asks the LLM for a verdict prefixed with `RETRAIN NOW` / `INVESTIGATE` / `MONITOR` / `NO ACTION`. Same verdict-string classifier pattern as the deployment reviewer — UI tone-codes with `.startsWith()`.
+- **`POST /llm/analyze-drift`** — body `{drift_report_id}`. Uses the shared `ConsultationContext` + `get_router().consult()` path, so it's free-riding on the existing audit trail + provider routing.
+- **`AuditLog` model** (SPEC § 17.4) — new `audit_logs` table, append-only. Columns: workspace_id (nullable for global events), user_id (nullable for unauthenticated/failed-auth calls), action (dotted `{namespace}.{verb}`), method, path, target_type, target_id, status_code, payload (JSON, scrubbed), ip_address, user_agent, created_at. Intentionally no `updated_at` — rows are immutable.
+- **`AuditLogMiddleware`** — FastAPI middleware that records one row per `POST/PATCH/PUT/DELETE` on `/api/v1/*`. Captures + re-injects the request body (so route handlers still read it), scrubs sensitive fields (`password`, `api_key`, `token`, `refresh_token`, `access_token`, `api_key_encrypted`, `plaintext_token`, `password_hash`), derives the `{entity}.{verb}` action from the path + method, extracts `workspace_id` from `/workspaces/{id}/…` URLs. Best-effort — never blocks or fails the request. Reads + `/auth/refresh` + heartbeats are skipped.
+- **`get_current_user` stashes the resolved user** onto `request.state.audit_user` so the middleware can attribute rows without re-resolving the header.
+- **2 audit viewer routes**:
+  - `GET /admin/audit-logs` — installation-wide, superuser only (via `require_admin` dependency). Filters on action, user_id, workspace_id, target_type, target_id, since, until, plus limit/offset.
+  - `GET /workspaces/{id}/audit-logs` — workspace-scoped, workspace admin or superuser. Same filter surface minus workspace_id.
+- **1 new Alembic migration** (`0cd9d5ea2e17`) adds both tables in one revision.
+- **12 new integration tests** in `services/api/tests/test_session21.py` covering:
+  - Drift CRUD: create-buckets-status, bucket-boundaries (none/mild/severe), list + get, window-end-before-start rejection.
+  - Drift analyst: happy-path runs the LLM, 404 on unknown report.
+  - Audit logs: mutating requests are recorded + attributed, password is scrubbed on bootstrap, workspace-scoped viewer requires admin, admin route requires superuser, action filter works, workspace-scoped viewer filters by workspace.
+
+### What landed — frontend
+
+- **`<DriftAnalysisModal>`** — opens on "✨ Analyze" click on any row in the drift-reports list. Auto-fires the consultation on open (same pattern as `<DeploymentReviewModal>` + `<AnalyzeDatasetModal>`). Tone-codes the 4 verdict prefixes (`RETRAIN NOW` → danger, `INVESTIGATE` → warn, `MONITOR` → ink-200, `NO ACTION` → success). Shows the feature-drift snapshot sorted by score desc (dominant features at the top) + the LLM reasoning + risk flags.
+- **`<DriftReportsCard>`** — inline card on `/deployments/:id` below the PredictTester. Lists existing reports with window / score / status / sample columns + a "✨ Analyze" button per row. "Record snapshot" button opens an inline form that accepts `drift_score` + optional `sample_size` + pasted `feature_drift_json` / `prediction_drift_json`. Client-side JSON parsing + 0–1 range guard on score. Empty-state copy nudges toward the POST-from-CI pattern.
+- **`<AuditLogViewer>`** at `/admin/audit` — superuser-gated screen. Table with When / Action / Method / Path / Status / User columns; click a row to expand the scrubbed payload + workspace_id / target / IP / user-agent inline. Filter bar (action + target_type + limit). Status codes tone-coded (5xx red, 4xx amber).
+- **Wiring**:
+  - `DeploymentDetail` gains the `<DriftReportsCard>` at the bottom of the left column.
+  - `App.tsx` registers `/admin/audit`.
+  - `Layout` top nav gains an "Audit log" link that only renders for superusers.
+- **API bindings** — new `driftApi` (list/create/get) + `auditApi` (listAdmin/listForWorkspace).
+- **10 new Vitest tests** — 3 for DriftAnalysisModal (inert-when-closed, danger tone on `RETRAIN NOW` + feature rows sorted, success tone on `NO ACTION`), 4 for DriftReportsCard (empty state, list + open modal, create form submit, client-side score range validation), 3 for AuditLogViewer (row expand shows scrubbed payload, non-superuser sees forbidden message, filter bar wires through).
+
+### Headline metrics
+
+| | Session 20 end | Session 21 end |
+|---|---|---|
+| LLM copilots shipped (of 6 in spec) | 5 | **6** (all six) |
+| API routes (under `/api/v1/`) | ~58 | **~63** (+5) |
+| Server integration tests | 68 | **80** (+12) |
+| UI components | 12 | **14** (+ DriftAnalysisModal, DriftReportsCard) |
+| UI screens | 15 | **16** (+ AuditLogViewer) |
+| UI tests | 52 | **62** (+10) |
+| **Combined tests** | **148** | **174** (32 engine + 80 server + 62 web) |
+| Production bundle (gz) | 99 kB | **101 kB** (+2 kB) |
+
+### AI at every stage of the product loop
+
+```
+Upload CSV            → ✨ AI          (dataset consultant — session 17)
+New Experiment        → ✨ Ask AI      (experiment designer — session 18)
+Run succeeds          → ✨ Explain     (run explainer — session 18)
+Run fails             → ✨ Diagnose    (failure debugger — session 19)
+Deploy a Pipeline     → ✨ Review      (deployment reviewer — session 19)
+Drift detected        → ✨ Analyze     (drift analyst — session 21)  ← NEW
+```
+
+All 6 copilots in SPEC § 12.2 are now live.
+
+### What's next (session 22+)
+
+**God-class drain (engine Phase 5)** — the 10 OOP verbs that still delegate to `self._legacy` migrate to native sklearn one at a time. ~10 sessions worth of work. Order: `save_model → predict_model → create_model → tune_model → ensemble_model → blend_models → stack_models → calibrate_model → compare_models → finalize_model`. Once drained, cut `4.0.0` non-alpha to PyPI.
+
+---
 
 ## Session 20 — Workspace members + programmatic API-key auth — ✅
 
