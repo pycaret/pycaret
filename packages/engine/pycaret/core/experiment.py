@@ -398,14 +398,14 @@ class Experiment(BaseEstimator):
             payload={"estimator": model_id},
         )
 
-        # ---- pull transformed training data from the experiment's state
-        X_train = self._legacy.X_train_transformed
-        y_train = self._legacy.y_train_transformed
+        # ---- pull transformed training data from the fit-time snapshot
+        X_train = self._fit_state["X_train_transformed"]
+        y_train = self._fit_state["y_train_transformed"]
 
         # ---- CV (optional) + collect the metrics DataFrame
         metrics_df = None
         if cross_validation:
-            cv = fold if fold is not None else self._legacy.fold_generator
+            cv = fold if fold is not None else self._fit_state["fold_generator"]
             metrics_df = self._cross_validate_supervised(
                 model=model, X=X_train, y=y_train, cv=cv, round_=round
             )
@@ -435,7 +435,7 @@ class Experiment(BaseEstimator):
     ) -> tuple[Any, str]:
         """Return (instantiated model, model_id) from a string or object."""
         if isinstance(estimator, str):
-            registry = getattr(self._legacy, "_all_models_internal", None)
+            registry = self._fit_state.get("model_registry", {})
             if not registry or estimator not in registry:
                 raise ConfigurationError(
                     f"Unknown model id {estimator!r}. Call "
@@ -942,12 +942,24 @@ class Experiment(BaseEstimator):
         We hold *references*, not copies — mutating ``self.X_train`` still
         propagates to the underlying frame, matching legacy semantics.
 
-        Some legacy attributes are not present for every task (clustering /
-        anomaly don't have ``y_test`` etc.); we ``getattr`` defensively so
-        a missing attribute leaves the slot ``None`` rather than failing.
+        Snapshot covers two tiers:
+
+        1. **User-facing accessors** (drained in session 29): ``X``, ``X_train``,
+           ``X_test``, ``y``, ``y_train``, ``y_test``, ``preprocess_pipeline``.
+        2. **Internal training state** (drained in session 30): the post-
+           preprocessing transformed splits, the CV fold generator, and the
+           model-container registry. The drained verbs (``create_model``,
+           ``tune_model``, ``compare_models``, ensemble / blend / stack /
+           calibrate / finalize / unsupervised create_model) read these from
+           ``self._fit_state`` instead of dispatching to ``self._legacy``.
+
+        Some attributes are task-specific (clustering / anomaly don't have
+        train/test splits); we ``getattr`` defensively so missing slots
+        become ``None`` rather than raising.
         """
         legacy = self._legacy
         self._fit_state: dict[str, Any] = {
+            # ---- user-facing (session 29)
             "X": getattr(legacy, "X", None),
             "X_train": getattr(legacy, "X_train", None),
             "X_test": getattr(legacy, "X_test", None),
@@ -955,6 +967,13 @@ class Experiment(BaseEstimator):
             "y_train": getattr(legacy, "y_train", None),
             "y_test": getattr(legacy, "y_test", None),
             "preprocess_pipeline": getattr(legacy, "pipeline", None),
+            # ---- internal training state (session 30)
+            "X_transformed": getattr(legacy, "X_transformed", None),
+            "X_train_transformed": getattr(legacy, "X_train_transformed", None),
+            "y_transformed": getattr(legacy, "y_transformed", None),
+            "y_train_transformed": getattr(legacy, "y_train_transformed", None),
+            "fold_generator": getattr(legacy, "fold_generator", None),
+            "model_registry": dict(getattr(legacy, "_all_models_internal", {})),
         }
 
     @property

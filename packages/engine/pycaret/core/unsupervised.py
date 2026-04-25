@@ -6,7 +6,7 @@ score using a fitted model.
 
 Session-28 drain: `create_model` and `assign_model` no longer delegate to
 `self._legacy.<verb>`. They run sklearn / pyod estimators directly on
-`self._legacy.X_transformed` and return real sklearn Pipelines.
+`self._fit_state["X_transformed"]` and return real sklearn Pipelines.
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ class UnsupervisedExperiment(Experiment):
         Session-28 drain: this verb no longer delegates to
         ``self._legacy.create_model``. It resolves the estimator from the
         engine's clustering / anomaly registry, fits it on
-        ``self._legacy.X_transformed``, and assembles a sklearn Pipeline
+        ``self._fit_state["X_transformed"]``, and assembles a sklearn Pipeline
         (preprocessor + fitted model).
 
         Parameters
@@ -78,7 +78,7 @@ class UnsupervisedExperiment(Experiment):
 
         # ---- resolve estimator → instance + model_id
         if isinstance(estimator, str):
-            registry = getattr(self._legacy, "_all_models_internal", {})
+            registry = self._fit_state.get("model_registry", {})
             if estimator not in registry:
                 raise ConfigurationError(
                     f"Unknown model id {estimator!r}. Call "
@@ -119,8 +119,8 @@ class UnsupervisedExperiment(Experiment):
             payload={"estimator": model_id},
         )
 
-        # ---- fit on the transformed data
-        X = self._legacy.X_transformed
+        # ---- fit on the transformed data (from fit-time snapshot)
+        X = self._fit_state["X_transformed"]
         fit_kwargs = fit_kwargs or {}
         # CBLOF (`cluster` anomaly detector) can fail when the default
         # n_clusters yields a degenerate small/large cluster separation.
@@ -204,7 +204,9 @@ class UnsupervisedExperiment(Experiment):
                 "model fit on the experiment's data?"
             )
 
-        data: _pd.DataFrame = self._legacy.X_transformed.copy() if transformation else self.X.copy()
+        data: _pd.DataFrame = (
+            self._fit_state["X_transformed"].copy() if transformation else self.X.copy()
+        )
 
         if self.task == TaskType.CLUSTERING:
             data["Cluster"] = [f"Cluster {i}" for i in model.labels_]

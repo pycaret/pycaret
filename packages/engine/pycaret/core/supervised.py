@@ -158,7 +158,7 @@ class SupervisedExperiment(Experiment):
         t0 = time.perf_counter()
 
         # ---- decide which models to compare
-        registry = getattr(self._legacy, "_all_models_internal", {})
+        registry = self._fit_state.get("model_registry", {})
         if include is not None:
             candidates = list(include)
         else:
@@ -473,7 +473,7 @@ class SupervisedExperiment(Experiment):
         # ---- search space: custom_grid > registry.tune_distributions > tune_grid
         search_space = custom_grid
         if search_space is None:
-            registry = getattr(self._legacy, "_all_models_internal", {})
+            registry = self._fit_state.get("model_registry", {})
             container = registry.get(model_id)
             if container is not None:
                 # Prefer `tune_grid` (explicit dict[str, list]) because
@@ -512,10 +512,10 @@ class SupervisedExperiment(Experiment):
         else:
             scoring = self._REG_OPTIMIZE_SKLEARN.get(optimize or "R2", "r2")
 
-        # ---- pull transformed train data + CV generator
-        X_train = self._legacy.X_train_transformed
-        y_train = self._legacy.y_train_transformed
-        cv = fold if fold is not None else self._legacy.fold_generator
+        # ---- pull transformed train data + CV generator from fit-time snapshot
+        X_train = self._fit_state["X_train_transformed"]
+        y_train = self._fit_state["y_train_transformed"]
+        cv = fold if fold is not None else self._fit_state["fold_generator"]
 
         # ---- run the search
         search = RandomizedSearchCV(
@@ -865,7 +865,7 @@ class SupervisedExperiment(Experiment):
             payload={"n_models": len(unwrapped), "meta": meta_id},
         )
 
-        cv = fold if fold is not None else self._legacy.fold_generator
+        cv = fold if fold is not None else self._fit_state["fold_generator"]
         if self.task == TaskType.CLASSIFICATION:
             from sklearn.ensemble import StackingClassifier
 
@@ -946,7 +946,7 @@ class SupervisedExperiment(Experiment):
         meta = CalibratedClassifierCV(
             estimator=deepcopy(bare),
             method=method,
-            cv=cv if cv is not None else (fold or self._legacy.fold_generator),
+            cv=cv if cv is not None else (fold or self._fit_state["fold_generator"]),
             n_jobs=self.n_jobs,
         )
 
@@ -987,9 +987,9 @@ class SupervisedExperiment(Experiment):
         t0 = time.perf_counter()
         bare, model_id = self._unwrap_estimator(estimator)
         # Re-fit on the FULL transformed dataset (train + test combined).
-        # `self._legacy.X_transformed` is the union; same for y.
-        X_full = self._legacy.X_transformed
-        y_full = self._legacy.y_transformed
+        # `_fit_state["X_transformed"]` is the union; same for y.
+        X_full = self._fit_state["X_transformed"]
+        y_full = self._fit_state["y_transformed"]
         finalized_model = deepcopy(bare)
         finalized_model.fit(X_full, y_full)
 
