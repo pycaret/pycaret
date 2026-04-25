@@ -82,7 +82,12 @@ def test_native_setup_used_for_basic_regression(monkeypatch):
 
 @pytest.mark.slow
 def test_complex_preprocessing_falls_back_to_legacy():
-    """Setting `normalize=True` forces the legacy path."""
+    """`remove_outliers=True` is Phase-3 territory and forces legacy.
+
+    Phase 1 (s35) gated normalize / transformation on legacy too; phase
+    2 (s36) made them native, so we use remove_outliers here as the
+    canonical "still legacy" flag.
+    """
     import pycaret.datasets
     from pycaret.tasks import ClassificationExperiment
 
@@ -92,7 +97,7 @@ def test_complex_preprocessing_falls_back_to_legacy():
         session_id=42,
         n_jobs=1,
         fold=3,
-        normalize=True,  # complex flag — forces legacy
+        remove_outliers=True,  # phase-3 flag — forces legacy
     ).fit(df)
     # Native NOT used in this case.
     assert exp._native_setup_used is False
@@ -200,7 +205,15 @@ def test_native_setup_models_internal_view():
 
 
 def test_can_use_native_setup_predicate():
-    """The predicate refuses complex options + non-supervised tasks."""
+    """The predicate after sessions 35 + 36.
+
+    Phase 1 (s35) baseline: simple supervised → native; non-supervised
+    + setup_kwargs → legacy. Phase 2 (s36) made ``normalize`` and
+    ``transformation`` native too — those are covered in
+    `test_session36_native_setup_phase2.py`. Here we lock the still-
+    legacy paths: ``remove_outliers``, ``feature_selection``,
+    setup_kwargs, unsupervised.
+    """
     from pycaret.tasks import (
         AnomalyExperiment,
         ClassificationExperiment,
@@ -209,26 +222,13 @@ def test_can_use_native_setup_predicate():
 
     # Simple supervised — yes.
     assert ClassificationExperiment(target="t", session_id=0)._can_use_native_setup({}) is True
-    # Normalize — no.
-    assert (
-        ClassificationExperiment(target="t", session_id=0, normalize=True)._can_use_native_setup({})
-        is False
-    )
-    # Transformation — no.
-    assert (
-        ClassificationExperiment(
-            target="t", session_id=0, transformation=True
-        )._can_use_native_setup({})
-        is False
-    )
-    # Remove outliers — no.
+    # Phase-3 flags — still force legacy.
     assert (
         ClassificationExperiment(
             target="t", session_id=0, remove_outliers=True
         )._can_use_native_setup({})
         is False
     )
-    # Feature selection — no.
     assert (
         ClassificationExperiment(
             target="t", session_id=0, feature_selection=True
@@ -240,6 +240,6 @@ def test_can_use_native_setup_predicate():
         ClassificationExperiment(target="t", session_id=0)._can_use_native_setup({"foo": 1})
         is False
     )
-    # Unsupervised — no (Phase 2).
+    # Unsupervised — no (Phase 3).
     assert ClusteringExperiment(session_id=0)._can_use_native_setup({}) is False
     assert AnomalyExperiment(session_id=0)._can_use_native_setup({}) is False

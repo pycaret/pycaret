@@ -345,18 +345,24 @@ class Experiment(BaseEstimator):
     def _can_use_native_setup(self, setup_kwargs: dict[str, Any]) -> bool:
         """Predicate: can fit() skip ``self._legacy.setup()`` entirely?
 
-        The native phase-1 setup handles classification + regression with the
-        common preprocessing options (mean / mode imputation + ordinal
-        encoding + label encoding for clf). Heavy options fall back to legacy.
+        The native setup handles classification + regression. It supports
+        the most common preprocessing options:
+
+        - **Phase 1** (session 35): mean / mode imputation + ordinal
+          encoding + label encoding for clf.
+        - **Phase 2** (session 36): ``normalize=True`` (StandardScaler) and
+          ``transformation=True`` (PowerTransformer) on numeric features.
+
+        Heavier options (``remove_outliers``, ``feature_selection``) and
+        unsupervised / TS still fall back to legacy.
         """
         from pycaret.core.tasks import TaskType
 
-        # Phase 1 — supervised tabular only.
+        # Supervised tabular only — Phase 3 will cover unsupervised + TS.
         if self.task not in (TaskType.CLASSIFICATION, TaskType.REGRESSION):
             return False
-        # Disable native if any complex preprocessing flag is set, OR the
-        # caller passed a setup_kwargs key we don't yet handle natively.
-        if self.normalize or self.transformation or self.remove_outliers or self.feature_selection:
+        # Heavy preprocessing options force legacy — Phase 3 work.
+        if self.remove_outliers or self.feature_selection:
             return False
         # Any caller-supplied setup_kwargs forces legacy — we don't know what
         # those options do.
@@ -425,9 +431,27 @@ class Experiment(BaseEstimator):
         )
 
         # Build preprocessing ColumnTransformer.
+        # Phase 1: imputation + ordinal encoding.
+        # Phase 2: optional StandardScaler (normalize) + PowerTransformer
+        #          (transformation) chained inside the numeric branch.
         transformers: list = []
         if numeric_cols:
-            transformers.append(("numerical_imputer", SimpleImputer(strategy="mean"), numeric_cols))
+            num_steps: list = [("imputer", SimpleImputer(strategy="mean"))]
+            if self.transformation:
+                from sklearn.preprocessing import PowerTransformer
+
+                # Yeo-Johnson: handles negatives. Same default as legacy
+                # `transformation_method='yeo-johnson'`.
+                num_steps.append(
+                    ("transformer", PowerTransformer(method="yeo-johnson", standardize=False))
+                )
+            if self.normalize:
+                from sklearn.preprocessing import StandardScaler
+
+                # Z-score by default — same as legacy `normalize_method='zscore'`.
+                num_steps.append(("scaler", StandardScaler()))
+            num_pipe = SkPipeline(num_steps) if len(num_steps) > 1 else num_steps[0][1]
+            transformers.append(("numerical_pipeline", num_pipe, numeric_cols))
         if categorical_cols:
             cat_pipe = SkPipeline(
                 [
