@@ -115,6 +115,57 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 38 — 2026-04-24 — Native setup() phase 4: unsupervised tabular (clustering + anomaly)
+
+Phase 4 of the `setup()` drain. `ClusteringExperiment.fit()` and `AnomalyExperiment.fit()` no longer call `legacy.setup()` for the default knob-set. Combined with phases 1–3, **all tabular tasks now run a fully native preprocessing chain**. The only `legacy.setup()` callsite left is time-series (phase 5).
+
+## ADDED — engine
+
+- `ADDED` — **`Experiment._native_setup_unsupervised(data, setup_kwargs)`** in `packages/engine/pycaret/core/experiment.py` (~140 LoC). Mirrors `_native_setup_supervised` for unsupervised tabular tasks:
+  - No train/test split — the whole frame is the training set.
+  - No fold generator — clustering / anomaly don't CV in the standard sense; `_fit_state["fold_generator"]` is explicit `None`.
+  - Same preprocessing chain as supervised: `SimpleImputer(strategy="mean")` + optional `PowerTransformer(method="yeo-johnson")` + optional `StandardScaler` for numerics, `SimpleImputer(strategy="most_frequent")` + `OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)` for categoricals, glued by `ColumnTransformer(remainder="drop", verbose_feature_names_out=False)`.
+  - Builds the model registry through the same `_ModelRegistryContext` proxy used by supervised — clustering's `pycaret.containers.models.clustering` and anomaly's `pycaret.containers.models.anomaly` plug straight in (anomaly's pyod-backed estimators load through this without legacy state).
+  - `_fit_state` slots: `X` / `X_transformed` / `preprocess_pipeline` / `model_registry` populated; supervised-only slots (`X_train`, `X_test`, `y`, `y_train`, `y_test`, `fold_generator`, `label_encoder`, `feature_selector`, `selected_features`) all explicit `None`. Keeps the dict shape stable across task types.
+
+## CHANGED — engine
+
+- `CHANGED` — **`Experiment.fit()` dispatcher** now branches: `_is_supervised()` → `_native_setup_supervised`, else → `_native_setup_unsupervised`. Single source of truth for the native path.
+- `CHANGED` — **`_can_use_native_setup`** predicate accepts `TaskType.CLUSTERING` and `TaskType.ANOMALY` in addition to `CLASSIFICATION` + `REGRESSION`. Time-series remains the only "still legacy" task. Note: if a user reaches in and sets `remove_outliers` / `feature_selection` on an unsupervised experiment post-init, the predicate falls back to legacy (those flags aren't wired for unsupervised in this phase).
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session38_native_setup_phase4.py`** — 9 new tests:
+  - Drain-locks for `ClusteringExperiment` and `AnomalyExperiment` (poison `legacy.setup`, verify native succeeds + `_native_setup_used is True`).
+  - End-to-end `fit + create_model('kmeans')` for clustering — pipeline ends in a fitted KMeans with `.labels_`.
+  - End-to-end `fit + create_model('iforest') + assign_model` for anomaly — `Anomaly` and `Anomaly_Score` columns attach correctly.
+  - `normalize=True` on clustering → `StandardScaler` lives in the numeric branch.
+  - `transformation=True` on anomaly → `PowerTransformer` lives in the numeric branch.
+  - Predicate test: clustering + anomaly are native by default; `remove_outliers` / `feature_selection` (set post-init) revert to legacy; `setup_kwargs` always force legacy; time-series is still legacy.
+  - Categorical column handling (synthetic 80-row DF with a 3-level categorical) — encoded as numeric via OrdinalEncoder.
+
+## CHANGED — existing tests
+
+- `CHANGED` — **`test_session35_native_setup::test_unsupervised_uses_legacy_setup`** → renamed to `test_unsupervised_now_runs_natively_phase4`. Originally written when phase 4 was pending; assertion inverted (`is False` → `is True`) and now serves as a phase-4 regression lock for both clustering and anomaly.
+- `CHANGED` — **`test_session35_native_setup::test_can_use_native_setup_predicate`** updated: clustering / anomaly assertions flipped from `False` to `True`; added `TimeSeriesExperiment` predicate check (still `False`).
+
+## INTERNAL
+
+- `INTERNAL` — **Why no `train_test_split` for unsupervised.** Clustering / anomaly fit on the full dataset; there's no holdout in the supervised sense. Legacy's unsupervised setup didn't split either. Predict-time uses the same fitted preprocess + model on new data.
+- `INTERNAL` — **Why no `fold_generator`.** Cross-validation for clustering / anomaly is undefined in the standard scikit-learn sense (most clustering algos have no `score()` that's CV-meaningful). Legacy returned a "0 folds" value too. The slot stays in `_fit_state` so consumers (`get_config`, etc.) get a stable shape regardless of task type.
+- `INTERNAL` — **Why the same `_ModelRegistryContext` proxy works for unsupervised.** The proxy exposes `seed` / `gpu_param` / `n_jobs_param` / `X_train` / `is_multiclass` / `get_engine(id) → None`. Clustering and anomaly registries call `__init__` on each container with `experiment` referring to that proxy; they only read those attrs. We pass `X_transformed` as `X_train` and `is_multiclass=False` — both are inert for unsupervised but keep the proxy interface uniform.
+- `INTERNAL` — **Why `remove_outliers` / `feature_selection` aren't auto-applied on unsupervised yet.** Both could be argued to make sense (outliers in particular for clustering), but legacy's behavior was inconsistent across tasks and we don't have a strong API request. Phase 4.5 if a user asks. Until then, setting those flags post-init falls back to legacy so the path is still observable.
+
+## Session 38 delta summary
+
+| Metric | Session 37 end | Session 38 end |
+|---|---:|---:|
+| Tasks with native setup | clf + reg | clf + reg + clustering + anomaly |
+| `legacy.setup()` callsites still live | clustering, anomaly, time-series, setup_kwargs | time-series, setup_kwargs |
+| Engine tests (fast + slow) | 173 | **182** |
+
+---
+
 # Session 37 — 2026-04-25 — Native setup() phase 3: remove_outliers + feature_selection
 
 The last two preprocessing flags on the supervised `Experiment` constructor go native. After this session, every constructor flag works without `legacy.setup()` — only caller-supplied `setup_kwargs` and unsupervised / TS tasks still hit the legacy path.

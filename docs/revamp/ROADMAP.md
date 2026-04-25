@@ -199,8 +199,9 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 34 | Fix sklearn 1.6+ `squared=` deprecation in regression metrics | RMSE / RMSLE containers use root_mean_squared_(log_)error directly. -69 warnings per test run. 4 new tests (291/291). |
 | 35 | Native `setup()` (phase 1, simple supervised) | Skip self._legacy.setup() entirely for clf+reg with no complex preprocessing flags. Native train/test split + impute + encode + fold generator + registry-via-proxy. 10 new tests (301/301). The biggest remaining drain target lands incrementally. |
 | 36 | Native `setup()` phase 2: normalize + transformation | StandardScaler + PowerTransformer(yeo-johnson) chain into the native numeric branch. normalize=True / transformation=True no longer force legacy. 10 new tests (311/311). |
-| **37** | **Native `setup()` phase 3: remove_outliers + feature_selection** | **IsolationForest drops 5% most anomalous train rows; SelectFromModel(median) with ExtraTrees keeps above-median features + appends to preprocess pipeline. EVERY supervised constructor flag now native. 8 new tests (319/319).** |
-| 38+ | setup() phase 4 → 4.0.0 release | unsupervised + TS native setup (clustering simpler than supervised; TS uses sktime ExpandingWindowSplitter); ship 4.0.0a3 when PyPI back; delete pycaret/internal/pycaret_experiment |
+| 37 | Native `setup()` phase 3: remove_outliers + feature_selection | IsolationForest drops 5% most anomalous train rows; SelectFromModel(median) with ExtraTrees keeps above-median features + appends to preprocess pipeline. EVERY supervised constructor flag now native. 8 new tests (319/319). |
+| **38** | **Native `setup()` phase 4: unsupervised tabular (clustering + anomaly)** | **`_native_setup_unsupervised` mirrors the supervised chain (impute + ordinal + optional StandardScaler / PowerTransformer) on the full frame — no train/test split, no fold generator. Predicate accepts CLUSTERING + ANOMALY tasks. Time-series is now the only legacy.setup() path. 9 new tests (328/328 engine).** |
+| 39+ | setup() phase 5 → 4.0.0 release | TS native setup (sktime ExpandingWindowSplitter + fh / seasonal_period); ship 4.0.0a3 when PyPI back; delete pycaret/internal/pycaret_experiment |
 
 Roughly **7–8 sessions to MVP 3 completion** (all 8 UI screens wired + LLM assist + full AutoML flow). Then a handful of V2 items. Then god-class drain for MVP 1 release.
 

@@ -1,6 +1,63 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 37*
+*Updated: 2026-04-24, end of session 38*
+
+## Session 38 — Native `setup()` phase 4: unsupervised tabular (clustering + anomaly) — ✅
+
+**Tabular `setup()` is now fully drained.** Phase 4 finishes the unsupervised half: `ClusteringExperiment.fit()` and `AnomalyExperiment.fit()` no longer touch `legacy.setup()` for the default knob-set. The only remaining legacy `setup()` paths are time-series (phase 5) and caller-supplied `setup_kwargs`.
+
+### What landed
+
+- **`Experiment._native_setup_unsupervised(data, setup_kwargs)`** (~140 LoC) — sister to `_native_setup_supervised`:
+  - No train/test split — the entire frame is the training set.
+  - No fold generator — clustering / anomaly don't CV in the usual sense.
+  - Same preprocessing chain as supervised: `imputer` (mean numeric / mode categorical) + optional `PowerTransformer` (`transformation=True`) + optional `StandardScaler` (`normalize=True`) + `OrdinalEncoder` for categoricals.
+  - Builds the model registry through the same `_ModelRegistryContext` proxy used by supervised; clustering and anomaly registries plug straight in.
+  - Populates `_fit_state` with `X` / `X_transformed` / `preprocess_pipeline` / `model_registry`. Supervised-only slots (`X_train`, `y`, `fold_generator`, `label_encoder`, …) are explicit `None`.
+- **`Experiment.fit()` dispatcher** — when `_can_use_native_setup` returns True, the supervised path or the unsupervised path is selected by `_is_supervised()`. Single source of truth.
+- **`Experiment._can_use_native_setup`** — predicate accepts `TaskType.CLUSTERING` and `TaskType.ANOMALY` in addition to `CLASSIFICATION` + `REGRESSION`. Time-series is the only remaining "still legacy" task. Unsupervised + `remove_outliers` / `feature_selection` set post-init still routes to legacy (those flags aren't wired for unsupervised yet — phase 4.5 if ever needed).
+- **`packages/engine/tests/test_session38_native_setup_phase4.py`** — 9 new tests:
+  - Drain-locks for `ClusteringExperiment` and `AnomalyExperiment` (poison `legacy.setup`, verify native succeeds + `_native_setup_used is True`).
+  - End-to-end `fit + create_model('kmeans')` and `fit + create_model('iforest') + assign_model`.
+  - `normalize=True` / `transformation=True` compose with the unsupervised path.
+  - Predicate test: clustering / anomaly are native by default; time-series isn't.
+  - Categorical column handling on the unsupervised native path.
+- **Tests refreshed** — `test_session35_native_setup::test_unsupervised_uses_legacy_setup` was inverted into `test_unsupervised_now_runs_natively_phase4`. `test_can_use_native_setup_predicate` updated to reflect "unsupervised native, time-series legacy".
+
+### Headline metrics
+
+| | Session 37 end | Session 38 end |
+|---|---|---|
+| Tasks with native setup | clf + reg | clf + reg + clustering + anomaly |
+| `legacy.setup()` paths still in use | clustering, anomaly, time-series, setup_kwargs | time-series, setup_kwargs |
+| Engine tests (fast + slow) | 173 | **182** (+9) |
+
+### Drain status
+
+```
+Native setup:
+  ✅ Phase 1: impute + ordinal + label-encode + split + fold + registry  (s35)
+  ✅ Phase 2: + normalize (StandardScaler) + transformation (PowerTransformer)  (s36)
+  ✅ Phase 3: + remove_outliers (IsolationForest) + feature_selection (SelectFromModel)  (s37)
+  ✅ Phase 4: unsupervised tabular (clustering + anomaly)                (s38)
+  ⏳ Phase 5: time-series (sktime ExpandingWindowSplitter)               (next)
+
+What still routes to legacy.setup():
+  - caller-supplied setup_kwargs (legacy's 100+ unmapped knobs)
+  - time-series experiments only
+```
+
+### What's next (sessions 39+)
+
+- **Phase 5** — native time-series setup. Different shape from tabular: `fh`, `seasonal_period`, `ExpandingWindowSplitter`. ~1-2 sessions.
+- **Delete `pycaret/internal/pycaret_experiment/`** once `setup()` is fully native + the few remaining legacy fallbacks (`plot_model`, `evaluate_model`) are reworked.
+- **Tag `4.0.0` non-alpha** to PyPI.
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config (user account reset in progress).
+
+---
 
 ## Session 37 — Native `setup()` phase 3: `remove_outliers` + `feature_selection` — ✅
 
