@@ -423,6 +423,7 @@ class Experiment(BaseEstimator):
             duration_ms=(time.perf_counter() - t0) * 1000,
             payload={"estimator": model_id},
         )
+        self._set_last_metrics(metrics_df)
         return CreateResult(
             pipeline=pipeline,
             model_id=model_id,
@@ -802,18 +803,141 @@ class Experiment(BaseEstimator):
         return self._legacy.plot_model(estimator, *args, **kwargs)
 
     def evaluate_model(self, estimator: Any, *args: Any, **kwargs: Any) -> Any:
+        """Interactive evaluation widget. Builds on plot_model — same Phase-3
+        replacement target. Still delegates."""
         self._require_fitted()
         return self._legacy.evaluate_model(estimator, *args, **kwargs)
 
+    # ----------------------------------------------- session-31 native verbs
+
     def pull(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
-        """Return the most recent metrics DataFrame emitted by the engine."""
+        """Return the most recent metrics DataFrame.
+
+        Session-31 drain: reads from ``self._fit_state["last_metrics"]``,
+        which is updated by each native verb (``create_model``, ``tune_model``,
+        ``compare_models``, ensemble / blend / stack / calibrate / finalize)
+        before it returns. If the snapshot doesn't have a value (no native
+        verb has run yet, or a TS-fallback path was taken), we fall back to
+        the legacy ``self._legacy.pull()``.
+        """
+        self._require_fitted()
+        last = self._fit_state.get("last_metrics") if hasattr(self, "_fit_state") else None
+        if last is not None:
+            return last
+        # TS / unsupervised legacy fallback path — only reachable when a
+        # non-drained verb populated the legacy display container.
         return self._legacy.pull(*args, **kwargs)
 
-    def models(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
-        return self._legacy.models(*args, **kwargs)
+    def models(self, *args: Any, internal: bool = False, **kwargs: Any) -> pd.DataFrame:
+        """Return a DataFrame describing the available models in the registry.
+
+        Session-31 drain: builds the DataFrame from the model-registry
+        snapshot in ``self._fit_state["model_registry"]``. ``internal=True``
+        falls through to the legacy implementation, which exposes the full
+        ``ModelContainer`` row (with engine-internal fields). Mirrors the
+        legacy contract.
+        """
+        self._require_fitted()
+        if internal:
+            # The internal=True view exposes a richer set of fields that
+            # come directly from the legacy holder; preserve that.
+            return self._legacy.models(*args, internal=True, **kwargs)
+
+        import pandas as _pd
+
+        registry = self._fit_state.get("model_registry", {}) if hasattr(self, "_fit_state") else {}
+        if not registry:
+            return self._legacy.models(*args, **kwargs)
+
+        rows: list[dict] = []
+        for mid, container in registry.items():
+            if getattr(container, "is_special", False):
+                continue
+            rows.append(
+                {
+                    "ID": mid,
+                    "Name": getattr(container, "name", type(container).__name__),
+                    "Reference": (
+                        f"{container.class_def.__module__}.{container.class_def.__name__}"
+                        if getattr(container, "class_def", None) is not None
+                        else None
+                    ),
+                    "Turbo": bool(getattr(container, "is_turbo", False)),
+                }
+            )
+        df = _pd.DataFrame(rows).set_index("ID")
+        return df
 
     def get_metrics(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
-        return self._legacy.get_metrics(*args, **kwargs)
+        """Return a DataFrame describing the available metrics for the task.
+
+        Session-31 drain: reads from the task's metric registry (the same
+        ``pycaret.containers.metrics.<task>.get_all_metric_containers``
+        helper that ``create_model`` / ``predict_model`` use internally).
+        """
+        self._require_fitted()
+        from pycaret.core.tasks import TaskType
+
+        try:
+            if self.task == TaskType.CLASSIFICATION:
+                from pycaret.containers.metrics.classification import (
+                    get_all_metric_containers,
+                )
+
+                metrics = get_all_metric_containers({}, raise_errors=False)
+            elif self.task == TaskType.REGRESSION:
+                from pycaret.containers.metrics.regression import (
+                    get_all_metric_containers,
+                )
+
+                metrics = get_all_metric_containers({}, raise_errors=False)
+            elif self.task == TaskType.CLUSTERING:
+                from pycaret.containers.metrics.clustering import (
+                    get_all_metric_containers,
+                )
+
+                metrics = get_all_metric_containers({}, raise_errors=False)
+            elif self.task == TaskType.ANOMALY:
+                from pycaret.containers.metrics.anomaly import (
+                    get_all_metric_containers,
+                )
+
+                metrics = get_all_metric_containers({}, raise_errors=False)
+            else:
+                # Time-series falls through to the legacy registry.
+                return self._legacy.get_metrics(*args, **kwargs)
+        except Exception:
+            return self._legacy.get_metrics(*args, **kwargs)
+
+        import pandas as _pd
+
+        rows: list[dict] = []
+        for mid, container in metrics.items():
+            score_func = getattr(container, "score_func", None)
+            rows.append(
+                {
+                    "ID": mid,
+                    "Name": getattr(container, "name", mid),
+                    "Display Name": getattr(container, "display_name", mid),
+                    "Score Function": (
+                        f"{score_func.__module__}.{score_func.__name__}"
+                        if score_func is not None
+                        else None
+                    ),
+                    "Scorer": getattr(container, "scorer", None),
+                    "Target": getattr(container, "target", "pred"),
+                    "Args": dict(getattr(container, "args", {}) or {}),
+                    "Greater is Better": bool(getattr(container, "greater_is_better", True)),
+                    "Multiclass": bool(getattr(container, "is_multiclass", True)),
+                    "Custom": bool(getattr(container, "is_custom", False)),
+                }
+            )
+        return _pd.DataFrame(rows).set_index("ID")
+
+    # The following verbs still delegate. Each has a non-trivial state
+    # mutation path that the snapshot pattern doesn't cover well; they're
+    # advisory escape hatches that don't sit in the predict/tune/compare
+    # path. Drain candidates for a future polish session.
 
     def add_metric(self, *args: Any, **kwargs: Any) -> Any:
         return self._legacy.add_metric(*args, **kwargs)
@@ -1018,7 +1142,20 @@ class Experiment(BaseEstimator):
 
     # ------------------------------------------------------- internal helpers
 
+    def _set_last_metrics(self, df: pd.DataFrame | None) -> None:
+        """Stash the most recent metrics DataFrame for ``pull()``.
+
+        Called by each native verb (``create_model``, ``tune_model``,
+        ``compare_models``, ensemble / blend / stack / calibrate /
+        finalize) before returning. ``pull()`` reads this slot.
+        """
+        if hasattr(self, "_fit_state") and df is not None:
+            self._fit_state["last_metrics"] = df
+
     def _safe_pull(self):
+        """Legacy-fallback pull for the TS code path. Native verbs use
+        ``_set_last_metrics`` instead.
+        """
         try:
             return self._legacy.pull()
         except Exception:

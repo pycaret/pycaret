@@ -245,6 +245,7 @@ class SupervisedExperiment(Experiment):
             },
         )
 
+        self._set_last_metrics(leaderboard)
         return CompareResult(
             best=models[0] if models else None,
             models=models,
@@ -560,6 +561,7 @@ class SupervisedExperiment(Experiment):
             },
         )
 
+        self._set_last_metrics(metrics_df)
         return TuneResult(
             pipeline=tuned_pipeline,
             best_params=dict(search.best_params_),
