@@ -115,6 +115,55 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 39 — 2026-04-25 — Native setup() phase 5a: time-series soft drain
+
+The TS experiment finally adopts the native dispatcher. `_can_use_native_setup` accepts `TaskType.TIME_SERIES`; `_native_setup_timeseries` populates `_fit_state` with TS-shape slots so user-facing accessors work for time-series exactly like they do for the other tasks. **This is a *soft* drain**: the native path still calls `legacy.setup()` underneath because the TS verbs (`create_model`, `predict_model`, ...) read from legacy state and haven't been drained yet.
+
+## ADDED — engine
+
+- `ADDED` — **`Experiment._native_setup_timeseries(data, setup_kwargs)`** in `packages/engine/pycaret/core/experiment.py`. Calls `legacy.setup` (transitionally — phase 5b removes this) to build the sktime model registry, fold generator, and y_train / y_test, then snapshots them into `_fit_state` along with TS-specific slots (`fh`, `seasonal_period`).
+- `ADDED` — **`Experiment._predict_model_legacy(estimator, *, data, verbose)`**. Time-series fallback for `predict_model` — the drained sklearn path doesn't apply because sktime's `ForecastingPipeline` has no `.transform()` and forecasters use `.predict(fh=...)`. Phase 5b will drain this.
+
+## CHANGED — engine
+
+- `CHANGED` — **`_can_use_native_setup`** predicate accepts `TaskType.TIME_SERIES`. The only "still legacy" branch left is caller-supplied `setup_kwargs`.
+- `CHANGED` — **`TimeSeriesExperiment.fit()`** in `packages/engine/pycaret/tasks/time_series.py` mirrors the base dispatcher: native path → `_native_setup_timeseries`; legacy path → `legacy.setup()` + `_snapshot_fit_state()`. Both branches end with `_fit_state` populated; previously the legacy-only path didn't populate `_fit_state` at all and `exp.y_train` raised `KeyError` for TS.
+- `CHANGED` — **`Experiment.predict_model()`** detects `task == TIME_SERIES` early and dispatches to `_predict_model_legacy`. Without this guard the drained path would call `ForecastingPipeline.transform(X)` and crash with `AttributeError`.
+- `CHANGED` — **`Experiment.models()`** defers to `legacy.models()` for TS. The TS legacy registry has filter rules (`model_type` ∈ `TSModelTypes`) that exclude `ensemble_forecaster` (which requires runtime-built forecasters). Re-implementing those rules in the snapshot path would duplicate logic that lives in `time_series/forecasting/oop.py`; phase 5b moves both at once.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session39_native_setup_phase5.py`** — 9 new tests:
+  - Predicate accepts `TIME_SERIES`; `setup_kwargs` still forces legacy.
+  - Native path populates `_fit_state` with TS-shape slots (y / y_train / y_test / fh / fold_generator / preprocess_pipeline / model_registry).
+  - User-facing accessors (`exp.y_train`, `exp.y_test`, `exp.preprocess_pipeline`) work for TS.
+  - `fold_generator` is sktime's `ExpandingWindowSplitter`.
+  - `setup_kwargs` path also populates `_fit_state` via the snapshot helper.
+  - `create_model('naive')` returns a fitted forecaster.
+  - `predict_model(forecaster)` returns a 12-step forecast matching `fh`.
+  - `models(internal=True)` filters out `ensemble_forecaster` via legacy delegation.
+
+## CHANGED — existing tests
+
+- `CHANGED` — **`test_session35_native_setup::test_can_use_native_setup_predicate`** — TS assertion flipped from `is False` to `is True`. Docstring updated to reflect "Phase 5a — TS adopts the dispatcher (soft drain)".
+- `CHANGED` — **`test_session38_native_setup_phase4::test_time_series_still_falls_back_to_legacy`** renamed to `test_time_series_now_routes_through_native_dispatcher_phase5a`. Inverted assertion. Same rename pattern as `test_session35_native_setup::test_unsupervised_uses_legacy_setup → test_unsupervised_now_runs_natively_phase4` from s38.
+
+## INTERNAL
+
+- `INTERNAL` — **Why a soft drain.** The supervised + unsupervised drains worked one-shot because their verbs had already been drained (s24 / s28) to read from `_fit_state`. For TS, none of the verbs have been drained — they all delegate to `self._legacy.<verb>`. If `_native_setup_timeseries` skipped `legacy.setup()`, every verb would break. So phase 5a brings TS into the dispatcher and gives us accessor parity, but the actual *skip* of `legacy.setup()` waits for phase 5b/c when verbs migrate.
+- `INTERNAL` — **TS-specific slots in `_fit_state`.** `fh` (sktime ForecastingHorizon) and `seasonal_period` (int or None) live alongside the standard slots. Other tasks set them to None. This keeps the dict shape stable across all five task types and lets future verb-drain code branch on `self._fit_state["fh"] is not None` rather than checking `self.task`.
+- `INTERNAL` — **Why `models()` defers, not `_fit_state["model_registry"]`.** The snapshot already has the full registry (26 entries including `ensemble_forecaster`). The legacy `models()` filters by `model_type in TSModelTypes` and `ensemble_forecaster` has `model_type="ensemble"` (not a `TSModelTypes` member). Reimplementing that filter on the snapshot is straightforward but would couple `core/experiment.py` to `TSModelTypes`. Better to keep the deferral until phase 5b where TS verbs and TS-specific filtering both move together.
+
+## Session 39 delta summary
+
+| Metric | Session 38 end | Session 39 end |
+|---|---:|---:|
+| Tasks adopting the native dispatcher | clf + reg + clustering + anomaly | + time-series |
+| `legacy.setup()` callsites still live | time-series, setup_kwargs | setup_kwargs (transitional: TS native path also still calls it) |
+| Engine tests (fast + slow) | 182 | **191** |
+
+---
+
 # Session 38 — 2026-04-24 — Native setup() phase 4: unsupervised tabular (clustering + anomaly)
 
 Phase 4 of the `setup()` drain. `ClusteringExperiment.fit()` and `AnomalyExperiment.fit()` no longer call `legacy.setup()` for the default knob-set. Combined with phases 1–3, **all tabular tasks now run a fully native preprocessing chain**. The only `legacy.setup()` callsite left is time-series (phase 5).
