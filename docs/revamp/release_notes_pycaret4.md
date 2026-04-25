@@ -115,6 +115,38 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 34 — 2026-04-25 — Fix sklearn 1.6+ squared= deprecation in regression metric registry
+
+Baseline: session 33 closed the public-surface drain. Test runs were emitting ~70 `DeprecationWarning`s about `mean_squared_error(squared=False)` per regression CV — a real bug introduced when sklearn 1.6 deprecated that path in favor of a dedicated `root_mean_squared_error` function. Session 34 fixes the registry.
+
+## FIXED — engine
+
+- `FIXED` — **`packages/engine/pycaret/containers/metrics/regression.py` — `RMSEMetricContainer`**: now uses `sklearn.metrics.root_mean_squared_error` directly when available, with a `sqrt(mse)` shim fallback for sklearn < 1.6. `args` dict no longer carries `squared=False`. Eliminates ~7 `DeprecationWarning` emissions per regression CV (n_folds + Mean + Std rows).
+- `FIXED` — **`RMSLEMetricContainer`** — same pattern. Prefers `sklearn.metrics.root_mean_squared_log_error` when available; otherwise the existing `sqrt(msle)` shim with `np.abs()` for negative-input safety.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session34_metric_warnings.py`** — 4 tests:
+  - `test_rmse_metric_does_not_use_mean_squared_error_directly` — locks the `score_func` to be the dedicated function (or our shim), never the deprecated reference.
+  - `test_rmse_metric_args_does_not_carry_squared` — ensures `args["squared"]` is gone.
+  - `test_rmse_score_func_handles_kwargs_without_deprecation` — calls the score_func directly with `warnings.simplefilter("error", DeprecationWarning)`.
+  - `test_regression_cv_does_not_emit_squared_deprecation` — full regression `create_model` under strict warning filtering.
+
+## INTERNAL
+
+- `INTERNAL` — **Why a shim instead of just hard-requiring sklearn 1.6+**. The 4.0 dependency floor is `scikit-learn>=1.7` (from `pyproject.toml`), so in practice the shim never runs. But it's cheap insurance: if a downstream user is on a slightly older sklearn (e.g. some numerical / scipy package pinning), they still get correct RMSE without the deprecation. Same logic for RMSLE.
+- `INTERNAL` — **What the deprecation was actually doing.** Each `DeprecationWarning` was harmless — sklearn would silently sqrt the MSE anyway and return the right value. The pollution was just to test output. But hiding deprecations would mask real ones; fixing them properly keeps the warning channel meaningful.
+
+## Session 34 delta summary
+
+| Metric | Session 33 end | Session 34 end |
+|---|---:|---:|
+| Engine tests (fast + slow) | 141 | **145** |
+| **Combined tests** | **287** | **291** |
+| Test-output warnings | ~500 | **~431** |
+
+---
+
 # Session 33 — 2026-04-25 — get_config / set_config drain
 
 Baseline: session 32 drained `add_metric` / `remove_metric`. Session 33 drains the last two drainable secondary verbs — `get_config` / `set_config`. Every drainable verb on the public surface is now native; only `setup()` inside `fit()` and the Phase-3 plot verbs remain on `_legacy`.

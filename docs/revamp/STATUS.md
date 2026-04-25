@@ -1,6 +1,36 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 33*
+*Updated: 2026-04-25, end of session 34*
+
+## Session 34 — Fix sklearn 1.6+ `squared=` deprecation in regression metrics — ✅
+
+After session 33 closed the public-surface drain, the test output was still flooded with ~70 `DeprecationWarning`s per regression run because the legacy `RMSEMetricContainer` passed `args={"squared": False}` to `mean_squared_error` — sklearn 1.6+ deprecated that path in favor of a dedicated `root_mean_squared_error`. Session 34 fixes the registry to use the new function when available + falls back to a `sqrt(mse)` shim for older sklearn. Same fix pattern applied to `RMSLEMetricContainer`.
+
+### What landed
+
+- **`packages/engine/pycaret/containers/metrics/regression.py`**:
+  - `RMSEMetricContainer` — `score_func = metrics.root_mean_squared_error` when available; otherwise a local `rmse_func` shim that calls `sqrt(mean_squared_error(...))`. `args` no longer carries `squared`.
+  - `RMSLEMetricContainer` — prefers `metrics.root_mean_squared_log_error` when available; otherwise the existing `sqrt(msle)` shim with `np.abs()` for negative-input safety.
+- **`packages/engine/tests/test_session34_metric_warnings.py`** — 4 tests:
+  - RMSE's `score_func` is *not* the deprecated `mean_squared_error` reference.
+  - RMSE's `args` dict no longer carries `squared`.
+  - Calling RMSE's `score_func` with sklearn ≥1.8-shaped kwargs succeeds without `DeprecationWarning`.
+  - Full regression CV via `create_model` doesn't emit any deprecation warnings.
+
+### Headline metrics
+
+| | Session 33 end | Session 34 end |
+|---|---|---|
+| Engine tests (fast + slow) | 141 | **145** (+4) |
+| **Combined tests** | **287** | **291** |
+| Test-output warnings | ~500 | **~431** (-69, eliminated all `squared=`) |
+| Real bugfixes shipped during drain | 2 (add_metric, set_config) | **3** (+ RMSE deprecation) |
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config (user account reset still in progress).
+
+---
 
 ## Session 33 — `get_config` / `set_config` drain — ✅
 
