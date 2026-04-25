@@ -145,8 +145,12 @@ def test_normalize_and_transformation_combined():
 
 
 @pytest.mark.slow
-def test_remove_outliers_still_falls_back_to_legacy():
-    """remove_outliers=True is Phase 3 work — still uses legacy path."""
+def test_remove_outliers_now_native_post_phase3():
+    """As of session 37 (phase 3), remove_outliers=True runs natively.
+
+    Originally a "still legacy" assertion — kept for historical context;
+    the actual phase-3 drain-locks live in test_session37.
+    """
     import pycaret.datasets
     from pycaret.tasks import ClassificationExperiment
 
@@ -158,20 +162,19 @@ def test_remove_outliers_still_falls_back_to_legacy():
         fold=3,
         remove_outliers=True,
     ).fit(df)
-    assert exp._native_setup_used is False
+    assert exp._native_setup_used is True
 
 
-def test_feature_selection_still_routes_to_legacy_path():
-    """feature_selection=True is Phase 3 work — predicate must reject it.
+def test_feature_selection_now_native_post_phase3():
+    """As of session 37 (phase 3), feature_selection=True runs natively.
 
-    We don't call fit() here because the legacy fallback's
-    feature_selection has a separate dep (lightgbm) we may not have. The
-    predicate itself is the contract for "did this go native?".
+    Originally a "still legacy" predicate-only check (legacy lacked
+    lightgbm); kept here for historical context.
     """
     from pycaret.tasks import ClassificationExperiment
 
     exp = ClassificationExperiment(target="t", session_id=0, feature_selection=True)
-    assert exp._can_use_native_setup({}) is False
+    assert exp._can_use_native_setup({}) is True
 
 
 @pytest.mark.slow
@@ -205,7 +208,9 @@ def test_regression_with_transformation_native():
 
 
 def test_can_use_native_setup_predicate_phase2():
-    """Phase 2: normalize + transformation no longer force legacy."""
+    """Phase 2: normalize + transformation are native (the canonical
+    phase-2 flags). Other flags get their own session's coverage.
+    """
     from pycaret.tasks import ClassificationExperiment
 
     # Phase 2 — these now go native.
@@ -224,17 +229,4 @@ def test_can_use_native_setup_predicate_phase2():
             target="t", session_id=0, normalize=True, transformation=True
         )._can_use_native_setup({})
         is True
-    )
-    # Phase 3 — still force legacy.
-    assert (
-        ClassificationExperiment(
-            target="t", session_id=0, remove_outliers=True
-        )._can_use_native_setup({})
-        is False
-    )
-    assert (
-        ClassificationExperiment(
-            target="t", session_id=0, feature_selection=True
-        )._can_use_native_setup({})
-        is False
     )

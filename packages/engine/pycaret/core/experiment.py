@@ -345,27 +345,29 @@ class Experiment(BaseEstimator):
     def _can_use_native_setup(self, setup_kwargs: dict[str, Any]) -> bool:
         """Predicate: can fit() skip ``self._legacy.setup()`` entirely?
 
-        The native setup handles classification + regression. It supports
-        the most common preprocessing options:
+        The native setup handles classification + regression with the
+        following preprocessing options:
 
         - **Phase 1** (session 35): mean / mode imputation + ordinal
           encoding + label encoding for clf.
         - **Phase 2** (session 36): ``normalize=True`` (StandardScaler) and
           ``transformation=True`` (PowerTransformer) on numeric features.
+        - **Phase 3** (session 37): ``remove_outliers=True`` (IsolationForest
+          drops 5% most anomalous training rows) and ``feature_selection=True``
+          (SelectFromModel keeps features with above-median importance from
+          a lightweight ExtraTrees / Lasso estimator).
 
-        Heavier options (``remove_outliers``, ``feature_selection``) and
-        unsupervised / TS still fall back to legacy.
+        Unsupervised / TS still fall back to legacy.
         """
         from pycaret.core.tasks import TaskType
 
-        # Supervised tabular only — Phase 3 will cover unsupervised + TS.
+        # Supervised tabular only — Phase 4 will cover unsupervised + TS.
         if self.task not in (TaskType.CLASSIFICATION, TaskType.REGRESSION):
             return False
-        # Heavy preprocessing options force legacy — Phase 3 work.
-        if self.remove_outliers or self.feature_selection:
-            return False
         # Any caller-supplied setup_kwargs forces legacy — we don't know what
-        # those options do.
+        # those options do. Once we expose the knobs as constructor params
+        # (e.g. `outliers_method`, `feature_selection_estimator`) we can
+        # selectively allow the matching kwargs through here.
         if setup_kwargs:
             return False
         return True
@@ -510,6 +512,68 @@ class Experiment(BaseEstimator):
 
         y_transformed = _pd.concat([y_train_transformed, y_test_transformed]).sort_index()
 
+        # Phase 3a: outlier removal. Fit IsolationForest on the
+        # transformed training set and drop the top `contamination`
+        # fraction (5% by default — matches legacy `outliers_threshold`)
+        # of training rows. Test set is left untouched. Both X_train
+        # and the transformed splits stay in sync.
+        outliers_dropped = 0
+        if self.remove_outliers:
+            from sklearn.ensemble import IsolationForest
+
+            iso = IsolationForest(contamination=0.05, random_state=seed, n_jobs=self.n_jobs)
+            inlier_mask = iso.fit_predict(X_train_transformed) == 1
+            outliers_dropped = int((~inlier_mask).sum())
+            X_train = X_train.loc[inlier_mask]
+            X_train_transformed = X_train_transformed.loc[inlier_mask]
+            y_train = y_train.loc[inlier_mask]
+            y_train_transformed = y_train_transformed.loc[inlier_mask]
+            # Recompute the union views.
+            X_transformed = _pd.concat([X_train_transformed, X_test_transformed]).sort_index()
+            y_transformed = _pd.concat([y_train_transformed, y_test_transformed]).sort_index()
+
+        # Phase 3b: feature selection. SelectFromModel with a default
+        # estimator picks features whose importances are above the median.
+        # We append the fitted selector to ``preprocess_pipeline`` so that
+        # predict-time preprocessing reapplies the same column drop. The
+        # raw X / X_train / X_test keep all columns so user-facing
+        # accessors don't lose information.
+        feature_selector: Any | None = None
+        selected_features: list[str] | None = None
+        if self.feature_selection:
+            from sklearn.feature_selection import SelectFromModel
+
+            if is_clf:
+                from sklearn.ensemble import ExtraTreesClassifier
+
+                estimator = ExtraTreesClassifier(
+                    n_estimators=100, n_jobs=self.n_jobs, random_state=seed
+                )
+            else:
+                from sklearn.ensemble import ExtraTreesRegressor
+
+                estimator = ExtraTreesRegressor(
+                    n_estimators=100, n_jobs=self.n_jobs, random_state=seed
+                )
+            feature_selector = SelectFromModel(estimator, threshold="median")
+            feature_selector.fit(X_train_transformed, y_train_transformed)
+            keep_mask = feature_selector.get_support()
+            selected_features = [
+                col
+                for col, keep in zip(X_train_transformed.columns, keep_mask, strict=True)
+                if keep
+            ]
+            # Defensive: SelectFromModel can pick zero features for tiny / pathological
+            # datasets. Keep at least one to avoid an empty matrix downstream.
+            if not selected_features:
+                selected_features = [X_train_transformed.columns[0]]
+            X_train_transformed = X_train_transformed[selected_features]
+            X_test_transformed = X_test_transformed[selected_features]
+            X_transformed = _pd.concat([X_train_transformed, X_test_transformed]).sort_index()
+            # Extend the pipeline so predict-time preprocessing applies
+            # the same column drop to new data.
+            preprocess_pipeline.steps.append(("feature_selection", feature_selector))
+
         # Fold generator.
         if is_clf:
             fold_generator = StratifiedKFold(n_splits=self.fold, shuffle=True, random_state=seed)
@@ -561,6 +625,11 @@ class Experiment(BaseEstimator):
             "label_encoder": label_encoder,
             "numeric_cols": numeric_cols,
             "categorical_cols": categorical_cols,
+            # session 37 — phase 3 extras (None when the corresponding flag
+            # is off, so callers can introspect what ran).
+            "feature_selector": feature_selector,
+            "selected_features": selected_features,
+            "outliers_dropped": outliers_dropped,
         }
         self.logger.log(
             EventKind.EXPERIMENT_FITTED,

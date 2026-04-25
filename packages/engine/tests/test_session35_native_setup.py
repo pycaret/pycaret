@@ -82,11 +82,13 @@ def test_native_setup_used_for_basic_regression(monkeypatch):
 
 @pytest.mark.slow
 def test_complex_preprocessing_falls_back_to_legacy():
-    """`remove_outliers=True` is Phase-3 territory and forces legacy.
+    """``setup_kwargs`` (caller-supplied) still forces legacy.
 
-    Phase 1 (s35) gated normalize / transformation on legacy too; phase
-    2 (s36) made them native, so we use remove_outliers here as the
-    canonical "still legacy" flag.
+    Originally session 35 used ``normalize=True`` here; sessions 36 + 37
+    made every constructor preprocessing flag native. The remaining
+    "still legacy" route is caller-supplied ``setup_kwargs`` — those keys
+    pass through to the legacy ``setup()``'s 100+ knobs and aren't
+    handled by the native chain yet.
     """
     import pycaret.datasets
     from pycaret.tasks import ClassificationExperiment
@@ -97,9 +99,8 @@ def test_complex_preprocessing_falls_back_to_legacy():
         session_id=42,
         n_jobs=1,
         fold=3,
-        remove_outliers=True,  # phase-3 flag — forces legacy
-    ).fit(df)
-    # Native NOT used in this case.
+    ).fit(df, html=False)  # extra setup_kwarg → forces legacy
+    # Native NOT used when extra setup_kwargs are passed.
     assert exp._native_setup_used is False
 
 
@@ -205,14 +206,13 @@ def test_native_setup_models_internal_view():
 
 
 def test_can_use_native_setup_predicate():
-    """The predicate after sessions 35 + 36.
+    """The predicate after sessions 35 + 36 + 37.
 
-    Phase 1 (s35) baseline: simple supervised → native; non-supervised
-    + setup_kwargs → legacy. Phase 2 (s36) made ``normalize`` and
-    ``transformation`` native too — those are covered in
-    `test_session36_native_setup_phase2.py`. Here we lock the still-
-    legacy paths: ``remove_outliers``, ``feature_selection``,
-    setup_kwargs, unsupervised.
+    Every supervised constructor preprocessing flag (normalize /
+    transformation / remove_outliers / feature_selection) is now native
+    — see test_session36_native_setup_phase2 + test_session37_native_setup_phase3
+    for those drains. Here we lock the still-legacy paths: caller-supplied
+    ``setup_kwargs`` and unsupervised tasks.
     """
     from pycaret.tasks import (
         AnomalyExperiment,
@@ -222,24 +222,11 @@ def test_can_use_native_setup_predicate():
 
     # Simple supervised — yes.
     assert ClassificationExperiment(target="t", session_id=0)._can_use_native_setup({}) is True
-    # Phase-3 flags — still force legacy.
-    assert (
-        ClassificationExperiment(
-            target="t", session_id=0, remove_outliers=True
-        )._can_use_native_setup({})
-        is False
-    )
-    assert (
-        ClassificationExperiment(
-            target="t", session_id=0, feature_selection=True
-        )._can_use_native_setup({})
-        is False
-    )
-    # Extra setup kwargs — no (we don't know what they do).
+    # Extra setup kwargs — still forces legacy (we don't know what they do).
     assert (
         ClassificationExperiment(target="t", session_id=0)._can_use_native_setup({"foo": 1})
         is False
     )
-    # Unsupervised — no (Phase 3).
+    # Unsupervised — still legacy (phase-4 work).
     assert ClusteringExperiment(session_id=0)._can_use_native_setup({}) is False
     assert AnomalyExperiment(session_id=0)._can_use_native_setup({}) is False
