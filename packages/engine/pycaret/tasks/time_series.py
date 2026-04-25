@@ -711,3 +711,314 @@ class TimeSeriesExperiment(SupervisedExperiment):
             leaderboard=leaderboard,
             ranked_ids=ranked_ids,
         )
+
+    # ------------------------------------------------- session 43 (phase 5c)
+    # Native TS tune_model — drains legacy.tune_model. Wraps sktime's
+    # ForecastingGridSearchCV / ForecastingRandomizedSearchCV around the
+    # experiment's preprocess pipeline using the registry container's
+    # tune_grid / tune_distributions.
+
+    def tune_model(
+        self,
+        estimator: Any,
+        *,
+        fold: Any | None = None,
+        n_iter: int = 10,
+        custom_grid: dict | None = None,
+        optimize: str = "MASE",
+        search_algorithm: str = "random",
+        choose_better: bool = True,
+        fit_kwargs: dict | None = None,
+        round: int = 4,
+        verbose: bool = False,
+        return_tuner: bool = False,
+        **kwargs: Any,
+    ):
+        """Native time-series tune_model (phase 5c continued).
+
+        Wraps sktime's ``ForecastingGridSearchCV`` (when
+        ``search_algorithm='grid'``) or ``ForecastingRandomizedSearchCV``
+        (default ``'random'``) around the experiment's preprocess
+        pipeline + the passed estimator. Uses the registry container's
+        ``tune_grid`` (grid) or ``tune_distributions`` (random) — or
+        ``custom_grid=`` if supplied.
+
+        Picks the best params via ``optimize`` (default ``"MASE"`` —
+        lower is better). Refits a fresh ``create_model(...)`` with
+        those params on the full ``y_train``. When ``choose_better=True``
+        and the tuned model performs worse than the input, returns the
+        original.
+
+        Parameters mirror the supervised ``tune_model``. Returns a
+        ``TuneResult`` whose ``pipeline`` is a real
+        ``ForecastingPipeline``.
+        """
+        from copy import deepcopy
+
+        import pandas as pd
+        from sktime.forecasting.base import BaseForecaster
+        from sktime.forecasting.compose import ForecastingPipeline
+
+        from pycaret.core.errors import ConfigurationError
+        from pycaret.core.results import TuneResult
+        from pycaret.logging.events import EventKind
+        from pycaret.utils.time_series.forecasting.model_selection import (
+            ForecastingGridSearchCV,
+            ForecastingRandomizedSearchCV,
+        )
+        from pycaret.utils.time_series.forecasting.pipeline import (
+            _add_model_to_pipeline,
+            _get_pipeline_estimator_label,
+        )
+
+        self._require_fitted()
+
+        import time as _time
+
+        t0 = _time.perf_counter()
+
+        # ---- resolve estimator → bare forecaster + container
+        if isinstance(estimator, str):
+            raise TypeError(
+                "tune_model expects a fitted forecaster or pipeline; pass a "
+                "registry ID to create_model first, then tune the result."
+            )
+        if isinstance(estimator, ForecastingPipeline):
+            inner = estimator.steps[-1][1]
+            base_forecaster = (
+                deepcopy(inner.steps[-1][1]) if hasattr(inner, "steps") else deepcopy(inner)
+            )
+        elif isinstance(estimator, BaseForecaster):
+            base_forecaster = deepcopy(estimator)
+        else:
+            raise TypeError(
+                "tune_model expects a sktime BaseForecaster or "
+                f"ForecastingPipeline; got {type(estimator).__name__!r}."
+            )
+
+        # ---- look up the container by class to fetch tune_grid / distributions
+        container = self._lookup_ts_container(type(base_forecaster))
+        if container is None and custom_grid is None:
+            raise ConfigurationError(
+                f"Unknown forecaster {type(base_forecaster).__name__!r} and no "
+                "custom_grid provided. Pass `custom_grid=` to tune a model not in "
+                "the engine registry."
+            )
+
+        # ---- build param grid
+        if custom_grid is not None:
+            param_grid = custom_grid
+        elif search_algorithm == "grid":
+            param_grid = getattr(container, "tune_grid", None)
+        else:  # random / default
+            param_grid = getattr(container, "tune_distribution", None) or getattr(
+                container, "tune_distributions", None
+            )
+        if not param_grid:
+            raise ConfigurationError(
+                f"No tune_grid/tune_distributions for {type(base_forecaster).__name__!r} "
+                "and no custom_grid provided."
+            )
+
+        # ---- convert pycaret Distribution objects to sklearn-compatible
+        # distributions for ParameterSampler (random search) / ParameterGrid.
+        if search_algorithm != "grid" and custom_grid is None:
+            try:
+                from pycaret.internal.distributions import get_base_distributions
+
+                param_grid = get_base_distributions(param_grid)
+            except Exception:  # noqa: BLE001 — defensive
+                pass  # fall through; ParameterSampler may raise downstream
+
+        # ---- wire forecaster into preprocess pipeline + prefix param keys
+        base_pipeline = self._fit_state["preprocess_pipeline"]
+        if not isinstance(base_pipeline, ForecastingPipeline):
+            raise RuntimeError(
+                "TS native tune_model expected ForecastingPipeline; got "
+                f"{type(base_pipeline).__name__}."
+            )
+        pipeline_with_model = _add_model_to_pipeline(pipeline=base_pipeline, model=base_forecaster)
+        actual_estimator_label = _get_pipeline_estimator_label(pipeline=pipeline_with_model)
+        param_grid = {f"{actual_estimator_label}__{k}": v for k, v in param_grid.items()}
+
+        # ---- fold + scoring
+        cv = fold if fold is not None else self._fit_state["fold_generator"]
+        metrics_registry = self._build_ts_metric_registry()
+        # Resolve the optimize metric (display name → container) — fall back to
+        # ID-based lookup if user passed e.g. "mase".
+        optimize_container = None
+        for c in metrics_registry.values():
+            if optimize in (
+                getattr(c, "display_name", None),
+                getattr(c, "name", None),
+                getattr(c, "id", None),
+            ):
+                optimize_container = c
+                break
+        if optimize_container is None:
+            raise ConfigurationError(
+                f"optimize={optimize!r} not found in the metric registry. Available: "
+                f"{[getattr(c, 'display_name', None) for c in metrics_registry.values()]}"
+            )
+
+        scoring_dict = {optimize_container.id: optimize_container.scorer}
+        refit_metric = optimize_container.id
+
+        seed = self.session_id if self.session_id is not None else 0
+        search_cls = (
+            ForecastingGridSearchCV if search_algorithm == "grid" else ForecastingRandomizedSearchCV
+        )
+        search_kwargs = {
+            "forecaster": pipeline_with_model,
+            "cv": cv,
+            "alpha": 0.05,
+            "coverage": 0.9,
+            "scoring": scoring_dict,
+            "refit_metric": refit_metric,
+            "n_jobs": self.n_jobs,
+            "verbose": 0,
+            "refit": False,  # we refit via create_model below
+        }
+        if search_algorithm == "grid":
+            search_kwargs["param_grid"] = param_grid
+        else:
+            search_kwargs["param_distributions"] = param_grid
+            search_kwargs["n_iter"] = n_iter
+            search_kwargs["random_state"] = seed
+        search_kwargs.update(kwargs)
+        search_obj = search_cls(**search_kwargs)
+
+        self.logger.log(
+            EventKind.MODEL_TUNE_STARTED,
+            payload={
+                "estimator": type(base_forecaster).__name__,
+                "n_iter": n_iter,
+                "optimize": optimize,
+                "search_algorithm": search_algorithm,
+            },
+        )
+
+        y_train = self._fit_state["y_train"]
+        x_train = self._fit_state.get("X_train")
+        fit_kwargs = dict(fit_kwargs or {})
+        if "fh" not in fit_kwargs and cv is not None:
+            fit_kwargs["fh"] = cv.fh
+        additional_scorer_kwargs = {"sp": self._primary_sp_to_use()}
+        search_obj.fit(
+            y=y_train,
+            X=x_train,
+            additional_scorer_kwargs=additional_scorer_kwargs,
+            **fit_kwargs,
+        )
+
+        # ---- strip pipeline prefix from best_params
+        prefix = f"{actual_estimator_label}__"
+        best_params = {
+            k[len(prefix) :] if k.startswith(prefix) else k: v
+            for k, v in search_obj.best_params_.items()
+        }
+
+        # ---- refit via native create_model with best params (so we get
+        # CV metrics in the standard Fold/Mean/Std shape)
+        refit_kwargs = dict(best_params)
+        # Resolve the model_id: best-effort lookup in the registry.
+        model_id = None
+        for mid, c in self._fit_state.get("model_registry", {}).items():
+            if c is container:
+                model_id = mid
+                break
+
+        if model_id is not None:
+            tuned = self.create_model(
+                model_id,
+                fold=fold,
+                cross_validation=True,
+                fit_kwargs=fit_kwargs,
+                round=round,
+                verbose=False,
+                **refit_kwargs,
+            )
+        else:
+            # Custom-grid path: build the forecaster directly with best_params
+            # and run create_model on the bare instance.
+            tuned_forecaster = type(base_forecaster)(
+                **{**base_forecaster.get_params(), **best_params}
+            )
+            tuned = self.create_model(
+                tuned_forecaster,
+                fold=fold,
+                cross_validation=True,
+                fit_kwargs=fit_kwargs,
+                round=round,
+                verbose=False,
+            )
+
+        # ---- choose_better: compare against the input estimator's metrics
+        chosen_pipeline = tuned.pipeline
+        chosen_metrics = tuned.metrics
+        if choose_better:
+            base_create = self.create_model(
+                type(base_forecaster)(**base_forecaster.get_params()),
+                fold=fold,
+                cross_validation=True,
+                fit_kwargs=fit_kwargs,
+                round=round,
+                verbose=False,
+            )
+            base_score = self._score_from_metrics(
+                base_create.metrics, optimize_container.display_name
+            )
+            tuned_score = self._score_from_metrics(tuned.metrics, optimize_container.display_name)
+            ascending = optimize_container.display_name in self._TS_ASCENDING_METRICS
+            keep_tuned = (
+                tuned_score is not None
+                and base_score is not None
+                and ((tuned_score < base_score) if ascending else (tuned_score > base_score))
+            )
+            if not keep_tuned and base_score is not None:
+                chosen_pipeline = base_create.pipeline
+                chosen_metrics = base_create.metrics
+
+        # ---- cv_results DataFrame
+        try:
+            cv_results = pd.DataFrame(search_obj.cv_results_)
+        except Exception:  # noqa: BLE001 — defensive
+            cv_results = pd.DataFrame()
+
+        self._set_last_metrics(chosen_metrics)
+        self.logger.log(
+            EventKind.MODEL_TUNED,
+            duration_ms=(_time.perf_counter() - t0) * 1000,
+            payload={"best_params": best_params},
+        )
+        result = TuneResult(
+            pipeline=chosen_pipeline,
+            best_params=best_params,
+            search=search_obj,
+            cv_results=cv_results,
+            metrics=chosen_metrics if chosen_metrics is not None else pd.DataFrame(),
+        )
+        if return_tuner:
+            return result, search_obj
+        return result
+
+    def _lookup_ts_container(self, cls: type) -> Any | None:
+        """Look up a TS container in the model registry by its class_def."""
+        for c in self._fit_state.get("model_registry", {}).values():
+            if getattr(c, "class_def", None) is cls:
+                return c
+        return None
+
+    @staticmethod
+    def _score_from_metrics(metrics: Any, col: str) -> float | None:
+        """Pull the Mean-row scalar for a given metric column. None if missing.
+
+        ``metrics`` is a pandas DataFrame or None — typed loosely to keep
+        the module's import surface lean (no top-level pandas import).
+        """
+        if metrics is None or "Mean" not in metrics.index or col not in metrics.columns:
+            return None
+        try:
+            return float(metrics.loc["Mean", col])
+        except (TypeError, ValueError):
+            return None
