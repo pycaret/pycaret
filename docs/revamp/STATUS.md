@@ -1,6 +1,81 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 43*
+*Updated: 2026-04-25, end of session 44*
+
+## Session 44 — Phase 5c (cont.): drain `TimeSeriesExperiment.finalize_model` — ✅
+
+The fifth (and last user-facing) TS verb is fully native. After this session, **every callable TS verb runs without touching legacy** — `create_model` / `predict_model` / `compare_models` / `tune_model` / `finalize_model` all bypass `self._legacy.<verb>`. (`assign_model` doesn't exist for TS — it's an `UnsupervisedExperiment`-only verb.)
+
+The only `legacy.*` callsite remaining for TS is `legacy.setup()` inside `_native_setup_timeseries` itself — phase 5d removes that.
+
+### What landed
+
+- **`TimeSeriesExperiment.finalize_model`** native override:
+  - Accepts a fitted `ForecastingPipeline` or bare sktime forecaster.
+  - Refits on the **full** `y` (`y_train + y_test` from `_fit_state["y"]`) using the experiment's preprocess pipeline.
+  - Optional exogenous `X_full` from `_fit_state["X"]` for multivariate models.
+  - Defaults `fit_kwargs["fh"]` to the experiment's `fh` so post-finalize predictions extend into the true future.
+  - Returns a `FinalizeResult` whose `pipeline` is a deployment-ready `ForecastingPipeline`.
+  - Doesn't mutate the input — input pipeline keeps its train-only fit.
+- **`packages/engine/tests/test_session44_ts_finalize_model_drain.py`** — 7 new tests:
+  - Drain-lock for `finalize_model`.
+  - Refits on the full `y` (forecaster's `_y` length matches `_fit_state["y"]`).
+  - Bare forecaster path.
+  - `predict_model` after finalize produces forecasts beyond the original test horizon.
+  - Object without `.fit` → `TypeError`.
+  - End-to-end `create + tune + finalize + predict` with all 5 legacy verbs poisoned.
+  - Input pipeline isn't mutated by finalize.
+
+### Headline metrics
+
+| | Session 43 end | Session 44 end |
+|---|---|---|
+| TS verbs drained | 4 of 6 | **5** of 5 callable TS verbs |
+| `legacy.<verb>` callsites for TS | 1 (`finalize_model`) | 0 |
+| Engine tests (fast + slow) | 228 | **235** (+7) |
+
+### Drain status
+
+```
+Native setup dispatcher accepts:
+  ✅ Phases 1-4: clf + reg + clustering + anomaly setup           (s35-s38)
+  🟡 Phase 5a: TS adopts dispatcher (still calls legacy.setup)    (s39)
+  ✅ Phase 5b: TS create_model native                             (s40)
+  ✅ Phase 5c: TS predict_model native                            (s41)
+  ✅ Phase 5c: TS compare_models native                           (s42)
+  ✅ Phase 5c: TS tune_model native                               (s43)
+  ✅ Phase 5c: TS finalize_model native                           (s44 ← here)
+  ⏳ Phase 5d: remove legacy.setup() from _native_setup_timeseries
+  ⏳ Phase 6:  delete pycaret/internal/pycaret_experiment/
+
+What still routes to legacy for TS:
+  - _native_setup_timeseries still calls legacy.setup() (transitional)
+  - That's it — every callable verb is fully native.
+```
+
+### Why phase 5d isn't in this session
+
+`_native_setup_timeseries` calls `legacy.setup()` for two reasons we now need to replace:
+
+1. **Model registry construction.** Each TS container reads from the experiment object: `seed`, `seasonality_present`, `primary_sp_to_use`, `strictly_positive`, `seasonality_type`. Legacy auto-detects the seasonality / positivity properties via Fourier analysis on the data during `setup()`.
+2. **`y_train` / `y_test` split + `fold_generator` build.** Both can be done natively via sktime's `temporal_train_test_split` + `ExpandingWindowSplitter`, but legacy also coerces dates → `PeriodIndex`, validates `fh`, etc.
+
+To strip `legacy.setup()`, phase 5d needs:
+- A `_TSContextProxy` that exposes those auto-detected attrs (port the seasonality detection from legacy or rebuild it via stationary tests + Fourier from sktime).
+- Native `temporal_train_test_split` + `ExpandingWindowSplitter` builders.
+
+Estimated 1 session — substantive enough to deserve its own commit.
+
+### What's next (sessions 45+)
+
+- **Phase 5d** — port seasonality auto-detection + native train/test split + native fold_generator. Once done, `_native_setup_timeseries` doesn't need legacy at all.
+- **Phase 6** — delete `pycaret/internal/pycaret_experiment/` (10K LoC). Final 4.0.0 release.
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config (user account reset in progress).
+
+---
 
 ## Session 43 — Phase 5c (cont.): drain `TimeSeriesExperiment.tune_model` — ✅
 

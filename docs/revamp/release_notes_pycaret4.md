@@ -115,6 +115,42 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 44 — 2026-04-25 — Phase 5c (cont.): drain TimeSeriesExperiment.finalize_model
+
+The fifth (and last user-facing) TS verb is fully native. After this session, **every callable TS verb runs without touching legacy** — `create_model` / `predict_model` / `compare_models` / `tune_model` / `finalize_model` all bypass `self._legacy.<verb>`. (`assign_model` doesn't exist for TS — it's an `UnsupervisedExperiment`-only verb.) The only `legacy.*` callsite remaining for TS is `legacy.setup()` inside `_native_setup_timeseries` itself.
+
+## ADDED — engine
+
+- `ADDED` — **`TimeSeriesExperiment.finalize_model`** in `packages/engine/pycaret/tasks/time_series.py`. Refits on the **full** `y` (`y_train + y_test` from `_fit_state["y"]`) using the experiment's preprocess pipeline. Optional exogenous `X_full` from `_fit_state["X"]`. Defaults `fit_kwargs["fh"]` to the experiment's `fh`. Returns a `FinalizeResult` whose `pipeline` is a deployment-ready `ForecastingPipeline`. Doesn't mutate the input — input pipeline keeps its train-only fit. Accepts both bare sktime forecasters and `ForecastingPipeline` instances; raises `TypeError` for anything else.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session44_ts_finalize_model_drain.py`** — 7 new tests:
+  - Drain-lock for `finalize_model`.
+  - Refits on the full `y` (forecaster's `_y` length matches `_fit_state["y"]`).
+  - Bare forecaster path (auto-wires into preprocess).
+  - `predict_model(final.pipeline, fh=[1,2,3,4,5,6])` after finalize produces 6-step forecasts.
+  - Object without `.fit` → `TypeError`.
+  - End-to-end `create + tune + finalize + predict` chain with all 5 legacy verbs poisoned.
+  - Input pipeline isn't mutated by finalize (the original `res.pipeline` keeps its train-only fit).
+
+## INTERNAL
+
+- `INTERNAL` — **No `assign_model` for TS.** PyCaret's `assign_model` is defined on `UnsupervisedExperiment` (clusters/anomaly labels back onto rows). `TimeSeriesExperiment` inherits from `SupervisedExperiment`, not `UnsupervisedExperiment`, so the verb is genuinely absent — not a missed drain. Confirmed with `grep -n "def assign_model"` across the TS module tree: zero hits.
+- `INTERNAL` — **Why phase 5d isn't in this session.** Stripping `legacy.setup()` from `_native_setup_timeseries` requires porting two pieces: (1) seasonality auto-detection via Fourier analysis (legacy's `setup()` derives `seasonality_present`, `primary_sp_to_use`, `strictly_positive`, `seasonality_type` and TS containers read all of those when constructed), and (2) sktime-native `temporal_train_test_split` + `ExpandingWindowSplitter` build. Substantive enough to be its own session.
+- `INTERNAL` — **`finalize_model` doesn't go through `create_model`.** Unlike `tune_model` (which refits via `create_model` to get standard CV metrics), `finalize_model` is fundamentally a "refit on more data" operation — there's no holdout left to CV against. So we just call `pipeline.fit(y=y_full, X=x_full)` directly. Matches legacy semantics.
+- `INTERNAL` — **`fh` defaulting in fit_kwargs.** Some sktime forecasters (e.g. ARIMA with auto order) need to know the forecast horizon at fit-time. Defaulting to the experiment's `fh` lets `predict_model` work post-finalize without the user having to re-specify it. The `try/except TypeError` retry handles forecasters that *don't* accept `fh` in fit (e.g. `NaiveForecaster`).
+
+## Session 44 delta summary
+
+| Metric | Session 43 end | Session 44 end |
+|---|---:|---:|
+| TS verbs drained | 4 of 6 | 5 of 5 callable verbs (assign_model n/a) |
+| `legacy.<verb>` callsites for TS | 1 (`finalize_model`) | 0 |
+| Engine tests (fast + slow) | 228 | **235** |
+
+---
+
 # Session 43 — 2026-04-25 — Phase 5c (cont.): drain TimeSeriesExperiment.tune_model
 
 The fourth TS verb is fully native. `exp.tune_model(forecaster)` no longer touches `legacy.tune_model` — it wraps sktime's `ForecastingGridSearchCV` / `ForecastingRandomizedSearchCV` around the experiment's preprocess pipeline, uses the registry container's `tune_grid` / `tune_distributions` (or `custom_grid=`), and refits the best hyperparameters via the drained `create_model`.
