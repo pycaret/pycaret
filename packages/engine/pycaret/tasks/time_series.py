@@ -559,3 +559,155 @@ class TimeSeriesExperiment(SupervisedExperiment):
             payload={"estimator": self._describe_estimator(estimator)},
         )
         return PredictResult(predictions=predictions, metrics=metrics_df)
+
+    # ------------------------------------------------- session 42 (phase 5c)
+    # Native TS compare_models — drains legacy.compare_models. Iterates the
+    # sktime registry, calls native create_model per candidate, builds a
+    # leaderboard from each Mean row.
+
+    # TS-specific registry exclusions. ensemble_forecaster requires
+    # runtime-built forecasters; legacy.models() already filters it.
+    _TS_REGISTRY_EXCLUDE = frozenset({"ensemble_forecaster"})
+
+    # Metrics where lower is better (TS error metrics).
+    _TS_ASCENDING_METRICS = frozenset({"MASE", "RMSSE", "MAE", "RMSE", "MAPE", "SMAPE"})
+
+    def compare_models(
+        self,
+        *,
+        include: list[Any] | None = None,
+        exclude: list[str] | None = None,
+        fold: Any | None = None,
+        cross_validation: bool = True,
+        sort: str = "MASE",
+        n_select: int = 1,
+        turbo: bool = True,
+        errors: str = "ignore",
+        fit_kwargs: dict | None = None,
+        round: int = 4,
+        verbose: bool = False,
+    ):
+        """Native time-series compare_models (phase 5c continued).
+
+        Iterates the sktime registry, runs native ``create_model`` per
+        candidate (which already does CV via the drained native path),
+        collects each model's ``Mean`` metrics row, and assembles the
+        leaderboard ranked by ``sort`` (default ``"MASE"`` — lower is
+        better).
+
+        Parameters mirror the supervised ``compare_models``. Returns a
+        ``CompareResult`` whose ``best`` / ``models`` are real
+        ``ForecastingPipeline`` instances.
+        """
+        import pandas as pd
+
+        from pycaret.core.results import CompareResult
+        from pycaret.logging.events import EventKind
+
+        self._require_fitted()
+
+        import time as _time
+
+        t0 = _time.perf_counter()
+
+        # ---- decide which models to compare
+        registry = self._fit_state.get("model_registry", {})
+        if include is not None:
+            candidates = list(include)
+        else:
+            candidates = [
+                mid
+                for mid, c in registry.items()
+                if not getattr(c, "is_special", False) and mid not in self._TS_REGISTRY_EXCLUDE
+            ]
+        if exclude:
+            ex_set = set(exclude)
+            candidates = [c for c in candidates if not (isinstance(c, str) and c in ex_set)]
+        if turbo:
+            # All TS containers default to is_turbo=True so this is mostly a
+            # no-op, but we still respect the flag for parity with supervised.
+            def _is_turbo(cand: Any) -> bool:
+                if isinstance(cand, str):
+                    container = registry.get(cand)
+                    if container is None:
+                        return True
+                    return bool(getattr(container, "is_turbo", True))
+                return True
+
+            candidates = [c for c in candidates if _is_turbo(c)]
+
+        self.logger.log(
+            EventKind.MODEL_COMPARE_STARTED,
+            payload={"n_candidates": len(candidates), "sort": sort},
+        )
+
+        # ---- per-model training loop. create_model handles CV + metrics.
+        rows: list[dict] = []
+        pipelines: dict[str, Any] = {}
+        for cand in candidates:
+            try:
+                created = self.create_model(
+                    cand,
+                    fold=fold,
+                    cross_validation=cross_validation,
+                    fit_kwargs=fit_kwargs,
+                    round=round,
+                    verbose=False,
+                )
+            except Exception:
+                if errors == "raise":
+                    raise
+                continue
+
+            mid = created.model_id
+            pipelines[mid] = created.pipeline
+
+            row: dict[str, Any] = {"Model": mid}
+            if created.metrics is not None and "Mean" in created.metrics.index:
+                mean_row = created.metrics.loc["Mean"].to_dict()
+                row.update(mean_row)
+            rows.append(row)
+
+        if not rows:
+            self.logger.log(
+                EventKind.MODEL_COMPARE_FINISHED,
+                duration_ms=(_time.perf_counter() - t0) * 1000,
+                payload={"n_select": n_select, "n_succeeded": 0},
+            )
+            return CompareResult(
+                best=None,
+                models=[],
+                leaderboard=pd.DataFrame(),
+                ranked_ids=[],
+            )
+
+        # ---- assemble + sort leaderboard
+        leaderboard = pd.DataFrame(rows)
+        ascending = sort in self._TS_ASCENDING_METRICS
+        if sort in leaderboard.columns:
+            leaderboard = leaderboard.sort_values(by=sort, ascending=ascending).reset_index(
+                drop=True
+            )
+        leaderboard = leaderboard.round(round)
+
+        ranked_ids: list[str] = leaderboard["Model"].astype(str).tolist()
+        top_ids = ranked_ids[: max(1, n_select)]
+        models = [pipelines[mid] for mid in top_ids if mid in pipelines]
+
+        self.logger.log(
+            EventKind.MODEL_COMPARE_FINISHED,
+            duration_ms=(_time.perf_counter() - t0) * 1000,
+            payload={
+                "n_select": n_select,
+                "n_succeeded": len(rows),
+                "winner": ranked_ids[0] if ranked_ids else None,
+            },
+        )
+
+        self._set_last_metrics(leaderboard)
+        return CompareResult(
+            best=models[0] if models else None,
+            models=models,
+            leaderboard=leaderboard,
+            ranked_ids=ranked_ids,
+        )
