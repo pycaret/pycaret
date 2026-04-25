@@ -472,23 +472,11 @@ class Experiment(BaseEstimator):
 
         import pandas as _pd
 
-        from pycaret.core.tasks import TaskType
         from pycaret.utils.generic import calculate_metrics
 
         try:
-            if self.task == TaskType.CLASSIFICATION:
-                from pycaret.containers.metrics.classification import (
-                    get_all_metric_containers,
-                )
-
-                metrics_registry = get_all_metric_containers({}, raise_errors=False)
-            elif self.task == TaskType.REGRESSION:
-                from pycaret.containers.metrics.regression import (
-                    get_all_metric_containers,
-                )
-
-                metrics_registry = get_all_metric_containers({}, raise_errors=False)
-            else:
+            metrics_registry = self._get_metric_registry()
+            if not metrics_registry:
                 return None
         except Exception:
             return None
@@ -758,23 +746,16 @@ class Experiment(BaseEstimator):
 
             from pycaret.utils.generic import calculate_metrics
 
+            metrics_registry = self._get_metric_registry()
+            if not metrics_registry:
+                return None
             if self.task == TaskType.CLASSIFICATION:
-                from pycaret.containers.metrics.classification import (
-                    get_all_metric_containers,
-                )
-
-                metrics_registry = get_all_metric_containers({}, raise_errors=False)
                 try:
                     proba = estimator.predict_proba(X)
                     pred_proba = proba[:, 1] if proba.shape[1] == 2 else proba
                 except Exception:
                     pred_proba = None
             elif self.task == TaskType.REGRESSION:
-                from pycaret.containers.metrics.regression import (
-                    get_all_metric_containers,
-                )
-
-                metrics_registry = get_all_metric_containers({}, raise_errors=False)
                 pred_proba = None
             else:
                 return None
@@ -871,40 +852,17 @@ class Experiment(BaseEstimator):
     def get_metrics(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
         """Return a DataFrame describing the available metrics for the task.
 
-        Session-31 drain: reads from the task's metric registry (the same
-        ``pycaret.containers.metrics.<task>.get_all_metric_containers``
-        helper that ``create_model`` / ``predict_model`` use internally).
+        Session-31 drain + session-32: reads from the per-experiment metric
+        registry stored in ``self._fit_state["metric_registry"]``. That
+        registry is initialised at fit() time from the task helper and
+        mutated by ``add_metric`` / ``remove_metric``.
         """
         self._require_fitted()
-        from pycaret.core.tasks import TaskType
-
         try:
-            if self.task == TaskType.CLASSIFICATION:
-                from pycaret.containers.metrics.classification import (
-                    get_all_metric_containers,
-                )
-
-                metrics = get_all_metric_containers({}, raise_errors=False)
-            elif self.task == TaskType.REGRESSION:
-                from pycaret.containers.metrics.regression import (
-                    get_all_metric_containers,
-                )
-
-                metrics = get_all_metric_containers({}, raise_errors=False)
-            elif self.task == TaskType.CLUSTERING:
-                from pycaret.containers.metrics.clustering import (
-                    get_all_metric_containers,
-                )
-
-                metrics = get_all_metric_containers({}, raise_errors=False)
-            elif self.task == TaskType.ANOMALY:
-                from pycaret.containers.metrics.anomaly import (
-                    get_all_metric_containers,
-                )
-
-                metrics = get_all_metric_containers({}, raise_errors=False)
-            else:
-                # Time-series falls through to the legacy registry.
+            metrics = self._get_metric_registry()
+            if not metrics:
+                # Time-series + any other task that doesn't populate the
+                # native registry falls through to legacy.
                 return self._legacy.get_metrics(*args, **kwargs)
         except Exception:
             return self._legacy.get_metrics(*args, **kwargs)
@@ -939,11 +897,135 @@ class Experiment(BaseEstimator):
     # advisory escape hatches that don't sit in the predict/tune/compare
     # path. Drain candidates for a future polish session.
 
-    def add_metric(self, *args: Any, **kwargs: Any) -> Any:
-        return self._legacy.add_metric(*args, **kwargs)
+    def add_metric(
+        self,
+        id: str,
+        name: str,
+        score_func: Any,
+        target: str = "pred",
+        greater_is_better: bool = True,
+        args: dict | None = None,
+        is_multiclass: bool = True,
+        **kwargs: Any,
+    ) -> Any:
+        """Register a custom metric with the experiment.
 
-    def remove_metric(self, *args: Any, **kwargs: Any) -> None:
-        return self._legacy.remove_metric(*args, **kwargs)
+        Session-32 drain. Builds the right ``<Task>MetricContainer`` for the
+        experiment's task and stashes it in ``self._fit_state["metric_registry"]``.
+        Subsequent ``create_model`` / ``tune_model`` / ``compare_models``
+        calls will compute this metric on every fold + include it in the
+        leaderboard.
+
+        Parameters mirror the legacy contract:
+
+        Parameters
+        ----------
+        id : str
+            Short identifier; used as the key in the registry.
+        name : str
+            Long name (e.g. ``"Mean Absolute Percentage Error"``).
+        score_func : callable
+            ``(y_true, y_pred) -> float`` (or with ``y_pred_proba`` if
+            ``target="pred_proba"``).
+        target : str, default="pred"
+            ``"pred"`` / ``"pred_proba"`` / ``"threshold"``. Maps to the
+            input the score function expects.
+        greater_is_better : bool, default=True
+            False for error metrics where lower is better.
+        args : dict, optional
+            Extra kwargs always passed to ``score_func``.
+        is_multiclass : bool, default=True
+            (Classification only.) Whether the metric supports multiclass.
+
+        Returns
+        -------
+        The registered container. Suitable for downstream introspection.
+        """
+        self._require_fitted()
+        from pycaret.core.tasks import TaskType
+
+        registry = self._get_metric_registry()
+        if registry is None:
+            # Time-series falls back to legacy.
+            return self._legacy.add_metric(
+                id,
+                name,
+                score_func,
+                target=target,
+                greater_is_better=greater_is_better,
+                args=args,
+                **kwargs,
+            )
+
+        # Build the right container for the task.
+        if self.task == TaskType.CLASSIFICATION:
+            from pycaret.containers.metrics.classification import (
+                ClassificationMetricContainer,
+            )
+
+            container = ClassificationMetricContainer(
+                id=id,
+                name=name,
+                score_func=score_func,
+                target=target,
+                args=args,
+                greater_is_better=greater_is_better,
+                is_multiclass=is_multiclass,
+                is_custom=True,
+            )
+        elif self.task == TaskType.REGRESSION:
+            from pycaret.containers.metrics.regression import (
+                RegressionMetricContainer,
+            )
+
+            container = RegressionMetricContainer(
+                id=id,
+                name=name,
+                score_func=score_func,
+                args=args,
+                greater_is_better=greater_is_better,
+                is_custom=True,
+            )
+        else:
+            # Clustering / anomaly: use whichever task-specific container exists.
+            return self._legacy.add_metric(
+                id,
+                name,
+                score_func,
+                target=target,
+                greater_is_better=greater_is_better,
+                args=args,
+                **kwargs,
+            )
+
+        registry[id] = container
+        return container
+
+    def remove_metric(self, name_or_id: str) -> None:
+        """Remove a metric from the experiment's registry.
+
+        Session-32 drain. Pops from ``self._fit_state["metric_registry"]``;
+        accepts either the metric's ``id`` or its display name (matching
+        legacy semantics).
+        """
+        self._require_fitted()
+        registry = self._get_metric_registry()
+        if registry is None:
+            return self._legacy.remove_metric(name_or_id)
+
+        # Try direct ID match first.
+        if name_or_id in registry:
+            del registry[name_or_id]
+            return None
+
+        # Fall back to name match.
+        for key, container in list(registry.items()):
+            container_name = getattr(container, "name", None)
+            if container_name == name_or_id:
+                del registry[key]
+                return None
+
+        raise ValueError(f"No metric matching {name_or_id!r} in the experiment's registry.")
 
     def get_config(self, *args: Any, **kwargs: Any) -> Any:
         return self._legacy.get_config(*args, **kwargs)
@@ -1141,6 +1223,61 @@ class Experiment(BaseEstimator):
         return list(getattr(self.logger, "events", []))
 
     # ------------------------------------------------------- internal helpers
+
+    def _get_metric_registry(self) -> dict | None:
+        """Return the per-experiment metric registry, lazily building it.
+
+        Behavior:
+
+        - Post-fit (``_fit_state`` exists): caches the registry in
+          ``_fit_state["metric_registry"]`` so ``add_metric`` /
+          ``remove_metric`` can mutate it.
+        - Pre-fit (or fit-sentinel test setup): builds a fresh registry
+          on every call from the task helper. No caching, no mutation
+          surface — but the metric-using verbs (``predict_model``'s
+          metric path) still work for one-shot use cases.
+
+        Returns ``None`` for tasks where the native registry isn't yet
+        wired (time-series). Callers fall through to the legacy registry
+        in that case.
+        """
+        from pycaret.core.tasks import TaskType
+
+        # Cached path — only available post-fit.
+        cached = self._fit_state.get("metric_registry") if hasattr(self, "_fit_state") else None
+        if cached is not None:
+            return cached
+
+        # Build from the task helper.
+        try:
+            if self.task == TaskType.CLASSIFICATION:
+                from pycaret.containers.metrics.classification import (
+                    get_all_metric_containers,
+                )
+            elif self.task == TaskType.REGRESSION:
+                from pycaret.containers.metrics.regression import (
+                    get_all_metric_containers,
+                )
+            elif self.task == TaskType.CLUSTERING:
+                from pycaret.containers.metrics.clustering import (
+                    get_all_metric_containers,
+                )
+            elif self.task == TaskType.ANOMALY:
+                from pycaret.containers.metrics.anomaly import (
+                    get_all_metric_containers,
+                )
+            else:
+                # Time-series — no native registry yet.
+                return None
+            registry = dict(get_all_metric_containers({}, raise_errors=False))
+        except Exception:
+            return None
+
+        # Cache only when fit-state exists. Otherwise return the fresh
+        # build without persisting (one-shot test / pre-fit path).
+        if hasattr(self, "_fit_state"):
+            self._fit_state["metric_registry"] = registry
+        return registry
 
     def _set_last_metrics(self, df: pd.DataFrame | None) -> None:
         """Stash the most recent metrics DataFrame for ``pull()``.
