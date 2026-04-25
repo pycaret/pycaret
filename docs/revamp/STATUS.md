@@ -1,6 +1,70 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 34*
+*Updated: 2026-04-25, end of session 35*
+
+## Session 35 — Native `setup()` (phase 1, simple supervised) — ✅
+
+**The biggest remaining drain target lands in incremental form.** When the user passes a basic classification or regression experiment with no complex preprocessing flags and no extra `setup_kwargs`, `fit()` now skips `self._legacy.setup()` entirely. Native preprocessing builds `_fit_state` directly from sklearn primitives.
+
+### What landed
+
+- **`Experiment._can_use_native_setup(setup_kwargs)`** — predicate. Returns True only for clf/reg with `normalize=False`, `transformation=False`, `remove_outliers=False`, `feature_selection=False`, and no caller-supplied `setup_kwargs`. Heavy preprocessing options + unsupervised + TS fall back to legacy.
+- **`Experiment._native_setup_supervised(data, setup_kwargs)`** (~150 LoC) — the native path:
+  - **Train/test split** via `sklearn.model_selection.train_test_split`. Stratified for clf, plain for reg. Honors `train_size` + `session_id`.
+  - **Preprocessing pipeline**: `ColumnTransformer` with numeric imputer (mean) + categorical imputer-encoder pipeline (most-frequent → ordinal). Fit on train, transform train + test, concat to `X_transformed`.
+  - **Label encoding** via `sklearn.preprocessing.LabelEncoder` for clf; pass-through for reg.
+  - **Fold generator**: `StratifiedKFold` (clf) or `KFold` (reg) with shuffle + `random_state=session_id`.
+  - **Model registry** built via the per-task `get_all_model_containers()` helper using a thin `_ModelRegistryContext` proxy (no legacy needed).
+  - Populates the full `_fit_state` dict directly.
+- **`_ModelRegistryContext`** — minimal stand-in for an experiment, exposing only what model-container constructors read: `seed`, `gpu_param`, `n_jobs_param`, `X_train`, `is_multiclass`, plus a `get_engine(id)` method (always returns None — fall through to default engine).
+- **`fit()` dispatch** — when the predicate passes, call native; else build legacy + run setup as before. Both paths populate the same `_fit_state` shape, so all drained verbs continue to work transparently.
+- **`models(internal=True)` rewritten** to build the richer DataFrame from the snapshot's containers via `get_dict(internal=True)` — no longer falls back to legacy. Tests that introspect the registry (`test_model_equality_classification` etc.) pass under native setup.
+
+### Tests
+
+- **`packages/engine/tests/test_session35_native_setup.py`** — 10 new tests:
+  - **Drain-locks**: poison `legacy.setup` + verify a basic clf / reg fit succeeds. The hardest part of session 35 — proves `legacy.setup()` genuinely doesn't run.
+  - `complex_preprocessing_falls_back_to_legacy` — `normalize=True` triggers legacy path.
+  - `unsupervised_uses_legacy_setup` — clustering still goes through legacy.
+  - End-to-end native chain: `create_model → tune_model → predict_model`.
+  - Label encoding semantics: clf y_train_transformed is integer-encoded; reg is unchanged.
+  - Model registry has `lr` (depends on `_ModelRegistryContext.get_engine` returning None correctly).
+  - `models(internal=True)` builds richer view from snapshot.
+  - `_can_use_native_setup` predicate covers all cases (5 negative + 1 positive).
+
+### Headline metrics
+
+| | Session 34 end | Session 35 end |
+|---|---|---|
+| `_legacy.setup()` calls per simple supervised fit | 1 | **0** ✅ |
+| Engine tests (fast + slow) | 145 | **155** (+10) |
+| **Combined tests** | **291** | **301** |
+
+### Drain status — comprehensive
+
+```
+✅ All 16 modeling verbs            (sessions 22-28)
+✅ User-facing data accessors       (session 29)
+✅ Internal training state          (session 30)
+✅ pull / models / get_metrics      (session 31)
+✅ add_metric / remove_metric       (session 32)
+✅ get_config / set_config          (session 33)
+✅ RMSE deprecation fix             (session 34)
+✅ setup() drain — phase 1          (session 35)  ← simple supervised
+```
+
+### What remains (for `4.0.0` non-alpha)
+
+- **`setup()` drain phase 2** — extend native preprocessing to support `normalize` / `transformation` / `remove_outliers` / `feature_selection`. Each adds a step (StandardScaler / power transform / IsolationForest-based outlier removal / SelectFromModel etc.). ~2 sessions.
+- **`setup()` drain phase 3** — native unsupervised (clustering + anomaly) + native time-series setup. ~2 sessions.
+- **Delete `pycaret/internal/pycaret_experiment/`** once setup() is fully native.
+- **`plot_model` / `evaluate_model`** — Phase 3 Plotly rewrite (separate workstream).
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config. User account reset still in progress.
+
+---
 
 ## Session 34 — Fix sklearn 1.6+ `squared=` deprecation in regression metrics — ✅
 

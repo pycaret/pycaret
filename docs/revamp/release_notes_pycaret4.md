@@ -115,6 +115,58 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 35 — 2026-04-25 — Native setup() (phase 1, simple supervised)
+
+The biggest remaining drain target lands in incremental form. When the user passes a basic classification or regression experiment with no complex preprocessing flags + no `setup_kwargs`, `fit()` now skips `self._legacy.setup()` entirely. The native preprocessing chain builds `_fit_state` directly from sklearn primitives.
+
+## CHANGED — engine
+
+- `CHANGED` — **`Experiment.fit`** now dispatches: ``self._can_use_native_setup(setup_kwargs)`` → ``self._native_setup_supervised(data, setup_kwargs)``, else legacy ``setup()`` + snapshot. Stamps ``self._native_setup_used`` (bool) for visibility.
+- `ADDED` — **`Experiment._can_use_native_setup(setup_kwargs)`** — predicate. Returns True for classification + regression with `normalize=False`, `transformation=False`, `remove_outliers=False`, `feature_selection=False`, and no caller-supplied `setup_kwargs`. False otherwise.
+- `ADDED` — **`Experiment._native_setup_supervised(data, setup_kwargs)`** (~150 LoC). Builds the experiment state natively:
+  - Train/test split via ``sklearn.model_selection.train_test_split`` with stratification for clf.
+  - Numeric imputation (mean) + categorical imputation (most-frequent) + ordinal encoding via ``ColumnTransformer``.
+  - ``LabelEncoder`` for clf target; pass-through for reg.
+  - ``StratifiedKFold`` / ``KFold`` fold generator with shuffle + ``random_state=session_id``.
+  - Model registry via the per-task ``get_all_model_containers()`` helper using a thin proxy.
+  - Populates the full `_fit_state` dict (X / X_train / X_test / y / y_train / y_test / X_transformed / X_train_transformed / y_transformed / y_train_transformed / preprocess_pipeline / fold_generator / model_registry / last_metrics + new slots: `label_encoder`, `numeric_cols`, `categorical_cols`).
+- `ADDED` — **`_ModelRegistryContext`** (`__slots__`-bound). Minimal stand-in for an experiment exposing only the attrs the model-container constructors read: ``seed``, ``gpu_param``, ``n_jobs_param``, ``X_train``, ``is_multiclass``, plus a ``get_engine(id)`` method returning None (fall through to default engine).
+- `CHANGED` — **`Experiment.models(internal=True)`** rewritten to build the richer DataFrame (`Special` / `Class` / `Equality` / `Args`) from the snapshot's containers via ``get_dict(internal=True)`` — no longer requires the legacy holder to be set up. Tests that introspect the model registry (`test_model_equality_classification`, etc.) pass under native setup.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session35_native_setup.py`** — 10 tests including:
+  - **Drain-lock for clf**: monkeypatch `legacy.setup` + `_build_legacy_experiment` so any setup call raises; basic classification fit succeeds.
+  - **Drain-lock for reg**: same pattern for regression.
+  - `normalize=True` falls back to legacy.
+  - Clustering experiments fall back to legacy (Phase-2 work).
+  - End-to-end native chain (`create_model → tune_model → predict_model`).
+  - Classification y is integer-encoded; regression y is pass-through.
+  - Model registry contains `lr` after native setup.
+  - `models(internal=True)` builds the rich view from the snapshot.
+  - `_can_use_native_setup` predicate covers all cases.
+
+## CHANGED — existing tests
+
+- `CHANGED` — **`test_session29_property_drain.test_fit_state_returns_equivalent_data_to_legacy`** updated to handle the native-setup case. When `_native_setup_used` is True, the test recomputes the expected train/test split via `sklearn.train_test_split` and compares to that — `legacy.X_train` would raise because `legacy.setup()` never ran. Legacy fallback path retains the original direct comparison.
+
+## INTERNAL
+
+- `INTERNAL` — **Why phase 1 is supervised + simple-only.** Replicating the full legacy `setup()` (100+ preprocessing options across `normalize` / `transformation` / `remove_outliers` / `feature_selection` / target detection / quality reports) is genuinely 2-3 more sessions of work per option family. Shipping the simple case first delivers immediate value: every notebook that does `ClassificationExperiment(target=...).fit(df).create_model("lr")` now runs entirely native — no legacy setup overhead, no god-class dependency for the simple flow. Heavy preprocessing options keep the legacy path until the native versions ship.
+- `INTERNAL` — **The `_ModelRegistryContext` proxy contract.** Each model container reads ~5 attrs from the experiment in its `__init__`. Wrapping those in a `__slots__`-bound dataclass creates an explicit contract that's much easier to keep in sync than the full legacy class. Adding a new container that needs `experiment.dataset` would require explicitly extending the proxy — which is fine; the proxy IS the seam between core and the registry.
+- `INTERNAL` — **`get_engine(id) → None` is intentional.** PyCaret 3.x supported alternate engines via `set_config("model_engines", {...})`. The native setup phase 1 doesn't expose this; users who need alternate engines (e.g. `sklearnex.linear_model.LogisticRegression`) set any complex preprocessing flag to bypass native + use the legacy path. Engine selection is a polish item for a future session.
+- `INTERNAL` — **The drain-lock test pattern, escalated.** Sessions 22-34 monkeypatched single methods. Session 35 needs to lock that `legacy.setup()` doesn't run during `fit()`, which means swapping out both `legacy.setup` AND `_build_legacy_experiment` (since fit() rebuilds the legacy holder). The test does both + verifies `fit()` succeeds end-to-end.
+
+## Session 35 delta summary
+
+| Metric | Session 34 end | Session 35 end |
+|---|---:|---:|
+| `_legacy.setup()` calls per simple supervised fit | 1 | **0** ✅ |
+| Engine tests (fast + slow) | 145 | **155** |
+| **Combined tests** | **291** | **301** |
+
+---
+
 # Session 34 — 2026-04-25 — Fix sklearn 1.6+ squared= deprecation in regression metric registry
 
 Baseline: session 33 closed the public-surface drain. Test runs were emitting ~70 `DeprecationWarning`s about `mean_squared_error(squared=False)` per regression CV — a real bug introduced when sklearn 1.6 deprecated that path in favor of a dedicated `root_mean_squared_error` function. Session 34 fixes the registry.

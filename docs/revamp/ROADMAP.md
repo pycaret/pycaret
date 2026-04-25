@@ -196,8 +196,9 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 31 | Secondary-verb drain — pull / models / get_metrics | pull() reads from _fit_state["last_metrics"], updated by every native modeling verb. models() + get_metrics() build DataFrames natively from the snapshot + metric registry. 8 new tests (267/267). |
 | 32 | Per-Experiment metric registry + add_metric / remove_metric drain | Metric registry promoted to _fit_state["metric_registry"]; add_metric mutates it; CV / leaderboard / predict all read from it. Custom metrics actually show up in CV now (real bugfix). 10 new tests (277/277). |
 | 33 | get_config / set_config drain | Last drainable secondary verbs done. get_config reads from _fit_state + ctor params; set_config has tight allowlist (session_id/n_jobs/verbose/fold/log_experiment). 10 new tests (287/287). DRAIN COMPLETE on the public surface. |
-| **34** | **Fix sklearn 1.6+ `squared=` deprecation in regression metrics** | **RMSE / RMSLE containers use root_mean_squared_(log_)error directly. -69 warnings per test run. 4 new tests (291/291).** |
-| 35+ | Ship 4.0.0a3 then continue | bump to 4.0.0a3 + retry release once PyPI is configured; (post-release) native preprocessing chain to replace setup(); (post-release) delete pycaret/internal/pycaret_experiment |
+| 34 | Fix sklearn 1.6+ `squared=` deprecation in regression metrics | RMSE / RMSLE containers use root_mean_squared_(log_)error directly. -69 warnings per test run. 4 new tests (291/291). |
+| **35** | **Native `setup()` (phase 1, simple supervised)** | **Skip self._legacy.setup() entirely for clf+reg with no complex preprocessing flags. Native train/test split + impute + encode + fold generator + registry-via-proxy. 10 new tests (301/301). The biggest remaining drain target lands incrementally.** |
+| 36+ | setup() phases 2-3 → 4.0.0 release | extend native setup to support normalize / transformation / remove_outliers / feature_selection; native unsupervised + TS setup; ship 4.0.0a3 once PyPI is back; eventually delete pycaret/internal/pycaret_experiment |
 
 Roughly **7–8 sessions to MVP 3 completion** (all 8 UI screens wired + LLM assist + full AutoML flow). Then a handful of V2 items. Then god-class drain for MVP 1 release.
 
