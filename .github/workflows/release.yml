@@ -40,6 +40,12 @@ jobs:
     name: Build wheel + sdist
     outputs:
       version: ${{ steps.version.outputs.version }}
+    # The PyCaret package itself lives under packages/engine — that's where
+    # pyproject.toml + build-system are. The repo root is a uv workspace, not
+    # a build target. Run all build steps from the package directory.
+    defaults:
+      run:
+        working-directory: packages/engine
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -62,10 +68,13 @@ jobs:
           ls -la dist/
           uv run --with twine twine check dist/*
 
+      # `path` for upload-artifact is resolved against $GITHUB_WORKSPACE,
+      # not the step's working-directory — so it must be the workspace-
+      # relative path to the dist dir we just built.
       - uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: dist/
+          path: packages/engine/dist/
           retention-days: 7
 
   # ------------------------------------------------------------------ smoke
