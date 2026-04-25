@@ -8,7 +8,7 @@
 # `RegressionMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import numpy as np
 from sklearn import metrics
@@ -84,10 +84,10 @@ class RegressionMetricContainer(MetricContainer):
         id: str,
         name: str,
         score_func: type,
-        scorer: Optional[Union[str, _BaseScorer]] = None,
+        scorer: str | _BaseScorer | None = None,
         target: str = "pred",
-        args: Dict[str, Any] = None,
-        display_name: Optional[str] = None,
+        args: dict[str, Any] = None,
+        display_name: str | None = None,
         greater_is_better: bool = True,
         is_custom: bool = False,
     ) -> None:
@@ -124,7 +124,7 @@ class RegressionMetricContainer(MetricContainer):
 
         self.target = target
 
-    def get_dict(self, internal: bool = True) -> Dict[str, Any]:
+    def get_dict(self, internal: bool = True) -> dict[str, Any]:
         """
         Returns a dictionary of the model properties, to
         be turned into a pandas DataFrame row.
@@ -179,12 +179,27 @@ class MSEMetricContainer(RegressionMetricContainer):
 
 class RMSEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
+        # sklearn 1.6+ deprecated `mean_squared_error(squared=False)` in favor
+        # of the dedicated `root_mean_squared_error`. Use it when available
+        # and fall back to a sqrt(mse) shim for older sklearn.
+        rmse_func = getattr(metrics, "root_mean_squared_error", None)
+        if rmse_func is None:
+
+            def rmse_func(y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"):
+                return np.sqrt(
+                    metrics.mean_squared_error(
+                        y_true,
+                        y_pred,
+                        sample_weight=sample_weight,
+                        multioutput=multioutput,
+                    )
+                )
+
         super().__init__(
             id="rmse",
             name="RMSE",
-            score_func=metrics.mean_squared_error,
+            score_func=rmse_func,
             greater_is_better=False,
-            args={"squared": False},
             scorer="neg_root_mean_squared_error",
         )
 
@@ -202,9 +217,21 @@ class R2MetricContainer(RegressionMetricContainer):
 
 class RMSLEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
+        # Prefer sklearn's native ``root_mean_squared_log_error`` when
+        # available (sklearn 1.6+); fall back to a sqrt(msle) shim that
+        # uses np.abs() to avoid the negative-input ValueError.
+        _native_rmsle = getattr(metrics, "root_mean_squared_log_error", None)
+
         def root_mean_squared_log_error(
             y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"
         ):
+            if _native_rmsle is not None:
+                return _native_rmsle(
+                    np.abs(y_true),
+                    np.abs(y_pred),
+                    sample_weight=sample_weight,
+                    multioutput=multioutput,
+                )
             return np.sqrt(
                 metrics.mean_squared_log_error(
                     np.abs(y_true),
@@ -265,7 +292,7 @@ class MAPEMetricContainer(RegressionMetricContainer):
 
 def get_all_metric_containers(
     globals_dict: dict, raise_errors: bool = True
-) -> Dict[str, RegressionMetricContainer]:
+) -> dict[str, RegressionMetricContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, RegressionMetricContainer, raise_errors
     )
