@@ -1022,3 +1022,100 @@ class TimeSeriesExperiment(SupervisedExperiment):
             return float(metrics.loc["Mean", col])
         except (TypeError, ValueError):
             return None
+
+    # ------------------------------------------------- session 44 (phase 5c)
+    # Native TS finalize_model — drains legacy.finalize_model. Refits the
+    # forecaster on the FULL y (y_train + y_test) so the deployment-ready
+    # model has seen every observation.
+
+    def finalize_model(
+        self,
+        estimator: Any,
+        *,
+        fit_kwargs: dict | None = None,
+    ):
+        """Native time-series finalize_model (phase 5c continued).
+
+        Re-fits the passed forecaster on the **full** y (``y_train +
+        y_test``) so the returned pipeline is deployment-ready — the
+        holdout has already served its purpose.
+
+        Returns a ``FinalizeResult`` whose ``pipeline`` is a real
+        ``sktime.forecasting.compose.ForecastingPipeline`` fit on the
+        complete dataset.
+
+        Drains ``self._legacy.finalize_model`` for time-series. Legacy is
+        no longer touched.
+        """
+        from copy import deepcopy
+
+        from sktime.forecasting.base import BaseForecaster
+        from sktime.forecasting.compose import ForecastingPipeline
+
+        from pycaret.core.results import FinalizeResult
+        from pycaret.logging.events import EventKind
+        from pycaret.utils.time_series.forecasting.pipeline import (
+            _add_model_to_pipeline,
+        )
+
+        self._require_fitted()
+
+        import time as _time
+
+        t0 = _time.perf_counter()
+
+        # ---- resolve the bare forecaster (so we can deepcopy + refit it
+        # without mutating the caller's pipeline)
+        if isinstance(estimator, ForecastingPipeline):
+            inner = estimator.steps[-1][1]
+            base_forecaster = (
+                deepcopy(inner.steps[-1][1]) if hasattr(inner, "steps") else deepcopy(inner)
+            )
+        elif isinstance(estimator, BaseForecaster):
+            base_forecaster = deepcopy(estimator)
+        else:
+            raise TypeError(
+                "finalize_model expects a sktime BaseForecaster or "
+                f"ForecastingPipeline; got {type(estimator).__name__!r}."
+            )
+
+        # ---- wire into a fresh preprocess pipeline (avoids mutating
+        # the experiment's stored pipeline) and refit on the full data
+        base_pipeline = self._fit_state["preprocess_pipeline"]
+        if not isinstance(base_pipeline, ForecastingPipeline):
+            raise RuntimeError(
+                "TS native finalize_model expected ForecastingPipeline; got "
+                f"{type(base_pipeline).__name__}."
+            )
+        finalized = _add_model_to_pipeline(pipeline=base_pipeline, model=base_forecaster)
+
+        y_full = self._fit_state.get("y")
+        x_full = self._fit_state.get("X")  # None for univariate
+        if y_full is None:
+            raise RuntimeError(
+                "finalize_model requires `_fit_state['y']` to be populated. Call fit() first."
+            )
+
+        fit_kwargs = dict(fit_kwargs or {})
+        # Most sktime forecasters accept fh in fit; default to the
+        # experiment's fh so the finalized model can predict the next
+        # `fh` periods after the full data.
+        if "fh" not in fit_kwargs and self._fit_state.get("fh") is not None:
+            fit_kwargs["fh"] = self._fit_state["fh"]
+
+        try:
+            finalized.fit(y=y_full, X=x_full, **fit_kwargs)
+        except TypeError:
+            # Some forecasters reject fh in fit — retry without it.
+            fit_kwargs.pop("fh", None)
+            finalized.fit(y=y_full, X=x_full, **fit_kwargs)
+
+        self.logger.log(
+            EventKind.MODEL_FINALIZED,
+            duration_ms=(_time.perf_counter() - t0) * 1000,
+            payload={
+                "estimator": type(base_forecaster).__name__,
+                "n_rows": int(len(y_full)),
+            },
+        )
+        return FinalizeResult(pipeline=finalized)
