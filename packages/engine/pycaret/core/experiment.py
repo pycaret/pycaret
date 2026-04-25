@@ -233,15 +233,16 @@ class Experiment(BaseEstimator):
             payload={"target": self.target, "rows": len(data)},
         )
 
-        # Session-35 drain: when no complex preprocessing flags are set
-        # AND the task is supported (clf / reg), build the fit-state
-        # natively without calling self._legacy.setup(). For the heavy
-        # preprocessing options (normalize / transformation /
-        # remove_outliers / feature_selection) and unsupervised / TS
-        # tasks, fall through to the legacy setup.
+        # Drain dispatcher (sessions 35-38): when no complex preprocessing
+        # flags are set AND the task has a native path, skip
+        # self._legacy.setup() entirely. Falls through to legacy.setup()
+        # for time-series + caller-supplied setup_kwargs.
         self._native_setup_used = False
         if self._can_use_native_setup(setup_kwargs):
-            self._native_setup_supervised(data, setup_kwargs)
+            if self._is_supervised():
+                self._native_setup_supervised(data, setup_kwargs)
+            else:
+                self._native_setup_unsupervised(data, setup_kwargs)
             self._native_setup_used = True
         else:
             self._legacy.setup(
@@ -345,8 +346,8 @@ class Experiment(BaseEstimator):
     def _can_use_native_setup(self, setup_kwargs: dict[str, Any]) -> bool:
         """Predicate: can fit() skip ``self._legacy.setup()`` entirely?
 
-        The native setup handles classification + regression with the
-        following preprocessing options:
+        The native setup handles all supervised + unsupervised tabular
+        tasks with the following preprocessing:
 
         - **Phase 1** (session 35): mean / mode imputation + ordinal
           encoding + label encoding for clf.
@@ -356,13 +357,23 @@ class Experiment(BaseEstimator):
           drops 5% most anomalous training rows) and ``feature_selection=True``
           (SelectFromModel keeps features with above-median importance from
           a lightweight ExtraTrees / Lasso estimator).
+        - **Phase 4** (session 38): native unsupervised setup for clustering
+          and anomaly tasks. No train/test split (the whole frame is the
+          training set). No fold generator (unsupervised tasks don't CV in
+          the same way). Same preprocessing chain as supervised.
 
-        Unsupervised / TS still fall back to legacy.
+        Time-series still falls back to legacy.
         """
         from pycaret.core.tasks import TaskType
 
-        # Supervised tabular only — Phase 4 will cover unsupervised + TS.
-        if self.task not in (TaskType.CLASSIFICATION, TaskType.REGRESSION):
+        # Supported task types: supervised tabular + unsupervised tabular.
+        # Time-series uses its own setup with sktime-shaped knobs (Phase 5).
+        if self.task not in (
+            TaskType.CLASSIFICATION,
+            TaskType.REGRESSION,
+            TaskType.CLUSTERING,
+            TaskType.ANOMALY,
+        ):
             return False
         # Any caller-supplied setup_kwargs forces legacy — we don't know what
         # those options do. Once we expose the knobs as constructor params
@@ -370,6 +381,14 @@ class Experiment(BaseEstimator):
         # selectively allow the matching kwargs through here.
         if setup_kwargs:
             return False
+        # Unsupervised tasks don't accept supervised-only flags; if the user
+        # set them, fall back to legacy so the error path is consistent
+        # with the legacy behavior.
+        if not self._is_supervised():
+            if self.remove_outliers or self.feature_selection:
+                # These could in principle work on unsupervised X, but we
+                # haven't wired them yet — Phase 4.5.
+                return False
         return True
 
     def _native_setup_supervised(self, data: pd.DataFrame, setup_kwargs: dict[str, Any]) -> None:
@@ -636,6 +655,145 @@ class Experiment(BaseEstimator):
             message=(
                 f"Native fit ready (clf={is_clf}, n_train={len(X_train)}, "
                 f"n_test={len(X_test)}, n_models={len(model_registry)})"
+            ),
+        )
+
+    def _native_setup_unsupervised(self, data: pd.DataFrame, setup_kwargs: dict[str, Any]) -> None:
+        """Phase-4 native setup for clustering + anomaly tasks.
+
+        Unsupervised experiments don't have a train/test split — the
+        whole frame is the training set. They also don't have a fold
+        generator (CV is undefined for clustering / anomaly). The
+        native preprocessing chain is the same as supervised, applied
+        once to the full ``X``:
+
+        - ``imputer`` (mean for numeric, mode for categorical)
+        - ordinal encoding for categorical
+        - optional ``StandardScaler`` (``normalize=True``)
+        - optional ``PowerTransformer`` (``transformation=True``)
+
+        Output state shape mirrors what ``UnsupervisedExperiment``'s
+        verbs expect: ``X`` / ``X_transformed`` / ``preprocess_pipeline``
+        / ``model_registry`` populated; ``X_train`` / ``y`` / etc. set
+        to ``None`` because they don't apply.
+        """
+        import pandas as _pd
+        from sklearn.compose import ColumnTransformer
+        from sklearn.impute import SimpleImputer
+        from sklearn.pipeline import Pipeline as SkPipeline
+        from sklearn.preprocessing import OrdinalEncoder
+
+        from pycaret.core.tasks import TaskType
+
+        # Coerce single-Series input into a DataFrame.
+        if isinstance(data, _pd.Series):
+            data = data.to_frame()
+        X = data
+
+        # Detect numeric vs categorical columns.
+        numeric_cols = X.select_dtypes(include=["number", "bool"]).columns.tolist()
+        categorical_cols = [c for c in X.columns if c not in numeric_cols]
+
+        seed = self.session_id if self.session_id is not None else 0
+
+        # Build the ColumnTransformer — same shape as supervised but
+        # without label encoding and without train/test splitting.
+        transformers: list = []
+        if numeric_cols:
+            num_steps: list = [("imputer", SimpleImputer(strategy="mean"))]
+            if self.transformation:
+                from sklearn.preprocessing import PowerTransformer
+
+                num_steps.append(
+                    ("transformer", PowerTransformer(method="yeo-johnson", standardize=False))
+                )
+            if self.normalize:
+                from sklearn.preprocessing import StandardScaler
+
+                num_steps.append(("scaler", StandardScaler()))
+            num_pipe = SkPipeline(num_steps) if len(num_steps) > 1 else num_steps[0][1]
+            transformers.append(("numerical_pipeline", num_pipe, numeric_cols))
+        if categorical_cols:
+            cat_pipe = SkPipeline(
+                [
+                    ("imputer", SimpleImputer(strategy="most_frequent")),
+                    (
+                        "encoder",
+                        OrdinalEncoder(
+                            handle_unknown="use_encoded_value",
+                            unknown_value=-1,
+                        ),
+                    ),
+                ]
+            )
+            transformers.append(("categorical_pipeline", cat_pipe, categorical_cols))
+
+        if not transformers:
+            preprocess_pipeline = SkPipeline([("preprocess", "passthrough")])
+            X_transformed = X.copy()
+        else:
+            ct = ColumnTransformer(transformers, remainder="drop", verbose_feature_names_out=False)
+            ct.fit(X)
+            preprocess_pipeline = SkPipeline([("preprocess", ct)])
+            ordered_cols = numeric_cols + categorical_cols
+            X_transformed = _pd.DataFrame(ct.transform(X), columns=ordered_cols, index=X.index)
+
+        # Model registry via the same proxy used in the supervised path.
+        proxy = _ModelRegistryContext(
+            seed=seed,
+            gpu_param="force" if self.use_gpu else False,
+            n_jobs_param=self.n_jobs,
+            X_train=X_transformed,
+            is_multiclass=False,
+        )
+        if self.task == TaskType.CLUSTERING:
+            from pycaret.containers.models.clustering import (
+                get_all_model_containers,
+            )
+        else:  # TaskType.ANOMALY
+            from pycaret.containers.models.anomaly import (
+                get_all_model_containers,
+            )
+        try:
+            model_registry = dict(get_all_model_containers(proxy, raise_errors=False))
+        except Exception:
+            model_registry = {}
+
+        self._fit_state = {
+            # session 29 — user-facing accessors. Unsupervised has no
+            # supervised target / train/test split, so the supervised
+            # slots are None.
+            "X": X,
+            "X_train": None,
+            "X_test": None,
+            "y": None,
+            "y_train": None,
+            "y_test": None,
+            "preprocess_pipeline": preprocess_pipeline,
+            # session 30 — internal training state.
+            "X_transformed": X_transformed,
+            "X_train_transformed": None,
+            "y_transformed": None,
+            "y_train_transformed": None,
+            "fold_generator": None,  # unsupervised tasks don't CV.
+            "model_registry": model_registry,
+            # session 31
+            "last_metrics": None,
+            # session 35 extras
+            "label_encoder": None,
+            "numeric_cols": numeric_cols,
+            "categorical_cols": categorical_cols,
+            # session 37 extras (None — outliers / feature_selection don't
+            # apply unsupervised in this phase).
+            "feature_selector": None,
+            "selected_features": None,
+            "outliers_dropped": 0,
+        }
+        self.logger.log(
+            EventKind.EXPERIMENT_FITTED,
+            message=(
+                f"Native unsupervised fit ready (task={self.task.value}, "
+                f"n_rows={len(X)}, n_models={len(model_registry)})"
             ),
         )
 

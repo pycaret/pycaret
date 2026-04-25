@@ -105,14 +105,22 @@ def test_complex_preprocessing_falls_back_to_legacy():
 
 
 @pytest.mark.slow
-def test_unsupervised_uses_legacy_setup():
-    """Clustering tasks fall back to legacy setup (Phase-2 work)."""
+def test_unsupervised_now_runs_natively_phase4():
+    """Clustering / anomaly route to the native path as of session 38.
+
+    Originally written when phase 4 (unsupervised) was still pending; it
+    asserted ``_native_setup_used is False``. Inverted in s38 once the
+    native unsupervised path landed — this is now a phase-4 drain-lock.
+    """
     import pycaret.datasets
-    from pycaret.tasks import ClusteringExperiment
+    from pycaret.tasks import AnomalyExperiment, ClusteringExperiment
 
     df = pycaret.datasets.get_data("jewellery", verbose=False)
-    exp = ClusteringExperiment(session_id=42, n_jobs=1).fit(df)
-    assert exp._native_setup_used is False
+    for cls in (ClusteringExperiment, AnomalyExperiment):
+        exp = cls(session_id=42, n_jobs=1).fit(df)
+        assert exp._native_setup_used is True, (
+            f"Phase-4 regression: {cls.__name__} should use native setup."
+        )
 
 
 @pytest.mark.slow
@@ -206,18 +214,20 @@ def test_native_setup_models_internal_view():
 
 
 def test_can_use_native_setup_predicate():
-    """The predicate after sessions 35 + 36 + 37.
+    """The predicate after sessions 35 + 36 + 37 + 38.
 
     Every supervised constructor preprocessing flag (normalize /
-    transformation / remove_outliers / feature_selection) is now native
-    — see test_session36_native_setup_phase2 + test_session37_native_setup_phase3
-    for those drains. Here we lock the still-legacy paths: caller-supplied
-    ``setup_kwargs`` and unsupervised tasks.
+    transformation / remove_outliers / feature_selection) is native — see
+    test_session36_native_setup_phase2 + test_session37_native_setup_phase3.
+    Phase 4 (s38) added unsupervised tabular (clustering + anomaly).
+    Here we lock the still-legacy paths: caller-supplied ``setup_kwargs``
+    and time-series.
     """
     from pycaret.tasks import (
         AnomalyExperiment,
         ClassificationExperiment,
         ClusteringExperiment,
+        TimeSeriesExperiment,
     )
 
     # Simple supervised — yes.
@@ -227,6 +237,8 @@ def test_can_use_native_setup_predicate():
         ClassificationExperiment(target="t", session_id=0)._can_use_native_setup({"foo": 1})
         is False
     )
-    # Unsupervised — still legacy (phase-4 work).
-    assert ClusteringExperiment(session_id=0)._can_use_native_setup({}) is False
-    assert AnomalyExperiment(session_id=0)._can_use_native_setup({}) is False
+    # Phase-4: unsupervised tabular is now native.
+    assert ClusteringExperiment(session_id=0)._can_use_native_setup({}) is True
+    assert AnomalyExperiment(session_id=0)._can_use_native_setup({}) is True
+    # Time-series is still legacy (phase-5 work).
+    assert TimeSeriesExperiment(session_id=0)._can_use_native_setup({}) is False
