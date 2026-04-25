@@ -115,6 +115,50 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 40 — 2026-04-25 — Phase 5b: drain TimeSeriesExperiment.create_model
+
+The first TS verb is fully native. `exp.create_model('arima')` no longer touches `legacy.create_model` — the estimator resolves from the sktime registry, wires into the experiment's `ForecastingPipeline`, runs CV through the existing `cross_validate` helper, and returns a real `sktime.forecasting.compose.ForecastingPipeline`. Pattern mirrors the supervised create_model drain (s24) and unsupervised drain (s28).
+
+## ADDED — engine
+
+- `ADDED` — **`TimeSeriesExperiment.create_model`** in `packages/engine/pycaret/tasks/time_series.py`. Native sktime path; returns `CreateResult` whose `pipeline` is a real `ForecastingPipeline`. Accepts a registry ID string, a pre-constructed sktime forecaster, or a `ForecastingPipeline` (extracts the inner forecaster). Wires the model in via `_add_model_to_pipeline` from `pycaret.utils.time_series.forecasting.pipeline`. CV via the standalone `cross_validate` helper from `pycaret.utils.time_series.forecasting.model_selection` (clones pipeline per fold, computes per-metric scores). Refits on full `y_train` after CV. Calls `_set_last_metrics` so `pull()` returns the metrics. Handles `cross_validation=False` (skip CV, refit only).
+- `ADDED` — **`TimeSeriesExperiment._build_ts_metric_registry`** helper. Caches the TS metric containers (`mae` / `rmse` / `mape` / `smape` / `mase` / `rmsse` / `r2` / `coverage`) in `_fit_state["metric_registry"]` on first use. Parity with the supervised metric-registry drain (s32) — `add_metric` / `remove_metric` can mutate it.
+- `ADDED` — **`TimeSeriesExperiment._primary_sp_to_use`** helper. Resolves the seasonal period for MASE / RMSSE scorers — falls through `self.seasonal_period` → `self._legacy.primary_sp_to_use` → 1.
+
+## CHANGED — tests
+
+- `CHANGED` — **`tests/test_models.py::_unwrap_pipeline`** now unwraps sktime `ForecastingPipeline → TransformedTargetForecaster → forecaster` so model-equality predicates see the bare forecaster. Previously only sklearn `Pipeline` was unwrapped.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session40_ts_create_model_drain.py`** — 10 new tests:
+  - Drain-lock for `create_model('naive')` (poison `legacy.create_model`, verify native).
+  - Drain-lock for classical forecasters (`arima` / `ets` / `exp_smooth` / `theta`).
+  - `cross_validation=False` returns metrics=None + fitted pipeline.
+  - Pre-constructed sktime forecaster path (`NaiveForecaster(strategy='mean')`).
+  - Metrics DataFrame shape (5 rows: Fold 0/1/2 + Mean + Std; columns: MAE / RMSE / MAPE / MASE / R2).
+  - `pull()` returns metrics from native run.
+  - `predict_model` (still legacy in 5b) accepts the natively-built pipeline.
+  - Unknown registry ID → `ConfigurationError`.
+  - Object without `.fit` → `TypeError`.
+  - Metric registry caches on first use.
+
+## INTERNAL
+
+- `INTERNAL` — **Why reuse `cross_validate` from `pycaret.utils.time_series.forecasting.model_selection`.** That helper is a free function (not a method on legacy), it accepts a sklearn-style `scoring` dict + `additional_scorer_kwargs` map, and it already handles all the per-fold parallelism + alpha/coverage prediction-interval plumbing. Re-implementing it on top of sktime's bare `evaluate` would either (a) lose interval coverage (used by the `coverage` metric), or (b) duplicate ~50 LoC of careful parallel orchestration. Calling the helper directly is a real drain — no legacy state involved — and skips the duplication.
+- `INTERNAL` — **Why `_build_ts_metric_registry` is on `TimeSeriesExperiment`, not in the base `_get_metric_registry`.** The base helper bails for TS (`task == TIME_SERIES → return None`) so callers fall through to legacy. The TS helper here is the start of the migration — once `predict_model` / `compare_models` / etc. drain in 5c, the base helper can be updated to delegate to this one.
+- `INTERNAL` — **`_primary_sp_to_use` reads `_legacy.primary_sp_to_use`.** That's a transitional shortcut. Legacy auto-detects seasonal period via Fourier analysis when the user doesn't provide one. Phase 5c moves that detection out of legacy.
+
+## Session 40 delta summary
+
+| Metric | Session 39 end | Session 40 end |
+|---|---:|---:|
+| TS verbs drained (out of 6 verbs total) | 0 | 1 (create_model) |
+| `legacy.create_model` callsites for TS | 1 | 0 |
+| Engine tests (fast + slow) | 191 | **201** |
+
+---
+
 # Session 39 — 2026-04-25 — Native setup() phase 5a: time-series soft drain
 
 The TS experiment finally adopts the native dispatcher. `_can_use_native_setup` accepts `TaskType.TIME_SERIES`; `_native_setup_timeseries` populates `_fit_state` with TS-shape slots so user-facing accessors work for time-series exactly like they do for the other tasks. **This is a *soft* drain**: the native path still calls `legacy.setup()` underneath because the TS verbs (`create_model`, `predict_model`, ...) read from legacy state and haven't been drained yet.

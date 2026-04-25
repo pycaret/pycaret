@@ -1,6 +1,75 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 39*
+*Updated: 2026-04-25, end of session 40*
+
+## Session 40 — Phase 5b: drain `TimeSeriesExperiment.create_model` — ✅
+
+The first TS verb is fully native. `exp.create_model('arima')` no longer touches `legacy.create_model` — the estimator resolves from the sktime registry, wires into the experiment's `ForecastingPipeline`, runs CV through the existing `cross_validate` helper, and returns a real `sktime.forecasting.compose.ForecastingPipeline`. After this session, only `predict_model` / `compare_models` / `tune_model` / `finalize_model` / `assign_model` still delegate to legacy for TS.
+
+### What landed
+
+- **`TimeSeriesExperiment.create_model`** in `packages/engine/pycaret/tasks/time_series.py`. Mirrors the supervised create_model drain (s24) and unsupervised drain (s28):
+  - Resolves estimator from `_fit_state["model_registry"]`. Accepts a registry ID string, a pre-constructed sktime forecaster, or a `ForecastingPipeline` (extracts the inner forecaster).
+  - Wires the model into `_fit_state["preprocess_pipeline"]` (a `ForecastingPipeline`) using `_add_model_to_pipeline` from `pycaret.utils.time_series.forecasting.pipeline`.
+  - Runs CV via the standalone `cross_validate` helper from `pycaret.utils.time_series.forecasting.model_selection`. The helper clones the pipeline per fold and computes per-metric scores in parallel.
+  - Builds the metrics DataFrame in the standard `Fold 0..N / Mean / Std` shape using each container's `display_name`.
+  - Refits the pipeline on the full `y_train`.
+  - Calls `_set_last_metrics` so `pull()` returns the metrics.
+  - Handles `cross_validation=False` (skip CV, refit only).
+- **`_build_ts_metric_registry`** helper. Caches the TS metric containers (`mae` / `rmse` / `mape` / `smape` / `mase` / `rmsse` / `r2` / `coverage`) in `_fit_state["metric_registry"]` on first use. Parity with the supervised metric-registry drain (s32).
+- **`_primary_sp_to_use`** helper. Resolves the seasonal period for MASE / RMSSE scorers — falls through `self.seasonal_period` → `self._legacy.primary_sp_to_use` (auto-detected) → 1.
+- **`tests/test_models.py::_unwrap_pipeline`** updated. Now unwraps sktime `ForecastingPipeline → TransformedTargetForecaster → model` so the model-equality predicates see the bare forecaster.
+- **`packages/engine/tests/test_session40_ts_create_model_drain.py`** — 10 new tests:
+  - Drain-lock for `create_model('naive')` (poison `legacy.create_model`, verify native).
+  - Drain-lock for classical forecasters (`arima` / `ets` / `exp_smooth` / `theta`).
+  - `cross_validation=False` returns metrics=None + fitted pipeline.
+  - Pre-constructed forecaster path.
+  - Metrics DataFrame shape (5 rows: Fold 0/1/2 + Mean + Std; columns: MAE / RMSE / MAPE / MASE / R2).
+  - `pull()` returns metrics from native run.
+  - `predict_model` (still legacy in 5b) accepts the natively-built pipeline.
+  - Unknown registry ID → `ConfigurationError`.
+  - Object without `.fit` → `TypeError`.
+  - Metric registry caches on first use.
+
+### Headline metrics
+
+| | Session 39 end | Session 40 end |
+|---|---|---|
+| TS verbs drained | 0 of 6 | **1** of 6 (create_model) |
+| `legacy.create_model` callsites for TS | 1 | 0 |
+| Engine tests (fast + slow) | 191 | **201** (+10) |
+
+### Drain status
+
+```
+Native setup dispatcher accepts:
+  ✅ Phases 1-4: clf + reg + clustering + anomaly                 (s35-s38)
+  🟡 Phase 5a: TS adopts dispatcher (still calls legacy.setup)    (s39)
+  🟡 Phase 5b: TS create_model native                             (s40 ← here)
+  ⏳ Phase 5c: drain TS predict_model / compare / tune / finalize / assign
+  ⏳ Phase 5d: remove legacy.setup() from _native_setup_timeseries
+  ⏳ Phase 6:  delete pycaret/internal/pycaret_experiment/
+
+What still routes to legacy for TS:
+  - _native_setup_timeseries still calls legacy.setup() (transitional)
+  - predict_model, compare_models, tune_model, finalize_model, assign_model
+```
+
+### Why the `_unwrap_pipeline` test helper grew
+
+`tests/test_models.py::check_exp` runs each registered model's equality predicate against a freshly-fit instance — `model_definition["Equality"]` is typically a lambda like `isinstance(m, NaiveForecaster)`. Pre-s40, `exp.create_model('naive')` returned `NaiveForecaster` directly (legacy passthrough). Now it returns a `ForecastingPipeline → TransformedTargetForecaster → NaiveForecaster`, so `_unwrap_pipeline` was extended to peel both layers off before the equality check.
+
+### What's next (sessions 41+)
+
+- **Phase 5c** — drain TS `predict_model` (probably the next focus session) + `compare_models` + `tune_model` + `finalize_model` + `assign_model`. Each should be smaller than create_model since the heavy lifting (registry resolution + pipeline wiring + CV harness) is already in place.
+- **Phase 5d** — remove `legacy.setup()` call from `_native_setup_timeseries`. Once verbs no longer read from legacy state, native setup can build `_fit_state` from sktime primitives directly.
+- **Phase 6** — delete `pycaret/internal/pycaret_experiment/` (10K LoC). Final 4.0.0 release.
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config (user account reset in progress).
+
+---
 
 ## Session 39 — Native `setup()` phase 5a: time-series soft drain — ✅
 
