@@ -46,10 +46,24 @@ def _unwrap_pipeline(obj):
     (preprocessor + trained model). The equality predicates in the model
     registry check ``isinstance(model, <class>)`` against the bare model
     class — so we pull the last step out before handing to the predicate.
-    Clustering / anomaly still return bare estimators (their drain is
-    a later session).
+
+    Post session-40 (phase 5b): TS ``create_model`` returns a sktime
+    ``ForecastingPipeline`` whose final step is a
+    ``TransformedTargetForecaster`` whose final step is the actual model.
     """
     from sklearn.pipeline import Pipeline as SkPipeline
+
+    try:
+        from sktime.forecasting.compose import ForecastingPipeline
+    except ImportError:  # pragma: no cover — sktime is a hard dep
+        ForecastingPipeline = None
+
+    if ForecastingPipeline is not None and isinstance(obj, ForecastingPipeline):
+        # ForecastingPipeline → TransformedTargetForecaster → model
+        inner = obj.steps[-1][1]
+        if hasattr(inner, "steps"):
+            return inner.steps[-1][1]
+        return inner
 
     if isinstance(obj, SkPipeline):
         return obj.steps[-1][1]

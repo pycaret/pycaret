@@ -170,3 +170,207 @@ class TimeSeriesExperiment(SupervisedExperiment):
         """Time-series-specific statistical tests (ADF, KPSS, etc.)."""
         self._require_fitted()
         return self._legacy.check_stats(*args, **kwargs)
+
+    # ------------------------------------------------- session 40 (phase 5b)
+    # Native TS create_model — drains legacy.create_model. Reads from
+    # _fit_state and uses sktime forecasters directly.
+
+    def create_model(
+        self,
+        estimator: Any,
+        *,
+        fold: Any | None = None,
+        cross_validation: bool = True,
+        fit_kwargs: dict | None = None,
+        round: int = 4,
+        verbose: bool = False,
+        **estimator_kwargs: Any,
+    ):
+        """Native time-series create_model (phase 5b).
+
+        Resolves the estimator from the sktime registry, wires it into the
+        experiment's preprocess pipeline (a ``ForecastingPipeline``), runs
+        cross-validation via the existing ``cross_validate`` helper +
+        per-fold metrics dict, then refits on the full ``y_train``.
+
+        Returns a ``CreateResult`` whose ``pipeline`` is a real
+        ``sktime.forecasting.compose.ForecastingPipeline`` — same as legacy.
+
+        This drains ``self._legacy.create_model`` so that users who only
+        want to fit and forecast no longer pay for any legacy code path
+        (besides the legacy.setup() call still inside
+        ``_native_setup_timeseries``; phase 5c removes that too).
+        """
+        from copy import deepcopy
+
+        import pandas as pd
+        from sktime.forecasting.compose import ForecastingPipeline
+
+        from pycaret.core.errors import ConfigurationError
+        from pycaret.core.results import CreateResult
+        from pycaret.logging.events import EventKind
+        from pycaret.utils.time_series.forecasting.model_selection import (
+            cross_validate as _ts_cross_validate,
+        )
+        from pycaret.utils.time_series.forecasting.pipeline import (
+            _add_model_to_pipeline,
+        )
+
+        self._require_fitted()
+
+        import time as _time
+
+        t0 = _time.perf_counter()
+
+        # ---- resolve estimator → fitted forecaster instance + model_id
+        if isinstance(estimator, str):
+            registry = self._fit_state.get("model_registry", {})
+            if estimator not in registry:
+                raise ConfigurationError(
+                    f"Unknown TS model id {estimator!r}. Call `Experiment.list_models()`."
+                )
+            container = registry[estimator]
+            init_kwargs = dict(container.args)
+            init_kwargs.update(estimator_kwargs)
+            try:
+                model = container.class_def(**init_kwargs)
+            except TypeError:
+                # Defensive: unexpected kwargs → retry with registry defaults.
+                model = container.class_def(**dict(container.args))
+            model_id = estimator
+        elif isinstance(estimator, ForecastingPipeline):
+            # Already a pipeline — pull the last forecaster from the
+            # nested TransformedTargetForecaster.
+            inner = estimator.steps[-1][1]
+            model = deepcopy(inner.steps[-1][1])
+            model_id = type(model).__name__
+        else:
+            if not hasattr(estimator, "fit"):
+                raise TypeError(
+                    "estimator must be a registry ID or a sktime forecaster (with .fit)."
+                )
+            model = deepcopy(estimator)
+            model_id = type(estimator).__name__
+
+        self.logger.log(
+            EventKind.MODEL_CREATE_STARTED,
+            payload={"estimator": model_id},
+        )
+
+        # ---- wire into preprocess pipeline
+        base_pipeline = self._fit_state["preprocess_pipeline"]
+        if not isinstance(base_pipeline, ForecastingPipeline):
+            # Defensive — should always be a ForecastingPipeline post-setup.
+            raise RuntimeError(
+                "TS native create_model expected a ForecastingPipeline as "
+                f"preprocess_pipeline; got {type(base_pipeline).__name__}."
+            )
+        pipeline_with_model = _add_model_to_pipeline(pipeline=base_pipeline, model=model)
+
+        # ---- CV (when requested)
+        y_train = self._fit_state["y_train"]
+        x_train = self._fit_state.get("X_train")  # may be None for univariate
+        cv = fold if fold is not None else self._fit_state["fold_generator"]
+        fit_kwargs = fit_kwargs or {}
+        # sktime forecasters that need fh-in-fit get fh from CV.
+        if "fh" not in fit_kwargs and cv is not None:
+            fit_kwargs["fh"] = cv.fh
+
+        metrics_df: pd.DataFrame | None = None
+        if cross_validation and cv is not None:
+            metrics_registry = self._build_ts_metric_registry()
+            scoring_dict = {k: v.scorer for k, v in metrics_registry.items()}
+            additional_scorer_kwargs = {"sp": self._primary_sp_to_use()}
+            try:
+                scores, _cutoffs = _ts_cross_validate(
+                    pipeline=pipeline_with_model,
+                    y=y_train,
+                    X=x_train,
+                    cv=cv,
+                    scoring=scoring_dict,
+                    fit_params=dict(fit_kwargs),
+                    n_jobs=self.n_jobs,
+                    return_train_score=False,
+                    alpha=0.05,
+                    coverage=0.9,
+                    error_score=0,
+                    **additional_scorer_kwargs,
+                )
+            except Exception as e:  # noqa: BLE001 — surface CV failure
+                self.logger.log(
+                    EventKind.MODEL_CREATE_STARTED,
+                    message=f"TS native CV failed for {model_id}: {e}",
+                )
+                scores = None
+
+            if scores is not None:
+                # Build display-name DataFrame: rows = Fold 0..N-1, Mean, Std.
+                score_df = pd.DataFrame(
+                    {v.display_name: scores[k] for k, v in metrics_registry.items()}
+                )
+                score_df.index = [f"Fold {i}" for i in range(len(score_df))]
+                # Append Mean + Std rows.
+                try:
+                    score_df.loc["Mean"] = score_df.mean(numeric_only=True)
+                    score_df.loc["Std"] = score_df.std(numeric_only=True)
+                except TypeError:  # all-None columns
+                    pass
+                metrics_df = score_df.round(round)
+                self._set_last_metrics(metrics_df)
+
+        # ---- refit on full y_train so the returned pipeline is fitted
+        # (cross_validate above clones per fold and doesn't mutate the
+        # original).
+        try:
+            pipeline_with_model.fit(
+                y=y_train, X=x_train, fh=cv.fh if cv is not None else self._fit_state["fh"]
+            )
+        except Exception:
+            # Some forecasters don't accept fh in fit — retry without it.
+            pipeline_with_model.fit(y=y_train, X=x_train)
+
+        self.logger.log(
+            EventKind.MODEL_CREATED,
+            duration_ms=(_time.perf_counter() - t0) * 1000,
+            payload={"estimator": model_id},
+        )
+        return CreateResult(
+            pipeline=pipeline_with_model,
+            model_id=model_id,
+            metrics=metrics_df,
+            params=self._safe_params(model),
+        )
+
+    def _build_ts_metric_registry(self) -> dict:
+        """Build the TS metric registry from the container helper. Cached
+        in ``_fit_state["metric_registry"]`` so add_metric / remove_metric
+        can mutate it.
+        """
+        if self._fit_state.get("metric_registry"):
+            return self._fit_state["metric_registry"]
+        from pycaret.containers.metrics.time_series import (
+            get_all_metric_containers,
+        )
+
+        registry = dict(get_all_metric_containers({}, raise_errors=False))
+        self._fit_state["metric_registry"] = registry
+        return registry
+
+    def _primary_sp_to_use(self) -> int:
+        """Resolve the seasonal period for MASE/RMSSE scorers.
+
+        Priority: explicit ``self.seasonal_period`` constructor arg →
+        ``self._legacy.primary_sp_to_use`` (legacy auto-detected) → 1.
+        """
+        if self.seasonal_period is not None:
+            try:
+                return int(self.seasonal_period)
+            except (TypeError, ValueError):
+                pass
+        legacy_sp = getattr(self._legacy, "primary_sp_to_use", None)
+        if legacy_sp is not None:
+            try:
+                return int(legacy_sp)
+            except (TypeError, ValueError):
+                pass
+        return 1
