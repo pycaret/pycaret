@@ -115,6 +115,47 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 30 — 2026-04-24 — Internal-state drain: transformed splits + fold generator + model registry
+
+Baseline: session 29 drained the 7 user-facing data accessors. Session 30 drains the 6 *internal* `self._legacy.<x>` reads still present inside the drained verbs.
+
+## CHANGED — engine
+
+- `CHANGED` — **`packages/engine/pycaret/core/experiment.py` — `_snapshot_fit_state()`** captures 6 new slots in `_fit_state` at the end of `fit()`: `X_transformed`, `X_train_transformed`, `y_transformed`, `y_train_transformed`, `fold_generator`, `model_registry` (a `dict(legacy._all_models_internal)` copy).
+- `CHANGED` — **13 callsites drained** across `experiment.py`, `supervised.py`, `unsupervised.py`:
+  - `create_model` (supervised native) — reads `X_train_transformed`, `y_train_transformed`, `fold_generator`, and `model_registry` from `_fit_state`.
+  - `_resolve_supervised_estimator` — reads `model_registry`.
+  - `tune_model` — `X_train_transformed`, `y_train_transformed`, `fold_generator`, `model_registry`.
+  - `compare_models` — `model_registry`.
+  - `stack_models` — `fold_generator`.
+  - `calibrate_model` — `fold_generator`.
+  - `finalize_model` — `X_transformed`, `y_transformed`.
+  - Unsupervised `create_model` + `assign_model` — `X_transformed`, `model_registry`.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session30_internal_state_drain.py`** — 5 tests with a generalised drain-lock helper (`_PoisonedAttrAccess`) that raises on every dunder a verb might use to read legacy state (`__getattr__`, `__getitem__`, `__contains__`, `__iter__`, `__len__`). Tests cover:
+  - `create_model` succeeds after every internal-state attr on `_legacy` is poisoned.
+  - `tune_model` resolves the search space from the snapshot's `model_registry` even when `legacy._all_models_internal` is dropped to `{}`.
+  - `finalize_model` re-fits using `_fit_state["X_transformed"]` rather than legacy.
+  - Clustering `create_model` fits on the snapshot's `X_transformed`.
+  - Sanity: all 13 `_fit_state` keys are populated post-fit.
+
+## INTERNAL
+
+- `INTERNAL` — **Why a copy of the registry, not just a reference.** `_all_models_internal` is mutable on the legacy class — extensions like `add_metric` could grow it. Taking a `dict(legacy._all_models_internal)` shallow-copy at fit-time makes the snapshot stable: future legacy mutations don't leak into already-fitted experiments. Trade-off: if a user genuinely wants their `add_metric` call to affect a previously-fitted experiment, they'd need to re-snapshot. That's an edge case worth the reproducibility win.
+- `INTERNAL` — **`_PoisonedAttrAccess` is the drain-lock pattern at scale.** Sessions 22-28 monkeypatched a single legacy method to raise; session 29 monkeypatched a property; session 30 needs to lock down ~6 attrs across multiple dunder methods. Wrapping them all in one sentinel object that raises on every access keeps the test code short and the failure mode clear ("a verb reached for self._legacy.\<x\>").
+
+## Session 30 delta summary
+
+| Metric | Session 29 end | Session 30 end |
+|---|---:|---:|
+| `_legacy.<internal-state>` reads in drained verbs | 13 | **0** ✅ |
+| Engine tests (fast + slow) | 108 | **113** |
+| **Combined tests** | **254** | **259** |
+
+---
+
 # Session 29 — 2026-04-24 — Property drain: data accessors
 
 Baseline: session 28 finished the modeling-verb drain (16 verbs). Session 29 promotes the user-facing data accessor properties off `self._legacy` onto a snapshot in `self._fit_state`. The public API surface no longer requires `self._legacy` to exist on read paths.

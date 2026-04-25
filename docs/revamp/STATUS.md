@@ -1,6 +1,44 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 29*
+*Updated: 2026-04-24, end of session 30*
+
+## Session 30 — Internal-state drain: transformed splits + fold generator + model registry — ✅
+
+After session 29 promoted user-facing accessors to `self._fit_state`, six **internal** legacy reads remained inside the drained verbs (the post-preprocessing splits used for CV, the fold generator, and the model-container registry). Session 30 captures all of them in `_fit_state` at fit time. **Every drained verb now reads training data, the CV generator, and the model registry from the snapshot.**
+
+### What landed
+
+- **`packages/engine/pycaret/core/experiment.py` — `_snapshot_fit_state()`** extended with 6 new slots:
+  - `X_transformed`, `X_train_transformed`, `y_transformed`, `y_train_transformed` — post-preprocessor splits used by `create_model`'s CV loop and `finalize_model`'s full-data refit.
+  - `fold_generator` — pre-built `StratifiedKFold` / similar instance used by every CV-running verb.
+  - `model_registry` — `dict(getattr(legacy, "_all_models_internal", {}))` snapshot of the model containers (so we hold references but the dict itself is detached from the legacy holder).
+- **13 callsites drained** across `core/experiment.py`, `core/supervised.py`, and `core/unsupervised.py`. Every `self._legacy.X_train_transformed` / `_all_models_internal` / `fold_generator` read in the drained verbs is now `self._fit_state[...]`.
+- **`packages/engine/tests/test_session30_internal_state_drain.py`** — 5 tests:
+  - **Drain-lock pattern** generalised: a `_PoisonedAttrAccess` sentinel raises on `__getattr__`, `__getitem__`, `__contains__`, `__iter__`, `__len__`. We poison every legacy attr we drained then run `create_model` / `tune_model` / `finalize_model` / clustering `create_model` and assert success.
+  - `test_tune_model_uses_snapshot_for_search_space` — drops `legacy._all_models_internal` to `{}` after fit; tune_model still finds `lr` in the snapshot's registry copy and produces non-empty `best_params`.
+  - `test_fit_state_holds_all_internal_keys` — sanity check that all 13 keys are populated post-fit.
+
+### Headline metrics
+
+| | Session 29 end | Session 30 end |
+|---|---|---|
+| Internal `_legacy.<X_train_transformed/X_transformed/...>` reads in drained verbs | 13 callsites | **0** ✅ |
+| Engine tests (fast + slow) | 108 | **113** (+5) |
+| **Combined tests** | **254** | **259** |
+
+### Drain progress
+
+The only `self._legacy.<x>` reads that remain in `core/`:
+- `self._legacy.setup(...)` — the only call inside `fit()`. The actual experiment fitting. Will be drained when we replace it with a native preprocessing chain (penultimate step before deleting `pycaret/internal/pycaret_experiment/`).
+- Secondary verbs (`pull`, `models`, `get_metrics`, `add_metric`, `remove_metric`, `get_config`, `set_config`, `plot_model`, `evaluate_model`) still delegate to `self._legacy.<verb>` — these are advisory / introspection helpers, not in the predict/tune/compare path.
+
+After the secondary verbs + `setup()` are drained, `pycaret/internal/pycaret_experiment/` becomes deletable + we cut `4.0.0` non-alpha.
+
+### Side note: 4.0.0a2 release
+
+Tag pushed; build + smoke matrix all green; **publish-pypi blocked on PyPI Trusted Publishing config** (PyPI account reset in progress on the user's side). The wheel + sdist are valid; the only blocker is the OIDC trusted-publisher entry on PyPI's end. Will retry once PyPI reset completes.
+
+---
 
 ## Session 29 — Property drain: data accessors — ✅
 
