@@ -1,6 +1,71 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 41*
+*Updated: 2026-04-25, end of session 42*
+
+## Session 42 — Phase 5c (cont.): drain `TimeSeriesExperiment.compare_models` — ✅
+
+The third TS verb is fully native. `exp.compare_models()` no longer touches `legacy.compare_models` — it iterates the sktime registry, calls native `create_model` per candidate (which already does CV via the drained native path from s40), and assembles a leaderboard ranked by MASE (default — lower is better).
+
+### What landed
+
+- **`TimeSeriesExperiment.compare_models`** native override. Mirrors the supervised `_compare_models_supervised_native` pattern (s26):
+  - Filters: `include=` / `exclude=` / `turbo=`. Default-include skips `ensemble_forecaster` via the new `_TS_REGISTRY_EXCLUDE` set.
+  - Iterates candidates → `create_model(cand, ...)` → pulls the `Mean` row from each metrics DataFrame.
+  - Sorts the leaderboard ascending or descending based on `_TS_ASCENDING_METRICS` (MASE / RMSSE / MAE / RMSE / MAPE / SMAPE are ascending; R2 / COVERAGE descending).
+  - Returns top-K pipelines + leaderboard + ranked_ids in a `CompareResult`.
+  - Calls `_set_last_metrics(leaderboard)` so `pull()` returns the leaderboard.
+  - `errors="ignore"` skips failed models; `errors="raise"` propagates.
+  - Empty-result handling: returns an empty `CompareResult` rather than raising.
+- **`packages/engine/tests/test_session42_ts_compare_models_drain.py`** — 9 new tests:
+  - Drain-lock for `compare_models` (poison legacy, verify native).
+  - Leaderboard sorted ascending by MASE.
+  - `n_select=3` returns top-3 fitted `ForecastingPipeline` instances.
+  - `exclude=` filter drops named models.
+  - `ensemble_forecaster` filtered out by default (errors=ignore catches the runtime construction failure).
+  - `errors="ignore"` skips failures.
+  - `pull()` returns the leaderboard.
+  - End-to-end `compare → predict` chain with all 3 legacy verbs poisoned.
+  - All-failures path returns empty `CompareResult`.
+
+### Headline metrics
+
+| | Session 41 end | Session 42 end |
+|---|---|---|
+| TS verbs drained (out of 6) | 2 | **3** (+ compare_models) |
+| `legacy.compare_models` callsites for TS | 1 | 0 |
+| Engine tests (fast + slow) | 209 | **218** (+9) |
+
+### Drain status
+
+```
+Native setup dispatcher accepts:
+  ✅ Phases 1-4: clf + reg + clustering + anomaly setup           (s35-s38)
+  🟡 Phase 5a: TS adopts dispatcher (still calls legacy.setup)    (s39)
+  🟡 Phase 5b: TS create_model native                             (s40)
+  🟡 Phase 5c: TS predict_model native                            (s41)
+  🟡 Phase 5c (cont.): TS compare_models native                   (s42 ← here)
+  ⏳ Phase 5c (cont.): drain TS tune_model / finalize_model / assign_model
+  ⏳ Phase 5d: remove legacy.setup() from _native_setup_timeseries
+  ⏳ Phase 6:  delete pycaret/internal/pycaret_experiment/
+
+What still routes to legacy for TS:
+  - _native_setup_timeseries still calls legacy.setup() (transitional)
+  - tune_model, finalize_model, assign_model
+```
+
+### What's next (sessions 43+)
+
+- **`tune_model`** — sktime `ForecastingGridSearchCV` / `ForecastingRandomizedSearchCV` over the container's `tune_grid` / `tune_distributions`.
+- **`finalize_model`** — refit on full `y` (not just `y_train`). Smaller scope.
+- **`assign_model`** — TS doesn't have a meaningful "assign labels to rows" semantic; might just be a thin no-op or skipped.
+- **Phase 5d** — strip `legacy.setup()` from `_native_setup_timeseries`. Once verbs no longer need legacy state, native setup can build `_fit_state` from sktime primitives directly.
+- **Phase 6** — delete `pycaret/internal/pycaret_experiment/` (10K LoC). Final 4.0.0 release.
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config (user account reset in progress).
+
+---
 
 ## Session 41 — Phase 5c: drain `TimeSeriesExperiment.predict_model` — ✅
 

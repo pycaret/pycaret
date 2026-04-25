@@ -115,6 +115,51 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 42 — 2026-04-25 — Phase 5c (cont.): drain TimeSeriesExperiment.compare_models
+
+The third TS verb is fully native. `exp.compare_models()` no longer touches `legacy.compare_models` — it iterates the sktime registry, calls native `create_model` per candidate (which already does CV via the s40 native path), and assembles a leaderboard ranked by MASE (default — lower is better).
+
+## ADDED — engine
+
+- `ADDED` — **`TimeSeriesExperiment.compare_models`** in `packages/engine/pycaret/tasks/time_series.py`. Mirrors the supervised `_compare_models_supervised_native` pattern (s26):
+  - Filters: `include=` / `exclude=` / `turbo=`. Default-include skips `ensemble_forecaster`.
+  - Iterates candidates → `create_model(cand, ...)` → pulls the `Mean` row from each metrics DataFrame.
+  - Sorts ascending or descending based on whether the `sort` metric is in `_TS_ASCENDING_METRICS` (MASE / RMSSE / MAE / RMSE / MAPE / SMAPE) or not.
+  - Returns top-K pipelines + leaderboard + ranked_ids in a `CompareResult`.
+  - Calls `_set_last_metrics(leaderboard)` so `pull()` returns it.
+  - `errors="ignore"` skips failures; `errors="raise"` propagates.
+  - Empty-result handling: returns empty `CompareResult` rather than raising.
+- `ADDED` — Two class-level constants: `_TS_REGISTRY_EXCLUDE` (frozenset of model IDs to skip by default — currently `{"ensemble_forecaster"}`) and `_TS_ASCENDING_METRICS` (frozenset of error-metric display names that sort ascending).
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session42_ts_compare_models_drain.py`** — 9 new tests:
+  - Drain-lock for `compare_models`.
+  - Leaderboard sorted ascending by MASE.
+  - `n_select=3` returns top-3 fitted `ForecastingPipeline` instances.
+  - `exclude=` filter drops named models.
+  - `ensemble_forecaster` filtered out via runtime construction failure + `errors=ignore`.
+  - `errors="ignore"` skips failures.
+  - `pull()` returns the leaderboard.
+  - End-to-end `compare → predict` chain with all 3 legacy verbs poisoned.
+  - All-failures path returns empty `CompareResult`.
+
+## INTERNAL
+
+- `INTERNAL` — **Why filter `ensemble_forecaster` by default.** It's in `_all_models_internal` (TS legacy registry) but constructing it requires runtime-built sub-forecasters (legacy passes `forecasters=...` from a custom logic path that depends on the existing leaderboard). For native `compare_models` to construct it, we'd need to first run a partial compare to get the constituents, then build the ensemble — a chicken-and-egg problem the legacy avoids by handling it in a special branch. Excluding it from the default `include` mirrors what `legacy.models()` already does (filtered by `model_type ∈ TSModelTypes`, which doesn't include `"ensemble"`).
+- `INTERNAL` — **`_TS_ASCENDING_METRICS` is class-level.** Lookup is O(1) via `frozenset` membership; no per-call construction. Six error metrics are listed (MASE / RMSSE / MAE / RMSE / MAPE / SMAPE). R2 and COVERAGE default to descending (greater-is-better).
+- `INTERNAL` — **All-TS turbo flag is True.** Every TS container ships with `is_turbo=True`, so the `turbo=True` branch is essentially a no-op for the default registry. Kept for parity with the supervised signature; users can pass custom containers with `is_turbo=False` to opt out.
+
+## Session 42 delta summary
+
+| Metric | Session 41 end | Session 42 end |
+|---|---:|---:|
+| TS verbs drained (out of 6) | 2 (create_model, predict_model) | 3 (+ compare_models) |
+| `legacy.compare_models` callsites for TS | 1 | 0 |
+| Engine tests (fast + slow) | 209 | **218** |
+
+---
+
 # Session 41 — 2026-04-25 — Phase 5c: drain TimeSeriesExperiment.predict_model
 
 The second TS verb is fully native. `exp.predict_model(forecaster)` no longer touches `legacy.predict_model` — predictions go through the standalone `get_predictions_with_intervals` helper and metrics are computed against `_fit_state["y_test"]` via the standalone `calculate_metrics` utility.
