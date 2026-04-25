@@ -1,6 +1,67 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 31*
+*Updated: 2026-04-25, end of session 32*
+
+## Session 32 — `add_metric` / `remove_metric` drain + per-Experiment metric registry — ✅
+
+After session 31, the metric registry was being read directly from the global container helpers (`pycaret.containers.metrics.<task>.get_all_metric_containers({}, ...)`). Custom metrics added via `add_metric` lived in the legacy holder and never reached the native CV path. Session 32 fixes that by promoting the metric registry to a per-Experiment dict at `self._fit_state["metric_registry"]` — and **a custom metric registered via `add_metric` now actually shows up in subsequent CV results**.
+
+### What landed
+
+- **`Experiment._get_metric_registry()`** — single source of truth. Lazily builds the registry from the task helper on first call, caches in `_fit_state["metric_registry"]`. Works post-fit (cached, mutable) and pre-fit / fit-sentinel (fresh build, no caching). Returns `None` for time-series (which falls back to legacy).
+- **All 6 metric-registry callsites consolidated** to use `_get_metric_registry()` in `_compute_predict_metrics`, `_cross_validate_supervised`, and `get_metrics()`. The 4-way classification/regression/clustering/anomaly task switching now lives only in the helper.
+- **`Experiment.add_metric(id, name, score_func, target='pred', greater_is_better=True, args=None, is_multiclass=True)`** — drained. Builds the right `<Task>MetricContainer` for the current task and inserts it into the snapshot. Falls back to legacy for time-series.
+- **`Experiment.remove_metric(name_or_id)`** — drained. Pops from the snapshot. Accepts ID or display name (legacy semantics). Raises `ValueError` if no match.
+- **`packages/engine/tests/test_session32_metric_registry.py`** — 10 tests:
+  - **The killer test**: `add_metric(...)` → next `create_model` includes the new column in CV metrics.
+  - `add_metric` shows up in `get_metrics()` with `Custom=True`.
+  - `remove_metric` drops from CV.
+  - `remove_metric` accepts display name (matches "Accuracy" → drops the `acc` entry).
+  - `remove_metric` unknown → `ValueError`.
+  - Drain-locks for both verbs (poison `legacy.add_metric` / `legacy.remove_metric`).
+  - Custom metric persists across `create_model` → `tune_model` → `compare_models`.
+  - Regression `add_metric` works.
+  - `NotFittedError` pre-fit on both.
+
+### Headline metrics
+
+| | Session 31 end | Session 32 end |
+|---|---|---|
+| Drainable secondary verbs still on `_legacy` | 2 (`add_metric`, `remove_metric`) | **0** ✅ |
+| Engine tests (fast + slow) | 121 | **131** (+10) |
+| **Combined tests** | **267** | **277** |
+
+### Drain status
+
+```
+✅ All 16 modeling verbs            (sessions 22-28)
+✅ User-facing data accessors       (session 29)
+✅ Internal training state          (session 30)
+✅ pull / models / get_metrics      (session 31)
+✅ add_metric / remove_metric       (session 32)  ← this session
+```
+
+The only remaining `_legacy` callsites in `core/`:
+- `self._legacy.setup(...)` inside `fit()` — biggest remaining piece.
+- `get_config` / `set_config` — escape hatches for advanced users; small drain.
+- `plot_model` / `evaluate_model` — Phase 3 roadmap (Plotly-native rewrite).
+- TS-task fallback paths.
+
+### Path to 4.0.0 non-alpha
+
+The remaining setup() drain is genuinely 3-5 sessions of work to replicate 100+ legacy preprocessing options (normalize / transformation / remove_outliers / feature_selection / target encoding / etc.). A pragmatic path:
+
+1. **Drain `get_config` / `set_config`** — small. Either snapshot the configurable knobs or document them as legacy-only.
+2. **Ship `4.0.0a3` or `4.0.0` non-alpha** with the current architecture: public API fully native, `_legacy` still loaded as an internal preprocessing engine. Document this in release notes.
+3. **Post-release**: tackle the native preprocessing chain incrementally.
+
+This is honest engineering. The drain has delivered the 4.0 design promise (sklearn Pipeline-in / Pipeline-out, no god-class on the public surface) without months of preprocessing rewrite.
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config. User account reset in progress.
+
+---
 
 ## Session 31 — Secondary-verb drain: pull / models / get_metrics — ✅
 

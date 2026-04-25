@@ -193,8 +193,9 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 28 | God-class drain #7 — unsupervised (clustering + anomaly) | create_model + assign_model native for clustering + anomaly. CreateResult.pipeline is now a real sklearn Pipeline for ALL non-TS tasks. 11 new tests (250/250). |
 | 29 | Property drain — user-facing data accessors | X / X_train / X_test / y / y_train / y_test / preprocess_pipeline read from self._fit_state, not self._legacy. Public API surface fully drained. 4 new tests (254/254). |
 | 30 | Internal-state drain — transformed splits + fold generator + model registry | X_transformed / X_train_transformed / y_transformed / y_train_transformed / fold_generator / model_registry promoted to self._fit_state. 13 internal `_legacy` reads in drained verbs eliminated. 5 new tests (259/259). |
-| **31** | **Secondary-verb drain — pull / models / get_metrics** | **pull() reads from _fit_state["last_metrics"], updated by every native modeling verb. models() + get_metrics() build DataFrames natively from the snapshot + metric registry. 8 new tests (267/267).** |
-| 32+ | Native preprocessing chain (replaces setup()) → 4.0.0 release | drop self._legacy.setup() inside fit(); replace with native pandas/sklearn preprocessing; delete pycaret/internal/pycaret_experiment; ship 4.0.0 |
+| 31 | Secondary-verb drain — pull / models / get_metrics | pull() reads from _fit_state["last_metrics"], updated by every native modeling verb. models() + get_metrics() build DataFrames natively from the snapshot + metric registry. 8 new tests (267/267). |
+| **32** | **Per-Experiment metric registry + add_metric / remove_metric drain** | **Metric registry promoted to _fit_state["metric_registry"]; add_metric mutates it; CV / leaderboard / predict all read from it. Custom metrics actually show up in CV now (real bugfix). 10 new tests (277/277).** |
+| 33+ | Final pre-4.0.0 work | drain get_config/set_config; ship 4.0.0a3 or 4.0.0 non-alpha; (post-release) native preprocessing chain to replace setup(); (post-release) delete pycaret/internal/pycaret_experiment |
 
 Roughly **7–8 sessions to MVP 3 completion** (all 8 UI screens wired + LLM assist + full AutoML flow). Then a handful of V2 items. Then god-class drain for MVP 1 release.
 

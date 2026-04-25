@@ -115,6 +115,47 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 32 — 2026-04-25 — Per-Experiment metric registry + add_metric / remove_metric drain
+
+Baseline: session 31 drained pull / models / get_metrics. Session 32 promotes the metric registry into per-Experiment state, drains `add_metric` and `remove_metric`, and fixes a real bug: **custom metrics registered via `add_metric` now actually show up in CV results** (previously they lived in the legacy holder while the native CV path read from the global container helpers, so the metric was registered but never computed).
+
+## CHANGED — engine
+
+- `CHANGED` — **`Experiment._get_metric_registry()`** is the new single source of truth for the per-Experiment metric registry. Lazily builds from the task helper, caches in `self._fit_state["metric_registry"]` post-fit, returns a fresh build pre-fit (for the fit-sentinel test pattern). Returns `None` for time-series — caller falls back to legacy.
+- `CHANGED` — **6 metric-registry callsites consolidated**. `_compute_predict_metrics`, `_cross_validate_supervised`, and the public `get_metrics()` now all funnel through `_get_metric_registry()`. The 4-way classification/regression/clustering/anomaly task switch lives in one place.
+- `CHANGED, BREAKING` — **`Experiment.add_metric`** (classification + regression) no longer delegates to `self._legacy.add_metric`. Builds the right `<Task>MetricContainer` for the current task and inserts it into the snapshot. Subsequent `create_model` / `tune_model` / `compare_models` / `predict_model` calls compute the metric on every fold + include it in the leaderboard. Time-series falls through to legacy.
+  - Signature: `(id, name, score_func, target="pred", greater_is_better=True, args=None, is_multiclass=True, **kwargs)`. Mirrors legacy.
+- `CHANGED, BREAKING` — **`Experiment.remove_metric`** drained. Accepts the metric's `id` or its display name (legacy semantics). Raises `ValueError` when no match — was previously silent.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session32_metric_registry.py`** — 10 tests:
+  - **The killer test**: `add_metric(...)` → subsequent `create_model.metrics` includes the new column. This was broken before the drain.
+  - `add_metric` shows up in `get_metrics()` with `Custom=True`.
+  - `remove_metric` drops the metric from CV.
+  - `remove_metric` accepts display name.
+  - `remove_metric` unknown → `ValueError`.
+  - Drain-locks for both verbs.
+  - Custom metric persists across `create_model` → `tune_model` → `compare_models`.
+  - Regression `add_metric` works.
+  - `NotFittedError` pre-fit.
+
+## INTERNAL
+
+- `INTERNAL` — **Why a per-Experiment registry** (vs. the global container helpers). The legacy global registry is shared across experiments — adding a metric on one Experiment instance would visibly affect another. Promoting to `_fit_state["metric_registry"]` (a `dict` copy of the global registry, taken at fit time) decouples experiments cleanly: each `Experiment` carries its own metrics, `add_metric` mutates only that experiment's registry, and CV / leaderboard / predict all read from the same source.
+- `INTERNAL` — **The fit-sentinel pattern test fix.** A small set of fast tests in `test_session23_predict.py` use `exp._fitted = True` (a fake fit-sentinel) to test predict_model without spinning up the engine. Session-32's first iteration broke them: `_get_metric_registry()` required `_fit_state` to exist. Fix: when `_fit_state` doesn't exist yet (or doesn't have `"metric_registry"`), `_get_metric_registry()` builds a fresh registry on every call without caching. The fit-sentinel tests are explicitly read-only — they don't need the cache.
+- `INTERNAL` — **Why `add_metric` always sets `is_custom=True`.** Both `ClassificationMetricContainer` and `RegressionMetricContainer` have an `is_custom` flag intended exactly for user-added metrics. Setting it on every `add_metric` call lets `get_metrics()` distinguish built-in vs custom in its DataFrame output, which the UI / Control Plane can use to allow editing only the custom ones.
+
+## Session 32 delta summary
+
+| Metric | Session 31 end | Session 32 end |
+|---|---:|---:|
+| Drainable secondary verbs still on `_legacy` | 2 | **0** ✅ |
+| Engine tests (fast + slow) | 121 | **131** |
+| **Combined tests** | **267** | **277** |
+
+---
+
 # Session 31 — 2026-04-25 — Secondary-verb drain: pull / models / get_metrics
 
 Baseline: session 30 finished the internal-state drain. Session 31 drains the three advisory secondary verbs that have a clean native equivalent.
