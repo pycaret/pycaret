@@ -220,8 +220,8 @@ def test_can_use_native_setup_predicate():
     transformation / remove_outliers / feature_selection) is native — see
     test_session36_native_setup_phase2 + test_session37_native_setup_phase3.
     Phase 4 (s38) added unsupervised tabular (clustering + anomaly).
-    Here we lock the still-legacy paths: caller-supplied ``setup_kwargs``
-    and time-series.
+    Phase 5a (s39) added time-series through the soft-drain path. Only
+    caller-supplied ``setup_kwargs`` still forces legacy.
     """
     from pycaret.tasks import (
         AnomalyExperiment,
@@ -240,5 +240,5 @@ def test_can_use_native_setup_predicate():
     # Phase-4: unsupervised tabular is now native.
     assert ClusteringExperiment(session_id=0)._can_use_native_setup({}) is True
     assert AnomalyExperiment(session_id=0)._can_use_native_setup({}) is True
-    # Time-series is still legacy (phase-5 work).
-    assert TimeSeriesExperiment(session_id=0)._can_use_native_setup({}) is False
+    # Phase-5a: time-series adopts the dispatcher (soft drain).
+    assert TimeSeriesExperiment(session_id=0)._can_use_native_setup({}) is True

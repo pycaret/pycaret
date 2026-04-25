@@ -225,12 +225,18 @@ def test_can_use_native_setup_unsupervised_predicate():
         assert cls(session_id=0)._can_use_native_setup({"foo": 1}) is False
 
 
-def test_time_series_still_falls_back_to_legacy():
-    """Time-series doesn't yet have a native path; predicate must say no."""
+def test_time_series_now_routes_through_native_dispatcher_phase5a():
+    """Phase 5a (s39): TS adopts the native dispatcher.
+
+    Originally written when phase 4 was the latest landed phase; asserted
+    that TS still routed to legacy. Inverted in s39 once phase 5a (soft
+    drain) shipped — TS still calls legacy.setup() under the hood for
+    verb compatibility, but the predicate accepts it now.
+    """
     from pycaret.tasks import TimeSeriesExperiment
 
     exp = TimeSeriesExperiment(session_id=0)
-    assert exp._can_use_native_setup({}) is False
+    assert exp._can_use_native_setup({}) is True
 
 
 # ---------------------------------------------------------------------------

@@ -87,6 +87,9 @@ class TimeSeriesExperiment(SupervisedExperiment):
     # column — and the legacy setup() has its own param list. Skip the tabular
     # supervised (X, y) coercion in the base fit().
     def fit(self, X, y=None, **setup_kwargs):
+        """TS-specific fit. Dispatches to the native phase-5a path or to
+        ``legacy.setup()`` with state snapshot, depending on the predicate.
+        """
         import time
         import uuid
 
@@ -115,7 +118,20 @@ class TimeSeriesExperiment(SupervisedExperiment):
             message="Starting time_series experiment",
             payload={"target": self.target},
         )
-        self._legacy.setup(**self._build_legacy_setup_kwargs(data, setup_kwargs))
+
+        # Phase 5a (s39): TS fit() goes through the same native dispatcher
+        # as the other tasks. The "native" TS path still calls legacy.setup
+        # underneath because TS verbs aren't drained yet — what we get is
+        # _fit_state population so accessors (y_train, y_test, fh, ...) work
+        # consistently across all task types.
+        self._native_setup_used = False
+        if self._can_use_native_setup(setup_kwargs):
+            self._native_setup_timeseries(data, setup_kwargs)
+            self._native_setup_used = True
+        else:
+            self._legacy.setup(**self._build_legacy_setup_kwargs(data, setup_kwargs))
+            self._snapshot_fit_state()
+
         self._fitted = True
         self.logger.log(
             EventKind.EXPERIMENT_FITTED,

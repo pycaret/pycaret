@@ -362,17 +362,22 @@ class Experiment(BaseEstimator):
           training set). No fold generator (unsupervised tasks don't CV in
           the same way). Same preprocessing chain as supervised.
 
-        Time-series still falls back to legacy.
+        Phase 5a (s39): time-series adopts the predicate but the native
+        path still runs ``legacy.setup()`` under the hood — TS verbs
+        haven't been drained yet, and they depend on legacy state. Phase
+        5b/c will drain those verbs and remove the legacy.setup() call
+        from the TS native path.
         """
         from pycaret.core.tasks import TaskType
 
-        # Supported task types: supervised tabular + unsupervised tabular.
-        # Time-series uses its own setup with sktime-shaped knobs (Phase 5).
+        # Supported task types: supervised tabular + unsupervised tabular
+        # + time-series (phase 5a — soft drain).
         if self.task not in (
             TaskType.CLASSIFICATION,
             TaskType.REGRESSION,
             TaskType.CLUSTERING,
             TaskType.ANOMALY,
+            TaskType.TIME_SERIES,
         ):
             return False
         # Any caller-supplied setup_kwargs forces legacy — we don't know what
@@ -797,6 +802,77 @@ class Experiment(BaseEstimator):
             ),
         )
 
+    def _native_setup_timeseries(self, data: Any, setup_kwargs: dict[str, Any]) -> None:
+        """Phase-5a native setup for time-series.
+
+        The TS native path is a **soft drain** for now. Unlike supervised
+        / unsupervised native setup, we still call ``legacy.setup()``
+        underneath — TS verbs (``create_model``, ``predict_model``,
+        ``compare_models``, ...) haven't been drained yet and they read
+        from legacy attributes. Phase 5b/c will drain those verbs and
+        remove the legacy.setup() call here.
+
+        What this method gives us today:
+
+        - **Accessor parity**: ``exp.y_train``, ``exp.y_test``,
+          ``exp.preprocess_pipeline`` work for time-series exactly like
+          they do for the other tasks. Before this, TS didn't populate
+          ``_fit_state`` at all and the accessors raised ``KeyError``.
+        - **Stable ``_fit_state`` shape**: TS-specific slots (``fh``,
+          ``seasonal_period``) live alongside the standard slots
+          (``y``, ``y_train``, ``y_test``, ``fold_generator``,
+          ``model_registry``). Future verb drains can read straight off
+          ``_fit_state`` instead of through ``self._legacy``.
+        - **Predicate parity**: ``_can_use_native_setup`` accepts
+          ``TaskType.TIME_SERIES``, so the dispatcher in ``fit()`` is
+          uniform across all five task types.
+        """
+        # Run legacy.setup so the sktime model registry, fold generator,
+        # and y_train/y_test splits get built. Once TS verbs drain, this
+        # call is replaced with native sktime calls
+        # (``temporal_train_test_split`` + ``ExpandingWindowSplitter``).
+        self._legacy.setup(**self._build_legacy_setup_kwargs(data, setup_kwargs))
+
+        legacy = self._legacy
+        self._fit_state = {
+            # User-facing — TS has no exogenous X by default; X / X_train /
+            # X_test will be populated when the user passes exogenous data.
+            "X": getattr(legacy, "X", None),
+            "X_train": getattr(legacy, "X_train", None),
+            "X_test": getattr(legacy, "X_test", None),
+            "y": getattr(legacy, "y", None),
+            "y_train": getattr(legacy, "y_train", None),
+            "y_test": getattr(legacy, "y_test", None),
+            "preprocess_pipeline": getattr(legacy, "pipeline", None),
+            # Internal training state.
+            "X_transformed": getattr(legacy, "X_transformed", None),
+            "X_train_transformed": getattr(legacy, "X_train_transformed", None),
+            "y_transformed": getattr(legacy, "y_transformed", None),
+            "y_train_transformed": getattr(legacy, "y_train_transformed", None),
+            "fold_generator": getattr(legacy, "fold_generator", None),
+            "model_registry": dict(getattr(legacy, "_all_models_internal", {})),
+            "last_metrics": None,
+            # TS-specific slots.
+            "fh": getattr(legacy, "fh", self.fh),
+            "seasonal_period": getattr(legacy, "seasonal_period", self.seasonal_period),
+            # Slots present for shape uniformity but unused for TS.
+            "label_encoder": None,
+            "numeric_cols": None,
+            "categorical_cols": None,
+            "feature_selector": None,
+            "selected_features": None,
+            "outliers_dropped": 0,
+        }
+        self.logger.log(
+            EventKind.EXPERIMENT_FITTED,
+            message=(
+                f"Native time-series fit ready (n_train="
+                f"{len(self._fit_state['y_train']) if self._fit_state['y_train'] is not None else 0}, "
+                f"n_test={len(self._fit_state['y_test']) if self._fit_state['y_test'] is not None else 0}, "
+                f"n_models={len(self._fit_state['model_registry'])})"
+            ),
+        )
+
     # ------------------------------------------------------- task-agnostic verbs
 
     def _require_fitted(self) -> None:
@@ -1073,6 +1149,30 @@ class Experiment(BaseEstimator):
             params=self._safe_params(model),
         )
 
+    def _predict_model_legacy(
+        self,
+        estimator: Any,
+        *,
+        data: Any = None,
+        verbose: bool = False,
+    ) -> PredictResult:
+        """Time-series predict_model fallback. Delegates to legacy.predict_model
+        and pulls metrics. Phase 5b will drain this when TS verbs migrate.
+        """
+        t0 = time.perf_counter()
+        # legacy.predict_model returns a DataFrame of forecasts.
+        kwargs = {"verbose": verbose}
+        if data is not None:
+            kwargs["X"] = data
+        forecasts = self._legacy.predict_model(estimator, **kwargs)
+        metrics = self._safe_pull()
+        self.logger.log(
+            EventKind.MODEL_PREDICTED,
+            duration_ms=(time.perf_counter() - t0) * 1000,
+            payload={"estimator": self._describe_estimator(estimator)},
+        )
+        return PredictResult(predictions=forecasts, metrics=metrics)
+
     def predict_model(
         self,
         estimator: Any,
@@ -1138,6 +1238,13 @@ class Experiment(BaseEstimator):
                 "method (ideally a sklearn Pipeline with preprocessing "
                 f"baked in). Got {type(estimator).__name__!r}."
             )
+
+        # Time-series defers to legacy.predict_model — sktime forecasters
+        # have a different API (`.predict(fh=..., X=...)`) and the
+        # preprocessor is a sktime ForecastingPipeline (no `.transform`).
+        # The verb drain happens in phase 5b/c.
+        if self.task == TaskType.TIME_SERIES:
+            return self._predict_model_legacy(estimator, data=data, verbose=verbose)
 
         t0 = time.perf_counter()
 
@@ -1329,9 +1436,24 @@ class Experiment(BaseEstimator):
         view (``Special`` / ``Class`` / ``Equality`` / ``Args``) by reading
         each container's ``get_dict(internal=True)`` directly. Falls back
         to the legacy holder only when the snapshot is empty.
+
+        Session-39: time-series tasks defer to ``legacy.models()`` because
+        the TS registry contains pseudo-entries (``ensemble_forecaster``)
+        that the legacy view filters out via ``model_type``-based rules.
+        Re-implementing those rules here would duplicate logic that lives
+        in ``time_series/forecasting/oop.py``; the drain happens when the
+        TS verbs themselves migrate.
         """
         self._require_fitted()
         import pandas as _pd
+
+        from pycaret.core.tasks import TaskType
+
+        # Time-series registry has shape-specific filters (model_type ∈
+        # TSModelTypes) that aren't worth re-implementing in the snapshot
+        # path. Defer until TS verb drain in phase 5b.
+        if self.task == TaskType.TIME_SERIES:
+            return self._legacy.models(*args, internal=internal, **kwargs)
 
         registry = self._fit_state.get("model_registry", {}) if hasattr(self, "_fit_state") else {}
         if not registry:
