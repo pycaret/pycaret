@@ -194,8 +194,9 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 29 | Property drain — user-facing data accessors | X / X_train / X_test / y / y_train / y_test / preprocess_pipeline read from self._fit_state, not self._legacy. Public API surface fully drained. 4 new tests (254/254). |
 | 30 | Internal-state drain — transformed splits + fold generator + model registry | X_transformed / X_train_transformed / y_transformed / y_train_transformed / fold_generator / model_registry promoted to self._fit_state. 13 internal `_legacy` reads in drained verbs eliminated. 5 new tests (259/259). |
 | 31 | Secondary-verb drain — pull / models / get_metrics | pull() reads from _fit_state["last_metrics"], updated by every native modeling verb. models() + get_metrics() build DataFrames natively from the snapshot + metric registry. 8 new tests (267/267). |
-| **32** | **Per-Experiment metric registry + add_metric / remove_metric drain** | **Metric registry promoted to _fit_state["metric_registry"]; add_metric mutates it; CV / leaderboard / predict all read from it. Custom metrics actually show up in CV now (real bugfix). 10 new tests (277/277).** |
-| 33+ | Final pre-4.0.0 work | drain get_config/set_config; ship 4.0.0a3 or 4.0.0 non-alpha; (post-release) native preprocessing chain to replace setup(); (post-release) delete pycaret/internal/pycaret_experiment |
+| 32 | Per-Experiment metric registry + add_metric / remove_metric drain | Metric registry promoted to _fit_state["metric_registry"]; add_metric mutates it; CV / leaderboard / predict all read from it. Custom metrics actually show up in CV now (real bugfix). 10 new tests (277/277). |
+| **33** | **get_config / set_config drain** | **Last drainable secondary verbs done. get_config reads from _fit_state + ctor params; set_config has tight allowlist (session_id/n_jobs/verbose/fold/log_experiment). 10 new tests (287/287). DRAIN COMPLETE on the public surface.** |
+| 34+ | Ship 4.0.0a3 then continue | bump to 4.0.0a3 + retry release once PyPI is configured; (post-release) native preprocessing chain to replace setup(); (post-release) delete pycaret/internal/pycaret_experiment |
 
 Roughly **7–8 sessions to MVP 3 completion** (all 8 UI screens wired + LLM assist + full AutoML flow). Then a handful of V2 items. Then god-class drain for MVP 1 release.
 

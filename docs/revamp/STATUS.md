@@ -1,6 +1,67 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 32*
+*Updated: 2026-04-25, end of session 33*
+
+## Session 33 — `get_config` / `set_config` drain — ✅
+
+Last drainable secondary verbs done. **Every drainable verb on the public surface is now native.** What remains on `_legacy`:
+
+- `setup()` inside `fit()` — biggest piece, requires native preprocessing chain (3-5 sessions, post-release).
+- `plot_model` / `evaluate_model` — Phase 3 Plotly-native rewrite (separate timeline).
+
+### What landed
+
+- **`Experiment.get_config(variable=None)`** — drained. Reads from `self._fit_state` (data accessors, transformed splits, registries) + constructor params on `self`. `get_config(None)` returns the sorted list of accessible names. Supports legacy aliases: `seed` → `session_id`, `pipeline` → `preprocess_pipeline`. Raises `ValueError` for unknown names.
+- **`Experiment.set_config(variable=None, value=None, **kwargs)`** — drained with a deliberately tight allowlist. `_SETTABLE_CONFIG_KEYS` = `{session_id, n_jobs, verbose, fold, log_experiment}`. Anything else raises `ValueError` with a pointer to re-creating the Experiment instead. Both single (`set_config("n_jobs", 4)`) and bulk (`set_config(n_jobs=4, verbose=True)`) call shapes work; mixing them raises.
+- **Why the tight allowlist on `set_config`**: in 3.x, you could mutate `target` / `train_size` post-fit but the changes wouldn't propagate to the snapshot. That's a real footgun. The 4.0 version refuses + tells the user what to do instead. `session_id` / `n_jobs` / `verbose` / `fold` are safe because they only affect new model creations, not the existing snapshot.
+- **`packages/engine/tests/test_session33_config.py`** — 10 tests:
+  - `get_config(None)` returns the full names list (drain-locked against `legacy.get_config`).
+  - `get_config("X_train")` returns the snapshot reference (object identity).
+  - `seed` / `pipeline` aliases work.
+  - Unknown variable → `ValueError`.
+  - `set_config("n_jobs", 4)` mutates (drain-locked).
+  - Bulk `set_config(verbose=True, fold=5)` works.
+  - Non-settable param → `ValueError` with helpful message.
+  - Underscore-prefixed → `ValueError`.
+  - Mixing positional + kwargs → `ValueError`.
+  - Both raise `NotFittedError` pre-fit.
+
+### Headline metrics
+
+| | Session 32 end | Session 33 end |
+|---|---|---|
+| Drainable secondary verbs still on `_legacy` | 2 (`get_config`, `set_config`) | **0** ✅ |
+| Engine tests (fast + slow) | 131 | **141** (+10) |
+| **Combined tests** | **277** | **287** |
+
+### Drain status — comprehensive
+
+```
+✅ All 16 modeling verbs            (sessions 22-28)
+✅ User-facing data accessors       (session 29)
+✅ Internal training state          (session 30)
+✅ pull / models / get_metrics      (session 31)
+✅ add_metric / remove_metric       (session 32)
+✅ get_config / set_config          (session 33)  ← this session
+```
+
+### What remains (for `4.0.0` non-alpha)
+
+- **`setup()` drain** — replace `self._legacy.setup(...)` inside `fit()` with a native preprocessing chain. ~3-5 sessions of work.
+- **`plot_model` / `evaluate_model`** — Phase 3 roadmap (separate workstream — Plotly registry, not part of the drain).
+- **Delete `pycaret/internal/pycaret_experiment/`** once `setup()` is native.
+
+### Recommendation
+
+**Ship `4.0.0a3` now.** The drain has delivered the 4.0 design promise on the public surface. `setup()` is internal — users don't see it. Remaining work is internal cleanup + `plot_model` Plotly rewrite. A few more breaking changes via `4.0.0a3` build community trust before the non-alpha cut.
+
+Alternative: continue the `setup()` drain across 3-5 more sessions, ship `4.0.0` non-alpha at the end. Bigger announcement, longer wait.
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config (user account reset in progress). Once unblocked, `gh run rerun 24917779816 --failed` ships a2 — but with sessions 30-33 in the bag, it's worth bumping to a3 first to give users the latest drain work.
+
+---
 
 ## Session 32 — `add_metric` / `remove_metric` drain + per-Experiment metric registry — ✅
 

@@ -115,6 +115,35 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 33 — 2026-04-25 — get_config / set_config drain
+
+Baseline: session 32 drained `add_metric` / `remove_metric`. Session 33 drains the last two drainable secondary verbs — `get_config` / `set_config`. Every drainable verb on the public surface is now native; only `setup()` inside `fit()` and the Phase-3 plot verbs remain on `_legacy`.
+
+## CHANGED — engine
+
+- `CHANGED` — **`Experiment.get_config(variable=None)`** drained. Reads from `self._fit_state` (data accessors, transformed splits, registries) + constructor params on `self`. With `variable=None` returns the sorted list of accessible names. Raises `ValueError` for unknown names. Includes legacy aliases: `seed` → `self.session_id`, `pipeline` → `_fit_state["preprocess_pipeline"]`.
+- `CHANGED, BREAKING` — **`Experiment.set_config(variable=None, value=None, **kwargs)`** drained, with a tight allowlist. `_SETTABLE_CONFIG_KEYS = {"session_id", "n_jobs", "verbose", "fold", "log_experiment"}`. Anything outside this set raises `ValueError` (with a message pointing to re-creating the Experiment). Underscore-prefixed names are explicitly rejected. Mixing positional `variable` + `**kwargs` raises (legacy semantics).
+- `CHANGED, BREAKING` — **`set_config` no longer silently mutates snapshot-invalidating params.** Legacy `set_config("target", "newcol")` would silently update `self.target` but NOT propagate to the snapshot, leading to a confusing partial-mutation state. The new version refuses + tells the user.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session33_config.py`** — 10 tests covering: full-list `get_config(None)`, snapshot identity reads (`get_config("X_train") is exp.X_train`), `seed` / `pipeline` aliases, unknown-variable rejection, single + bulk `set_config`, non-settable / underscore / mixed-call-shape rejection. Drain-locks for both verbs.
+
+## INTERNAL
+
+- `INTERNAL` — **Tight allowlist rationale.** Legacy `set_config` allowed mutation of any `_variable_keys.difference(_property_keys)` entry, which was a moving target. Tight allowlist makes the contract explicit + future-proof: adding a new safe-to-mutate param is one line in `_SETTABLE_CONFIG_KEYS`. Mutating something that affects the snapshot (target, train_size, fold_strategy) is properly an error in 4.0 because the snapshot won't update.
+- `INTERNAL` — **Why aliases.** `seed` is more idiomatic than `session_id` (sklearn / numpy convention), but the constructor takes `session_id` for clarity (it doesn't seed a global state — it's the per-Experiment session ID that becomes the random_state for downstream models). Supporting both names in `get_config` matches what notebook code already uses.
+
+## Session 33 delta summary
+
+| Metric | Session 32 end | Session 33 end |
+|---|---:|---:|
+| Drainable secondary verbs still on `_legacy` | 2 | **0** ✅ |
+| Engine tests (fast + slow) | 131 | **141** |
+| **Combined tests** | **277** | **287** |
+
+---
+
 # Session 32 — 2026-04-25 — Per-Experiment metric registry + add_metric / remove_metric drain
 
 Baseline: session 31 drained pull / models / get_metrics. Session 32 promotes the metric registry into per-Experiment state, drains `add_metric` and `remove_metric`, and fixes a real bug: **custom metrics registered via `add_metric` now actually show up in CV results** (previously they lived in the legacy holder while the native CV path read from the global container helpers, so the metric was registered but never computed).
