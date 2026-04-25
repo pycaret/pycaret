@@ -1027,11 +1027,116 @@ class Experiment(BaseEstimator):
 
         raise ValueError(f"No metric matching {name_or_id!r} in the experiment's registry.")
 
-    def get_config(self, *args: Any, **kwargs: Any) -> Any:
-        return self._legacy.get_config(*args, **kwargs)
+    # Constructor parameters that ``set_config`` is allowed to mutate
+    # post-fit. These are the knobs that don't invalidate the fit-time
+    # snapshot (e.g. tweaking ``n_jobs`` or ``verbose`` mid-experiment is
+    # safe; mutating ``target`` or ``train_size`` is not).
+    _SETTABLE_CONFIG_KEYS = frozenset(
+        {
+            "session_id",
+            "n_jobs",
+            "verbose",
+            "fold",
+            "log_experiment",
+        }
+    )
 
-    def set_config(self, *args: Any, **kwargs: Any) -> Any:
-        return self._legacy.set_config(*args, **kwargs)
+    def get_config(self, variable: str | None = None) -> Any:
+        """Return a configured experiment variable.
+
+        Session-33 drain. Reads from ``self._fit_state`` (snapshot of all
+        the data accessors + transformed splits + registries) and the
+        constructor parameters stored on ``self``. Raises ``ValueError``
+        for unknown names; with ``variable=None`` returns the full list
+        of accessible names.
+
+        Parameters
+        ----------
+        variable : str, optional
+            Name to look up. ``None`` returns the list of accessible names.
+
+        Returns
+        -------
+        Either the value (or the list of names if ``variable=None``).
+        """
+        self._require_fitted()
+
+        # Build the accessible-names set: everything in _fit_state +
+        # constructor params + a couple of computed aliases.
+        snapshot_keys = set(self._fit_state.keys()) if hasattr(self, "_fit_state") else set()
+        ctor_keys = {
+            "task",
+            "target",
+            "session_id",
+            "train_size",
+            "fold",
+            "fold_strategy",
+            "preprocess",
+            "normalize",
+            "transformation",
+            "remove_outliers",
+            "feature_selection",
+            "n_jobs",
+            "use_gpu",
+            "log_experiment",
+            "verbose",
+        }
+        accessible = snapshot_keys | ctor_keys | {"pipeline", "seed"}
+
+        if variable is None:
+            return sorted(accessible)
+
+        if variable not in accessible:
+            raise ValueError(
+                f"Variable {variable!r} not found. Accessible variables: {sorted(accessible)}"
+            )
+
+        # Aliases for legacy / convenience.
+        if variable == "pipeline":
+            return self._fit_state["preprocess_pipeline"]
+        if variable == "seed":
+            return self.session_id
+
+        # Snapshot first, then fall back to constructor params on self.
+        if variable in snapshot_keys:
+            return self._fit_state[variable]
+        return getattr(self, variable)
+
+    def set_config(self, variable: str | None = None, value: Any = None, **kwargs: Any) -> None:
+        """Update a configured experiment variable.
+
+        Session-33 drain. Restricted to a small allowlist of constructor
+        params that can be safely mutated post-fit
+        (``_SETTABLE_CONFIG_KEYS``). Anything else raises ``ValueError``.
+
+        Two call shapes:
+
+        - Single: ``set_config("n_jobs", 4)``
+        - Bulk:  ``set_config(n_jobs=4, verbose=True)``
+        """
+        self._require_fitted()
+
+        if kwargs and variable:
+            raise ValueError("variable parameter cannot be used together with keyword arguments.")
+        if kwargs:
+            updates = kwargs
+        elif variable is not None:
+            updates = {variable: value}
+        else:
+            return None
+
+        for k, v in updates.items():
+            if k.startswith("_"):
+                raise ValueError(f"Variable {k!r} is read-only (starts with '_').")
+            if k not in self._SETTABLE_CONFIG_KEYS:
+                raise ValueError(
+                    f"Variable {k!r} is not settable post-fit. "
+                    f"Settable variables: {sorted(self._SETTABLE_CONFIG_KEYS)}. "
+                    "Mutating other constructor params would invalidate the "
+                    "fit-time snapshot — re-create the Experiment instead."
+                )
+            setattr(self, k, v)
+        return None
 
     # -------------------------------------------------------- persistence verbs
     #
