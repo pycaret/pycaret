@@ -198,8 +198,9 @@ Status: 🔴 **NOT STARTED**. Long-term.
 | 33 | get_config / set_config drain | Last drainable secondary verbs done. get_config reads from _fit_state + ctor params; set_config has tight allowlist (session_id/n_jobs/verbose/fold/log_experiment). 10 new tests (287/287). DRAIN COMPLETE on the public surface. |
 | 34 | Fix sklearn 1.6+ `squared=` deprecation in regression metrics | RMSE / RMSLE containers use root_mean_squared_(log_)error directly. -69 warnings per test run. 4 new tests (291/291). |
 | 35 | Native `setup()` (phase 1, simple supervised) | Skip self._legacy.setup() entirely for clf+reg with no complex preprocessing flags. Native train/test split + impute + encode + fold generator + registry-via-proxy. 10 new tests (301/301). The biggest remaining drain target lands incrementally. |
-| **36** | **Native `setup()` phase 2: normalize + transformation** | **StandardScaler + PowerTransformer(yeo-johnson) chain into the native numeric branch. normalize=True / transformation=True no longer force legacy. 10 new tests (311/311).** |
-| 37+ | setup() phase 3+ → 4.0.0 release | remove_outliers (IsolationForest) + feature_selection (SelectFromModel); unsupervised + TS native setup; ship 4.0.0a3 when PyPI back; eventually delete pycaret/internal/pycaret_experiment |
+| 36 | Native `setup()` phase 2: normalize + transformation | StandardScaler + PowerTransformer(yeo-johnson) chain into the native numeric branch. normalize=True / transformation=True no longer force legacy. 10 new tests (311/311). |
+| **37** | **Native `setup()` phase 3: remove_outliers + feature_selection** | **IsolationForest drops 5% most anomalous train rows; SelectFromModel(median) with ExtraTrees keeps above-median features + appends to preprocess pipeline. EVERY supervised constructor flag now native. 8 new tests (319/319).** |
+| 38+ | setup() phase 4 → 4.0.0 release | unsupervised + TS native setup (clustering simpler than supervised; TS uses sktime ExpandingWindowSplitter); ship 4.0.0a3 when PyPI back; delete pycaret/internal/pycaret_experiment |
 
 Roughly **7–8 sessions to MVP 3 completion** (all 8 UI screens wired + LLM assist + full AutoML flow). Then a handful of V2 items. Then god-class drain for MVP 1 release.
 

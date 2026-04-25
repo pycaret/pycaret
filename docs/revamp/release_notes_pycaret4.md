@@ -115,6 +115,58 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 37 — 2026-04-25 — Native setup() phase 3: remove_outliers + feature_selection
+
+The last two preprocessing flags on the supervised `Experiment` constructor go native. After this session, every constructor flag works without `legacy.setup()` — only caller-supplied `setup_kwargs` and unsupervised / TS tasks still hit the legacy path.
+
+## CHANGED — engine
+
+- `CHANGED` — **`Experiment._native_setup_supervised`** now applies:
+  - **Outlier removal** (`remove_outliers=True`) via `sklearn.ensemble.IsolationForest(contamination=0.05, random_state=session_id, n_jobs=self.n_jobs)`. Fit on `X_train_transformed`; rows where `predict() == -1` are dropped from `X_train`, `y_train`, `X_train_transformed`, `y_train_transformed` — and the union views are recomputed. Test set is untouched. Mirrors legacy's `outliers_threshold=0.05`.
+  - **Feature selection** (`feature_selection=True`) via `sklearn.feature_selection.SelectFromModel(estimator, threshold="median")` with `ExtraTreesClassifier` (clf) or `ExtraTreesRegressor` (reg) at 100 estimators. Selected features are kept on `X_train_transformed` / `X_test_transformed` / `X_transformed`; raw `X_train` / `X_test` / `X` keep all columns so user-facing accessors don't lose information.
+  - **Selector appended to the preprocess pipeline** so predict-time preprocessing reapplies the column drop. Order: `("preprocess", ColumnTransformer)` → `("feature_selection", SelectFromModel)`.
+  - **Defensive empty-selection guard**: if SelectFromModel picks zero features (rare but possible on tiny / pathological datasets), keep the first column to avoid an empty matrix downstream.
+- `CHANGED` — **`_can_use_native_setup`** predicate finalised. Every constructor preprocessing flag now routes native. Only `setup_kwargs` and non-supervised tasks force legacy.
+- `ADDED` — Three new `_fit_state` slots: `feature_selector` (the fitted SelectFromModel or None), `selected_features` (list of kept column names or None), `outliers_dropped` (count int).
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session37_native_setup_phase3.py`** — 8 tests:
+  - Drain-lock for `remove_outliers` (poison `legacy.setup` + verify native).
+  - Drain-lock for `feature_selection`.
+  - Outlier-drop count is in the expected range (30-50 on the juice dataset).
+  - Test set untouched.
+  - Feature selector trims columns + raw splits keep all 18.
+  - Combined flags compose: outliers dropped first, then features selected on the smaller train.
+  - End-to-end `create + tune + predict` chain with all 4 phase-1/2/3 flags on.
+  - Regression `feature_selection` uses `ExtraTreesRegressor`.
+  - y_train alignment after row drops.
+  - Predicate test for the phase-3 contract.
+
+## CHANGED — existing tests
+
+- `CHANGED` — **`test_session35_native_setup`** and **`test_session36_native_setup_phase2`** had assertions that flags forced legacy. Updated to reflect "all flags native" reality:
+  - `test_complex_preprocessing_falls_back_to_legacy` switched from `normalize=True` to `setup_kwargs` as the canonical "still legacy" trigger.
+  - `test_remove_outliers_still_falls_back_to_legacy` renamed to `test_remove_outliers_now_native_post_phase3` with inverted assertion.
+  - Predicate tests collapsed — flag-by-flag tests live in their session-specific files.
+
+## INTERNAL
+
+- `INTERNAL` — **Why outlier removal happens after preprocessing.** `IsolationForest` works on numeric input. Running it on raw `X_train` would fail on the categorical columns. Running on `X_train_transformed` (post-impute, post-encode) is straightforward + matches legacy semantics where the outlier detector saw imputed numerics + ordinal codes for categoricals.
+- `INTERNAL` — **Why feature selection runs *after* outlier removal.** Outliers can heavily distort tree-based feature importance. Removing them first means the ExtraTrees estimator picks features based on the cleaned distribution. Same order as legacy.
+- `INTERNAL` — **Selector appended to preprocess_pipeline, not stored separately.** `predict_model` runs `pipeline.predict(X)` which transforms via every step. Without appending the selector, the saved Pipeline would expect 18 features but the post-transform output would have 9 → ValueError. Appending makes the Pipeline self-contained — `joblib.dump` the result + load anywhere + `predict()` works.
+- `INTERNAL` — **`SelectFromModel(threshold="median")` is the median-importance threshold** — keeps the top-half. Legacy default was `feature_selection_method="classic"` with the same median rule under the hood; same default + simpler code path.
+
+## Session 37 delta summary
+
+| Metric | Session 36 end | Session 37 end |
+|---|---:|---:|
+| Drainable preprocessing flags handled natively | + StandardScaler + PowerTransformer | + IsolationForest + SelectFromModel |
+| Engine tests (fast + slow) | 165 | **173** |
+| **Combined tests** | **311** | **319** |
+
+---
+
 # Session 36 — 2026-04-25 — Native setup() phase 2: normalize + transformation
 
 Baseline: session 35 shipped phase 1 of the setup() drain (simple supervised). Session 36 extends the native preprocessing chain with two more legacy options: `normalize` (StandardScaler) and `transformation` (PowerTransformer). Both can be combined.

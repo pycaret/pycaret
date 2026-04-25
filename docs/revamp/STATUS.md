@@ -1,6 +1,63 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 36*
+*Updated: 2026-04-25, end of session 37*
+
+## Session 37 — Native `setup()` phase 3: `remove_outliers` + `feature_selection` — ✅
+
+**Every supervised constructor preprocessing flag now runs natively.** Phase 3 closes out the supervised setup() drain.
+
+### What landed
+
+- **`remove_outliers=True`** — `IsolationForest(contamination=0.05, random_state=session_id)` is fit on the transformed training set. The top 5% most anomalous training rows are dropped from both raw and transformed splits. Test set is untouched. Mirrors legacy's `outliers_threshold=0.05` default. `_fit_state["outliers_dropped"]` exposes the count.
+- **`feature_selection=True`** — `SelectFromModel(threshold="median")` wrapping a 100-tree `ExtraTreesClassifier` (clf) or `ExtraTreesRegressor` (reg). Above-median importance features kept on the transformed splits; raw splits keep all columns. The fitted selector is appended to `preprocess_pipeline` so predict-time preprocessing reapplies the same column drop on new data. `_fit_state["selected_features"]` is the list of kept column names.
+- **Predicate finalised** — `_can_use_native_setup` no longer rejects any constructor preprocessing flag. The only remaining "still legacy" routes are caller-supplied `setup_kwargs` (legacy's 100+ knobs aren't natively wired) and non-supervised tasks (Phase 4 work).
+- **`packages/engine/tests/test_session37_native_setup_phase3.py`** — 8 new tests:
+  - Drain-locks for `remove_outliers=True` and `feature_selection=True` (poison `legacy.setup`, verify native succeeds).
+  - Outlier removal drops 30-50 rows on `juice` (5% of 749 ≈ 37; tolerate ties).
+  - Test set untouched after outlier removal.
+  - Feature selector trims columns; raw splits keep all 18.
+  - Combined flags compose correctly.
+  - End-to-end `create + tune + predict` chain with all 4 phase-1/2/3 flags on.
+  - Regression `feature_selection` uses `ExtraTreesRegressor`.
+  - y_train alignment after row drops.
+  - Predicate test for the new phase-3 contract.
+- **Tests refreshed** — `test_session35_native_setup` + `test_session36_native_setup_phase2` both had assertions that flags forced legacy. Updated to reflect the new "all flags native" reality.
+
+### Headline metrics
+
+| | Session 36 end | Session 37 end |
+|---|---|---|
+| Drainable preprocessing flags handled natively | impute + ordinal + label-encode + StandardScaler + PowerTransformer | + IsolationForest + SelectFromModel |
+| Engine tests (fast + slow) | 165 | **173** (+8) |
+| **Combined tests** | **311** | **319** |
+
+### Drain status
+
+```
+Native setup:
+  ✅ Phase 1: impute + ordinal + label-encode + split + fold + registry  (s35)
+  ✅ Phase 2: + normalize (StandardScaler) + transformation (PowerTransformer)  (s36)
+  ✅ Phase 3: + remove_outliers (IsolationForest) + feature_selection (SelectFromModel)  (s37)
+  ⏳ Phase 4: unsupervised (clustering + anomaly) + time-series        (next)
+
+What still routes to legacy.setup():
+  - caller-supplied setup_kwargs (legacy's 100+ unmapped knobs)
+  - clustering / anomaly experiments
+  - time-series experiments
+```
+
+### What's next (sessions 38+)
+
+- **Phase 4** — native unsupervised setup. Clustering's `setup()` is much simpler than supervised; mostly the same impute + scale chain without the train/test split. ~1 session.
+- **Phase 5** — native time-series setup. Most invasive; uses sktime's `ExpandingWindowSplitter` and a different metric registry. ~1-2 sessions.
+- **Delete `pycaret/internal/pycaret_experiment/`** once setup() is fully native + the few remaining legacy fallbacks (plot_model, evaluate_model) are reworked.
+- **Tag `4.0.0` non-alpha** to PyPI.
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config. User account reset still in progress.
+
+---
 
 ## Session 36 — Native `setup()` phase 2: `normalize` + `transformation` — ✅
 
