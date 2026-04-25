@@ -374,3 +374,188 @@ class TimeSeriesExperiment(SupervisedExperiment):
             except (TypeError, ValueError):
                 pass
         return 1
+
+    # ------------------------------------------------- session 41 (phase 5c)
+    # Native TS predict_model — drains legacy.predict_model. Reads from
+    # _fit_state and uses the standalone get_predictions_with_intervals
+    # helper directly; computes test metrics via the registry +
+    # calculate_metrics utility.
+
+    def predict_model(
+        self,
+        estimator: Any,
+        data: Any = None,
+        *,
+        fh: Any = None,
+        X: Any = None,
+        return_pred_int: bool = False,
+        alpha: float | None = None,
+        coverage: float = 0.9,
+        round: int = 4,
+        verbose: bool = False,
+    ):
+        """Native time-series predict_model (phase 5c).
+
+        Computes forecasts and (when ground truth is available)
+        per-metric scores against ``y_test``. Returns a typed
+        ``PredictResult`` whose ``predictions`` DataFrame has columns
+        ``["y_pred"]`` (or ``["y_pred", "lower", "upper"]`` when
+        ``return_pred_int=True``) and whose ``metrics`` is a one-row
+        DataFrame keyed by display name.
+
+        Parameters
+        ----------
+        estimator : sktime forecaster or ForecastingPipeline
+            Fitted forecaster. Typically the ``CreateResult.pipeline``
+            from ``create_model``.
+        data : pd.DataFrame, optional
+            Compat shim — when supplied, treated as ``X`` (exogenous).
+            Mirrors the supervised ``predict_model`` signature.
+        fh : optional
+            Override forecast horizon. Falls through to
+            ``_fit_state["fh"]`` then ``estimator.fh``.
+        X : pd.DataFrame, optional
+            Exogenous variables for prediction. Falls through to
+            ``_fit_state["X_test"]`` for non-finalized estimators.
+        return_pred_int : bool, default=False
+            Include ``lower`` / ``upper`` quantile columns.
+        alpha : float, optional
+            Quantile for point predictions. ``None`` = standard
+            ``.predict()``; otherwise ``predict_quantiles(alpha=alpha)``.
+        coverage : float, default=0.9
+            Coverage level for prediction intervals.
+        round : int, default=4
+            Decimal places for predictions + metrics.
+        verbose : bool, default=False
+            Reserved (legacy progress-bar hook).
+        """
+        from copy import deepcopy
+
+        import pandas as pd
+        from sktime.forecasting.base import ForecastingHorizon
+        from sktime.forecasting.compose import ForecastingPipeline
+
+        from pycaret.core.results import PredictResult
+        from pycaret.logging.events import EventKind
+        from pycaret.utils.generic import calculate_metrics
+        from pycaret.utils.time_series.forecasting import (
+            get_predictions_with_intervals,
+            update_additional_scorer_kwargs,
+        )
+        from pycaret.utils.time_series.forecasting.pipeline import (
+            _add_model_to_pipeline,
+        )
+
+        self._require_fitted()
+
+        import time as _time
+
+        t0 = _time.perf_counter()
+
+        # ---- reconcile X (exogenous data)
+        if X is None and data is not None:
+            X = data
+
+        # ---- reconcile pipeline + estimator_
+        if isinstance(estimator, ForecastingPipeline):
+            pipeline_with_model = deepcopy(estimator)
+            # Final inner model lives at .steps[-1][1].steps[-1][1].
+            inner = pipeline_with_model.steps[-1][1]
+            estimator_ = inner.steps[-1][1] if hasattr(inner, "steps") else inner
+        else:
+            if not hasattr(estimator, "predict"):
+                raise TypeError(
+                    "predict_model expects a fitted sktime forecaster or "
+                    f"ForecastingPipeline; got {type(estimator).__name__!r}."
+                )
+            estimator_ = deepcopy(estimator)
+            # Wire the bare forecaster into the experiment's preprocess
+            # pipeline so prediction goes through the same transforms.
+            base_pipeline = self._fit_state["preprocess_pipeline"]
+            if isinstance(base_pipeline, ForecastingPipeline):
+                pipeline_with_model = _add_model_to_pipeline(
+                    pipeline=base_pipeline, model=estimator_
+                )
+            else:
+                # Defensive fallback — wrap in a minimal pipeline.
+                pipeline_with_model = estimator_
+
+        # ---- reconcile fh
+        if fh is None:
+            fh = self._fit_state.get("fh")
+            if fh is None:
+                fh = getattr(estimator_, "fh", None)
+        if fh is None:
+            raise ValueError(
+                "predict_model: cannot determine forecast horizon. "
+                "Pass fh= or refit the experiment."
+            )
+        if not isinstance(fh, ForecastingHorizon):
+            try:
+                fh = ForecastingHorizon(fh, is_relative=True)
+            except Exception:
+                pass  # fall through; sktime will raise a clearer error if invalid
+
+        # ---- reconcile X for exogenous
+        if X is None:
+            X = self._fit_state.get("X_test")
+
+        # ---- get predictions + intervals
+        result = get_predictions_with_intervals(
+            forecaster=pipeline_with_model,
+            alpha=alpha,
+            coverage=coverage,
+            X=X,
+            fh=fh,
+            merge=True,
+            round=round,
+        )
+        y_pred_df = pd.DataFrame(result["y_pred"])
+        if return_pred_int:
+            predictions = result  # full DF with y_pred / lower / upper
+        else:
+            predictions = y_pred_df
+
+        # ---- compute test metrics if y_test is available
+        metrics_df: pd.DataFrame | None = None
+        y_test = self._fit_state.get("y_test")
+        if y_test is not None and len(y_test) > 0:
+            # Align y_test to predictions index — when the user's fh exceeds
+            # the test horizon we just compute on the overlap (and skip if
+            # there's no overlap).
+            try:
+                aligned_test = y_test.loc[y_pred_df.index]
+            except (KeyError, TypeError):
+                aligned_test = None
+
+            if aligned_test is not None and len(aligned_test) > 0:
+                metrics_registry = self._build_ts_metric_registry()
+                additional_kwargs = update_additional_scorer_kwargs(
+                    initial_kwargs={"sp": self._primary_sp_to_use()},
+                    y_train=self._fit_state.get("y_train"),
+                    lower=result["lower"],
+                    upper=result["upper"],
+                )
+                try:
+                    metric_dict = calculate_metrics(
+                        metrics=metrics_registry,
+                        y_test=aligned_test,
+                        pred=y_pred_df["y_pred"],
+                        pred_proba=None,
+                        **additional_kwargs,
+                    )
+                    if metric_dict:
+                        full_name = type(estimator_).__name__
+                        metrics_df = pd.DataFrame(metric_dict, index=[0])
+                        metrics_df.insert(0, "Model", full_name)
+                        metrics_df = metrics_df.round(round)
+                        self._set_last_metrics(metrics_df)
+                except Exception:  # noqa: BLE001 — defensive
+                    metrics_df = None
+
+        self.logger.log(
+            EventKind.MODEL_PREDICTED,
+            duration_ms=(_time.perf_counter() - t0) * 1000,
+            payload={"estimator": self._describe_estimator(estimator)},
+        )
+        return PredictResult(predictions=predictions, metrics=metrics_df)
