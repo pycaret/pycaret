@@ -60,6 +60,53 @@ if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
 
 
+class _ModelRegistryContext:
+    """Minimal stand-in for an experiment, exposing only the attrs that
+    the model-container constructors read from ``experiment.<x>``.
+
+    Used by the session-35 native setup to build the model registry
+    without instantiating the full legacy experiment + running its
+    setup(). The container __init__ functions read:
+
+    - ``seed`` — the random_state.
+    - ``gpu_param`` — "force" / falsy.
+    - ``n_jobs_param`` — parallelism.
+    - ``X_train`` — used by size-aware models (KNN etc.) to pick defaults.
+    - ``is_multiclass`` — picks classification-only knobs.
+
+    Anything more exotic (e.g. a future container that reads
+    ``experiment.dataset``) would need a new attr here. Keep this
+    intentionally narrow — the proxy is a contract.
+    """
+
+    __slots__ = ("seed", "gpu_param", "n_jobs_param", "X_train", "is_multiclass")
+
+    def __init__(
+        self,
+        *,
+        seed: int,
+        gpu_param: Any,
+        n_jobs_param: int,
+        X_train: Any,
+        is_multiclass: bool = False,
+    ) -> None:
+        self.seed = seed
+        self.gpu_param = gpu_param
+        self.n_jobs_param = n_jobs_param
+        self.X_train = X_train
+        self.is_multiclass = is_multiclass
+
+    def get_engine(self, id: str) -> str | None:
+        """Always None — fall through to the model's default engine.
+
+        Native setup phase 1 doesn't expose engine-selection plumbing.
+        Users wanting alternate engines (sklearnex etc.) need the legacy
+        path for now (set ``normalize=True`` or any complex flag to bypass
+        native setup).
+        """
+        return None
+
+
 class Experiment(BaseEstimator):
     """Task-agnostic base for every PyCaret 4.0 experiment.
 
@@ -186,15 +233,23 @@ class Experiment(BaseEstimator):
             payload={"target": self.target, "rows": len(data)},
         )
 
-        self._legacy.setup(
-            **self._build_legacy_setup_kwargs(data, setup_kwargs),
-        )
-        # Session-29 drain: snapshot the user-facing data accessors off the
-        # legacy state once at fit time. The properties (`self.X`, `X_train`
-        # etc.) now read these snapshots instead of going through
-        # ``self._legacy.<attr>`` on every access. Live mutation semantics
-        # are preserved because we hold references, not copies.
-        self._snapshot_fit_state()
+        # Session-35 drain: when no complex preprocessing flags are set
+        # AND the task is supported (clf / reg), build the fit-state
+        # natively without calling self._legacy.setup(). For the heavy
+        # preprocessing options (normalize / transformation /
+        # remove_outliers / feature_selection) and unsupervised / TS
+        # tasks, fall through to the legacy setup.
+        self._native_setup_used = False
+        if self._can_use_native_setup(setup_kwargs):
+            self._native_setup_supervised(data, setup_kwargs)
+            self._native_setup_used = True
+        else:
+            self._legacy.setup(
+                **self._build_legacy_setup_kwargs(data, setup_kwargs),
+            )
+            # Session-29 drain: snapshot the user-facing data accessors
+            # off the legacy state. We hold references, not copies.
+            self._snapshot_fit_state()
         self._fitted = True
 
         self.logger.log(
@@ -284,6 +339,212 @@ class Experiment(BaseEstimator):
             ):
                 kwargs.pop(k, None)
         return kwargs
+
+    # ------------------------------------------------- session-35 native setup
+
+    def _can_use_native_setup(self, setup_kwargs: dict[str, Any]) -> bool:
+        """Predicate: can fit() skip ``self._legacy.setup()`` entirely?
+
+        The native phase-1 setup handles classification + regression with the
+        common preprocessing options (mean / mode imputation + ordinal
+        encoding + label encoding for clf). Heavy options fall back to legacy.
+        """
+        from pycaret.core.tasks import TaskType
+
+        # Phase 1 — supervised tabular only.
+        if self.task not in (TaskType.CLASSIFICATION, TaskType.REGRESSION):
+            return False
+        # Disable native if any complex preprocessing flag is set, OR the
+        # caller passed a setup_kwargs key we don't yet handle natively.
+        if self.normalize or self.transformation or self.remove_outliers or self.feature_selection:
+            return False
+        # Any caller-supplied setup_kwargs forces legacy — we don't know what
+        # those options do.
+        if setup_kwargs:
+            return False
+        return True
+
+    def _native_setup_supervised(self, data: pd.DataFrame, setup_kwargs: dict[str, Any]) -> None:
+        """Phase-1 native setup for classification + regression.
+
+        Builds ``self._fit_state`` directly from the input DataFrame using
+        sklearn primitives. Skips ``self._legacy.setup()`` entirely.
+
+        Layout of the produced state:
+
+        - ``X`` / ``X_train`` / ``X_test``: raw DataFrames (split via
+          stratified sklearn split for clf, plain for reg).
+        - ``y`` / ``y_train`` / ``y_test``: raw target series.
+        - ``X_transformed`` / ``X_train_transformed``: post-preprocessor
+          DataFrames (numeric imputation by mean + categorical imputation
+          by mode + ordinal encoding).
+        - ``y_train_transformed`` / ``y_transformed``: integer-encoded
+          target for clf; raw for reg.
+        - ``preprocess_pipeline``: sklearn ``Pipeline`` wrapping the
+          ``ColumnTransformer``.
+        - ``fold_generator``: ``StratifiedKFold`` (clf) or ``KFold`` (reg).
+        - ``model_registry``: built via the per-task registry helper +
+          a thin ``_ModelRegistryContext`` proxy, so the call doesn't
+          require a fitted legacy.
+        - ``last_metrics`` / ``metric_registry``: standard slots, lazily
+          populated by the drained verbs.
+        """
+        import pandas as _pd
+        from sklearn.compose import ColumnTransformer
+        from sklearn.impute import SimpleImputer
+        from sklearn.model_selection import KFold, StratifiedKFold, train_test_split
+        from sklearn.pipeline import Pipeline as SkPipeline
+        from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
+
+        from pycaret.core.tasks import TaskType
+
+        target_col = self.target
+        if target_col is None or target_col not in data.columns:
+            raise ConfigurationError(
+                "Native setup requires the target column to be present in the "
+                f"DataFrame. Got target={target_col!r}."
+            )
+
+        y = data[target_col]
+        X = data.drop(columns=[target_col])
+
+        # Detect numeric vs categorical columns.
+        numeric_cols = X.select_dtypes(include=["number", "bool"]).columns.tolist()
+        categorical_cols = [c for c in X.columns if c not in numeric_cols]
+
+        # Train/test split. Stratify on y for classification.
+        seed = self.session_id if self.session_id is not None else 0
+        is_clf = self.task == TaskType.CLASSIFICATION
+        stratify = y if is_clf else None
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            train_size=self.train_size,
+            random_state=seed,
+            stratify=stratify,
+        )
+
+        # Build preprocessing ColumnTransformer.
+        transformers: list = []
+        if numeric_cols:
+            transformers.append(("numerical_imputer", SimpleImputer(strategy="mean"), numeric_cols))
+        if categorical_cols:
+            cat_pipe = SkPipeline(
+                [
+                    ("imputer", SimpleImputer(strategy="most_frequent")),
+                    (
+                        "encoder",
+                        OrdinalEncoder(
+                            handle_unknown="use_encoded_value",
+                            unknown_value=-1,
+                        ),
+                    ),
+                ]
+            )
+            transformers.append(("categorical_pipeline", cat_pipe, categorical_cols))
+
+        # Edge case: no columns at all (defensive — train_test_split would've
+        # already failed). Fall through with an identity transform.
+        if not transformers:
+            preprocess_pipeline = SkPipeline([("preprocess", "passthrough")])
+            X_train_transformed = X_train.copy()
+            X_test_transformed = X_test.copy()
+        else:
+            ct = ColumnTransformer(transformers, remainder="drop", verbose_feature_names_out=False)
+            ct.fit(X_train)
+            preprocess_pipeline = SkPipeline([("preprocess", ct)])
+
+            ordered_cols = numeric_cols + categorical_cols
+            X_train_transformed = _pd.DataFrame(
+                ct.transform(X_train),
+                columns=ordered_cols,
+                index=X_train.index,
+            )
+            X_test_transformed = _pd.DataFrame(
+                ct.transform(X_test),
+                columns=ordered_cols,
+                index=X_test.index,
+            )
+
+        X_transformed = _pd.concat([X_train_transformed, X_test_transformed]).sort_index()
+
+        # Label encoding for classification target; pass-through for regression.
+        is_multiclass = False
+        label_encoder: LabelEncoder | None = None
+        if is_clf:
+            label_encoder = LabelEncoder()
+            y_train_encoded = label_encoder.fit_transform(y_train)
+            y_test_encoded = label_encoder.transform(y_test)
+            y_train_transformed = _pd.Series(
+                y_train_encoded, index=y_train.index, name=y_train.name
+            )
+            y_test_transformed = _pd.Series(y_test_encoded, index=y_test.index, name=y_test.name)
+            is_multiclass = len(label_encoder.classes_) > 2
+        else:
+            y_train_transformed = y_train
+            y_test_transformed = y_test
+
+        y_transformed = _pd.concat([y_train_transformed, y_test_transformed]).sort_index()
+
+        # Fold generator.
+        if is_clf:
+            fold_generator = StratifiedKFold(n_splits=self.fold, shuffle=True, random_state=seed)
+        else:
+            fold_generator = KFold(n_splits=self.fold, shuffle=True, random_state=seed)
+
+        # Model registry via thin proxy — skips legacy.
+        proxy = _ModelRegistryContext(
+            seed=seed,
+            gpu_param="force" if self.use_gpu else False,
+            n_jobs_param=self.n_jobs,
+            X_train=X_train_transformed,
+            is_multiclass=is_multiclass,
+        )
+        if is_clf:
+            from pycaret.containers.models.classification import (
+                get_all_model_containers,
+            )
+        else:
+            from pycaret.containers.models.regression import (
+                get_all_model_containers,
+            )
+        try:
+            model_registry = dict(get_all_model_containers(proxy, raise_errors=False))
+        except Exception:
+            # If the registry helper can't run on the proxy for any reason,
+            # fall back to using the legacy holder + minimal attrs.
+            model_registry = {}
+
+        self._fit_state = {
+            # session 29 — user-facing data accessors
+            "X": X,
+            "X_train": X_train,
+            "X_test": X_test,
+            "y": y,
+            "y_train": y_train,
+            "y_test": y_test,
+            "preprocess_pipeline": preprocess_pipeline,
+            # session 30 — internal training state
+            "X_transformed": X_transformed,
+            "X_train_transformed": X_train_transformed,
+            "y_transformed": y_transformed,
+            "y_train_transformed": y_train_transformed,
+            "fold_generator": fold_generator,
+            "model_registry": model_registry,
+            # session 31 — last metrics for pull()
+            "last_metrics": None,
+            # session 35 — extras specific to native setup
+            "label_encoder": label_encoder,
+            "numeric_cols": numeric_cols,
+            "categorical_cols": categorical_cols,
+        }
+        self.logger.log(
+            EventKind.EXPERIMENT_FITTED,
+            message=(
+                f"Native fit ready (clf={is_clf}, n_train={len(X_train)}, "
+                f"n_test={len(X_test)}, n_models={len(model_registry)})"
+            ),
+        )
 
     # ------------------------------------------------------- task-agnostic verbs
 
@@ -812,23 +1073,29 @@ class Experiment(BaseEstimator):
     def models(self, *args: Any, internal: bool = False, **kwargs: Any) -> pd.DataFrame:
         """Return a DataFrame describing the available models in the registry.
 
-        Session-31 drain: builds the DataFrame from the model-registry
-        snapshot in ``self._fit_state["model_registry"]``. ``internal=True``
-        falls through to the legacy implementation, which exposes the full
-        ``ModelContainer`` row (with engine-internal fields). Mirrors the
-        legacy contract.
+        Session-31 / 35 drain: builds the DataFrame from the snapshot's
+        model registry. With ``internal=True`` returns the engine-internal
+        view (``Special`` / ``Class`` / ``Equality`` / ``Args``) by reading
+        each container's ``get_dict(internal=True)`` directly. Falls back
+        to the legacy holder only when the snapshot is empty.
         """
         self._require_fitted()
-        if internal:
-            # The internal=True view exposes a richer set of fields that
-            # come directly from the legacy holder; preserve that.
-            return self._legacy.models(*args, internal=True, **kwargs)
-
         import pandas as _pd
 
         registry = self._fit_state.get("model_registry", {}) if hasattr(self, "_fit_state") else {}
         if not registry:
-            return self._legacy.models(*args, **kwargs)
+            return self._legacy.models(*args, internal=internal, **kwargs)
+
+        if internal:
+            rows: list[dict] = []
+            for mid, container in registry.items():
+                d = dict(container.get_dict(internal=True))
+                d.setdefault("ID", mid)
+                # Surface 'Turbo' too — useful for filter logic in tests.
+                if "Turbo" not in d:
+                    d["Turbo"] = bool(getattr(container, "is_turbo", False))
+                rows.append(d)
+            return _pd.DataFrame(rows).set_index("ID")
 
         rows: list[dict] = []
         for mid, container in registry.items():

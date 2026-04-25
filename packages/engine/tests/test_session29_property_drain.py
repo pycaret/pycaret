@@ -96,18 +96,42 @@ def test_data_properties_require_fit():
 
 @pytest.mark.slow
 def test_fit_state_returns_equivalent_data_to_legacy():
-    """`exp.X_train` returns the same data shape + values as the legacy
-    holder (the legacy class itself returns fresh views per access, so
-    object-identity isn't a useful invariant).
+    """`exp.X_train` returns the same shape + columns as a re-fit's data.
+
+    Two cases:
+    - **Native setup** (session 35+): the legacy holder has not had
+      ``setup()`` called, so the legacy data accessors (X_train etc.)
+      raise. We instead re-construct the expected split via sklearn's
+      train_test_split + assert shapes match.
+    - **Legacy fallback**: complex preprocessing options force the legacy
+      path. Compare to the legacy holder directly.
     """
     import pycaret.datasets
     from pycaret.tasks import ClassificationExperiment
 
     df = pycaret.datasets.get_data("juice", verbose=False)
     exp = ClassificationExperiment(target="Purchase", session_id=42, n_jobs=1, fold=3).fit(df)
-    # Equivalent shape + values.
-    assert exp.X_train.shape == exp._legacy.X_train.shape
-    assert (exp.X_train.columns == exp._legacy.X_train.columns).all()
-    # `preprocess_pipeline` is a single object held on the legacy class
-    # (not a property), so identity holds.
-    assert exp.preprocess_pipeline is exp._legacy.pipeline
+
+    if getattr(exp, "_native_setup_used", False):
+        # Native split is sklearn train_test_split with the experiment's
+        # train_size + session_id. Recompute and compare shape.
+        from sklearn.model_selection import train_test_split
+
+        y = df["Purchase"]
+        X = df.drop(columns=["Purchase"])
+        X_tr_expected, _, _, _ = train_test_split(
+            X,
+            y,
+            train_size=exp.train_size,
+            random_state=exp.session_id,
+            stratify=y,
+        )
+        assert exp.X_train.shape == X_tr_expected.shape
+        assert (exp.X_train.columns == X_tr_expected.columns).all()
+        # preprocess_pipeline identity holds — it's stored once in fit_state.
+        assert exp.preprocess_pipeline is exp._fit_state["preprocess_pipeline"]
+    else:
+        # Legacy path — compare directly.
+        assert exp.X_train.shape == exp._legacy.X_train.shape
+        assert (exp.X_train.columns == exp._legacy.X_train.columns).all()
+        assert exp.preprocess_pipeline is exp._legacy.pipeline
