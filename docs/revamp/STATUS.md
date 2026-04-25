@@ -1,6 +1,76 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 42*
+*Updated: 2026-04-25, end of session 43*
+
+## Session 43 — Phase 5c (cont.): drain `TimeSeriesExperiment.tune_model` — ✅
+
+The fourth TS verb is fully native. `exp.tune_model(forecaster)` no longer touches `legacy.tune_model` — it wraps sktime's `ForecastingGridSearchCV` / `ForecastingRandomizedSearchCV` around the experiment's preprocess pipeline, uses the registry container's `tune_grid` / `tune_distributions` (or `custom_grid=`), and refits the best hyperparameters via the drained `create_model`.
+
+### What landed
+
+- **`TimeSeriesExperiment.tune_model`** native override:
+  - Resolves estimator from `ForecastingPipeline` or bare sktime forecaster (rejects registry-ID strings — pass through `create_model` first).
+  - Looks up the matching container by `class_def` to fetch `tune_grid` / `tune_distributions`. Custom grid via `custom_grid=`.
+  - Auto-converts pycaret `Distribution` objects to sklearn `ParameterSampler`-compatible distributions via `get_base_distributions` for random search.
+  - Wires forecaster into preprocess pipeline + prefixes param keys with the pipeline label (e.g. `forecaster__model__sp`).
+  - Runs `ForecastingGridSearchCV` (when `search_algorithm='grid'`) or `ForecastingRandomizedSearchCV` (default `'random'`).
+  - Strips the prefix off `best_params_` keys; refits via native `create_model(**best_params)` so we get the standard Fold/Mean/Std metrics shape.
+  - `choose_better=True` (default): re-creates the original forecaster's metrics and keeps whichever wins on `optimize` (default `"MASE"`).
+  - `return_tuner=True` returns `(TuneResult, search_obj)` tuple.
+  - Calls `_set_last_metrics` so `pull()` returns the chosen model's metrics.
+- **`_lookup_ts_container(cls)`** helper. Looks up a TS container in `_fit_state["model_registry"]` by its `class_def`. Used to resolve a bare forecaster back to its container's tune_grid.
+- **`_score_from_metrics(metrics, col)`** static helper. Pulls a scalar from the `Mean` row of a CV metrics DataFrame for `choose_better` comparison.
+- **`packages/engine/tests/test_session43_ts_tune_model_drain.py`** — 10 new tests:
+  - Drain-lock for `tune_model`.
+  - `best_params` keys match the container's `tune_distribution`.
+  - `search_algorithm='grid'` yields a `ForecastingGridSearchCV` instance.
+  - Default random uses `ForecastingRandomizedSearchCV`.
+  - `custom_grid=` overrides the container's defaults.
+  - `pull()` returns tuned model's CV metrics.
+  - String estimator → TypeError.
+  - Bad `optimize=` → `ConfigurationError`.
+  - `return_tuner=True` returns the (result, search) tuple.
+  - End-to-end `create + tune + predict` chain with all 4 legacy verbs poisoned.
+
+### Headline metrics
+
+| | Session 42 end | Session 43 end |
+|---|---|---|
+| TS verbs drained (out of 6) | 3 | **4** (+ tune_model) |
+| `legacy.tune_model` callsites for TS | 1 | 0 |
+| Engine tests (fast + slow) | 218 | **228** (+10) |
+
+### Drain status
+
+```
+Native setup dispatcher accepts:
+  ✅ Phases 1-4: clf + reg + clustering + anomaly setup           (s35-s38)
+  🟡 Phase 5a: TS adopts dispatcher (still calls legacy.setup)    (s39)
+  🟡 Phase 5b: TS create_model native                             (s40)
+  🟡 Phase 5c: TS predict_model native                            (s41)
+  🟡 Phase 5c: TS compare_models native                           (s42)
+  🟡 Phase 5c: TS tune_model native                               (s43 ← here)
+  ⏳ Phase 5c: drain TS finalize_model / assign_model
+  ⏳ Phase 5d: remove legacy.setup() from _native_setup_timeseries
+  ⏳ Phase 6:  delete pycaret/internal/pycaret_experiment/
+
+What still routes to legacy for TS:
+  - _native_setup_timeseries still calls legacy.setup() (transitional)
+  - finalize_model, assign_model
+```
+
+### What's next (sessions 44+)
+
+- **`finalize_model`** — refit on the *full* `y` (not just `y_train`). Smaller scope; mostly sktime + index handling.
+- **`assign_model`** — TS doesn't have a meaningful "assign labels to rows" semantic (that's a clustering/anomaly verb); likely a thin no-op or skipped entirely.
+- **Phase 5d** — strip `legacy.setup()` from `_native_setup_timeseries`. Once verbs no longer need legacy state, native setup can build `_fit_state` directly from sktime primitives.
+- **Phase 6** — delete `pycaret/internal/pycaret_experiment/` (10K LoC).
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config (user account reset in progress).
+
+---
 
 ## Session 42 — Phase 5c (cont.): drain `TimeSeriesExperiment.compare_models` — ✅
 

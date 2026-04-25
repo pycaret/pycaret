@@ -115,6 +115,46 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 43 — 2026-04-25 — Phase 5c (cont.): drain TimeSeriesExperiment.tune_model
+
+The fourth TS verb is fully native. `exp.tune_model(forecaster)` no longer touches `legacy.tune_model` — it wraps sktime's `ForecastingGridSearchCV` / `ForecastingRandomizedSearchCV` around the experiment's preprocess pipeline, uses the registry container's `tune_grid` / `tune_distributions` (or `custom_grid=`), and refits the best hyperparameters via the drained `create_model`.
+
+## ADDED — engine
+
+- `ADDED` — **`TimeSeriesExperiment.tune_model`** in `packages/engine/pycaret/tasks/time_series.py`. Resolves estimator from `ForecastingPipeline` or bare sktime forecaster; looks up matching container by `class_def`; converts pycaret `Distribution` objects to sklearn-compatible distributions via `get_base_distributions` for random search; wires forecaster into preprocess pipeline + prefixes param keys; runs `ForecastingGridSearchCV` (`search_algorithm='grid'`) or `ForecastingRandomizedSearchCV` (default `'random'`); strips prefix off `best_params_`; refits via native `create_model(**best_params)` so we get standard Fold/Mean/Std metrics. Supports `choose_better=True` (re-runs the input estimator and keeps whichever wins on `optimize`), `return_tuner=True` (returns `(TuneResult, search_obj)` tuple), `custom_grid=`, and arbitrary `**kwargs` forwarded to the search constructor.
+- `ADDED` — **`_lookup_ts_container(cls)`** helper. Looks up a TS container in `_fit_state["model_registry"]` by its `class_def` so we can resolve a bare forecaster back to its container's tune_grid.
+- `ADDED` — **`_score_from_metrics(metrics, col)`** static helper. Pulls a scalar from the `Mean` row of a CV metrics DataFrame for the `choose_better` comparison.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session43_ts_tune_model_drain.py`** — 10 new tests:
+  - Drain-lock for `tune_model`.
+  - `best_params` keys match the container's `tune_distribution` (NaiveContainer: `strategy` / `sp`).
+  - `search_algorithm='grid'` yields `ForecastingGridSearchCV`.
+  - Default `'random'` yields `ForecastingRandomizedSearchCV`.
+  - `custom_grid=` overrides container defaults.
+  - `pull()` returns tuned model's CV metrics.
+  - String estimator → `TypeError` (must pass through `create_model` first).
+  - Bad `optimize=` → `ConfigurationError`.
+  - `return_tuner=True` returns `(TuneResult, search)` tuple.
+  - End-to-end `create + tune + predict` chain with all 4 legacy verbs poisoned.
+
+## INTERNAL
+
+- `INTERNAL` — **Why convert pycaret Distribution objects.** TS containers ship `tune_distribution` dicts whose values are pycaret-specific `Distribution` instances (`UniformDistribution`, `CategoricalDistribution`, etc.). sklearn's `ParameterSampler` only accepts sklearn-compatible distributions (`scipy.stats` rvs or sequences). The `get_base_distributions` utility converts via each Distribution's `.get_base()` method. Grid search doesn't need this — pycaret grids are already plain lists.
+- `INTERNAL` — **Why refit via `create_model` instead of using `search_obj.best_estimator_`.** Two reasons: (a) the search runs `refit=False` so `best_estimator_` would be unfitted; (b) calling our drained `create_model` gets us the standard Fold/Mean/Std metrics DataFrame for free, which `choose_better` needs. The downside is one extra CV pass — acceptable for the drain milestone.
+- `INTERNAL` — **`choose_better` short-circuit.** When `choose_better=True`, we re-create the *input* estimator (a fresh instance with the same hyperparameters) to compute its CV metrics for comparison. Could be optimised by reading metrics off the input pipeline's history, but that requires plumbing we haven't built. Same approach legacy uses; safe baseline.
+
+## Session 43 delta summary
+
+| Metric | Session 42 end | Session 43 end |
+|---|---:|---:|
+| TS verbs drained (out of 6) | 3 (create / predict / compare) | 4 (+ tune_model) |
+| `legacy.tune_model` callsites for TS | 1 | 0 |
+| Engine tests (fast + slow) | 218 | **228** |
+
+---
+
 # Session 42 — 2026-04-25 — Phase 5c (cont.): drain TimeSeriesExperiment.compare_models
 
 The third TS verb is fully native. `exp.compare_models()` no longer touches `legacy.compare_models` — it iterates the sktime registry, calls native `create_model` per candidate (which already does CV via the s40 native path), and assembles a leaderboard ranked by MASE (default — lower is better).
