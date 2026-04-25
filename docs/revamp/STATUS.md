@@ -1,6 +1,52 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 35*
+*Updated: 2026-04-25, end of session 36*
+
+## Session 36 — Native `setup()` phase 2: `normalize` + `transformation` — ✅
+
+Phase 2 of the setup drain. Two more legacy fallback paths are now native — `normalize=True` and `transformation=True` chain into the numeric branch of the `ColumnTransformer` instead of forcing legacy.
+
+### What landed
+
+- **`Experiment._native_setup_supervised`** — numeric branch promoted from a single `SimpleImputer` to a sklearn `Pipeline` with optional steps:
+  - `imputer` → `SimpleImputer(strategy="mean")` (always)
+  - `transformer` → `PowerTransformer(method="yeo-johnson", standardize=False)` (when `transformation=True`)
+  - `scaler` → `StandardScaler()` (when `normalize=True`)
+  - Order is **transform → scale**, so the scaler sees post-power values and produces ~zero mean / unit std.
+- **`Experiment._can_use_native_setup`** — predicate updated. `normalize` / `transformation` no longer force legacy. Phase-3 flags (`remove_outliers`, `feature_selection`) still do.
+- **`packages/engine/tests/test_session36_native_setup_phase2.py`** — 10 new tests:
+  - Drain-locks for `normalize=True` and `transformation=True` (both poison `legacy.setup` and verify native path).
+  - Numeric output of `normalize` has |mean| ≤ 1e-6 and std ≈ 1.
+  - `transformation` puts a `PowerTransformer(method="yeo-johnson")` in the numeric pipeline.
+  - Combined: numeric pipeline steps are `["imputer", "transformer", "scaler"]` in that order.
+  - Phase-3 flags still route to legacy.
+  - End-to-end `create + predict` chain with `normalize=True`.
+  - Regression with `transformation=True` works natively.
+  - Predicate test refresh covering all combinations.
+- **Session-35 tests refreshed** to pick `remove_outliers=True` as the canonical "still legacy" flag (since `normalize` / `transformation` are now native).
+
+### Headline metrics
+
+| | Session 35 end | Session 36 end |
+|---|---|---|
+| Drainable preprocessing options handled natively | impute + ordinal + label-encode | + StandardScaler + PowerTransformer |
+| Engine tests (fast + slow) | 155 | **165** (+10) |
+| **Combined tests** | **301** | **311** |
+
+### Drain status
+
+```
+Native setup phase 1: simple supervised + impute + ordinal + label-encode  (s35)
+Native setup phase 2: + normalize + transformation                          (s36)  ← this session
+Native setup phase 3: + remove_outliers + feature_selection                 (next)
+Native setup phase 4: + unsupervised + time-series                          (later)
+```
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config (user account reset still in progress).
+
+---
 
 ## Session 35 — Native `setup()` (phase 1, simple supervised) — ✅
 

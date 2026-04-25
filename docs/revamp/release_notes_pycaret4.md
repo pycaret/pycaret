@@ -115,6 +115,51 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 36 — 2026-04-25 — Native setup() phase 2: normalize + transformation
+
+Baseline: session 35 shipped phase 1 of the setup() drain (simple supervised). Session 36 extends the native preprocessing chain with two more legacy options: `normalize` (StandardScaler) and `transformation` (PowerTransformer). Both can be combined.
+
+## CHANGED — engine
+
+- `CHANGED` — **`Experiment._native_setup_supervised`** numeric branch promoted from a single `SimpleImputer` to a sklearn ``Pipeline`` with optional steps wired by the experiment's flags:
+  - ``imputer`` → ``SimpleImputer(strategy="mean")`` (always)
+  - ``transformer`` → ``PowerTransformer(method="yeo-johnson", standardize=False)`` (if ``transformation=True``)
+  - ``scaler`` → ``StandardScaler()`` (if ``normalize=True``)
+  Order: transform → scale. Yeo-Johnson handles negatives so the scaler sees finite values and produces ~zero mean / unit std on the train-fold output.
+- `CHANGED` — **`Experiment._can_use_native_setup`** predicate. ``normalize`` and ``transformation`` no longer force legacy. ``remove_outliers`` / ``feature_selection`` / setup_kwargs / non-supervised tasks still do.
+- `CHANGED` — **`numerical_imputer` step renamed to `numerical_pipeline`** in the `ColumnTransformer`. The single-imputer case still works (the helper unwraps the pipeline when only one step is present), but the canonical name is now `numerical_pipeline` to mirror `categorical_pipeline`.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session36_native_setup_phase2.py`** — 10 tests:
+  - Drain-locks for `normalize=True` and `transformation=True`.
+  - Numeric output has |mean| ≤ 1e-6 and std ≈ 1 with `normalize=True`.
+  - `transformation=True` puts a `PowerTransformer(yeo-johnson)` in the numeric pipeline.
+  - Combined: pipeline step names are `["imputer", "transformer", "scaler"]` exactly.
+  - Phase-3 flags still route to legacy.
+  - End-to-end `create + predict` chain with `normalize=True`.
+  - Regression with `transformation=True` works natively.
+  - Predicate test for the new phase-2 contract.
+
+## CHANGED — existing tests
+
+- `CHANGED` — **`test_session35_native_setup`** updated. `test_complex_preprocessing_falls_back_to_legacy` now uses `remove_outliers=True` (still phase-3) instead of `normalize=True` (now native). `test_can_use_native_setup_predicate` simplified to cover only the still-legacy cases (other phases have their own files).
+
+## INTERNAL
+
+- `INTERNAL` — **Why Yeo-Johnson, not Box-Cox.** Box-Cox requires strictly positive inputs. PyCaret 3.x defaulted to Yeo-Johnson for the same reason. Matching that default here means the existing notebooks that pass `transformation=True` keep producing comparable feature distributions.
+- `INTERNAL` — **`PowerTransformer(standardize=False)`** is intentional. The transformer's built-in `standardize=True` would z-score after the power transform, but we do that explicitly via the `scaler` step when `normalize=True` is set. Decoupling means a user who sets `transformation=True` alone gets the power-transformed values without z-scoring (matches legacy: power transformation alone preserves scale information; only `normalize=True` flips that).
+
+## Session 36 delta summary
+
+| Metric | Session 35 end | Session 36 end |
+|---|---:|---:|
+| Native setup options | impute + ordinal + label-encode | + StandardScaler + PowerTransformer |
+| Engine tests (fast + slow) | 155 | **165** |
+| **Combined tests** | **301** | **311** |
+
+---
+
 # Session 35 — 2026-04-25 — Native setup() (phase 1, simple supervised)
 
 The biggest remaining drain target lands in incremental form. When the user passes a basic classification or regression experiment with no complex preprocessing flags + no `setup_kwargs`, `fit()` now skips `self._legacy.setup()` entirely. The native preprocessing chain builds `_fit_state` directly from sklearn primitives.
