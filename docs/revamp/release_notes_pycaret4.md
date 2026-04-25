@@ -115,6 +115,44 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 31 — 2026-04-25 — Secondary-verb drain: pull / models / get_metrics
+
+Baseline: session 30 finished the internal-state drain. Session 31 drains the three advisory secondary verbs that have a clean native equivalent.
+
+## CHANGED — engine
+
+- `CHANGED` — **`Experiment.pull()`** reads from `self._fit_state["last_metrics"]`. Native modeling verbs (`create_model`, `tune_model`, `compare_models`) update that slot before returning via the new `_set_last_metrics()` helper. Falls through to `self._legacy.pull()` only when no native verb has run yet (TS-fallback case).
+- `CHANGED` — **`Experiment.models()`** builds the user-facing DataFrame from `_fit_state["model_registry"]` directly. Columns: `Name`, `Reference`, `Turbo`. Index: model ID. `internal=True` keeps delegating — the legacy `ModelContainer` row exposes engine-internal fields some advanced callers depend on.
+- `CHANGED` — **`Experiment.get_metrics()`** reads from the task's metric registry helper (`pycaret.containers.metrics.<task>.get_all_metric_containers`) instead of `self._legacy.get_metrics`. Output columns mirror legacy: `Name`, `Display Name`, `Score Function`, `Scorer`, `Target`, `Args`, `Greater is Better`, `Multiclass`, `Custom`. Time-series falls back to legacy (its registry is sktime-shaped).
+
+## ADDED — internal helper
+
+- `ADDED` — **`Experiment._set_last_metrics(df)`** stashes the most recent metrics DataFrame in `_fit_state["last_metrics"]`. Called by each native modeling verb right before returning. `pull()` reads from there.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session31_secondary_verbs.py`** — 8 tests:
+  - 3 for `pull()` — returns the right DataFrame after each of `create_model` / `tune_model` / `compare_models`. First test drain-locked against `legacy.pull`.
+  - 2 for `models()` — native DataFrame matches expected schema (drain-locked against `legacy.models`); `internal=True` falls back.
+  - 2 for `get_metrics()` — classification + regression registries; drain-locked against `legacy.get_metrics`.
+  - 1 for `NotFittedError` on all three pre-fit.
+
+## INTERNAL
+
+- `INTERNAL` — **Why not drain `add_metric` / `remove_metric` in this session.** These mutate the metric registry. The current registry is a global, container-class-decorator-populated structure shared across experiments. Adding a metric on one Experiment instance shouldn't visibly affect another, but the legacy state is partially shared. Properly draining these requires a small refactor to make the metric registry per-Experiment (move `metric_registry` into `_fit_state` like the model registry, plus support for `add_metric` to mutate it, plus a way for `calculate_metrics` to use the per-Experiment registry instead of the global). That's a clean follow-up but doesn't move the 4.0.0 release date — the verbs are advisory, not in the predict/tune/compare path.
+- `INTERNAL` — **`models()` `internal=True` carve-out.** Some PyCaret 3.x test code paths use `exp.models(internal=True)` to introspect the full `ModelContainer` rows (with engine-internal fields like `eq_function`, `tunable`, `is_special`, etc.). Building that view from the bare snapshot would require us to expose more of the container shape, which we'd then have to keep in lockstep with the registry classes. Cleaner: keep delegating for the `internal=True` case, drain the public path. That preserves backward compatibility for one specific test family without leaking implementation details into the new core.
+- `INTERNAL` — **`pull()` fallback semantics.** When `_fit_state["last_metrics"]` is None (no native verb has run yet), we fall through to `self._legacy.pull()`. This is reachable: if a TS-task user runs `compare_models`, that goes through `_compare_models_legacy` which writes to the legacy display container. Without the fallback, `pull()` would silently return None. The fallback keeps the public contract intact during the TS transition.
+
+## Session 31 delta summary
+
+| Metric | Session 30 end | Session 31 end |
+|---|---:|---:|
+| Drainable secondary verbs still on `_legacy` | 3 | **0** ✅ |
+| Engine tests (fast + slow) | 113 | **121** |
+| **Combined tests** | **259** | **267** |
+
+---
+
 # Session 30 — 2026-04-24 — Internal-state drain: transformed splits + fold generator + model registry
 
 Baseline: session 29 drained the 7 user-facing data accessors. Session 30 drains the 6 *internal* `self._legacy.<x>` reads still present inside the drained verbs.

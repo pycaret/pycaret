@@ -1,6 +1,60 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-24, end of session 30*
+*Updated: 2026-04-25, end of session 31*
+
+## Session 31 — Secondary-verb drain: pull / models / get_metrics — ✅
+
+After session 30 finished the internal-state drain, only `setup()` and a handful of advisory verbs remained on `self._legacy`. Session 31 drains the three secondary verbs that have a clean native equivalent.
+
+### What landed
+
+- **`Experiment.pull()`** reads from `self._fit_state["last_metrics"]`. Every native modeling verb (`create_model`, `tune_model`, `compare_models`) now updates that slot before returning via a new `_set_last_metrics()` helper. Falls back to `self._legacy.pull()` when no native verb has run yet (e.g. inside the TS-fallback path).
+- **`Experiment.models()`** builds the public DataFrame (`Name` / `Reference` / `Turbo`, indexed by ID) directly from the snapshot's `model_registry`. The `internal=True` flag still delegates — that view exposes the full `ModelContainer` row with engine-internal fields, which we preserve for advanced callers.
+- **`Experiment.get_metrics()`** reads directly from the task's metric registry helper (`pycaret.containers.metrics.<task>.get_all_metric_containers`). Output schema mirrors the legacy one (`Name` / `Display Name` / `Score Function` / `Scorer` / `Target` / `Args` / `Greater is Better` / `Multiclass` / `Custom`). Time-series falls back to legacy.
+- **`packages/engine/tests/test_session31_secondary_verbs.py`** — 8 tests:
+  - `pull()` returns `CreateResult.metrics` after `create_model`, drain-locked against `legacy.pull`.
+  - `pull()` tracks the `compare_models` leaderboard.
+  - `pull()` tracks `tune_model.metrics`.
+  - `models()` returns the native DataFrame from the snapshot, drain-locked against `legacy.models`.
+  - `models(internal=True)` keeps delegating (preserves the richer view).
+  - `get_metrics()` reads from the metric registry, drain-locked against `legacy.get_metrics`.
+  - Regression `get_metrics()` includes MAE / R2.
+  - All 3 raise `NotFittedError` pre-fit.
+
+### Headline metrics
+
+| | Session 30 end | Session 31 end |
+|---|---|---|
+| Drainable secondary verbs still on `self._legacy` | 3 | **0** ✅ |
+| Engine tests (fast + slow) | 113 | **121** (+8) |
+| **Combined tests** | **259** | **267** |
+
+### Drain progress
+
+```
+✅ All 16 modeling verbs (sessions 22-28)
+✅ User-facing data accessors (session 29)
+✅ Internal training state (session 30)
+✅ pull / models / get_metrics (session 31)
+```
+
+The only remaining `_legacy` callsites in `core/` are:
+- `self._legacy.setup(...)` inside `fit()` — last drain target (replace with native preprocessing chain).
+- 6 advisory verbs that need bigger registry-side refactors: `add_metric`, `remove_metric`, `get_config`, `set_config`, `plot_model`, `evaluate_model`. Not in the predict / tune / compare path.
+- TS-task fallback paths (every native verb has a `_<verb>_legacy` for time-series).
+
+### Path to 4.0.0 non-alpha
+
+1. **Native preprocessing chain** to replace `setup()` — biggest remaining piece, ~1-2 sessions.
+2. **Optional**: drain the 6 advisory verbs (registry refactor). Could ship without — they're stable + advisory.
+3. **Delete `pycaret/internal/pycaret_experiment/`** once `setup()` no longer needs it.
+4. **Tag `4.0.0`** to PyPI.
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config. Wheel + sdist + smoke matrix all passed; only blocker is OIDC trusted-publisher entry on PyPI's end (user account reset in progress).
+
+---
 
 ## Session 30 — Internal-state drain: transformed splits + fold generator + model registry — ✅
 
