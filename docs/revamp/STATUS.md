@@ -1,6 +1,65 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 40*
+*Updated: 2026-04-25, end of session 41*
+
+## Session 41 — Phase 5c: drain `TimeSeriesExperiment.predict_model` — ✅
+
+The second TS verb is fully native. `exp.predict_model(forecaster)` no longer touches `legacy.predict_model` — predictions go through the standalone `get_predictions_with_intervals` helper and metrics are computed against `_fit_state["y_test"]` via the standalone `calculate_metrics` utility.
+
+### What landed
+
+- **`TimeSeriesExperiment.predict_model`** native override. Reconciles the pipeline (deepcopy if `ForecastingPipeline`; wire bare forecaster via `_add_model_to_pipeline`), the forecast horizon (arg → `_fit_state["fh"]` → `estimator.fh`), and exogenous X (arg / `data` shim → `_fit_state["X_test"]`). Calls `get_predictions_with_intervals(forecaster, alpha, coverage, X, fh, merge=True, round=...)` for the y_pred / lower / upper DataFrame. Returns a typed `PredictResult`.
+- **Test metrics path** — when `_fit_state["y_test"]` is available, computes a one-row metrics DataFrame keyed by display name (`Model` / `MAE` / `RMSE` / `MAPE` / `MASE` / `RMSSE` / `R2` / `COVERAGE` / `SMAPE`). Uses `update_additional_scorer_kwargs` to pass `y_train`, `lower`, `upper` to scorers that need them (MASE / RMSSE / coverage). Calls `_set_last_metrics` so `pull()` returns the same DataFrame.
+- **`return_pred_int`** support — when True, returns the full DataFrame with `y_pred` / `lower` / `upper`. Defaults to `y_pred` only.
+- **`packages/engine/tests/test_session41_ts_predict_model_drain.py`** — 8 new tests:
+  - Drain-lock for `predict_model` (poison `legacy.predict_model`, verify native).
+  - Metrics DataFrame shape (Model + 8 metric columns).
+  - `pull()` returns the predict_model metrics.
+  - `return_pred_int=True` includes lower / upper columns.
+  - Custom `fh` override produces predictions of the right length.
+  - Bare forecaster (without pipeline) gets wired into the preprocess.
+  - Object without `.predict` → `TypeError`.
+  - End-to-end `create + predict` chain with both legacy verbs poisoned.
+
+### Headline metrics
+
+| | Session 40 end | Session 41 end |
+|---|---|---|
+| TS verbs drained (out of 6) | 1 (create_model) | **2** (+ predict_model) |
+| `legacy.predict_model` callsites for TS | 1 | 0 |
+| Engine tests (fast + slow) | 201 | **209** (+8) |
+
+### Drain status
+
+```
+Native setup dispatcher accepts:
+  ✅ Phases 1-4: clf + reg + clustering + anomaly setup           (s35-s38)
+  🟡 Phase 5a: TS adopts dispatcher (still calls legacy.setup)    (s39)
+  🟡 Phase 5b: TS create_model native                             (s40)
+  🟡 Phase 5c: TS predict_model native                            (s41 ← here)
+  ⏳ Phase 5c (continued): drain TS compare / tune / finalize / assign
+  ⏳ Phase 5d: remove legacy.setup() from _native_setup_timeseries
+  ⏳ Phase 6:  delete pycaret/internal/pycaret_experiment/
+
+What still routes to legacy for TS:
+  - _native_setup_timeseries still calls legacy.setup() (transitional)
+  - compare_models, tune_model, finalize_model, assign_model
+```
+
+### What's next (sessions 42+)
+
+- **`compare_models`** — iterate the registry, call native `create_model` per ID, build a leaderboard DataFrame.
+- **`tune_model`** — sktime `ForecastingGridSearchCV` / `ForecastingRandomizedSearchCV`.
+- **`finalize_model`** — refit on full `y` (not just `y_train`).
+- **`assign_model`** — TS doesn't have a meaningful "assign labels to rows" semantic; might just be a thin wrapper.
+- **Phase 5d** — strip `legacy.setup()` from `_native_setup_timeseries` once verbs no longer need legacy state.
+- **Phase 6** — delete `pycaret/internal/pycaret_experiment/` (10K LoC).
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config (user account reset in progress).
+
+---
 
 ## Session 40 — Phase 5b: drain `TimeSeriesExperiment.create_model` — ✅
 

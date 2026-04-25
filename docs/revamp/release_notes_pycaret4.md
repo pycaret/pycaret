@@ -115,6 +115,42 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 41 — 2026-04-25 — Phase 5c: drain TimeSeriesExperiment.predict_model
+
+The second TS verb is fully native. `exp.predict_model(forecaster)` no longer touches `legacy.predict_model` — predictions go through the standalone `get_predictions_with_intervals` helper and metrics are computed against `_fit_state["y_test"]` via the standalone `calculate_metrics` utility.
+
+## ADDED — engine
+
+- `ADDED` — **`TimeSeriesExperiment.predict_model`** in `packages/engine/pycaret/tasks/time_series.py`. Reconciles pipeline (deepcopy if `ForecastingPipeline`; wire bare forecaster via `_add_model_to_pipeline`), forecast horizon (arg → `_fit_state["fh"]` → `estimator.fh`), and exogenous X (arg / `data` shim → `_fit_state["X_test"]`). Calls `get_predictions_with_intervals` for predictions; computes test metrics via `calculate_metrics` + `update_additional_scorer_kwargs` when `y_test` is available. Returns a typed `PredictResult`. Supports `return_pred_int`, custom `fh`, custom `alpha` / `coverage` for prediction intervals.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session41_ts_predict_model_drain.py`** — 8 new tests:
+  - Drain-lock for `predict_model` (poison `legacy.predict_model`, verify native).
+  - Metrics DataFrame: 9 columns (`Model` + 8 standard TS metrics).
+  - `pull()` returns the predict_model metrics.
+  - `return_pred_int=True` includes lower / upper columns.
+  - Custom `fh=[1,2,3]` produces 3 predictions.
+  - Bare forecaster (no pipeline) gets wired into the experiment's preprocess.
+  - Object without `.predict` → `TypeError`.
+  - End-to-end `create + predict` chain with both legacy verbs poisoned.
+
+## INTERNAL
+
+- `INTERNAL` — **Why reuse `get_predictions_with_intervals` + `calculate_metrics`.** Same reasoning as `cross_validate` reuse in s40 — these are free functions (no legacy state), already handle the alpha/coverage interval plumbing and metric registry iteration with `additional_kwargs`. Re-implementing them on top of bare sktime would either lose interval support or duplicate care code.
+- `INTERNAL` — **Bare forecaster path.** When the user passes a bare fitted sktime forecaster (not a `ForecastingPipeline`), we wire it into the experiment's preprocess pipeline via `_add_model_to_pipeline`. Lets `joblib.dump`-ed forecasters from older code work without forcing the user to reconstruct a pipeline.
+- `INTERNAL` — **The `data` parameter shim.** Supervised `predict_model` takes `data` as the second positional arg. TS legacy used `X` as the exogenous-data parameter. The native override accepts both — `data` defers to `X` if both are passed; `data` becomes `X` otherwise. Keeps the verb signature compatible with how callers might invoke from the supervised side.
+
+## Session 41 delta summary
+
+| Metric | Session 40 end | Session 41 end |
+|---|---:|---:|
+| TS verbs drained (out of 6) | 1 (create_model) | 2 (+ predict_model) |
+| `legacy.predict_model` callsites for TS | 1 | 0 |
+| Engine tests (fast + slow) | 201 | **209** |
+
+---
+
 # Session 40 — 2026-04-25 — Phase 5b: drain TimeSeriesExperiment.create_model
 
 The first TS verb is fully native. `exp.create_model('arima')` no longer touches `legacy.create_model` — the estimator resolves from the sktime registry, wires into the experiment's `ForecastingPipeline`, runs CV through the existing `cross_validate` helper, and returns a real `sktime.forecasting.compose.ForecastingPipeline`. Pattern mirrors the supervised create_model drain (s24) and unsupervised drain (s28).
