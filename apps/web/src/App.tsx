@@ -9,6 +9,13 @@ import { ProjectDetail } from '@/pages/ProjectDetail';
 import { NewExperiment } from '@/pages/NewExperiment';
 import { ExperimentDetail } from '@/pages/ExperimentDetail';
 import { RunDetail } from '@/pages/RunDetail';
+import { ModelCard } from '@/pages/ModelCard';
+import { DataProfile } from '@/pages/DataProfile';
+import { WorkspaceHome } from '@/pages/WorkspaceHome';
+import { ForecastWorkbench } from '@/pages/ForecastWorkbench';
+import { DriftDashboard } from '@/pages/DriftDashboard';
+import { PredictionExplorer } from '@/pages/PredictionExplorer';
+import { ModelComparison } from '@/pages/ModelComparison';
 import { Pipelines } from '@/pages/Pipelines';
 import { PipelineDetail } from '@/pages/PipelineDetail';
 import { Deployments } from '@/pages/Deployments';
@@ -45,6 +52,19 @@ export default function App() {
           element={<ExperimentDetail />}
         />
         <Route path="/runs/:runId" element={<RunDetail />} />
+        <Route path="/runs/:runId/model-card" element={<ModelCard />} />
+        <Route path="/workspaces/:wsId/home" element={<WorkspaceHome />} />
+        <Route
+          path="/workspaces/:wsId/datasets/:dataSourceId/profile"
+          element={<DataProfile />}
+        />
+        <Route path="/runs/:runId/forecast" element={<ForecastWorkbench />} />
+        <Route path="/workspaces/:wsId/drift" element={<DriftDashboard />} />
+        <Route
+          path="/workspaces/:wsId/predictions"
+          element={<PredictionExplorer />}
+        />
+        <Route path="/workspaces/:wsId/compare" element={<ModelComparison />} />
         <Route path="/workspaces/:wsId/pipelines" element={<Pipelines />} />
         <Route
           path="/workspaces/:wsId/pipelines/:pipelineId"

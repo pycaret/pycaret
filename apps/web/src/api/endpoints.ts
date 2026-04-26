@@ -345,3 +345,37 @@ export const dataSourcesApi = {
       .then((r) => r.data);
   },
 };
+
+// ──────────────────────────────────────────────────────────── plots
+
+import type { PlotEnvelope, PlotRegistry } from './types';
+
+/**
+ * Note: the api client's baseURL already includes `/api/v1`. Other
+ * endpoints in this file use bare paths like `/workspaces/...`.
+ */
+export const plotsApi = {
+  registry: () => api.get<PlotRegistry>('/plots/registry').then((r) => r.data),
+  forRun: (runId: string, kind: string) =>
+    api
+      .get<PlotEnvelope>(
+        `/runs/${encodeURIComponent(runId)}/plots/${encodeURIComponent(kind)}`,
+      )
+      .then((r) => r.data),
+  forDataset: (
+    dataSourceId: string,
+    kind: string,
+    params?: { column?: string; feature?: string; target?: string },
+  ) => {
+    const q = new URLSearchParams();
+    if (params?.column) q.set('column', params.column);
+    if (params?.feature) q.set('feature', params.feature);
+    if (params?.target) q.set('target', params.target);
+    const suffix = q.toString() ? `?${q.toString()}` : '';
+    return api
+      .get<PlotEnvelope>(
+        `/datasets/${encodeURIComponent(dataSourceId)}/plots/eda/${encodeURIComponent(kind)}${suffix}`,
+      )
+      .then((r) => r.data);
+  },
+};

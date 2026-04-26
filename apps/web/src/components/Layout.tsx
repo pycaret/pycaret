@@ -1,15 +1,24 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/state/auth';
 import { authApi } from '@/api/endpoints';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { CommandPalette } from '@/components/CommandPalette';
 
 /** The root authenticated-shell. Top nav + content. */
 export function Layout() {
   const nav = useNavigate();
+  const location = useLocation();
   const clear = useAuthStore((s) => s.clear);
   const setUser = useAuthStore((s) => s.setUser);
   const user = useAuthStore((s) => s.user);
+
+  // Derive the active workspace id from the URL so the palette + nav
+  // can scope their actions properly.
+  const activeWsId = useMemo<string | undefined>(() => {
+    const m = location.pathname.match(/\/workspaces\/([^/]+)/);
+    return m ? m[1] : undefined;
+  }, [location.pathname]);
 
   // Lazy hydrate `user` on first render after login / reload.
   const me = useQuery({
@@ -53,6 +62,42 @@ export function Layout() {
             >
               Workspaces
             </NavLink>
+            {activeWsId && (
+              <>
+                <NavLink
+                  to={`/workspaces/${activeWsId}/home`}
+                  className={({ isActive }) =>
+                    isActive ? 'text-accent-400' : 'text-ink-200 hover:text-ink-100'
+                  }
+                >
+                  Dashboard
+                </NavLink>
+                <NavLink
+                  to={`/workspaces/${activeWsId}/compare`}
+                  className={({ isActive }) =>
+                    isActive ? 'text-accent-400' : 'text-ink-200 hover:text-ink-100'
+                  }
+                >
+                  Compare
+                </NavLink>
+                <NavLink
+                  to={`/workspaces/${activeWsId}/drift`}
+                  className={({ isActive }) =>
+                    isActive ? 'text-accent-400' : 'text-ink-200 hover:text-ink-100'
+                  }
+                >
+                  Drift
+                </NavLink>
+                <NavLink
+                  to={`/workspaces/${activeWsId}/predictions`}
+                  className={({ isActive }) =>
+                    isActive ? 'text-accent-400' : 'text-ink-200 hover:text-ink-100'
+                  }
+                >
+                  Predict
+                </NavLink>
+              </>
+            )}
             <NavLink
               to="/account/api-keys"
               className={({ isActive }) =>
@@ -73,6 +118,13 @@ export function Layout() {
                 Audit log
               </NavLink>
             )}
+            <kbd
+              title="Open command palette"
+              className="text-ink-200/60 text-xs px-2 py-0.5 border border-ink-700 rounded"
+              style={{ fontFamily: 'ui-monospace, monospace' }}
+            >
+              ⌘K
+            </kbd>
             {user && (
               <span className="text-ink-200/70" title={user.email}>
                 {user.display_name ?? user.email}
@@ -87,6 +139,7 @@ export function Layout() {
       <main className="flex-1 mx-auto w-full max-w-6xl px-6 py-8">
         <Outlet />
       </main>
+      <CommandPalette wsId={activeWsId} />
     </div>
   );
 }

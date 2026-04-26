@@ -113,6 +113,17 @@ export function RunDetail() {
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {r?.status === 'succeeded' && (
+              <Link to={`/runs/${runId}/model-card`} className="btn-secondary">
+                Open model card →
+              </Link>
+            )}
+            {r?.status === 'succeeded' &&
+              ((r.snapshot ?? {}) as Record<string, unknown>).task === 'time_series' && (
+                <Link to={`/runs/${runId}/forecast`} className="btn-secondary">
+                  Forecast workbench
+                </Link>
+              )}
             {r && isPending(r) && (
               <button
                 className="btn-danger"

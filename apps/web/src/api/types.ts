@@ -429,3 +429,30 @@ export interface AuditLogFilters {
   limit?: number;
   offset?: number;
 }
+
+// ──────────────────────────────────────────────────────────── plots
+
+/** A Plotly figure as JSON — pass directly to `<Plot data={fig.data} layout={fig.layout} />`. */
+export interface PlotlyFigure {
+  data: Array<Record<string, unknown>>;
+  layout: Record<string, unknown>;
+  frames?: Array<Record<string, unknown>>;
+  config?: Record<string, unknown>;
+}
+
+export interface PlotEnvelope {
+  kind: string;
+  task: string;
+  figure: PlotlyFigure;
+  generated_at: string;
+}
+
+export interface PlotKindDetail {
+  requires: string[];
+  binary_only?: boolean;
+}
+
+export interface PlotRegistry {
+  tasks: Record<string, string[]>;
+  details: Record<string, Record<string, PlotKindDetail>>;
+}
