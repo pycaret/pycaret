@@ -28,6 +28,7 @@ from pycaret_server.api import (
     experiments,
     llm,
     members,
+    plots,
     projects,
     runs,
     setup,
@@ -120,6 +121,7 @@ def create_app() -> FastAPI:
         drift.router,
         llm.router,
         audit.router,
+        plots.router,
     ):
         app.include_router(router, prefix="/api/v1")
 
