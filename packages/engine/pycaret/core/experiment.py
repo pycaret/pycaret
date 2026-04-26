@@ -107,6 +107,88 @@ class _ModelRegistryContext:
         return None
 
 
+class _TSContextProxy:
+    """Minimal stand-in for a fitted TS legacy experiment, exposing only
+    the attrs that ``pycaret.containers.models.time_series`` containers
+    read from ``experiment.<x>`` during construction.
+
+    Used by phase 5d to skip ``legacy.setup()`` entirely while still
+    being able to build the sktime model registry. Each container reads
+    a subset of: ``seed`` / ``gpu_param`` / ``n_jobs_param`` /
+    ``seasonality_present`` / ``primary_sp_to_use`` /
+    ``strictly_positive`` / ``seasonality_type`` /
+    ``all_sps_to_use`` / ``X_train`` / ``is_multiclass``.
+
+    Seasonality detection is a lightweight Fourier autocorrelation test
+    via sktime's ``autocorrelation_seasonality_test`` — same as legacy
+    uses internally. Far simpler than the full legacy detection chain
+    (no harmonic removal, no PeriodIndex coercion), but covers the
+    common case (univariate series with monthly / quarterly / yearly
+    PeriodIndex) and gracefully degrades to ``sp=1`` otherwise.
+    """
+
+    __slots__ = (
+        # Common (shared with _ModelRegistryContext)
+        "seed",
+        "gpu_param",
+        "n_jobs_param",
+        "X_train",
+        "is_multiclass",
+        # TS-specific
+        "seasonality_present",
+        "primary_sp_to_use",
+        "strictly_positive",
+        "seasonality_type",
+        "all_sps_to_use",
+        "enforce_pi",
+        "enforce_exogenous",
+        "exogenous_present",
+        "fe_target_rr",
+        "index_type",
+    )
+
+    def __init__(
+        self,
+        *,
+        seed: int,
+        gpu_param: Any,
+        n_jobs_param: int,
+        seasonality_present: bool,
+        primary_sp_to_use: int,
+        strictly_positive: bool,
+        seasonality_type: str,
+        all_sps_to_use: list,
+        X_train: Any = None,
+        is_multiclass: bool = False,
+        enforce_pi: bool = False,
+        enforce_exogenous: bool = False,
+        exogenous_present: bool = False,
+        fe_target_rr: list | None = None,
+        index_type: str = "period",
+    ) -> None:
+        self.seed = seed
+        self.gpu_param = gpu_param
+        self.n_jobs_param = n_jobs_param
+        self.seasonality_present = seasonality_present
+        self.primary_sp_to_use = primary_sp_to_use
+        self.strictly_positive = strictly_positive
+        self.seasonality_type = seasonality_type
+        self.all_sps_to_use = all_sps_to_use
+        self.X_train = X_train
+        self.is_multiclass = is_multiclass
+        self.enforce_pi = enforce_pi
+        self.enforce_exogenous = enforce_exogenous
+        self.exogenous_present = exogenous_present
+        # Default to None (matches legacy default) — `[]` breaks the cds_dt
+        # recursive forecasters which expect either None or a real list of
+        # WindowSummarizer / lag transformers.
+        self.fe_target_rr = fe_target_rr
+        self.index_type = index_type
+
+    def get_engine(self, id: str) -> str | None:
+        return None
+
+
 class Experiment(BaseEstimator):
     """Task-agnostic base for every PyCaret 4.0 experiment.
 
@@ -803,59 +885,187 @@ class Experiment(BaseEstimator):
         )
 
     def _native_setup_timeseries(self, data: Any, setup_kwargs: dict[str, Any]) -> None:
-        """Phase-5a native setup for time-series.
+        """Phase-5d native setup for time-series — fully drained.
 
-        The TS native path is a **soft drain** for now. Unlike supervised
-        / unsupervised native setup, we still call ``legacy.setup()``
-        underneath — TS verbs (``create_model``, ``predict_model``,
-        ``compare_models``, ...) haven't been drained yet and they read
-        from legacy attributes. Phase 5b/c will drain those verbs and
-        remove the legacy.setup() call here.
+        Builds ``_fit_state`` directly from sktime primitives. **Does
+        not** call ``self._legacy.setup()``. Same architectural shape as
+        the supervised / unsupervised native setups (s35-s38), with TS-
+        specific slots (``fh``, ``seasonal_period``).
 
-        What this method gives us today:
+        Steps:
 
-        - **Accessor parity**: ``exp.y_train``, ``exp.y_test``,
-          ``exp.preprocess_pipeline`` work for time-series exactly like
-          they do for the other tasks. Before this, TS didn't populate
-          ``_fit_state`` at all and the accessors raised ``KeyError``.
-        - **Stable ``_fit_state`` shape**: TS-specific slots (``fh``,
-          ``seasonal_period``) live alongside the standard slots
-          (``y``, ``y_train``, ``y_test``, ``fold_generator``,
-          ``model_registry``). Future verb drains can read straight off
-          ``_fit_state`` instead of through ``self._legacy``.
-        - **Predicate parity**: ``_can_use_native_setup`` accepts
-          ``TaskType.TIME_SERIES``, so the dispatcher in ``fit()`` is
-          uniform across all five task types.
+        1. **Coerce input** to a univariate Series + (optional) exogenous
+           DataFrame using ``self.target``.
+        2. **Auto-detect seasonality** via sktime's
+           ``autocorrelation_seasonality_test`` on candidates derived
+           from the index frequency or ``self.seasonal_period``.
+        3. **Build ForecastingHorizon** from ``self.fh``.
+        4. **Train/test split** via sktime's ``temporal_train_test_split``.
+        5. **Build CV fold generator** —
+           ``ExpandingWindowSplitter`` (default) or
+           ``SlidingWindowSplitter``.
+        6. **Build model registry** from
+           ``pycaret.containers.models.time_series.get_all_model_containers``
+           through a ``_TSContextProxy``.
+        7. **Build a minimal ForecastingPipeline** as
+           ``preprocess_pipeline`` — empty target / exogenous transformer
+           steps + a ``NaiveForecaster`` placeholder. Drained verbs swap
+           the placeholder out via ``_add_model_to_pipeline``.
         """
-        # Run legacy.setup so the sktime model registry, fold generator,
-        # and y_train/y_test splits get built. Once TS verbs drain, this
-        # call is replaced with native sktime calls
-        # (``temporal_train_test_split`` + ``ExpandingWindowSplitter``).
-        self._legacy.setup(**self._build_legacy_setup_kwargs(data, setup_kwargs))
+        import numpy as np
+        import pandas as pd
+        from sktime.forecasting.base import ForecastingHorizon
+        from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
+        from sktime.forecasting.model_selection import (
+            temporal_train_test_split,
+        )
+        from sktime.forecasting.naive import NaiveForecaster
 
-        legacy = self._legacy
+        seed = self.session_id if self.session_id is not None else 0
+
+        # ---- coerce input → univariate y + optional exogenous X
+        if isinstance(data, pd.Series):
+            y = data
+            X = None
+        elif isinstance(data, pd.DataFrame):
+            if self.target is not None and self.target in data.columns:
+                y = data[self.target]
+                X = data.drop(columns=[self.target])
+                if X.shape[1] == 0:
+                    X = None
+            elif data.shape[1] == 1:
+                y = data.iloc[:, 0]
+                X = None
+            else:
+                raise ConfigurationError(
+                    "TS native setup: when passing a multi-column DataFrame, "
+                    "either set `target=` to the column name to forecast, or "
+                    "pass a univariate Series."
+                )
+        else:
+            raise ConfigurationError(
+                f"TS native setup: data must be a pandas Series or DataFrame, "
+                f"got {type(data).__name__!r}."
+            )
+
+        # ---- forecast horizon
+        fh_value = self.fh
+        if isinstance(fh_value, int):
+            fh = ForecastingHorizon(list(range(1, fh_value + 1)), is_relative=True)
+        elif isinstance(fh_value, ForecastingHorizon):
+            fh = fh_value
+        else:
+            try:
+                fh = ForecastingHorizon(fh_value, is_relative=True)
+            except Exception:
+                fh = ForecastingHorizon([1], is_relative=True)
+
+        # ---- seasonality auto-detection (lightweight port of legacy)
+        seasonality_present, primary_sp_to_use, all_sps_to_use = self._auto_detect_seasonality(y)
+        strictly_positive = bool(np.all(y > 0))
+        seasonality_type = "mul" if (seasonality_present and strictly_positive) else "add"
+
+        # ---- temporal train/test split
+        try:
+            if X is not None:
+                y_train, y_test, X_train, X_test = temporal_train_test_split(y=y, X=X, fh=fh)
+            else:
+                y_train, y_test = temporal_train_test_split(y=y, fh=fh)
+                X_train = X_test = None
+        except Exception as e:
+            raise ConfigurationError(
+                f"TS native setup: temporal_train_test_split failed — {e}"
+            ) from e
+
+        # ---- CV fold generator
+        fold_generator = self._build_ts_fold_generator(
+            y_train=y_train, fh=fh, fold=self.fold, fold_strategy=self.fold_strategy
+        )
+
+        # ---- model registry via proxy (no legacy state)
+        # Detect index_type for the proxy: "period" if PeriodIndex, else
+        # "datetime" or "integer". TS containers branch on this.
+        if hasattr(y_train, "index"):
+            idx = y_train.index
+            if isinstance(idx, pd.PeriodIndex):
+                index_type = "period"
+            elif isinstance(idx, pd.DatetimeIndex):
+                index_type = "datetime"
+            else:
+                index_type = "integer"
+        else:
+            index_type = "period"
+
+        proxy = _TSContextProxy(
+            seed=seed,
+            gpu_param="force" if self.use_gpu else False,
+            n_jobs_param=self.n_jobs,
+            seasonality_present=seasonality_present,
+            primary_sp_to_use=primary_sp_to_use,
+            strictly_positive=strictly_positive,
+            seasonality_type=seasonality_type,
+            all_sps_to_use=all_sps_to_use,
+            X_train=X_train,
+            is_multiclass=False,
+            enforce_pi=False,
+            enforce_exogenous=False,
+            exogenous_present=X_train is not None,
+            fe_target_rr=None,
+            index_type=index_type,
+        )
+        from pycaret.containers.models.time_series import (
+            get_all_model_containers,
+        )
+
+        try:
+            model_registry = dict(get_all_model_containers(proxy, raise_errors=False))
+        except Exception:
+            # Defensive: if any container fails to construct on the proxy
+            # (e.g. needs a never-exposed attr), fall through with what we
+            # got. Empty registry would surface as a clear error in
+            # create_model rather than a confusing AttributeError here.
+            model_registry = {}
+
+        # ---- minimal ForecastingPipeline (placeholder model swapped out
+        # by drained verbs via _add_model_to_pipeline)
+        preprocess_pipeline = ForecastingPipeline(
+            steps=[
+                (
+                    "forecaster",
+                    TransformedTargetForecaster(
+                        steps=[("model", NaiveForecaster())],
+                    ),
+                )
+            ]
+        )
+
         self._fit_state = {
-            # User-facing — TS has no exogenous X by default; X / X_train /
-            # X_test will be populated when the user passes exogenous data.
-            "X": getattr(legacy, "X", None),
-            "X_train": getattr(legacy, "X_train", None),
-            "X_test": getattr(legacy, "X_test", None),
-            "y": getattr(legacy, "y", None),
-            "y_train": getattr(legacy, "y_train", None),
-            "y_test": getattr(legacy, "y_test", None),
-            "preprocess_pipeline": getattr(legacy, "pipeline", None),
+            # User-facing accessors.
+            "X": X,
+            "X_train": X_train,
+            "X_test": X_test,
+            "y": y,
+            "y_train": y_train,
+            "y_test": y_test,
+            "preprocess_pipeline": preprocess_pipeline,
             # Internal training state.
-            "X_transformed": getattr(legacy, "X_transformed", None),
-            "X_train_transformed": getattr(legacy, "X_train_transformed", None),
-            "y_transformed": getattr(legacy, "y_transformed", None),
-            "y_train_transformed": getattr(legacy, "y_train_transformed", None),
-            "fold_generator": getattr(legacy, "fold_generator", None),
-            "model_registry": dict(getattr(legacy, "_all_models_internal", {})),
+            "X_transformed": X,
+            "X_train_transformed": X_train,
+            "y_transformed": y,
+            "y_train_transformed": y_train,
+            "fold_generator": fold_generator,
+            "model_registry": model_registry,
             "last_metrics": None,
             # TS-specific slots.
-            "fh": getattr(legacy, "fh", self.fh),
-            "seasonal_period": getattr(legacy, "seasonal_period", self.seasonal_period),
-            # Slots present for shape uniformity but unused for TS.
+            "fh": fh,
+            "seasonal_period": (
+                primary_sp_to_use if self.seasonal_period is None else self.seasonal_period
+            ),
+            "seasonality_present": seasonality_present,
+            "strictly_positive": strictly_positive,
+            "seasonality_type": seasonality_type,
+            "all_sps_to_use": all_sps_to_use,
+            # Shape-uniform slots unused by TS.
             "label_encoder": None,
             "numeric_cols": None,
             "categorical_cols": None,
@@ -866,11 +1076,117 @@ class Experiment(BaseEstimator):
         self.logger.log(
             EventKind.EXPERIMENT_FITTED,
             message=(
-                f"Native time-series fit ready (n_train="
-                f"{len(self._fit_state['y_train']) if self._fit_state['y_train'] is not None else 0}, "
-                f"n_test={len(self._fit_state['y_test']) if self._fit_state['y_test'] is not None else 0}, "
-                f"n_models={len(self._fit_state['model_registry'])})"
+                f"Native time-series fit ready (n_train={len(y_train)}, "
+                f"n_test={len(y_test)}, sp={primary_sp_to_use}, "
+                f"n_models={len(model_registry)})"
             ),
+        )
+
+    @staticmethod
+    def _auto_detect_seasonality(y: Any) -> tuple[bool, int, list]:
+        """Lightweight seasonality detection — Fourier autocorrelation.
+
+        Returns ``(seasonality_present, primary_sp_to_use, all_sps_to_use)``.
+
+        Strategy:
+        1. Derive candidate sp from the series' index frequency (e.g. monthly
+           PeriodIndex → 12; quarterly → 4; weekly → 52). Default fallback:
+           ``[1]`` when the index has no recognisable frequency.
+        2. Run sktime's ``autocorrelation_seasonality_test`` on each
+           candidate. Significant ones survive.
+        3. ``seasonality_present`` is True iff at least one candidate is
+           significant. ``primary_sp_to_use`` is the largest significant sp
+           (or 1 if none).
+        """
+        try:
+            from sktime.utils.seasonality import autocorrelation_seasonality_test
+
+            from pycaret.utils.time_series import get_sp_from_str
+        except Exception:
+            return False, 1, [1]
+
+        candidates: list[int] = []
+        try:
+            freqstr = getattr(y.index, "freqstr", None)
+            if freqstr:
+                try:
+                    candidates.append(get_sp_from_str(freqstr))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        if not candidates:
+            return False, 1, [1]
+
+        # Filter out any garbage values.
+        candidates = [int(sp) for sp in candidates if isinstance(sp, int) and sp > 1]
+        if not candidates:
+            return False, 1, [1]
+
+        sig_sps: list[int] = []
+        for sp in candidates:
+            try:
+                if autocorrelation_seasonality_test(y, sp):
+                    sig_sps.append(sp)
+            except Exception:
+                continue
+
+        if not sig_sps:
+            return False, 1, [1]
+        primary = max(sig_sps)  # legacy default — pick the largest significant sp
+        return True, primary, sig_sps
+
+    def _build_ts_fold_generator(
+        self,
+        *,
+        y_train: Any,
+        fh: Any,
+        fold: int,
+        fold_strategy: Any,
+    ) -> Any:
+        """Build the sktime fold generator — same math legacy uses.
+
+        ``initial_window = len(y_train) - ((fold - 1) * step_length + max(fh))``
+        ``step_length    = len(fh)``
+        """
+        from sktime.forecasting.model_selection import (
+            ExpandingWindowSplitter,
+            SlidingWindowSplitter,
+        )
+
+        # `fold` may have been passed in as the legacy fold_generator
+        # already (e.g. user reused an existing splitter); short-circuit.
+        if hasattr(fold_strategy, "split") and not isinstance(fold_strategy, str):
+            return fold_strategy
+
+        # ForecastingHorizon is iterable but doesn't expose __iter__ as
+        # an attribute (it has __getitem__-based iteration). Use try/except
+        # over iter() to cover both ForecastingHorizon and plain int.
+        try:
+            fh_values = [int(v) for v in iter(fh)]
+        except TypeError:
+            fh_values = [int(fh)]
+        step_length = max(1, len(fh_values))
+        fh_max = max(fh_values) if fh_values else 1
+        n_train = len(y_train)
+        initial_window = n_train - ((fold - 1) * step_length + 1 * fh_max)
+        if initial_window < 1:
+            # Defensive: shrink folds rather than blowing up.
+            initial_window = max(1, n_train // 2)
+
+        if fold_strategy == "sliding":
+            return SlidingWindowSplitter(
+                step_length=step_length,
+                window_length=initial_window,
+                fh=fh,
+                start_with_window=True,
+            )
+        # Default: "expanding" / "rolling" (and unknown strategies).
+        return ExpandingWindowSplitter(
+            initial_window=initial_window,
+            step_length=step_length,
+            fh=fh,
         )
 
     # ------------------------------------------------------- task-agnostic verbs
@@ -1449,15 +1765,26 @@ class Experiment(BaseEstimator):
 
         from pycaret.core.tasks import TaskType
 
-        # Time-series registry has shape-specific filters (model_type ∈
-        # TSModelTypes) that aren't worth re-implementing in the snapshot
-        # path. Defer until TS verb drain in phase 5b.
-        if self.task == TaskType.TIME_SERIES:
-            return self._legacy.models(*args, internal=internal, **kwargs)
-
         registry = self._fit_state.get("model_registry", {}) if hasattr(self, "_fit_state") else {}
         if not registry:
             return self._legacy.models(*args, internal=internal, **kwargs)
+
+        # Time-series filters: legacy excludes containers whose model_type
+        # isn't in TSModelTypes (specifically `ensemble_forecaster` whose
+        # model_type='ensemble'). Replicate that filter here so the native
+        # path matches legacy semantics — phase 5d (s45) unblocks this.
+        if self.task == TaskType.TIME_SERIES:
+            try:
+                from pycaret.utils.time_series import TSModelTypes
+
+                allowed_types = set(TSModelTypes)
+                registry = {
+                    mid: c
+                    for mid, c in registry.items()
+                    if getattr(c, "model_type", None) in allowed_types
+                }
+            except Exception:
+                pass  # fall through with the unfiltered registry
 
         if internal:
             rows: list[dict] = []

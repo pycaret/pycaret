@@ -469,16 +469,22 @@ class TimeSeriesExperiment(SupervisedExperiment):
                     f"ForecastingPipeline; got {type(estimator).__name__!r}."
                 )
             estimator_ = deepcopy(estimator)
-            # Wire the bare forecaster into the experiment's preprocess
-            # pipeline so prediction goes through the same transforms.
-            base_pipeline = self._fit_state["preprocess_pipeline"]
-            if isinstance(base_pipeline, ForecastingPipeline):
-                pipeline_with_model = _add_model_to_pipeline(
-                    pipeline=base_pipeline, model=estimator_
-                )
-            else:
-                # Defensive fallback — wrap in a minimal pipeline.
+            # If the bare forecaster is already fitted, use it directly —
+            # wrapping in the (unfitted, placeholder) preprocess pipeline
+            # would invalidate its state. Phase 5d's preprocess_pipeline is
+            # a fresh ForecastingPipeline that isn't pre-fit, so we can't
+            # rely on it for transforms either.
+            already_fitted = getattr(estimator_, "is_fitted", False) or hasattr(estimator_, "_y")
+            if already_fitted:
                 pipeline_with_model = estimator_
+            else:
+                base_pipeline = self._fit_state["preprocess_pipeline"]
+                if isinstance(base_pipeline, ForecastingPipeline):
+                    pipeline_with_model = _add_model_to_pipeline(
+                        pipeline=base_pipeline, model=estimator_
+                    )
+                else:
+                    pipeline_with_model = estimator_
 
         # ---- reconcile fh
         if fh is None:
