@@ -121,8 +121,15 @@ export function buildDocsSidebar(): SidebarSection[] {
       description: entry.frontmatter.description,
     });
   }
-  // Stable section ordering: Getting started → Concepts → Guides → others.
-  const order = ['Getting started', 'Concepts', 'Guides'];
+  // Stable section ordering for the docs sidebar.
+  const order = [
+    'Getting started',
+    'Concepts',
+    'Preprocessing',
+    'Functions',
+    'Guides',
+    'Resources',
+  ];
   return Array.from(groups.values()).sort((a, b) => {
     const ai = order.indexOf(a.title);
     const bi = order.indexOf(b.title);

@@ -1,0 +1,119 @@
+---
+title: "Scale and transform"
+description: "Normalize numeric features and apply a power transform."
+section: "Preprocessing"
+order: 2
+---
+
+Two flags on the `Experiment` constructor control numeric scaling and
+distribution-shape correction. Both are off by default — turn them on
+when your data calls for them.
+
+## `normalize=True` — StandardScaler
+
+Z-scores every numeric column on the training set, then applies the
+same transform to the test set. Equivalent to:
+
+```python
+from sklearn.preprocessing import StandardScaler
+StandardScaler().fit(X_train).transform(X_test)
+```
+
+In PyCaret:
+
+```python
+from pycaret.classification import ClassificationExperiment
+
+exp = ClassificationExperiment(
+    target="Purchase",
+    normalize=True,        # adds StandardScaler to the numeric pipeline
+).fit(data)
+```
+
+When to turn it on:
+
+- **Distance-based models** (KNN, SVM with RBF kernel, neural nets,
+  K-Means) need scaled inputs to behave.
+- **Linear models with regularization** (Ridge, Lasso) penalize each
+  feature's coefficient equally — unscaled features make the
+  regularization unfair.
+
+When to leave it off:
+
+- **Tree-based models** (RandomForest, GBM, LightGBM, XGBoost) are
+  scale-invariant.
+
+## `transformation=True` — PowerTransformer (Yeo-Johnson)
+
+Applies a Yeo-Johnson transform to make the marginal distribution of
+each numeric column more Gaussian-like. Unlike Box-Cox, Yeo-Johnson
+handles negative values, so it's safe to use without pre-checking
+your data.
+
+```python
+exp = ClassificationExperiment(
+    target="Purchase",
+    transformation=True,   # adds PowerTransformer
+).fit(data)
+```
+
+When to turn it on:
+
+- Skewed numeric features and a model that assumes Gaussianish inputs
+  (linear, MLP, naive Bayes).
+- Features with heavy tails dragging the mean / variance.
+
+## Combining both
+
+`transformation` is applied **before** `normalize` in the numeric
+branch of the column transformer. The order is fixed:
+
+```
+Imputer → (PowerTransformer if transformation) → (StandardScaler if normalize)
+```
+
+So with both on:
+
+```python
+exp = ClassificationExperiment(
+    target="Purchase",
+    transformation=True,
+    normalize=True,
+).fit(data)
+```
+
+…each numeric column ends up roughly Gaussian with mean 0 and unit
+variance.
+
+## Inspecting the pipeline
+
+The fitted preprocessing pipeline is on `exp._fit_state`:
+
+```python
+print(exp._fit_state["preprocess_pipeline"])
+# Pipeline(steps=[('preprocess',
+#   ColumnTransformer(transformers=[
+#     ('numerical_pipeline',
+#       Pipeline([('imputer', SimpleImputer()),
+#                 ('transformer', PowerTransformer(...)),
+#                 ('scaler', StandardScaler())]),
+#       ['Age', 'Income', ...]),
+#     ('categorical_pipeline',
+#       Pipeline([('imputer', SimpleImputer(strategy='most_frequent')),
+#                 ('encoder', OrdinalEncoder(...))]),
+#       ['Gender', 'Region', ...]),
+#   ]))])
+```
+
+Persisting the experiment via `save_model` carries the preprocessor
+along with the trained model — predict-time data flows through the
+same chain you trained on.
+
+## What's removed in 4.0
+
+The 3.x flags `normalize_method=`, `transformation_method=`,
+`pca=`, `pca_method=`, `pca_components=` are gone. The defaults
+(`zscore` + `yeo-johnson`) are wired in, and PCA was deemed niche
+enough to live in the user's preprocessing code rather than as a
+PyCaret knob. If you need PCA, fit it on the train set and feed the
+projected frame to `Experiment.fit()` directly.

@@ -1,0 +1,129 @@
+---
+title: "Train"
+description: "create_model and compare_models — fitting estimators."
+section: "Functions"
+order: 2
+---
+
+Two verbs handle training: `create_model` for fitting one estimator,
+`compare_models` for fitting many and ranking them.
+
+## `create_model(estimator, *, fold=None, cross_validation=True, ...)`
+
+Fits one estimator and runs CV against the metric registry.
+
+```python
+res = exp.create_model("rf")            # registry id
+res = exp.create_model("lr", C=0.5)     # override hyperparameters
+res = exp.create_model(MyClassifier())  # any sklearn-compatible object
+```
+
+Returns a `CreateResult`:
+
+```python
+res.pipeline    # sklearn.pipeline.Pipeline (preprocessor + model)
+res.metrics     # DataFrame: rows = Fold 0..N + Mean + Std; cols = each metric
+res.model_id    # the registry key, or the class name for custom estimators
+res.params      # estimator.get_params(deep=False)
+```
+
+The `pipeline` is a real `sklearn.pipeline.Pipeline`. You can call
+`.predict(X)` directly, `joblib.dump` it, mount it behind a FastAPI
+route, or hand it to anyone who expects a sklearn estimator.
+
+### Skipping CV
+
+```python
+res = exp.create_model("rf", cross_validation=False)
+# res.metrics is None — only the refit on full train ran.
+```
+
+Faster (no fold loop) but no fold-by-fold metrics. Useful when you
+already know the model is right and just want a fitted Pipeline back.
+
+### Custom CV
+
+```python
+from sklearn.model_selection import StratifiedShuffleSplit
+
+cv = StratifiedShuffleSplit(n_splits=5, train_size=0.8, random_state=42)
+res = exp.create_model("rf", fold=cv)
+```
+
+## `compare_models(...)`
+
+Iterates the registry, calls `create_model` per candidate, and
+assembles a leaderboard.
+
+```python
+result = exp.compare_models(
+    include=["lr", "rf", "gbc", "lightgbm"],   # subset (optional)
+    exclude=["dummy"],                         # drop these (optional)
+    sort="AUC",                                # rank by this metric
+    n_select=3,                                # keep the top-3
+    turbo=True,                                # skip slow models (default True)
+    errors="ignore",                           # skip a model on per-model failure
+)
+```
+
+Returns a `CompareResult`:
+
+```python
+result.best          # top-1 fitted Pipeline
+result.models        # top-N Pipelines (as a list)
+result.leaderboard   # DataFrame indexed by ranked id
+result.ranked_ids    # list of model ids in rank order
+```
+
+`compare_models` is a thin loop — every row in the leaderboard
+corresponds to a `create_model(id)` call. Custom hyperparameters?
+Pass them by hand to `create_model` instead.
+
+### Sort metric
+
+The default sort key is task-dependent:
+
+| Task | Default sort |
+| ---- | ------------ |
+| Classification | `Accuracy` (use `AUC` for imbalanced data) |
+| Regression | `R2` |
+| Time-series | `MASE` (lower is better) |
+| Clustering | not applicable (no `compare_models`) |
+| Anomaly | not applicable |
+
+For regression / TS metrics where lower is better (RMSE, MAE, MASE),
+ascending sort is automatic.
+
+### `turbo=True`
+
+Drops models whose container has `is_turbo=False`. The default for
+classification is to skip MLP, GPC, and SVM with non-linear kernel —
+they're often slow on tabular data. Pass `turbo=False` to include
+them.
+
+### `errors`
+
+Set `errors="raise"` to abort on the first per-model failure. The
+default `"ignore"` skips broken models silently and continues.
+
+## Time-series specifics
+
+`compare_models` for `TimeSeriesExperiment` works the same way, but:
+
+- `sort="MASE"` is the default.
+- The leaderboard contains TS-specific metrics: MASE, RMSSE, MAE,
+  RMSE, MAPE, SMAPE, R², COVERAGE.
+- `ensemble_forecaster` is auto-excluded from the default include
+  list (it requires runtime-built sub-forecasters).
+
+## Comparing the result types
+
+Don't conflate `create_model`'s `pipeline` with `compare_models`'s
+`models`. Both are sklearn `Pipeline`s; one is a single estimator,
+the other is a list of N. The list ordering matches `ranked_ids`.
+
+```python
+# These two are equivalent:
+top1 = exp.compare_models(n_select=1).best
+top1 = exp.compare_models(n_select=3).models[0]
+```

@@ -1,0 +1,154 @@
+---
+title: "Analyze"
+description: "predict_model and the Plotly plot library."
+section: "Functions"
+order: 4
+---
+
+PyCaret 4.0 splits 3.x's monolithic `plot_model` into two: predictions
+go through `predict_model` (which returns a typed `PredictResult`),
+and individual diagnostic charts live in `pycaret.plots.<task>`.
+
+## `predict_model(estimator, data=None)`
+
+Runs predictions against a fitted estimator. If `data` is omitted,
+the holdout set is used.
+
+```python
+res = exp.create_model("rf")
+preds = exp.predict_model(res.pipeline)
+
+preds.predictions  # DataFrame: original X + (if known) y + prediction_label + prediction_score
+preds.metrics      # one-row DataFrame keyed by display name (when y is known)
+```
+
+For classification, `prediction_label` is the predicted class string;
+`prediction_score` is the winning-class probability. For regression,
+`prediction_label` is the predicted value (no `prediction_score`).
+
+### On new data
+
+```python
+preds = exp.predict_model(res.pipeline, data=new_dataframe)
+```
+
+The new frame flows through the **same preprocessing pipeline** the
+training data did — your saved model handles imputation, encoding,
+scaling, and selection automatically.
+
+### Probabilities
+
+For binary classification:
+
+```python
+preds.predictions[["prediction_label", "prediction_score"]]
+```
+
+For multiclass, `prediction_score` is the winner's probability. To
+get per-class probabilities, pass `raw_score=True`:
+
+```python
+preds = exp.predict_model(res.pipeline, raw_score=True)
+preds.predictions  # adds prediction_score_<class> columns for each class
+```
+
+### Time-series
+
+```python
+preds = exp.predict_model(forecaster_pipeline)
+preds.predictions   # DataFrame with y_pred (and lower/upper if return_pred_int=True)
+preds.metrics       # MASE / RMSSE / MAE / RMSE / MAPE / SMAPE / R² / COVERAGE
+```
+
+Pass `fh=[1, 2, 3]` to override the forecast horizon, or
+`return_pred_int=True` for prediction intervals (where the forecaster
+supports them).
+
+## Plot library
+
+The 3.x `plot_model(model, plot="confusion_matrix")` is gone. Each
+chart is a function in `pycaret.plots.<task>` that returns a
+`plotly.graph_objects.Figure`.
+
+```python
+from pycaret.plots.classification import (
+    confusion_matrix, roc_curve, pr_curve, calibration_curve,
+    threshold_curve, lift_curve, gain_curve, class_distribution,
+)
+from pycaret.plots.regression import (
+    residuals, residuals_distribution, prediction_error,
+    learning_curve, feature_importance,
+)
+from pycaret.plots.feature import (
+    permutation_importance, partial_dependence, ice_curve,
+    shap_summary, shap_beeswarm,
+)
+from pycaret.plots.clustering import (
+    elbow_curve, silhouette_curve, silhouette_plot,
+    cluster_distribution, embedding_2d,
+)
+from pycaret.plots.anomaly import (
+    score_distribution, anomaly_map,
+    feature_anomaly_scatter, score_vs_feature,
+)
+from pycaret.plots.time_series import (
+    forecast, decomposition, acf, pacf,
+    residual_diagnostics, cv_split_visualizer,
+)
+from pycaret.plots.eda import (
+    column_distribution, correlation_heatmap, missingness_map,
+    target_vs_feature, profile_summary,
+)
+```
+
+Each function returns a Plotly Figure. Render in a notebook:
+
+```python
+fig = confusion_matrix(res.pipeline, exp.X_test, exp.y_test)
+fig.show()
+```
+
+Serialize for an HTTP response:
+
+```python
+fig.to_dict()   # ready to JSON-encode and pass to react-plotly.js
+fig.to_json()   # pre-encoded string
+```
+
+Save a static export:
+
+```python
+fig.write_image("confusion-matrix.png")  # requires `kaleido`
+fig.write_html("confusion-matrix.html")
+```
+
+## SHAP-based plots
+
+`pycaret.plots.feature.shap_summary` and `shap_beeswarm` are soft
+deps on the `shap` package:
+
+```python
+pip install shap          # or: pip install pycaret[explain]
+```
+
+If `shap` isn't installed, those functions raise `ImportError` with
+the install command. The dashboard hides the relevant cards in
+that case.
+
+## What got removed
+
+The 3.x `plot_model(plot="...")` had ~30 plot kinds. Most have direct
+replacements above. Two paths became obsolete:
+
+| 3.x | 4.0 |
+| --- | --- |
+| `plot_model(model, plot="auc")` | `roc_curve(model, X_test, y_test)` |
+| `plot_model(model, plot="confusion_matrix")` | `confusion_matrix(...)` |
+| `plot_model(model, plot="feature")` | `feature_importance(...)` |
+| `plot_model(model, plot="error")` | `prediction_error(...)` |
+| `plot_model(model, plot="vc")` (validation curve) | Removed; sklearn has `validation_curve` directly. |
+| `plot_model(model, plot="manifold")` (t-SNE) | `embedding_2d(model, X, method="tsne")` |
+
+`evaluate_model` (the interactive widget that spawned a tabbed
+matplotlib panel) is also gone — the dashboard's Model Card screen
+replaces it with the same set of plots in HTML/Plotly.

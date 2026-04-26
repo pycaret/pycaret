@@ -1,0 +1,95 @@
+---
+title: "Data preparation"
+description: "Imputation, encoding, and the train/test split."
+section: "Preprocessing"
+order: 1
+---
+
+Data preparation in PyCaret 4.0 is configured via constructor flags on
+the `Experiment` class. There's no `setup()` call to remember — every
+preprocessing knob is named on the constructor, and unknown kwargs are
+rejected loudly.
+
+## Defaults (no flags set)
+
+`Experiment(target=...).fit(data)` runs this chain by default:
+
+1. **Train / test split** — stratified for classification, plain for
+   regression, temporal for time-series. Split fraction is
+   `train_size=0.7`.
+2. **Numeric imputation** — mean of the training column.
+3. **Categorical imputation** — mode of the training column.
+4. **Categorical encoding** — `OrdinalEncoder` (`handle_unknown=
+   "use_encoded_value"`, `unknown_value=-1`).
+5. **Target label-encoding** — only for classification; uses
+   `sklearn.preprocessing.LabelEncoder`.
+
+For unsupervised tasks (clustering, anomaly), there is no train/test
+split — the whole frame is the training set, and the same imputer +
+encoder chain runs on it once.
+
+## Train / test split
+
+```python
+from pycaret.classification import ClassificationExperiment
+
+# Default 70/30 split, seeded by session_id.
+exp = ClassificationExperiment(
+    target="Purchase",
+    train_size=0.7,
+    session_id=42,
+).fit(data)
+
+print(exp.X_train.shape, exp.X_test.shape)  # → (749, 18) (320, 18)
+```
+
+The split is reproducible: same `session_id` + same data → same split.
+For classification, sklearn's `train_test_split(stratify=y)` keeps the
+class proportions stable across the two halves.
+
+## Imputation
+
+Both numeric and categorical missing values are imputed with the
+training column's central tendency by default. There are no extra
+flags — if you need a different strategy, pre-process before passing
+the frame to PyCaret:
+
+```python
+import pandas as pd
+data["age"] = data["age"].fillna(data["age"].median())
+exp = ClassificationExperiment(target="y").fit(data)
+```
+
+This is intentional: PyCaret 4.0 is opinionated about defaults, and
+"impute medianly with a different rule per column" is rare enough that
+we'd rather you do it explicitly than hide it behind a flag.
+
+## Encoding
+
+Categorical columns are detected via `select_dtypes(include="object",
+"category", "bool")` and ordinal-encoded. The same encoder is applied
+at predict-time via the persisted preprocessing pipeline — no need to
+re-encode new data yourself.
+
+## Inspecting the result
+
+After `fit()`, the preprocessed splits are on `exp._fit_state`:
+
+```python
+exp._fit_state["X_transformed"]        # full encoded frame
+exp._fit_state["X_train_transformed"]  # train-only encoded frame
+exp._fit_state["preprocess_pipeline"]  # the sklearn ColumnTransformer
+```
+
+The user-facing `exp.X_train` etc. are the *raw* DataFrames (before
+encoding) — useful when you want to look at human-readable values in
+diagnostic plots.
+
+## Where to next
+
+- [Scale and transform](/docs/preprocessing/scale-and-transform/) for
+  `normalize=True` and `transformation=True`.
+- [Feature engineering](/docs/preprocessing/feature-engineering/) for
+  outlier removal.
+- [Feature selection](/docs/preprocessing/feature-selection/) for
+  dropping low-importance features.

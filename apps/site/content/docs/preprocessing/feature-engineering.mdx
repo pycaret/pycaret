@@ -1,0 +1,82 @@
+---
+title: "Feature engineering"
+description: "Outlier removal."
+section: "Preprocessing"
+order: 3
+---
+
+PyCaret 4.0 ships one feature-engineering knob on the constructor:
+`remove_outliers=True`. Other 3.x knobs (polynomial features, group
+features, bin numeric features, trigonometric features, …) were
+deemed too domain-specific to keep as built-ins — do those upstream
+in your preprocessing code if you need them.
+
+## `remove_outliers=True`
+
+Fits an `IsolationForest(contamination=0.05, random_state=session_id)`
+on the **transformed training set**, drops the top 5% most anomalous
+rows from `X_train` / `y_train` / `X_train_transformed` /
+`y_train_transformed`, and **leaves the test set untouched**.
+
+```python
+from pycaret.classification import ClassificationExperiment
+
+exp = ClassificationExperiment(
+    target="Purchase",
+    remove_outliers=True,
+).fit(data)
+
+print(exp._fit_state["outliers_dropped"])  # → e.g. 37
+print(exp.X_train.shape)                   # 5% smaller than without the flag
+```
+
+The fitted IsolationForest is **not** kept around — it's used once at
+fit time to filter the training rows, then discarded. The persisted
+preprocessing pipeline doesn't apply outlier filtering at predict time
+(your test / new data goes through unfiltered, by design).
+
+### Why post-encoding, pre-scaling?
+
+`IsolationForest` works on numeric input. Running it on raw `X_train`
+would fail on categorical columns. Running on the imputed + ordinal-
+encoded train set works regardless of dtype. Running it before
+`PowerTransformer` / `StandardScaler` would mean the contamination
+threshold is computed on differently-distributed data than the
+estimator sees — so the order is:
+
+```
+impute → ordinal-encode → IsolationForest → power → scale
+```
+
+### Why not on the test set?
+
+You want to evaluate on the data that mirrors production. Production
+data isn't outlier-filtered — neither should your holdout be.
+
+## Combining with other flags
+
+`remove_outliers` composes with everything else:
+
+```python
+exp = ClassificationExperiment(
+    target="Purchase",
+    normalize=True,
+    transformation=True,
+    remove_outliers=True,
+    feature_selection=True,
+).fit(data)
+```
+
+Order is fixed: outliers are filtered first (so feature selection sees
+the cleaner distribution), then power transform, then scaling, then
+feature selection.
+
+## Tuning the contamination
+
+Set the `contamination` differently from the default 0.05? It's not
+exposed as a flag yet — open an issue if you need it. The current
+0.05 matches the legacy `outliers_threshold=0.05` default, which is
+"throw out the obvious 5% of weird rows."
+
+If you need finer control, fit your own `IsolationForest` upstream
+and pass the cleaned frame to `Experiment.fit()`.

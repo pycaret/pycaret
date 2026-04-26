@@ -1,0 +1,103 @@
+---
+title: "Modules"
+description: "The five task modules and what each one is for."
+section: "Getting started"
+order: 4
+---
+
+PyCaret 4.0 ships five task modules. Each one exposes an `Experiment`
+class that drives the same verb surface — `fit`, `create_model`,
+`compare_models`, `tune_model`, `predict_model`, `finalize_model`,
+`save_model`, `load_model`. The differences live in what data each
+module accepts and which estimators its registry contains.
+
+| Module | Class | Use when… |
+| ------ | ----- | --------- |
+| `pycaret.classification` | `ClassificationExperiment` | Target is categorical (binary or multiclass). |
+| `pycaret.regression` | `RegressionExperiment` | Target is continuous. |
+| `pycaret.clustering` | `ClusteringExperiment` | No target — group rows by similarity. |
+| `pycaret.anomaly` | `AnomalyExperiment` | No target — flag outliers. |
+| `pycaret.time_series` | `TimeSeriesExperiment` | Forecasting from a time-indexed Series. |
+
+You can also import all of them from `pycaret.tasks`:
+
+```python
+from pycaret.tasks import (
+    ClassificationExperiment,
+    RegressionExperiment,
+    ClusteringExperiment,
+    AnomalyExperiment,
+    TimeSeriesExperiment,
+)
+```
+
+## Classification
+
+Predicts a categorical target. Built-in registry includes
+LogisticRegression, RandomForest, ExtraTrees, GBM (sklearn),
+LightGBM, XGBoost, CatBoost (when installed), KNN, SVM, NaiveBayes,
+DecisionTree, AdaBoost, RidgeClassifier, LDA, QDA, MLP, and a few
+more. Multi-class is auto-detected from the target.
+
+Default metrics: Accuracy, AUC, Recall, Precision, F1, Kappa, MCC.
+
+## Regression
+
+Predicts a continuous target. Registry covers Linear/Ridge/Lasso,
+ElasticNet, Bayesian Ridge, OMP, PassiveAggressive, KNeighbors,
+DecisionTree, RandomForest, ExtraTrees, AdaBoost, GBM, MLP,
+LightGBM, XGBoost, CatBoost, SVR, KernelRidge.
+
+Default metrics: MAE, MSE, RMSE, R², RMSLE, MAPE.
+
+## Clustering
+
+No target. Registry: KMeans, AffinityPropagation, MeanShift, Spectral,
+Agglomerative, DBSCAN, OPTICS, Birch, KMode (when `kmodes` is installed),
+HDBSCAN (when installed).
+
+Default metrics: Silhouette, Calinski-Harabasz, Davies-Bouldin,
+Homogeneity, Rand, Completeness.
+
+`assign_model(pipeline)` returns a copy of the input with a `Cluster`
+column attached — a one-liner for handing labelled data back to
+downstream consumers.
+
+## Anomaly detection
+
+No target. Registry uses `pyod` adapters: IForest, KNN, COPOD, ECOD,
+LOF, PCA, MCD, ABOD, CBLOF, HBOS, OCSVM, SOS, SOD.
+
+`assign_model(pipeline)` returns a copy of the input with `Anomaly`
+(0/1) + `Anomaly_Score` columns attached.
+
+## Time-series
+
+Forecasting on a univariate Series with a regular DatetimeIndex /
+PeriodIndex. Built on `sktime`. Registry covers `naive`, `snaive`,
+`polytrend`, `arima`, `auto_arima`, `exp_smooth`, `ets`, `theta`,
+`stlf`, `croston`, plus reduced-regressor adapters
+(`lr_cds_dt`, `rf_cds_dt`, `xgboost_cds_dt`, …).
+
+The TS module differs from the others in two important ways:
+
+1. **No train/test split via `train_size`** — instead, the holdout is
+   the last `fh` periods (the forecast horizon). Pass `fh=12` for
+   "predict the next 12 periods".
+2. **Seasonality is auto-detected** from the index frequency via
+   Fourier autocorrelation. Pass `seasonal_period=` to override.
+
+Default metrics: MASE, RMSSE, MAE, RMSE, MAPE, SMAPE, R², COVERAGE.
+
+## Choosing a module
+
+If you have a target column, you're in classification or regression —
+the dtype of the target picks between them (categorical → classification;
+numeric → regression).
+
+If you don't have a target, you're in clustering or anomaly — pick by
+the question you're asking ("group these" → clustering; "which are
+weird" → anomaly).
+
+If your data is a time series, use `TimeSeriesExperiment` regardless
+of whether you'd otherwise call it regression.

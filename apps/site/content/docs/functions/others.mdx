@@ -1,0 +1,134 @@
+---
+title: "Other functions"
+description: "pull, models, get_metrics, add_metric, get_config, set_config."
+section: "Functions"
+order: 6
+---
+
+The verbs that don't fit neatly into Initialize / Train / Optimize /
+Analyze / Deploy.
+
+## `pull()`
+
+Returns the most recent metrics DataFrame. Every metrics-emitting
+verb (`create_model`, `tune_model`, `compare_models`,
+`ensemble_model`, `blend_models`, `stack_models`, `calibrate_model`,
+`finalize_model`, `predict_model`) updates this slot before
+returning.
+
+```python
+exp.create_model("rf")
+metrics = exp.pull()  # DataFrame with Fold/Mean/Std rows
+
+exp.compare_models()
+leaderboard = exp.pull()  # the leaderboard
+```
+
+In 3.x, `pull()` was the *only* way to get the metrics. In 4.0, every
+result object already carries them — so you rarely need `pull()`
+unless you want the most recent one without hanging onto the result.
+
+## `models(internal=False)`
+
+Returns a DataFrame describing every model in the registry.
+
+```python
+exp.models()
+#               Name             Reference            Turbo
+# ID
+# lr            Logistic Regr.   sklearn.linear...    True
+# knn           K Neighbors      sklearn.neighbo...   True
+# nb            Naive Bayes      sklearn.naive_b...   True
+# ...
+```
+
+Pass `internal=True` for the full container shape (Class, Equality,
+Args, …) — useful when you're inspecting the registry programmatically.
+
+For time-series, the list is filtered to entries whose `model_type`
+is in `TSModelTypes` — so `ensemble_forecaster` (which can't be
+constructed in isolation) is hidden.
+
+## `get_metrics()`
+
+Returns a DataFrame describing every metric in the registry.
+
+```python
+exp.get_metrics()
+#         Name                          Display Name   Score Function   ...
+# ID
+# acc     Accuracy                      Accuracy       sklearn.metr...  ...
+# auc     AUC                           AUC            sklearn.metr...  ...
+# recall  Recall                        Recall         sklearn.metr...  ...
+# ...
+```
+
+Custom metrics added via `add_metric` show up here too.
+
+## `add_metric(id, name, score_func, ...)`
+
+Registers a custom metric. The metric runs in CV (across every
+`create_model` call) and the leaderboard.
+
+```python
+from sklearn.metrics import balanced_accuracy_score
+
+container = exp.add_metric(
+    "balanced",
+    "Balanced Accuracy",
+    balanced_accuracy_score,
+    greater_is_better=True,
+)
+
+# The next compare_models / create_model includes "Balanced Accuracy"
+# in the leaderboard / fold metrics.
+exp.compare_models()
+```
+
+For metrics that need extra args (e.g. `sample_weight`, `pos_label`),
+pass them via `args={...}` and they're forwarded to every call.
+
+For probabilistic metrics, set `target="pred_proba"` so the metric
+receives `predict_proba` output instead of `predict`.
+
+Currently supported on classification + regression. Clustering /
+anomaly / time-series will gain it in a future session — for now,
+pre-compute and add by hand if needed.
+
+## `remove_metric(name_or_id)`
+
+Drops a metric from the registry. Subsequent verbs won't compute it.
+
+```python
+exp.remove_metric("kappa")
+exp.compare_models()  # leaderboard no longer has Kappa
+```
+
+## `get_config(key)` / `set_config(key, value)`
+
+Read or mutate a slot on `exp._fit_state`. Tightly scoped: only a
+small allowlist is settable (`session_id`, `n_jobs`, `verbose`,
+`fold`, `log_experiment`).
+
+```python
+exp.get_config("X_train")    # the train DataFrame
+exp.get_config("session_id") # the random seed
+exp.set_config("n_jobs", 4)  # adjust parallelism for subsequent verbs
+```
+
+The 3.x `set_config` accepted any internal slot. In 4.0 the surface
+is intentionally narrow — most "config" lives on the constructor
+where it's checked at fit time.
+
+## What's removed
+
+| 3.x | 4.0 |
+| --- | --- |
+| `automl(optimize=...)` | Use `compare_models(n_select=N).best` then `tune_model(best)`. |
+| `get_leaderboard()` | `compare_models(...).leaderboard` |
+| `get_logs()` | `exp.events` (when `log_experiment=True` was set on the constructor) |
+| `evaluate_model(model)` | The dashboard's Model Card screen, or call individual `pycaret.plots.*` functions. |
+| `interpret_model(model)` | `import shap; shap.Explainer(pipeline.steps[-1][1])(X_test)` |
+| `check_fairness(model)` | Not in 4.0. Use [Fairlearn](https://fairlearn.org/) or [aif360](https://aif360.res.ibm.com/) directly. |
+| `check_drift(...)` | The dashboard's Drift Dashboard, or compute with [evidently](https://www.evidentlyai.com/). |
+| `dashboard(model)` | Replaced by the bundled React dashboard in `apps/web/`. |

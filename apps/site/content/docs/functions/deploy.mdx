@@ -1,0 +1,128 @@
+---
+title: "Deploy"
+description: "finalize_model, save_model, load_model, and the pycaret-server deployment layer."
+section: "Functions"
+order: 5
+---
+
+Deployment in PyCaret 4.0 takes one of three shapes:
+
+1. **Just persist** — `save_model` to disk, `load_model` later.
+2. **Self-host** — drop the saved Pipeline behind a FastAPI route.
+3. **Use `pycaret-server`** — the bundled deployment service that
+   ships with the dashboard.
+
+## `finalize_model(estimator)`
+
+Refits the input estimator on the **full** dataset (train + test
+combined). Use it as the last step before deploying — the holdout
+has already done its job, so squeeze it back into training.
+
+```python
+final = exp.finalize_model(tuned.pipeline)
+final.pipeline   # sklearn Pipeline fit on all available data
+```
+
+The input is left untouched — `finalize_model` returns a fresh
+Pipeline. If you call `predict` on the original after finalizing,
+you'll still get the train-only fit's predictions.
+
+For time-series, "full" means `y_train + y_test` concatenated. The
+finalized model can then forecast `fh` periods past the actual
+end-of-data.
+
+## `save_model(estimator, name)`
+
+Joblib-pickles the Pipeline to `<name>.pkl` in the current directory:
+
+```python
+exp.save_model(final.pipeline, "production-juice-classifier")
+# → production-juice-classifier.pkl
+```
+
+The file contains the full sklearn / sktime `Pipeline` — preprocessor
++ trained model — so anyone with sklearn installed can `joblib.load`
+it and call `.predict(X)`.
+
+## `load_model(name)`
+
+Loads a previously-saved Pipeline:
+
+```python
+from pycaret.classification import ClassificationExperiment
+exp = ClassificationExperiment(target="Purchase")
+pipeline = exp.load_model("production-juice-classifier")
+predictions = pipeline.predict(new_data)
+```
+
+You don't need the original `Experiment` to use a saved Pipeline —
+it's a real sklearn Pipeline. This works:
+
+```python
+import joblib
+pipeline = joblib.load("production-juice-classifier.pkl")
+predictions = pipeline.predict(new_data)
+```
+
+## Self-host behind FastAPI
+
+The simplest production deployment is twenty lines:
+
+```python
+from fastapi import FastAPI
+import pandas as pd
+from joblib import load
+
+pipeline = load("production-juice-classifier.pkl")
+app = FastAPI()
+
+@app.post("/predict")
+def predict(rows: list[dict]):
+    df = pd.DataFrame(rows)
+    return {"predictions": pipeline.predict(df).tolist()}
+```
+
+Run it:
+
+```bash
+uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+That's it. No PyCaret-specific deployment tooling required.
+
+## `pycaret-server`
+
+The optional `pycaret-server` (in `services/api/`) wraps every saved
+Pipeline behind a managed deployment with:
+
+- **Workspace-scoped pipeline registry** — promote a fitted Pipeline
+  to a named registry entry.
+- **HTTP endpoint** — `/api/v1/deployments/{slug}/predict` accepts
+  rows and returns predictions, with rolling p50 / p95 latency
+  tracking.
+- **Audit log** — every prediction call is recorded.
+- **Drift monitoring** — periodic comparison of incoming feature
+  distributions against the training baseline.
+
+Install it:
+
+```bash
+pip install "pycaret[dashboard]"
+pycaret-server          # starts the FastAPI app
+```
+
+Then use the dashboard or the HTTP API to promote and deploy.
+
+## What's removed
+
+| 3.x | 4.0 |
+| --- | --- |
+| `deploy_model()` (S3 / Azure / GCS one-liners) | Removed. Save the Pipeline locally, then upload via your cloud provider's normal tooling. |
+| `create_api()` (FastAPI scaffold generator) | Removed. The 20-line snippet above is the canonical replacement. |
+| `create_docker()` | Removed. Use a normal Dockerfile. |
+| `create_app()` (Gradio scaffold) | Removed. Pair with Gradio yourself if you want it. |
+| `convert_model()` (ONNX / Java / etc.) | Removed. ONNX conversion lives upstream now (`skl2onnx`). |
+
+The kill list philosophy: PyCaret should help you build a model. Your
+deployment infrastructure (cloud, container, mobile, edge) is your
+infrastructure. We don't try to be all of those at once anymore.

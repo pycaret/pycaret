@@ -1,0 +1,103 @@
+---
+title: "Initialize"
+description: "fit() — the constructor + setup pipeline that 3.x called setup()."
+section: "Functions"
+order: 1
+---
+
+## `Experiment(...).fit(data)`
+
+The 3.x `setup()` function is gone. Every preprocessing knob now
+lives on the `Experiment` constructor, and `fit(data)` actually
+runs the pipeline.
+
+```python
+from pycaret.classification import ClassificationExperiment
+
+exp = ClassificationExperiment(
+    target="Purchase",
+    session_id=42,
+    train_size=0.7,
+    fold=10,
+    normalize=True,
+    transformation=True,
+).fit(data)
+```
+
+After `fit()`, the experiment is ready for every other verb. State is
+stored on `exp._fit_state` (see
+[Data preparation](/docs/preprocessing/data-preparation/)).
+
+## What `fit()` does
+
+1. **Coerces input** — DataFrame for tabular tasks; Series for univariate
+   time-series.
+2. **Builds the preprocessing pipeline** — imputer + encoder
+   (always); plus optional power transform, scaler, outlier filter,
+   feature selector.
+3. **Splits train / test** — stratified for classification, plain for
+   regression, temporal for time-series, none for clustering /
+   anomaly.
+4. **Builds the fold generator** — StratifiedKFold (clf), KFold
+   (reg), or sktime `ExpandingWindowSplitter` (TS).
+5. **Builds the model + metric registries** — task-specific dicts of
+   estimators and scorers.
+6. **Stores everything** in `exp._fit_state`.
+
+After this, calling `create_model("rf")` reads from the registry,
+fits an estimator on the (transformed) train set, runs CV via the
+fold generator, and returns a `CreateResult`.
+
+## Return value
+
+`fit()` returns `self`, so the typical pattern is:
+
+```python
+exp = ClassificationExperiment(target="Purchase").fit(data)
+```
+
+You can also call it later if you want to instantiate first and fit
+on a different dataset, or compose with an environment:
+
+```python
+exp = ClassificationExperiment(target="Purchase", session_id=42)
+# … some other setup …
+exp = exp.fit(data)
+```
+
+## sklearn-compatible
+
+`Experiment` is a sklearn `BaseEstimator`. After `fit()`, sklearn's
+`__sklearn_is_fitted__` returns True; tools that introspect sklearn
+estimators (joblib, model registries, deployment frameworks) will
+treat your experiment as fitted.
+
+## Different signatures for different tasks
+
+The constructor signature varies by task:
+
+```python
+# Tabular supervised: target is required, train_size + fold matter.
+ClassificationExperiment(target=..., train_size=..., fold=...).fit(data)
+RegressionExperiment(target=..., train_size=..., fold=...).fit(data)
+
+# Tabular unsupervised: no target, no train/test split.
+ClusteringExperiment().fit(data)
+AnomalyExperiment().fit(data)
+
+# Time-series: fh + seasonal_period instead of target.
+TimeSeriesExperiment(fh=12, seasonal_period=12).fit(univariate_series)
+```
+
+## What's removed
+
+| 3.x | 4.0 |
+| --- | --- |
+| `setup(data, target=...)` | `Experiment(target=...).fit(data)` |
+| `silent=True` | Removed (no UI side effects). |
+| `html=False` | Removed (no UI side effects). |
+| `experiment_name`, `log_experiment` | `log_experiment` exists but its semantics changed — it installs a `MemoryLogger` for engine events, not an MLflow run. |
+| Module-level `setup()` | Removed entirely. There's no module-level functional API in 4.0. |
+
+See [All setup parameters](/docs/preprocessing/setup-parameters/) for
+the full constructor reference.

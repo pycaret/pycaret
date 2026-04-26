@@ -1,0 +1,89 @@
+---
+title: "Feature selection"
+description: "Drop low-importance features automatically."
+section: "Preprocessing"
+order: 4
+---
+
+`feature_selection=True` adds a `SelectFromModel` step to the
+preprocessing pipeline. It uses an `ExtraTrees{Classifier,Regressor}`
+(100 estimators) to score features, then keeps the ones with
+**above-median importance**.
+
+```python
+from pycaret.classification import ClassificationExperiment
+
+exp = ClassificationExperiment(
+    target="Purchase",
+    feature_selection=True,
+).fit(data)
+
+print(exp._fit_state["selected_features"])   # → ['LoyalCH', 'PriceDiff', ...]
+print(exp._fit_state["X_train_transformed"].shape)  # roughly half the original cols
+```
+
+The selector is **appended to the preprocessing pipeline**, so
+predict-time data flows through it automatically — your saved model
+applies the same column drop on every new request.
+
+## What it actually does
+
+1. Fits `ExtraTreesClassifier(n_estimators=100, random_state=
+   session_id)` (or the regressor variant) on the encoded training
+   set.
+2. Reads `feature_importances_`.
+3. Keeps every feature whose importance is ≥ the median.
+4. Persists the selector as the final step of `preprocess_pipeline`.
+
+So with `feature_selection=True`, the final pipeline shape is:
+
+```
+ColumnTransformer(numerical_pipeline + categorical_pipeline)  →  SelectFromModel
+```
+
+…and `predict_model` applies both steps in sequence on new data.
+
+## Raw vs. transformed splits
+
+The user-facing `exp.X_train` / `exp.X_test` keep **all** columns —
+useful for diagnostic plots that want feature names. The
+**transformed** splits (`exp._fit_state["X_train_transformed"]` etc.)
+contain only the selected features.
+
+```python
+exp.X_train.shape                                 # → (749, 18)
+exp._fit_state["X_train_transformed"].shape      # → (749, 9)
+```
+
+Models train on the transformed splits. Plots and human-facing
+inspection go off the raw splits.
+
+## When it's helpful
+
+- High-dimensional categorical data after one-hot expansion (though
+  PyCaret's default ordinal encoder doesn't expand, this matters
+  when you've expanded upstream).
+- Datasets where you've thrown in features speculatively and want a
+  quick sanity check on which ones the model finds useful.
+- Production pipelines where prediction latency matters — fewer
+  features → faster inference.
+
+## When it's not
+
+- Small numbers of carefully-curated features. The median threshold
+  always drops half of them, regardless of whether they're all
+  useful.
+- Small datasets where the importance estimates are noisy.
+- Cases where you want to keep features for interpretability
+  reasons even if the model can't use them.
+
+For finer control (different threshold, different estimator), do the
+selection upstream and pass the pruned frame to `Experiment.fit()`.
+
+## Combining with `remove_outliers`
+
+When both are on, outliers are filtered **before** feature selection
+runs — so the selector sees the cleaned distribution. This is a
+small but real quality bump: tree-based importances can be heavily
+distorted by extreme values, and removing them first gives a more
+trustworthy ranking.

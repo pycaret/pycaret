@@ -1,0 +1,140 @@
+---
+title: "Optimize"
+description: "tune_model, ensemble_model, blend_models, stack_models, calibrate_model."
+section: "Functions"
+order: 3
+---
+
+Five verbs sharpen an already-trained model.
+
+## `tune_model(estimator, *, n_iter=10, optimize=None, search_algorithm="random")`
+
+Hyperparameter search. Wraps `RandomizedSearchCV` (default) or
+`GridSearchCV` over the registry container's `tune_grid` /
+`tune_distributions`.
+
+```python
+created = exp.create_model("rf")
+tuned = exp.tune_model(
+    created.pipeline,
+    n_iter=20,
+    optimize="AUC",                # or any metric in the registry
+    search_algorithm="random",     # "grid" for exhaustive
+    custom_grid={"max_depth": [4, 6, 8]},  # override the registry grid
+    choose_better=True,            # if tuned < input, return input
+)
+```
+
+Returns a `TuneResult`:
+
+```python
+tuned.pipeline      # sklearn Pipeline with the best params, refit
+tuned.best_params   # dict (with pipeline-prefix stripped)
+tuned.search        # the RandomizedSearchCV / GridSearchCV instance
+tuned.cv_results    # the search.cv_results_ as a DataFrame
+tuned.metrics       # CV metrics for the chosen model
+```
+
+### `choose_better`
+
+When True (default), `tune_model` re-runs `create_model` on the
+input estimator with its original hyperparameters and compares the
+two on `optimize`. If the original wins, you get the original back.
+Prevents tuning from accidentally degrading a well-chosen baseline.
+
+### Custom grids
+
+If the registry grid is too narrow:
+
+```python
+tuned = exp.tune_model(
+    created.pipeline,
+    custom_grid={
+        "n_estimators": [100, 300, 500, 1000],
+        "max_features": ["sqrt", 0.5, 0.7, 1.0],
+    },
+    search_algorithm="grid",  # custom_grid is usually a finite list
+)
+```
+
+## `ensemble_model(estimator, method="Bagging", n_estimators=10)`
+
+Wraps the input estimator in an sklearn `BaggingClassifier` /
+`AdaBoostClassifier` / `BaggingRegressor` etc.:
+
+```python
+bagged = exp.ensemble_model(created.pipeline, method="Bagging", n_estimators=20)
+boosted = exp.ensemble_model(created.pipeline, method="Boosting")
+```
+
+Returns an `EnsembleResult` with a refit `pipeline` and CV `metrics`.
+
+Supervised tasks only.
+
+## `blend_models(estimators, method="auto", weights=None)`
+
+Voting ensemble across multiple fitted estimators:
+
+```python
+top3 = exp.compare_models(n_select=3).models
+blended = exp.blend_models(
+    top3,
+    method="soft",       # "hard" (majority) | "soft" (mean proba)
+    weights=[2, 1, 1],   # optional per-estimator weights
+)
+```
+
+Soft voting requires every estimator to expose `predict_proba` (or
+`decision_function`).
+
+## `stack_models(estimators, meta_model=None)`
+
+Stacking ensemble — out-of-fold predictions from base estimators feed
+a meta-estimator:
+
+```python
+top3 = exp.compare_models(n_select=3).models
+stacked = exp.stack_models(top3, meta_model=None)  # default meta = LogisticRegression
+```
+
+`meta_model=None` defaults to `LogisticRegression` for classification
+or `LinearRegression` for regression. Pass any sklearn-compatible
+estimator if you want something else.
+
+## `calibrate_model(estimator, method="sigmoid")`
+
+Wraps the input in `CalibratedClassifierCV`. Useful when downstream
+consumers care about well-calibrated probabilities (decision
+thresholds, expected-loss calculations).
+
+```python
+calibrated = exp.calibrate_model(created.pipeline, method="sigmoid")
+# or method="isotonic" for non-parametric calibration
+```
+
+Classification only. Inspect the result via the calibration plot:
+
+```python
+from pycaret.plots.classification import calibration_curve
+calibration_curve(calibrated.pipeline, exp.X_test, exp.y_test).show()
+```
+
+## Putting them together
+
+A typical "tune + ensemble" workflow:
+
+```python
+top3 = exp.compare_models(n_select=3).models
+tuned = [exp.tune_model(m, n_iter=20).pipeline for m in top3]
+blended = exp.blend_models(tuned, method="soft")
+final = exp.finalize_model(blended.pipeline)
+```
+
+## Time-series
+
+`tune_model` exists for TS (uses sktime's
+`ForecastingGridSearchCV` / `ForecastingRandomizedSearchCV`).
+`ensemble_model` / `blend_models` / `stack_models` raise
+`NotImplementedError` for TS — those meta-estimators don't apply
+cleanly to forecasting. Use sktime's `EnsembleForecaster` directly
+if you need them.

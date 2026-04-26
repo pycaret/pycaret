@@ -1,0 +1,138 @@
+---
+title: "FAQs"
+description: "Common questions about PyCaret 4.0."
+section: "Resources"
+order: 2
+---
+
+## Is PyCaret 4.0 backward-compatible with 3.x?
+
+No. The functional API (`setup()`, `compare_models()`, … as
+module-level calls) was removed. The OOP API (`ClassificationExperiment`
+etc.) replaces it entirely. See [Migrate from
+3.x](/docs/guides/migrating-from-3-x/) for the full diff.
+
+If you have existing 3.x code, the cleanest path is: **pin to 3.x** in
+that codebase and start fresh on 4.0 for new work. Mixing is not
+supported.
+
+## What Python versions does 4.0 support?
+
+3.11, 3.12, 3.13. We dropped 3.7-3.10 because they're either EOL or
+about to be. The codebase uses Python 3.11+ syntax (PEP 604 union
+types, native generics) without polyfills.
+
+## What sklearn version?
+
+≥ 1.7. The 4.0 engine uses APIs that landed in sklearn 1.6+
+(`root_mean_squared_error`, the new `set_output` semantics, `_USE_FLOAT32`
+internals).
+
+## Do I have to install the dashboard / backend?
+
+No. The core engine (`pip install pycaret`) is everything you need
+for notebook / script work. The dashboard + backend are opt-in via
+`pip install "pycaret[dashboard]"`.
+
+## How do I do `<thing-from-3.x-that-no-longer-exists>`?
+
+Skim the **What's removed** section on each function page —
+[Initialize](/docs/functions/initialize/),
+[Train](/docs/functions/train/),
+[Optimize](/docs/functions/optimize/),
+[Analyze](/docs/functions/analyze/),
+[Deploy](/docs/functions/deploy/),
+[Other functions](/docs/functions/others/).
+
+Most removed verbs have direct replacements (a sklearn API, a
+dedicated library, or a constructor parameter). If you can't find the
+replacement, [open an issue](https://github.com/pycaret/pycaret/issues)
+and we'll either restore the feature or document the workaround.
+
+## Why no `setup_kwargs` escape hatch?
+
+3.x's `setup()` accepted ~100 keyword arguments. Many were
+undocumented, several were broken, and the long tail let users
+silently pass typos. 4.0 raises `ConfigurationError` on any unknown
+kwarg — explicit failures are better than silently-ignored config.
+
+If you need a knob we don't have, file an issue. Adding it as a
+first-class constructor parameter is two lines of code.
+
+## Can I use my own preprocessing?
+
+Yes. Pass `preprocess=False` to skip the built-in chain entirely:
+
+```python
+exp = ClassificationExperiment(target="y", preprocess=False).fit(already_clean_data)
+```
+
+You're then responsible for the train/test split's preprocessing
+parity — sklearn fit-on-train-then-transform-test discipline applies.
+
+## How do I add a custom model?
+
+Pass it to `create_model` directly:
+
+```python
+from your_lib import YourClassifier
+res = exp.create_model(YourClassifier(some_param=42))
+```
+
+The model is fitted, CV runs against it, and the resulting Pipeline
+is a real sklearn Pipeline. To make it visible to `compare_models`,
+register a container (see the source under
+`pycaret/containers/models/`); we'll write a more thorough plugin
+guide once the API stabilizes.
+
+## How do I add a custom metric?
+
+`exp.add_metric(id, name, score_func)`. See [Other
+functions](/docs/functions/others/) for the full signature.
+
+## Where did `evaluate_model` go?
+
+Replaced by the dashboard's **Model Card** screen — same set of
+plots, but rendered in HTML/Plotly instead of an ipywidgets panel.
+
+If you want a notebook-only equivalent, the individual functions
+under `pycaret.plots.classification` / `pycaret.plots.regression`
+return `plotly.graph_objects.Figure` objects you can `.show()`.
+
+## Where did the gitbook docs go?
+
+Right here — you're reading them. The 3.x gitbook (`pycaret.gitbook.io`)
+is frozen and won't be updated. Everything from 4.0 onward lives in
+this repo's `apps/site/` directory and is auto-deployed to
+pycaret.org on every push.
+
+## How do agents maintain the docs?
+
+See [`apps/site/AGENTS.md`](https://github.com/pycaret/pycaret/blob/main/apps/site/AGENTS.md).
+Short version: drop MDX files in `content/docs/<section>/`, append
+session blocks to `docs/revamp/release_notes_pycaret4.md`, edit the
+repo-root `CHANGELOG.md`. Everything else is regenerated on each CI
+build.
+
+## Is there a paid version?
+
+No. PyCaret is MIT-licensed open source. There's no paid tier, no
+commercial license, no enterprise plan. Maintenance is funded by
+community contributions and sponsorship — not by gating features.
+
+## How do I cite PyCaret in a paper?
+
+```bibtex
+@misc{pycaret,
+  author       = {Moez Ali and contributors},
+  title        = {PyCaret: An open-source, low-code machine learning library in Python},
+  year         = {2024},
+  howpublished = {\url{https://github.com/pycaret/pycaret}},
+}
+```
+
+## Where to ask for help?
+
+- [GitHub Discussions](https://github.com/pycaret/pycaret/discussions) — Q&A, feature ideas.
+- [GitHub Issues](https://github.com/pycaret/pycaret/issues) — bug reports.
+- [LinkedIn](https://www.linkedin.com/company/pycaret/) — announcements.

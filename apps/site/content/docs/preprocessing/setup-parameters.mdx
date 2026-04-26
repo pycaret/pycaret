@@ -1,0 +1,83 @@
+---
+title: "All setup parameters"
+description: "Every constructor parameter on every Experiment class."
+section: "Preprocessing"
+order: 5
+---
+
+Every preprocessing knob in PyCaret 4.0 is a constructor parameter on
+the `Experiment` class. This page is the one-stop reference.
+
+## Common to every task
+
+These appear on `ClassificationExperiment`, `RegressionExperiment`,
+`ClusteringExperiment`, `AnomalyExperiment`, and `TimeSeriesExperiment`:
+
+| Parameter | Type | Default | Notes |
+| --------- | ---- | ------- | ----- |
+| `session_id` | `int \| None` | `None` | Random seed for splits, fold generators, and any randomized estimators. |
+| `n_jobs` | `int` | `-1` | Parallelism for sklearn / pyod / sktime where supported. |
+| `use_gpu` | `bool` | `False` | When True, set `gpu_param='force'` on the model registry context — XGBoost / LightGBM / cuML pick it up. |
+| `logger` | `BaseLogger \| None` | `None` | Inject your own logger to capture engine events. Defaults to `NullLogger()` (silent). |
+| `log_experiment` | `bool` | `False` | If True and `logger=None`, install a `MemoryLogger` that records events on `experiment.events`. |
+| `verbose` | `bool` | `False` | Reserved for future progress hooks. Currently a no-op. |
+
+## Supervised tasks (classification + regression)
+
+| Parameter | Type | Default | Notes |
+| --------- | ---- | ------- | ----- |
+| `target` | `str` | required | Name of the target column. |
+| `train_size` | `float` | `0.7` | Proportion in the train split. The rest is the holdout. |
+| `fold` | `int` | `10` | CV folds (StratifiedKFold for clf, KFold for reg). |
+| `fold_strategy` | `str \| BaseCrossValidator` | `"stratifiedkfold"` for clf, `"kfold"` for reg | Pass a sklearn cross-validator for full custom control. |
+| `preprocess` | `bool` | `True` | If False, skips imputation + encoding entirely. Use only for already-clean numeric data. |
+| `normalize` | `bool` | `False` | StandardScaler on numerics. |
+| `transformation` | `bool` | `False` | PowerTransformer (Yeo-Johnson) on numerics. |
+| `remove_outliers` | `bool` | `False` | IsolationForest filter on the train set. |
+| `feature_selection` | `bool` | `False` | SelectFromModel(median) using ExtraTrees. |
+
+## Clustering / anomaly
+
+| Parameter | Type | Default | Notes |
+| --------- | ---- | ------- | ----- |
+| `preprocess` | `bool` | `True` | Same as supervised — gates the impute + encode chain. |
+| `normalize` | `bool` | `False` | Often a good idea for distance-based clusterers. |
+| `transformation` | `bool` | `False` | Yeo-Johnson on numerics. |
+
+`remove_outliers` and `feature_selection` aren't supported yet on
+unsupervised tasks. If you set them post-init, the experiment falls
+back to legacy behavior (which raises in 4.0).
+
+## Time-series
+
+| Parameter | Type | Default | Notes |
+| --------- | ---- | ------- | ----- |
+| `target` | `str \| None` | `None` | Optional for univariate Series input. |
+| `fh` | `int \| List[int] \| ForecastingHorizon` | `1` | Forecast horizon — number of periods to predict. |
+| `seasonal_period` | `int \| str \| None` | `None` (auto-detect) | Override the auto-detected seasonal period. |
+| `fold` | `int` | `3` | Number of CV folds. |
+| `fold_strategy` | `"expanding" \| "sliding" \| splitter` | `"expanding"` | sktime splitter or one of the strings. |
+
+## What was removed in 4.0
+
+If you were using these in 3.x, here's where they went:
+
+| 3.x parameter | 4.0 |
+| ------------- | --- |
+| `numeric_imputation_value` | Removed; imputation is mean / mode only. Pre-process if you need different values. |
+| `categorical_imputation` | Removed; mode-imputation is hardcoded. |
+| `encoding_method` | Removed; ordinal encoding is the only option. |
+| `polynomial_features`, `polynomial_degree` | Removed. |
+| `group_features` | Removed. |
+| `ignore_features` | Removed. Drop the column upstream. |
+| `bin_numeric_features` | Removed. |
+| `combine_rare_levels` | Removed. |
+| `outliers_threshold` | Hardcoded at 0.05 (no parameter yet). |
+| `pca`, `pca_method`, `pca_components` | Removed. Pre-process if needed. |
+| `silent`, `verbose`, `html`, `experiment_custom_tags`, `log_plots`, `log_data`, `log_profile` | Removed. The 4.0 logger replaces these. |
+| `setup_kwargs` (and any escape-hatch kwargs) | Raise `ConfigurationError` on `fit()`. |
+
+If you need a removed parameter, [open an
+issue](https://github.com/pycaret/pycaret/issues) — we'd rather bring
+it back as a first-class constructor parameter than offer a
+configuration escape hatch.

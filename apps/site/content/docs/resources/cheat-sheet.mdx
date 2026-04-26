@@ -1,0 +1,143 @@
+---
+title: "Cheat sheet"
+description: "Every PyCaret 4.0 verb, on one page."
+section: "Resources"
+order: 1
+---
+
+## Setup
+
+```python
+from pycaret.classification import ClassificationExperiment
+from pycaret.regression import RegressionExperiment
+from pycaret.clustering import ClusteringExperiment
+from pycaret.anomaly import AnomalyExperiment
+from pycaret.time_series import TimeSeriesExperiment
+
+exp = ClassificationExperiment(target="y", session_id=42).fit(data)
+```
+
+## Train
+
+```python
+res = exp.create_model("rf")                      # one model
+res = exp.create_model("rf", cross_validation=False)  # skip CV
+res = exp.create_model("rf", n_estimators=200)    # override params
+
+best = exp.compare_models(n_select=1).best        # top-1
+top3 = exp.compare_models(
+    include=["lr", "rf", "gbc"],
+    sort="AUC",
+    n_select=3,
+).models                                          # top-N
+```
+
+## Optimize
+
+```python
+tuned = exp.tune_model(res.pipeline, n_iter=20, optimize="AUC")
+bagged = exp.ensemble_model(res.pipeline, method="Bagging")
+blended = exp.blend_models(top3, method="soft")
+stacked = exp.stack_models(top3)
+calibrated = exp.calibrate_model(res.pipeline, method="sigmoid")
+```
+
+## Analyze
+
+```python
+preds = exp.predict_model(res.pipeline)              # holdout
+preds = exp.predict_model(res.pipeline, data=new)    # new data
+
+# Plots — every chart returns a plotly.graph_objects.Figure
+from pycaret.plots.classification import (
+    confusion_matrix, roc_curve, pr_curve, calibration_curve,
+)
+confusion_matrix(res.pipeline, exp.X_test, exp.y_test).show()
+
+from pycaret.plots.regression import residuals, prediction_error
+residuals(res.pipeline, exp.X_test, exp.y_test).show()
+
+from pycaret.plots.feature import permutation_importance, partial_dependence
+permutation_importance(res.pipeline, exp.X_test, exp.y_test).show()
+```
+
+## Deploy
+
+```python
+final = exp.finalize_model(tuned.pipeline)
+exp.save_model(final.pipeline, "production-model")
+loaded = exp.load_model("production-model")
+predictions = loaded.predict(new_data)
+```
+
+## Inspect
+
+```python
+exp.X_train          # raw train DataFrame
+exp.X_test           # raw test DataFrame
+exp.y_train          # train target
+exp.y_test           # test target
+exp.preprocess_pipeline  # the fitted ColumnTransformer
+
+exp._fit_state["X_transformed"]        # encoded full frame
+exp._fit_state["X_train_transformed"]  # encoded train
+exp._fit_state["fold_generator"]       # CV generator
+exp._fit_state["model_registry"]       # dict of model containers
+
+exp.models()                # registry as DataFrame
+exp.models(internal=True)   # full container view
+exp.get_metrics()           # metric registry
+exp.pull()                  # latest metrics from the previous verb
+```
+
+## Custom metrics
+
+```python
+from sklearn.metrics import f1_score
+exp.add_metric("f1_macro", "F1 (macro)", f1_score, args={"average": "macro"})
+exp.compare_models()  # leaderboard now includes "F1 (macro)"
+```
+
+## Time-series quirks
+
+```python
+exp = TimeSeriesExperiment(fh=12).fit(univariate_series)
+
+# Predictions need fh; intervals via return_pred_int
+preds = exp.predict_model(res.pipeline, fh=[1, 2, 3], return_pred_int=True)
+preds.predictions  # cols: y_pred, lower, upper
+
+# TS-specific plots
+from pycaret.plots.time_series import (
+    forecast, decomposition, acf, pacf, residual_diagnostics,
+)
+forecast(
+    y_true=exp.y_test, y_pred=preds.predictions["y_pred"],
+    lower=preds.predictions["lower"], upper=preds.predictions["upper"],
+    history=exp.y_train,
+).show()
+```
+
+## Result-object shapes
+
+| Verb | Returns | Key attrs |
+| ---- | ------- | --------- |
+| `Experiment(...).fit()` | `self` | `_fit_state` |
+| `create_model` | `CreateResult` | `pipeline`, `metrics`, `model_id`, `params` |
+| `compare_models` | `CompareResult` | `best`, `models`, `leaderboard`, `ranked_ids` |
+| `tune_model` | `TuneResult` | `pipeline`, `best_params`, `search`, `cv_results`, `metrics` |
+| `ensemble_model` | `EnsembleResult` | `pipeline`, `method`, `metrics` |
+| `blend_models` | `BlendResult` | `pipeline`, `metrics` |
+| `stack_models` | `StackResult` | `pipeline`, `metrics` |
+| `calibrate_model` | `CalibrateResult` | `pipeline`, `metrics` |
+| `finalize_model` | `FinalizeResult` | `pipeline` |
+| `predict_model` | `PredictResult` | `predictions`, `metrics` |
+| `assign_model` | DataFrame | (clustering / anomaly: original X + label column) |
+
+## Removed verbs
+
+`plot_model`, `evaluate_model`, `interpret_model`, `automl`,
+`get_leaderboard`, `check_stats`, `check_fairness`, `check_drift`,
+`dashboard`, `eda`, `create_api`, `create_docker`, `create_app`,
+`convert_model`, `deploy_model`. See [Migrate from
+3.x](/docs/guides/migrating-from-3-x/) for replacements.
