@@ -1,0 +1,150 @@
+---
+title: "Migrate from 3.x"
+description: "What changed between PyCaret 3.x and 4.0, in one page."
+section: "Guides"
+order: 1
+---
+
+PyCaret 4.0 is a clean break. We rewrote the engine against modern
+scikit-learn and dropped the legacy module-level API. This page lists
+every breaking change you need to know about, with side-by-side code
+samples.
+
+## tl;dr
+
+| Area | 3.x | 4.0 |
+| ---- | --- | --- |
+| API style | Module-level functional | OOP only (`Experiment` classes) |
+| Setup | `setup(data, target=...)` | `Experiment(target=...).fit(data)` |
+| Returns | Side effects + `pull()` | Typed dataclasses |
+| Pipelines | Custom internal class | `sklearn.pipeline.Pipeline` |
+| Python | 3.7+ | 3.11+ |
+| sklearn | 0.24+ | 1.7+ |
+| Deps (core) | ~65 packages | ~13 packages |
+| Removed verbs | — | `plot_model`, `evaluate_model`, `interpret_model`, `automl`, `get_leaderboard`, `check_stats`, `eda`, `dashboard`, `create_api`, `deploy_model`, `convert_model`, `check_fairness`, `check_drift` |
+
+## The functional API is gone
+
+The 3.x style:
+
+```python
+# 3.x — module-level, side-effect-driven
+from pycaret.classification import setup, compare_models, tune_model
+setup(data, target="Purchase")
+best = compare_models()
+tuned = tune_model(best)
+metrics = pull()
+```
+
+Becomes:
+
+```python
+# 4.0 — OOP, typed returns
+from pycaret.classification import ClassificationExperiment
+exp = ClassificationExperiment(target="Purchase").fit(data)
+top = exp.compare_models(n_select=1)
+tuned = exp.tune_model(top.best)
+metrics = tuned.metrics  # already a DataFrame, no pull() needed
+```
+
+Every verb returns a typed dataclass: `CreateResult`, `CompareResult`,
+`TuneResult`, `FinalizeResult`, `PredictResult`, `EnsembleResult`, …
+
+## Pipelines are real sklearn pipelines
+
+3.x wrapped fitted models in a custom internal class. 4.0 returns the
+real thing:
+
+```python
+from joblib import dump
+from sklearn.pipeline import Pipeline
+
+result = exp.create_model("rf")
+assert isinstance(result.pipeline, Pipeline)
+dump(result.pipeline, "rf.joblib")  # use anywhere sklearn is expected
+```
+
+This means:
+
+- **No more wrappers.** `pipeline.predict(X)` is just sklearn.
+- **Portable.** Save with joblib, load it in any sklearn-aware codebase.
+- **FastAPI-ready.** Mount it directly in your serving layer.
+
+## Setup kwargs
+
+3.x's `setup()` had over a hundred keyword arguments. 4.0's
+`Experiment(...)` constructor has a curated subset of the most-used
+ones (and they raise loudly if you pass something we removed):
+
+| 3.x kwarg | 4.0 |
+| --------- | --- |
+| `target=` | `Experiment(target=...)` |
+| `session_id=` | `Experiment(session_id=...)` |
+| `train_size=` | `Experiment(train_size=...)` |
+| `fold=` | `Experiment(fold=...)` |
+| `normalize=`, `transformation=` | constructor flags, same names |
+| `remove_outliers=`, `feature_selection=` | constructor flags, same names |
+| `silent=`, `verbose=`, `html=`, … | removed (no UI side effects) |
+| `experiment_custom_tags=` | removed (use the backend if you want this) |
+
+Anything not on the constructor raises `ConfigurationError`. If we
+removed something you need, [open an
+issue](https://github.com/pycaret/pycaret/issues) — we'll bring it
+back as a first-class parameter.
+
+## Removed verbs
+
+These are the kill-list verbs. The replacement is one line away in every
+case.
+
+| Removed | Use instead |
+| ------- | ----------- |
+| `plot_model(model, plot="confusion_matrix")` | `pycaret.plots.classification.confusion_matrix(model, X_test, y_test).show()` |
+| `evaluate_model(model)` | The dashboard's Model Card screen, or call the individual `pycaret.plots.*` functions. |
+| `interpret_model(model)` | `import shap; shap.Explainer(pipeline.steps[-1][1])(X_test)` |
+| `automl()` | `compare_models(n_select=N).best` then `tune_model(best)` |
+| `get_leaderboard()` | `compare_models(...).leaderboard` |
+| `check_stats(estimator)` | `from statsmodels.tsa.stattools import adfuller; adfuller(exp.y_train)` |
+| `dashboard(model)` | Stand up `pycaret-server` instead. |
+| `create_api()` / `create_docker()` | Replaced by the built-in deployment serving in `pycaret-server`. |
+| `eda()` | The Data Profile screen in the dashboard, or call `pycaret.plots.eda.*` directly. |
+
+The plot module wasn't a removal — it was a rewrite. See [the plot
+catalog](/reference/plots) for everything we ship.
+
+## Time-series
+
+3.x time-series lived in its own world. 4.0 unifies it with the rest
+of the API:
+
+```python
+# 3.x
+from pycaret.time_series import setup, compare_models
+setup(data, fh=12)
+best = compare_models()
+
+# 4.0
+from pycaret.time_series import TimeSeriesExperiment
+exp = TimeSeriesExperiment(fh=12).fit(data)
+best = exp.compare_models(n_select=1).best
+```
+
+The new `_native_setup_timeseries` performs Fourier-based seasonality
+detection automatically — `seasonal_period` is auto-derived from the
+index frequency unless you set it explicitly.
+
+## Python + sklearn versions
+
+PyCaret 4.0 drops support for everything below the floor:
+
+- **Python** ≥ 3.11 (3.10 reaches EOL October 2026; we moved early).
+- **sklearn** ≥ 1.7 (uses the new `root_mean_squared_error` API).
+- **NumPy** 2.x supported.
+- **pandas** 2.x supported.
+
+## When you hit something we missed
+
+This page covers every intentional break. If you trip over an
+unintentional one, please [file an
+issue](https://github.com/pycaret/pycaret/issues/new) — we'll either
+fix it or document it.

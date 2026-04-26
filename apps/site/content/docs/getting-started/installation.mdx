@@ -1,0 +1,71 @@
+---
+title: "Installation"
+description: "Install PyCaret 4.0 from PyPI in under a minute."
+section: "Getting started"
+order: 1
+---
+
+PyCaret 4.0 supports **Python 3.11, 3.12, and 3.13**. The core engine
+installs in seconds and pulls in only thirteen direct dependencies (down
+from sixty-five in 3.x).
+
+## From PyPI
+
+```bash
+pip install pycaret
+```
+
+This installs the engine — every classification, regression, clustering,
+anomaly, and time-series API. To run the optional dashboard or backend,
+install the matching extras:
+
+```bash
+pip install "pycaret[dashboard]"   # FastAPI server + worker + DB
+pip install "pycaret[explain]"     # SHAP for advanced explainability
+pip install "pycaret[forecast]"    # Extra sktime adapters for TS work
+```
+
+## From source
+
+```bash
+git clone https://github.com/pycaret/pycaret.git
+cd pycaret
+uv sync             # or: pip install -e packages/engine[dev]
+uv run pytest packages/engine/tests
+```
+
+We use [`uv`](https://docs.astral.sh/uv/) for development. It is not
+required to use PyCaret — only to develop it.
+
+## Verify the install
+
+```python
+from pycaret.classification import ClassificationExperiment
+from pycaret.datasets import get_data
+
+data = get_data("juice", verbose=False)
+exp = ClassificationExperiment(target="Purchase").fit(data)
+print(exp.create_model("lr").metrics)
+```
+
+If that prints a five-row metrics DataFrame, you're ready. Continue to
+the [quickstart](/docs/getting-started/quickstart/) for the full
+workflow.
+
+## Hardware notes
+
+- **CPU**: PyCaret runs everywhere scikit-learn does. No special
+  hardware required.
+- **GPU**: Set `use_gpu=True` on any `Experiment` to opt into
+  GPU-accelerated estimators (XGBoost / LightGBM / cuML when
+  installed). The default path stays on CPU.
+- **Memory**: 4 GB is comfortable for tutorial-scale data; 16 GB+ is
+  what you'd want for serious work.
+
+## Upgrading from 3.x
+
+PyCaret 4.0 is a clean break: the functional API
+(`setup()` / `compare_models()` / etc. as module-level calls) was
+removed. The OOP API (`ClassificationExperiment`, `RegressionExperiment`,
+…) replaces it entirely. See [Migrate from
+3.x](/docs/guides/migrating-from-3-x/) for the full diff.

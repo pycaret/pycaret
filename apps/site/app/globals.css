@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: 255 255 255;
+    --fg: 15 23 42;
+    --muted: 100 116 139;
+    --border: 226 232 240;
+    --accent: 91 141 239;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: rgb(var(--bg));
+    color: rgb(var(--fg));
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Heading anchors. */
+  .heading-anchor {
+    @apply opacity-0 transition-opacity ml-2 text-ink-300;
+  }
+  h2:hover .heading-anchor,
+  h3:hover .heading-anchor,
+  h4:hover .heading-anchor {
+    @apply opacity-100;
+  }
+}
+
+@layer components {
+  /* Inline-code styling — light, readable, matches Shiki blocks. */
+  :not(pre) > code {
+    @apply rounded bg-ink-100 px-1.5 py-0.5 font-mono text-[0.875em] text-ink-800;
+  }
+
+  /* Code-block container. Shiki adds the per-token spans. */
+  .shiki {
+    @apply overflow-x-auto rounded-xl border border-ink-200 p-4 text-sm leading-relaxed;
+    background: #FAFAFA;
+  }
+  .shiki code {
+    @apply font-mono;
+  }
+
+  /* Prose styling for MDX content. */
+  .prose-pycaret {
+    @apply text-ink-800 leading-relaxed;
+  }
+  .prose-pycaret h1 {
+    @apply text-3xl font-semibold tracking-tight text-ink-900 mb-3 mt-8 first:mt-0;
+  }
+  .prose-pycaret h2 {
+    @apply text-2xl font-semibold tracking-tight text-ink-900 mb-3 mt-10 scroll-mt-20;
+  }
+  .prose-pycaret h3 {
+    @apply text-lg font-semibold text-ink-900 mb-2 mt-8 scroll-mt-20;
+  }
+  .prose-pycaret h4 {
+    @apply text-base font-semibold text-ink-900 mb-2 mt-6 scroll-mt-20;
+  }
+  .prose-pycaret p {
+    @apply my-4;
+  }
+  .prose-pycaret a {
+    @apply text-accent-600 underline decoration-accent-300 underline-offset-2 hover:text-accent-700;
+  }
+  .prose-pycaret ul {
+    @apply my-4 list-disc pl-6 space-y-1.5;
+  }
+  .prose-pycaret ol {
+    @apply my-4 list-decimal pl-6 space-y-1.5;
+  }
+  .prose-pycaret blockquote {
+    @apply border-l-4 border-accent-200 bg-accent-50 px-4 py-2 my-4 italic text-ink-700;
+  }
+  .prose-pycaret table {
+    @apply w-full my-4 border-collapse text-sm;
+  }
+  .prose-pycaret th {
+    @apply border-b border-ink-200 bg-ink-50 px-3 py-2 text-left font-semibold;
+  }
+  .prose-pycaret td {
+    @apply border-b border-ink-100 px-3 py-2 align-top;
+  }
+  .prose-pycaret hr {
+    @apply my-10 border-ink-200;
+  }
+  .prose-pycaret img {
+    @apply rounded-lg my-4;
+  }
+}

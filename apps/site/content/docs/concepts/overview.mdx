@@ -1,0 +1,80 @@
+---
+title: "Overview"
+description: "How PyCaret 4.0 is built — the engine, the dashboard, and the contracts between them."
+section: "Concepts"
+order: 1
+---
+
+PyCaret 4.0 is three things stacked together:
+
+1. The **engine** — a Python library that exposes a single OOP API for
+   five ML task types. This is what you `pip install`.
+2. The **backend** — an optional FastAPI service that fronts the engine
+   over HTTP, persists runs to a database, and serves predictions.
+3. The **dashboard** — an optional React UI that talks to the backend.
+
+You can use the engine alone (the notebook workflow). You can run the
+backend without the dashboard (a stateless `engine.run(config)`
+endpoint). You can stand up all three for a full self-hosted MLOps
+cockpit.
+
+## The engine
+
+Every task type has an `Experiment` subclass:
+
+- `ClassificationExperiment`
+- `RegressionExperiment`
+- `ClusteringExperiment`
+- `AnomalyExperiment`
+- `TimeSeriesExperiment`
+
+They share a base class with a uniform verb surface — `fit`,
+`create_model`, `compare_models`, `tune_model`, `predict_model`,
+`finalize_model`, `save_model`, `load_model`. The verbs are written
+against `sklearn.pipeline.Pipeline` (or `sktime.forecasting.compose.
+ForecastingPipeline` for time-series), so every fitted output is a
+real, portable scikit-learn artefact.
+
+The engine state lives in `experiment._fit_state` — a `dict` populated
+by `fit()` with the train/test splits, the fold generator, the model
+registry, and the metric registry. Every verb reads from this dict
+rather than reaching into a god-class. (The "god-class drain" from
+3.x → 4.0 took eighteen sessions; you can read the autopsy in the
+[release notes](/blog).)
+
+## The backend
+
+`pycaret-server` (in `services/api/`) is a FastAPI app with:
+
+- Workspace / project / experiment / run CRUD.
+- A run orchestrator (thread-pool) that subscribes to engine events.
+- WebSocket fan-out for live run streams.
+- A pipeline registry + deployment serving layer.
+- LLM-backed advisory endpoints (failure debugger, deployment review,
+  drift analyst, …).
+- Plot rendering endpoints (`/runs/{id}/plots/{kind}`).
+
+Deploy it on its own. Pin a specific engine version. Wire it to your
+existing auth (JWT-friendly).
+
+## The dashboard
+
+`apps/web/` is a Vite + React app that consumes the backend. It ships
+eight workflow screens (Datasets / Setup / Run / Models / Trials /
+Predict / Pipelines / Deployments) plus seven dashboard screens
+introduced in 4.0 (Workspace home / Model card / Data profile /
+Forecast workbench / Drift / Prediction explorer / Model comparison).
+
+The dashboard never imports the engine directly. Everything it shows
+comes from the backend over `/api/v1/*` and the WebSocket event stream.
+
+## What's optional vs. required
+
+| Component | Required for | Install via |
+| --------- | ------------ | ----------- |
+| Engine    | All notebook + script work | `pip install pycaret` |
+| Backend   | Multi-user / deployed scenarios | `pip install pycaret[dashboard]` |
+| Dashboard | UI in the browser | Build & serve from `apps/web` |
+
+If you only want to fit models in a notebook, you only need the engine.
+Everything else is opt-in.

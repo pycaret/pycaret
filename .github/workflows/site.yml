@@ -1,0 +1,80 @@
+name: Site
+
+on:
+  push:
+    branches: [v4, main]
+    paths:
+      - "apps/site/**"
+      - "packages/engine/pycaret/**"
+      - "docs/revamp/release_notes_pycaret4.md"
+      - "CHANGELOG.md"
+      - ".github/workflows/site.yml"
+  pull_request:
+    paths:
+      - "apps/site/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build static site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/site/package-lock.json
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install npm dependencies
+        run: npm install
+        working-directory: apps/site
+
+      - name: Generate API tree (griffe)
+        run: uv run --with griffe python scripts/gen_api_tree.py
+        working-directory: apps/site
+
+      - name: Sync release notes + changelog
+        run: node scripts/sync-content.mjs
+        working-directory: apps/site
+
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: apps/site
+
+      - name: Build
+        run: npm run build
+        working-directory: apps/site
+
+      - name: Upload artifact
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/site/out
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.ref == 'refs/heads/v4' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

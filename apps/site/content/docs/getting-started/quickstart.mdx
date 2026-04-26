@@ -1,0 +1,96 @@
+---
+title: "Quickstart"
+description: "From zero to a deployed model in twenty lines."
+section: "Getting started"
+order: 2
+---
+
+This is the canonical first PyCaret session. We'll set up a
+classification experiment on a sample dataset, compare a dozen models,
+tune the winner, and persist the resulting pipeline.
+
+## The whole thing
+
+```python
+from pycaret.classification import ClassificationExperiment
+from pycaret.datasets import get_data
+
+# 1. Load data — any pandas DataFrame works.
+data = get_data("juice", verbose=False)
+
+# 2. Set up the experiment. Constructor params replace the 3.x setup() call.
+exp = ClassificationExperiment(target="Purchase", session_id=42).fit(data)
+
+# 3. Compare every model in the registry. Returns a CompareResult with a
+#    leaderboard DataFrame plus the top-N fitted Pipelines.
+top = exp.compare_models(n_select=3)
+print(top.leaderboard.head())
+
+# 4. Tune the winner. Returns a TuneResult with the search artefact.
+tuned = exp.tune_model(top.best, n_iter=20)
+print("best params:", tuned.best_params)
+
+# 5. Refit on the full data + persist.
+final = exp.finalize_model(tuned.pipeline)
+exp.save_model(final.pipeline, "production-juice-model")
+```
+
+## What just happened
+
+PyCaret 4.0's `ClassificationExperiment.fit()` performs:
+
+1. A **stratified train/test split** (`StratifiedKFold` for classification).
+2. **Numeric mean imputation** + **categorical mode imputation**.
+3. **Ordinal encoding** for categorical features.
+4. **Label encoding** for the target.
+5. Fits a **per-experiment metric registry** (Accuracy, AUC, F1, …)
+   that downstream verbs share.
+
+`compare_models()` then iterates the model registry, calls
+`create_model()` per candidate (which runs CV and fits the model on
+the train split), and assembles a leaderboard from the per-fold
+`Mean` metrics.
+
+## Returned types
+
+Every verb returns a dataclass — no more checking `pull()` for the side
+effect. The shapes are:
+
+| Verb               | Result        | Key fields                              |
+| ------------------ | ------------- | --------------------------------------- |
+| `create_model`     | `CreateResult`  | `pipeline`, `metrics`, `model_id`     |
+| `compare_models`   | `CompareResult` | `best`, `models`, `leaderboard`       |
+| `tune_model`       | `TuneResult`    | `pipeline`, `best_params`, `search`   |
+| `finalize_model`   | `FinalizeResult`| `pipeline`                            |
+| `predict_model`    | `PredictResult` | `predictions`, `metrics`              |
+
+The `pipeline` slot is always a real `sklearn.pipeline.Pipeline`. You
+can `joblib.dump` it, mount it behind FastAPI, or hand it to anyone who
+expects a sklearn estimator — no special wrappers.
+
+## Same API, every task
+
+The Quickstart you just read is the same shape for every supported
+task type:
+
+```python
+from pycaret.regression import RegressionExperiment
+RegressionExperiment(target="medv").fit(data)
+
+from pycaret.clustering import ClusteringExperiment
+ClusteringExperiment().fit(data)
+
+from pycaret.anomaly import AnomalyExperiment
+AnomalyExperiment().fit(data)
+
+from pycaret.time_series import TimeSeriesExperiment
+TimeSeriesExperiment(fh=12).fit(univariate_series)
+```
+
+Same verb names. Same return types. Same `.pipeline` contract.
+
+## Next steps
+
+- [Concepts overview](/docs/concepts/overview/) — how PyCaret is built.
+- [API reference](/reference) — every public function, auto-generated.
+- [Migrate from 3.x](/docs/guides/migrating-from-3-x/) — what changed.

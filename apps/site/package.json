@@ -1,0 +1,44 @@
+{
+  "name": "@pycaret/site",
+  "version": "0.1.0",
+  "description": "PyCaret 4.0 public site — landing + docs + API reference + blog. Next.js 15 + MDX + Tailwind. Hosted at pycaret.org.",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pycaret/pycaret",
+    "directory": "apps/site"
+  },
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "node scripts/sync-content.mjs && next build",
+    "start": "next start --port 3001",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "sync": "node scripts/sync-content.mjs",
+    "gen:api": "uv run --with griffe python scripts/gen_api_tree.py"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "lucide-react": "^0.469.0",
+    "next": "^16.2.4",
+    "next-mdx-remote-client": "^1.1.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "rehype-autolink-headings": "^7.1.0",
+    "rehype-slug": "^6.0.0",
+    "remark-gfm": "^4.0.0",
+    "shiki": "^1.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "15.1.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
+  }
+}
