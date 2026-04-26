@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Import-side: legacy modules no longer importable.
 # ---------------------------------------------------------------------------
@@ -102,7 +101,6 @@ def test_4x_oop_classes_still_importable():
 @pytest.mark.slow
 def test_plot_model_raises_not_implemented():
     import pycaret.datasets
-
     from pycaret.tasks import ClassificationExperiment
 
     df = pycaret.datasets.get_data("juice", verbose=False)
@@ -115,7 +113,6 @@ def test_plot_model_raises_not_implemented():
 @pytest.mark.slow
 def test_evaluate_model_raises_not_implemented():
     import pycaret.datasets
-
     from pycaret.tasks import ClassificationExperiment
 
     df = pycaret.datasets.get_data("juice", verbose=False)
@@ -128,7 +125,6 @@ def test_evaluate_model_raises_not_implemented():
 @pytest.mark.slow
 def test_interpret_model_raises_not_implemented():
     import pycaret.datasets
-
     from pycaret.tasks import ClassificationExperiment
 
     df = pycaret.datasets.get_data("juice", verbose=False)
@@ -141,7 +137,6 @@ def test_interpret_model_raises_not_implemented():
 @pytest.mark.slow
 def test_automl_raises_not_implemented():
     import pycaret.datasets
-
     from pycaret.tasks import ClassificationExperiment
 
     df = pycaret.datasets.get_data("juice", verbose=False)
@@ -153,7 +148,6 @@ def test_automl_raises_not_implemented():
 @pytest.mark.slow
 def test_get_leaderboard_raises_not_implemented():
     import pycaret.datasets
-
     from pycaret.tasks import ClassificationExperiment
 
     df = pycaret.datasets.get_data("juice", verbose=False)
@@ -165,7 +159,6 @@ def test_get_leaderboard_raises_not_implemented():
 @pytest.mark.slow
 def test_check_stats_raises_not_implemented():
     import pycaret.datasets
-
     from pycaret.tasks import TimeSeriesExperiment
 
     df = pycaret.datasets.get_data("airline", verbose=False)
