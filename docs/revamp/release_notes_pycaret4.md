@@ -115,6 +115,52 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 45 — 2026-04-26 — Phase 5d: strip legacy.setup() from _native_setup_timeseries
+
+**The TS drain is complete.** `_native_setup_timeseries` no longer calls `legacy.setup()` at all. Together with the verb drains in s40-s44, every default TS workflow runs without ever touching the legacy directory. Phase 6 (deletion of `pycaret/internal/pycaret_experiment/`) is now unblocked.
+
+## ADDED — engine
+
+- `ADDED` — **`_TSContextProxy`** in `packages/engine/pycaret/core/experiment.py`. `__slots__`-bound class with the 14 attrs that TS containers / util helpers read off `experiment.<x>`: `seed`, `gpu_param`, `n_jobs_param`, `seasonality_present`, `primary_sp_to_use`, `strictly_positive`, `seasonality_type`, `all_sps_to_use`, `X_train`, `is_multiclass`, `enforce_pi`, `enforce_exogenous`, `exogenous_present`, `fe_target_rr`, `index_type`. `fe_target_rr` defaults to `None` to match legacy default — `[]` would break the cds_dt recursive forecasters via `truncate_start` validation.
+- `ADDED` — **`Experiment._auto_detect_seasonality(y)`** static method. Lightweight port of legacy seasonality detection: derive candidate sp from `y.index.freqstr` via `pycaret.utils.time_series.get_sp_from_str`, run sktime's `autocorrelation_seasonality_test` on each, return `(seasonality_present, primary_sp_to_use, all_sps_to_use)` where `primary` is the largest significant sp.
+- `ADDED` — **`Experiment._build_ts_fold_generator(...)`**. Same math legacy uses: `step_length = len(fh)`, `initial_window = len(y_train) - ((fold - 1) * step_length + max(fh))`, with defensive shrink to `n_train // 2` when folds wouldn't fit. Returns `ExpandingWindowSplitter` (default) or `SlidingWindowSplitter` based on `fold_strategy`.
+
+## CHANGED — engine
+
+- `CHANGED` — **`Experiment._native_setup_timeseries`** rewritten end-to-end. No `legacy.setup()` call. Coerces input → univariate Series + optional exogenous DataFrame, builds `ForecastingHorizon` from `self.fh`, auto-detects seasonality, splits via `temporal_train_test_split`, builds fold generator + model registry through the proxy, and constructs a minimal `ForecastingPipeline` (placeholder `NaiveForecaster`) as `preprocess_pipeline`.
+- `CHANGED` — **`Experiment.models()`** now filters by `model_type ∈ TSModelTypes` directly on the snapshot registry for TS, matching legacy's filter that excludes `ensemble_forecaster`. No more `legacy.models()` deferral for TS.
+- `CHANGED` — **`TimeSeriesExperiment.predict_model`** detects fitted bare forecasters (via `is_fitted` attr or presence of `_y`) and uses them directly instead of wrapping in the placeholder pipeline (which is unfit and would invalidate the forecaster's state).
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session45_ts_native_setup_full_drain.py`** — 9 new tests:
+  - Drain-lock for `legacy.setup` (poison + verify native succeeds with `_native_setup_used is True`).
+  - Seasonality auto-detection on monthly airline → `seasonality_present=True`, `sp=12`, `seasonality_type ∈ {mul, add}`, `strictly_positive=True`.
+  - No-frequency fallback → `(False, 1, [1])`.
+  - `ExpandingWindowSplitter` default with `n_splits == self.fold`.
+  - `SlidingWindowSplitter` when `fold_strategy='sliding'`.
+  - Full sktime model registry populates through the proxy (naive / arima / ets / theta / etc. all present).
+  - End-to-end `create + tune + finalize + predict` chain with **all 6 legacy verbs poisoned including `setup`**.
+  - `setup_kwargs` still routes to legacy (compatibility preserved).
+  - Univariate Series input accepted directly.
+
+## INTERNAL
+
+- `INTERNAL` — **Why a proxy instead of a real legacy instance.** The proxy is a 30-line `__slots__` class. A real legacy instance pulls in 10K LoC and runs Fourier analysis + a dozen other pre-flight checks before even getting to model construction. The proxy is fast (<1ms to instantiate) and has zero dependency on the directory we're about to delete in phase 6.
+- `INTERNAL` — **`fe_target_rr=None` vs `[]`.** Legacy initializes `fe_target_rr` to `None` (unset) by default. Containers either pass it through unchanged (cds_dt recursive forecasters expect `None` so they use their internal default), or replace it. Passing `[]` instead causes the cds_dt models to try to apply zero feature engineering steps and trips sktime's `Reduce.fit` validation: "Reduce must either have window length as argument or needs to have it passed by transformer via truncate_start". One-character fix; significant test recovery.
+- `INTERNAL` — **Why `Experiment.models()` no longer defers to legacy for TS.** With phase 5d, `_fit_state["model_registry"]` is fully populated through the proxy — it has the same `_all_models_internal` shape as legacy. The legacy filter (`model_type in TSModelTypes`) is applied directly on the snapshot. No reason to call `legacy.models()` anymore, and doing so would crash anyway because `legacy.setup()` was never called → no `legacy.seed`.
+- `INTERNAL` — **Why bare-forecaster bypass in `predict_model`.** The placeholder `ForecastingPipeline` we create in `_native_setup_timeseries` is unfit (it's a template). When the user passes an already-fitted bare forecaster to `predict_model`, wrapping it via `_add_model_to_pipeline` produces an unfit pipeline (the wrapper fits all steps top-down), so `pipeline.predict(fh)` raises `NotFittedError`. The fix: detect that the bare forecaster is already fitted (via `is_fitted` or `_y`) and use it directly.
+
+## Session 45 delta summary
+
+| Metric | Session 44 end | Session 45 end |
+|---|---:|---:|
+| TS drain status | All 5 verbs native; setup still legacy | **Fully drained** |
+| `legacy.<anything>` callsites for default TS | 1 (`legacy.setup`) | 0 |
+| Engine tests (fast + slow) | 235 | **244** |
+
+---
+
 # Session 44 — 2026-04-25 — Phase 5c (cont.): drain TimeSeriesExperiment.finalize_model
 
 The fifth (and last user-facing) TS verb is fully native. After this session, **every callable TS verb runs without touching legacy** — `create_model` / `predict_model` / `compare_models` / `tune_model` / `finalize_model` all bypass `self._legacy.<verb>`. (`assign_model` doesn't exist for TS — it's an `UnsupervisedExperiment`-only verb.) The only `legacy.*` callsite remaining for TS is `legacy.setup()` inside `_native_setup_timeseries` itself.

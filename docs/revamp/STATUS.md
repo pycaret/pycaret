@@ -1,6 +1,73 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-25, end of session 44*
+*Updated: 2026-04-26, end of session 45*
+
+## Session 45 — Phase 5d: strip `legacy.setup()` from `_native_setup_timeseries` — ✅
+
+**The TS drain is complete.** `_native_setup_timeseries` no longer calls `legacy.setup()` at all. Together with the verb drains in s40-s44, every default TS workflow runs without ever touching the legacy directory. Phase 6 (deletion of `pycaret/internal/pycaret_experiment/`) is now unblocked.
+
+### What landed
+
+- **`_TSContextProxy`** in `core/experiment.py` — `__slots__`-bound class with the 14 attrs that TS containers / util helpers read off `experiment.<x>` during construction: `seed`, `gpu_param`, `n_jobs_param`, `seasonality_present`, `primary_sp_to_use`, `strictly_positive`, `seasonality_type`, `all_sps_to_use`, `X_train`, `is_multiclass`, `enforce_pi`, `enforce_exogenous`, `exogenous_present`, `fe_target_rr`, `index_type`. `fe_target_rr` defaults to `None` (matches legacy default — `[]` breaks the cds_dt recursive forecasters).
+- **`Experiment._auto_detect_seasonality(y)`** — lightweight port of legacy seasonality detection. Derives candidate sp from `y.index.freqstr` via `pycaret.utils.time_series.get_sp_from_str`, runs sktime's `autocorrelation_seasonality_test`, returns `(seasonality_present, primary_sp_to_use, all_sps_to_use)`. `primary` is the largest significant sp (legacy default).
+- **`Experiment._build_ts_fold_generator(...)`** — same math legacy uses for `initial_window` / `step_length`. `ExpandingWindowSplitter` (default) or `SlidingWindowSplitter` based on `fold_strategy`. Defensive shrink to `n_train // 2` when the requested folds wouldn't fit.
+- **`_native_setup_timeseries` rewritten** to:
+  - Coerce input → univariate Series + optional exogenous DataFrame.
+  - Build `ForecastingHorizon` from `self.fh`.
+  - Auto-detect seasonality.
+  - Split via `temporal_train_test_split`.
+  - Build fold generator + model registry through the proxy.
+  - Build a minimal `ForecastingPipeline` (placeholder `NaiveForecaster`) as `preprocess_pipeline`. Drained verbs swap the placeholder via `_add_model_to_pipeline`.
+  - **No `legacy.setup()` call.**
+- **`Experiment.models()`** updated for TS: filters by `model_type ∈ TSModelTypes` directly on the snapshot registry (matches legacy's filter that excludes `ensemble_forecaster`). No more `legacy.models()` deferral.
+- **`TimeSeriesExperiment.predict_model`** updated: when the user passes a fitted bare forecaster, use it directly (don't wrap in the placeholder pipeline, which would invalidate the fitted state).
+- **`packages/engine/tests/test_session45_ts_native_setup_full_drain.py`** — 9 new tests:
+  - Drain-lock for `legacy.setup` (poison + verify native succeeds).
+  - Seasonality auto-detection on monthly airline data → `sp=12`.
+  - No-frequency fallback → `(False, 1, [1])`.
+  - `ExpandingWindowSplitter` default + `SlidingWindowSplitter` strategy.
+  - Full sktime model registry populates through proxy.
+  - End-to-end chain (`create + tune + finalize + predict`) with **all 6 legacy verbs poisoned including `setup`**.
+  - `setup_kwargs` still routes to legacy (compatibility preserved).
+  - Univariate Series input is accepted.
+
+### Headline metrics
+
+| | Session 44 end | Session 45 end |
+|---|---|---|
+| TS verbs/setup paths drained | All 5 callable verbs | + setup itself |
+| `legacy.<anything>` callsites for default TS | 1 (`legacy.setup`) | **0** |
+| Engine tests (fast + slow) | 235 | **244** (+9) |
+
+### Drain status
+
+```
+Native setup:
+  ✅ Phases 1-4: clf + reg + clustering + anomaly setup           (s35-s38)
+  ✅ Phase 5a: TS adopts dispatcher                                (s39)
+  ✅ Phase 5b: TS create_model                                     (s40)
+  ✅ Phase 5c: TS predict_model                                    (s41)
+  ✅ Phase 5c: TS compare_models                                   (s42)
+  ✅ Phase 5c: TS tune_model                                       (s43)
+  ✅ Phase 5c: TS finalize_model                                   (s44)
+  ✅ Phase 5d: TS native setup (no legacy.setup call)              (s45 ← here)
+  ⏳ Phase 6:  delete pycaret/internal/pycaret_experiment/
+
+What still routes to legacy:
+  - Caller-supplied setup_kwargs (legacy's 100+ unmapped knobs).
+  - That's it. The default-knob workflow for every task type is fully drained.
+```
+
+### What's next (sessions 46+)
+
+- **Phase 6** — delete `pycaret/internal/pycaret_experiment/` (10K LoC across 5 files). Audit remaining `self._legacy.<x>` references (should be zero for default flows). Delete the directory + all imports + test that nothing breaks.
+- **4.0.0 release** — once phase 6 is done and PyPI Trusted Publishing is sorted out.
+
+### Side note: 4.0.0a2 release
+
+Still pending PyPI Trusted Publishing config (user account reset in progress).
+
+---
 
 ## Session 44 — Phase 5c (cont.): drain `TimeSeriesExperiment.finalize_model` — ✅
 
