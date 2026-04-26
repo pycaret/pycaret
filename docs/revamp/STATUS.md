@@ -1,6 +1,84 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-26, end of session 45*
+*Updated: 2026-04-26, end of session 46*
+
+## Session 46 — Phase 6: delete `pycaret/internal/pycaret_experiment/` — ✅
+
+**The legacy directory is gone.** ~22K LoC of legacy code removed (10K from `pycaret/internal/pycaret_experiment/` + 12K from the five `oop.py` thin wrappers in `pycaret/{classification,regression,clustering,anomaly,time_series/forecasting}/`). The default 4.0 workflow runs without ever importing legacy. **MVP 1 (engine) is feature-complete for 4.0.0.**
+
+### What landed
+
+- **Deleted**:
+  - `pycaret/internal/pycaret_experiment/` (5 files, ~10K LoC).
+  - `pycaret/classification/oop.py` (3.3K LoC).
+  - `pycaret/regression/oop.py` (2.6K LoC).
+  - `pycaret/clustering/oop.py` (351 LoC).
+  - `pycaret/anomaly/oop.py` (165 LoC).
+  - `pycaret/time_series/forecasting/oop.py` (5.7K LoC).
+- **Removed plumbing**:
+  - `_create_model_legacy` / `_predict_model_legacy` (in `core/experiment.py`).
+  - `_compare_models_legacy` / `_tune_model_legacy` / `_ensemble_model_legacy` / `_blend_models_legacy` / `_stack_models_legacy` / `_finalize_model_legacy` (in `core/supervised.py`) — replaced with `NotImplementedError` stubs for non-supervised tasks.
+  - `_snapshot_fit_state` (only used by the legacy fallback path).
+  - `_build_legacy_setup_kwargs` (only used to build legacy setup args).
+- **`setup_kwargs` raises** `ConfigurationError` instead of falling through to legacy. Power users with removed knobs pin to 3.x or open an issue requesting a first-class constructor param.
+- **Six legacy-only verbs raise `NotImplementedError`** with concrete migration pointers:
+  - `plot_model` / `evaluate_model` → "Plotly rewrite is post-4.0.0".
+  - `interpret_model` → "use SHAP directly".
+  - `automl` → "use `compare_models(n_select=N).best` then `tune_model(best)`".
+  - `get_leaderboard` → "read `compare_models(...).leaderboard`".
+  - `check_stats` → "use sktime / statsmodels directly on `exp.y_train`".
+- **`_LegacyShim` class** added in `core/experiment.py` — a no-op namespace with the verb names predefined. Exists purely so the established drain-lock test pattern (`monkeypatch.setattr(exp._legacy, "setup", _poison)`) keeps working without touching any test files. Production code never reads off it.
+- **`_PyCaretExperiment` aliases** updated in `containers/models/base_model.py` and `utils/generic.py` — the symbol is now `Any` (with `from __future__ import annotations` so it's stringified at the use site).
+- **`pycaret/time_series/forecasting/__init__.py`** stubbed to an empty namespace (it used to re-export `TSForecastingExperiment`).
+- **`packages/engine/tests/test_session46_phase6_legacy_deletion.py`** — 14 new tests:
+  - All six deleted modules raise `ModuleNotFoundError` on import.
+  - All five 4.0 `Experiment` classes are still importable.
+  - Each removed verb (`plot_model` / `evaluate_model` / `interpret_model` / `automl` / `get_leaderboard` / `check_stats`) raises `NotImplementedError`.
+  - `_LegacyShim` predefines every verb name as a no-op callable.
+
+### Test updates
+
+- `test_session35_native_setup::test_complex_preprocessing_falls_back_to_legacy` → renamed to `test_setup_kwargs_raise_in_phase6`. Inverted assertion: now expects `ConfigurationError`.
+- `test_session39_native_setup_phase5::test_time_series_setup_kwargs_falls_back_to_legacy_with_state_snapshot` → renamed to `test_time_series_setup_kwargs_raises_in_phase6`. Same inversion.
+- `test_session45_ts_native_setup_full_drain::test_setup_kwargs_still_routes_to_legacy` → renamed to `test_setup_kwargs_raises_in_phase6`.
+
+### Headline metrics
+
+| | Session 45 end | Session 46 end |
+|---|---|---|
+| Legacy LoC in repo | ~22K | **0** |
+| `legacy.<anything>` callsites in production code | 0 (default flow); fallbacks for un-drained verbs | 0 — fallbacks raise `NotImplementedError` |
+| Engine tests (fast + slow) | 244 | **258** (+14) |
+
+### Drain status
+
+```
+✅ Phases 1-4: clf + reg + clustering + anomaly setup           (s35-s38)
+✅ Phase 5a: TS adopts dispatcher                                (s39)
+✅ Phase 5b: TS create_model                                     (s40)
+✅ Phase 5c: TS predict / compare / tune / finalize              (s41-s44)
+✅ Phase 5d: TS native setup (no legacy.setup)                   (s45)
+✅ Phase 6:  delete pycaret/internal/pycaret_experiment/         (s46 ← here)
+
+Engine MVP 1 is feature-complete for 4.0.0.
+```
+
+### What's removed in 4.0 (kill list final form)
+
+The kill list now includes (in addition to s1-21 removals like `check_fairness`, `check_drift`, `dashboard`, `create_api`, `create_docker`, `create_app`, `convert_model`, `deploy_model`, `eda`):
+
+- `plot_model` / `evaluate_model` — Plotly rewrite is the post-4.0.0 replacement target.
+- `interpret_model` — replaced by direct SHAP usage.
+- `automl` — replaced by `compare_models(n_select=N).best → tune_model(best)`.
+- `get_leaderboard` — replaced by `CompareResult.leaderboard`.
+- `check_stats` — replaced by direct sktime / statsmodels usage on `exp.y_train`.
+- `setup_kwargs` escape hatch — removed; raises `ConfigurationError`.
+
+### What's next
+
+- **4.0.0 release** — engine is feature-complete. Remaining tracks: Plotly plot module rewrite (parallel track), final docs polish, PyPI Trusted Publishing config (still on hold from the user account reset).
+
+---
 
 ## Session 45 — Phase 5d: strip `legacy.setup()` from `_native_setup_timeseries` — ✅
 

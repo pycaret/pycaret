@@ -32,9 +32,9 @@ from pycaret.internal.validation import (
 from pycaret.utils._dependencies import _check_soft_dependencies
 
 if TYPE_CHECKING:
-    from pycaret.internal.pycaret_experiment.pycaret_experiment import (
-        _PyCaretExperiment,
-    )
+    # Phase 6: legacy experiment class deleted. Keep the symbol alive as a
+    # type alias so existing annotations don't break at static-analysis time.
+    _PyCaretExperiment = Any  # type: ignore[misc]
 
 
 class MLUsecase(Enum):

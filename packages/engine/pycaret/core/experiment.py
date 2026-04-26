@@ -189,6 +189,63 @@ class _TSContextProxy:
         return None
 
 
+class _LegacyShim:
+    """Phase-6 placeholder for the deleted legacy experiment object.
+
+    Test code uses the pattern::
+
+        exp._legacy = exp._build_legacy_experiment()
+        monkeypatch.setattr(exp._legacy, "setup", _poison)
+
+    to assert that fit() and the verbs don't dispatch to legacy. With
+    the legacy directory deleted, ``_build_legacy_experiment`` now
+    returns this no-op shim. Each verb name is preregistered as an
+    identity callable so ``monkeypatch.setattr`` (default ``raising=True``)
+    works; the methods are never called by production code.
+    """
+
+    _VERB_NAMES = (
+        "setup",
+        "create_model",
+        "predict_model",
+        "assign_model",
+        "compare_models",
+        "tune_model",
+        "ensemble_model",
+        "blend_models",
+        "stack_models",
+        "calibrate_model",
+        "finalize_model",
+        "save_model",
+        "load_model",
+        "save_experiment",
+        "load_experiment",
+        "plot_model",
+        "evaluate_model",
+        "interpret_model",
+        "automl",
+        "get_leaderboard",
+        "check_stats",
+        "models",
+        "get_metrics",
+        "add_metric",
+        "remove_metric",
+        "pull",
+        "get_config",
+        "set_config",
+    )
+
+    def __init__(self) -> None:
+        # Predefine each verb name so `monkeypatch.setattr(shim, name, ...)`
+        # passes the strict-attribute check.
+        for name in self._VERB_NAMES:
+            setattr(self, name, _LegacyShim._noop)
+
+    @staticmethod
+    def _noop(*a: Any, **kw: Any) -> None:
+        return None
+
+
 class Experiment(BaseEstimator):
     """Task-agnostic base for every PyCaret 4.0 experiment.
 
@@ -219,8 +276,9 @@ class Experiment(BaseEstimator):
     Notes
     -----
     - Parameters are stored verbatim per sklearn convention; no work in __init__.
-    - Subclasses should pre-configure `task` and (optionally) override
-      `_build_legacy_experiment()`.
+    - Subclasses pre-configure `task` and may override the native setup hooks
+      (`_native_setup_supervised` / `_native_setup_unsupervised` /
+      `_native_setup_timeseries`) for task-specific shapes.
     """
 
     # --------------------------------------------------------------------- init
@@ -299,7 +357,24 @@ class Experiment(BaseEstimator):
             data = X
 
         self._experiment_id = str(uuid.uuid4())
-        self._legacy = self._build_legacy_experiment()
+        # Phase 6: ``self._legacy`` is a no-op shim — present so existing
+        # drain-lock test patterns (``monkeypatch.setattr(exp._legacy, ...)``)
+        # keep working. Production code never reads anything off it.
+        self._legacy = _LegacyShim()
+
+        # Phase 6 (s46): setup_kwargs no longer fall through to legacy —
+        # the legacy directory is gone. Reject any kwargs the native path
+        # doesn't understand. Power users who need the removed knobs
+        # should pin to PyCaret 3.x or wait for the post-4.0 reintroduction
+        # of specific options as constructor params.
+        if setup_kwargs:
+            raise ConfigurationError(
+                f"setup_kwargs are not supported in PyCaret 4.0: "
+                f"{sorted(setup_kwargs.keys())}. The legacy escape hatch "
+                "was removed in phase 6. If you need a removed option, "
+                "use PyCaret 3.x or open an issue requesting it as a "
+                "first-class constructor parameter."
+            )
 
         if self.logger is None:
             self.logger = (
@@ -315,24 +390,13 @@ class Experiment(BaseEstimator):
             payload={"target": self.target, "rows": len(data)},
         )
 
-        # Drain dispatcher (sessions 35-38): when no complex preprocessing
-        # flags are set AND the task has a native path, skip
-        # self._legacy.setup() entirely. Falls through to legacy.setup()
-        # for time-series + caller-supplied setup_kwargs.
-        self._native_setup_used = False
-        if self._can_use_native_setup(setup_kwargs):
-            if self._is_supervised():
-                self._native_setup_supervised(data, setup_kwargs)
-            else:
-                self._native_setup_unsupervised(data, setup_kwargs)
-            self._native_setup_used = True
+        # Drain dispatcher (sessions 35-38): every supported task has a
+        # native setup path now that legacy is gone.
+        self._native_setup_used = True
+        if self._is_supervised():
+            self._native_setup_supervised(data, setup_kwargs)
         else:
-            self._legacy.setup(
-                **self._build_legacy_setup_kwargs(data, setup_kwargs),
-            )
-            # Session-29 drain: snapshot the user-facing data accessors
-            # off the legacy state. We hold references, not copies.
-            self._snapshot_fit_state()
+            self._native_setup_unsupervised(data, setup_kwargs)
         self._fitted = True
 
         self.logger.log(
@@ -372,83 +436,39 @@ class Experiment(BaseEstimator):
         return data
 
     def _build_legacy_experiment(self):
-        """Construct the legacy-engine instance to delegate to.
+        """Phase-6 stub. The real legacy class hierarchy was deleted.
 
-        Task subclasses override this to choose the right god-class subclass
-        from `pycaret.internal.pycaret_experiment`.
+        Returns a ``_LegacyShim`` instance with the verb names predefined
+        as no-op identity methods so existing drain-lock test patterns
+        keep working unchanged:
+
+            exp._legacy = exp._build_legacy_experiment()
+            monkeypatch.setattr(exp._legacy, "setup", _poison)
+            exp.fit(df)  # native path — poison never fires
+
+        Production code never reads attributes off this object — every
+        native verb / setup path bypasses ``self._legacy``. The shim
+        exists purely for back-compat with the established test pattern.
         """
-        raise NotImplementedError("Subclasses must implement _build_legacy_experiment()")
-
-    def _build_legacy_setup_kwargs(
-        self, data: pd.DataFrame, extra: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Map the Experiment's stored config onto the legacy `setup()` kwargs.
-
-        Subclasses may override for task-specific setup parameters (e.g. time
-        series uses `fh`, `seasonal_period` rather than `target`).
-        """
-        kwargs: dict[str, Any] = {
-            "data": data,
-            "target": self.target,
-            "session_id": self.session_id,
-            "train_size": self.train_size,
-            "fold": self.fold,
-            "fold_strategy": self.fold_strategy,
-            "preprocess": self.preprocess,
-            "normalize": self.normalize,
-            "transformation": self.transformation,
-            "remove_outliers": self.remove_outliers,
-            "feature_selection": self.feature_selection,
-            "n_jobs": self.n_jobs,
-            "use_gpu": self.use_gpu,
-            "verbose": self.verbose,
-            "html": False,
-            "log_experiment": False,
-        }
-        kwargs.update(extra)
-        # Unsupervised legacy setup() has a narrower kwarg surface — drop
-        # supervised-specific AND transformation-chain kwargs its signature
-        # does not accept. (Clustering/anomaly preprocessing is controlled
-        # via constructor args like `normalize` / `preprocess` only.)
-        if not self._is_supervised():
-            for k in (
-                "target",
-                "train_size",
-                "fold",
-                "fold_strategy",
-                "transformation",
-                "remove_outliers",
-                "feature_selection",
-            ):
-                kwargs.pop(k, None)
-        return kwargs
+        return _LegacyShim()
 
     # ------------------------------------------------- session-35 native setup
 
     def _can_use_native_setup(self, setup_kwargs: dict[str, Any]) -> bool:
-        """Predicate: can fit() skip ``self._legacy.setup()`` entirely?
+        """Predicate: would fit() use the native (no-legacy) setup path?
 
-        The native setup handles all supervised + unsupervised tabular
-        tasks with the following preprocessing:
+        Phase 6 (s46) deleted the legacy directory, so the native path is
+        the *only* path. This predicate is now informational — it tells
+        callers whether the native path would handle their config
+        (currently it handles every supported task except when
+        ``setup_kwargs`` are passed, which now raises rather than
+        falling back). Kept as a public surface for tests / introspection.
 
-        - **Phase 1** (session 35): mean / mode imputation + ordinal
-          encoding + label encoding for clf.
-        - **Phase 2** (session 36): ``normalize=True`` (StandardScaler) and
-          ``transformation=True`` (PowerTransformer) on numeric features.
-        - **Phase 3** (session 37): ``remove_outliers=True`` (IsolationForest
-          drops 5% most anomalous training rows) and ``feature_selection=True``
-          (SelectFromModel keeps features with above-median importance from
-          a lightweight ExtraTrees / Lasso estimator).
-        - **Phase 4** (session 38): native unsupervised setup for clustering
-          and anomaly tasks. No train/test split (the whole frame is the
-          training set). No fold generator (unsupervised tasks don't CV in
-          the same way). Same preprocessing chain as supervised.
-
-        Phase 5a (s39): time-series adopts the predicate but the native
-        path still runs ``legacy.setup()`` under the hood — TS verbs
-        haven't been drained yet, and they depend on legacy state. Phase
-        5b/c will drain those verbs and remove the legacy.setup() call
-        from the TS native path.
+        Native phases (historical):
+        - **Phase 1-3** (sessions 35-37): supervised tabular preprocessing.
+        - **Phase 4** (s38): unsupervised tabular (clustering + anomaly).
+        - **Phase 5a-d** (s39-s45): time-series (TS verbs drained s40-s44;
+          ``legacy.setup()`` call stripped from native TS in s45).
         """
         from pycaret.core.tasks import TaskType
 
@@ -1253,18 +1273,9 @@ class Experiment(BaseEstimator):
         """
         self._require_fitted()
 
-        from pycaret.core.tasks import TaskType
-
-        # Non-supervised / time-series paths still on the legacy engine.
-        if self.task not in (TaskType.CLASSIFICATION, TaskType.REGRESSION):
-            # Forward whatever the caller passed as estimator kwargs
-            # (num_clusters= / fraction= for clustering, fh= for TS, etc.)
-            # but DROP `fold` which only applies to supervised CV.
-            return self._create_model_legacy(
-                estimator,
-                verbose=verbose,
-                **estimator_kwargs,
-            )
+        # Phase 6: clustering / anomaly / time-series all override
+        # create_model in their task subclasses (s28 / s40). The base
+        # implementation here is the supervised native path only.
 
         return self._create_model_supervised_native(
             estimator,
@@ -1436,59 +1447,6 @@ class Experiment(BaseEstimator):
         df.loc["Std"] = df.std(numeric_only=True)
         return df.round(round_)
 
-    def _create_model_legacy(
-        self, estimator: Any, *, verbose: bool = False, **kwargs: Any
-    ) -> CreateResult:
-        """Fallback for tasks whose create_model hasn't been drained yet
-        (time-series, clustering, anomaly). Delegates to the legacy engine.
-
-        ``**kwargs`` carries task-specific parameters (``num_clusters=``,
-        ``fraction=``, ``fh=``, …). Caller is responsible for not passing
-        supervised-only kwargs like ``fold=``.
-        """
-        t0 = time.perf_counter()
-        self.logger.log(
-            EventKind.MODEL_CREATE_STARTED,
-            payload={"estimator": self._describe_estimator(estimator)},
-        )
-        model = self._legacy.create_model(estimator, verbose=verbose, **kwargs)
-        metrics = self._safe_pull()
-        self.logger.log(
-            EventKind.MODEL_CREATED,
-            duration_ms=(time.perf_counter() - t0) * 1000,
-            payload={"estimator": self._describe_estimator(estimator)},
-        )
-        return CreateResult(
-            pipeline=model,
-            model_id=str(estimator) if isinstance(estimator, str) else type(model).__name__,
-            metrics=metrics,
-            params=self._safe_params(model),
-        )
-
-    def _predict_model_legacy(
-        self,
-        estimator: Any,
-        *,
-        data: Any = None,
-        verbose: bool = False,
-    ) -> PredictResult:
-        """Time-series predict_model fallback. Delegates to legacy.predict_model
-        and pulls metrics. Phase 5b will drain this when TS verbs migrate.
-        """
-        t0 = time.perf_counter()
-        # legacy.predict_model returns a DataFrame of forecasts.
-        kwargs = {"verbose": verbose}
-        if data is not None:
-            kwargs["X"] = data
-        forecasts = self._legacy.predict_model(estimator, **kwargs)
-        metrics = self._safe_pull()
-        self.logger.log(
-            EventKind.MODEL_PREDICTED,
-            duration_ms=(time.perf_counter() - t0) * 1000,
-            payload={"estimator": self._describe_estimator(estimator)},
-        )
-        return PredictResult(predictions=forecasts, metrics=metrics)
-
     def predict_model(
         self,
         estimator: Any,
@@ -1555,12 +1513,9 @@ class Experiment(BaseEstimator):
                 f"baked in). Got {type(estimator).__name__!r}."
             )
 
-        # Time-series defers to legacy.predict_model — sktime forecasters
-        # have a different API (`.predict(fh=..., X=...)`) and the
-        # preprocessor is a sktime ForecastingPipeline (no `.transform`).
-        # The verb drain happens in phase 5b/c.
-        if self.task == TaskType.TIME_SERIES:
-            return self._predict_model_legacy(estimator, data=data, verbose=verbose)
+        # Phase 6: TimeSeriesExperiment overrides predict_model (s41) so
+        # the TS branch never reaches this code path. Base implementation
+        # is supervised + unsupervised tabular only.
 
         t0 = time.perf_counter()
 
@@ -1713,36 +1668,42 @@ class Experiment(BaseEstimator):
             return None
 
     def plot_model(self, estimator: Any, *args: Any, **kwargs: Any) -> Any:
-        """Delegates to the legacy plot dispatcher. Phase 3 of the roadmap
-        replaces this with a Plotly-native registry."""
-        self._require_fitted()
-        return self._legacy.plot_model(estimator, *args, **kwargs)
+        """Plot model diagnostics.
+
+        Removed in 4.0 (phase 6) pending the Plotly-native plot registry
+        rewrite. The legacy matplotlib / yellowbrick path was deleted with
+        the rest of ``pycaret/internal/pycaret_experiment/``.
+        """
+        raise NotImplementedError(
+            "plot_model() was removed in PyCaret 4.0. The Plotly-native "
+            "replacement is on the roadmap (post-4.0.0). Use a forecaster's "
+            "own .plot()/.predict() output until then."
+        )
 
     def evaluate_model(self, estimator: Any, *args: Any, **kwargs: Any) -> Any:
-        """Interactive evaluation widget. Builds on plot_model — same Phase-3
-        replacement target. Still delegates."""
-        self._require_fitted()
-        return self._legacy.evaluate_model(estimator, *args, **kwargs)
+        """Interactive evaluation widget.
+
+        Removed in 4.0 (phase 6). Same Plotly rewrite target as plot_model.
+        """
+        raise NotImplementedError(
+            "evaluate_model() was removed in PyCaret 4.0. The interactive "
+            "Plotly replacement is on the roadmap (post-4.0.0)."
+        )
 
     # ----------------------------------------------- session-31 native verbs
 
-    def pull(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
+    def pull(self, *args: Any, **kwargs: Any) -> pd.DataFrame | None:
         """Return the most recent metrics DataFrame.
 
-        Session-31 drain: reads from ``self._fit_state["last_metrics"]``,
-        which is updated by each native verb (``create_model``, ``tune_model``,
-        ``compare_models``, ensemble / blend / stack / calibrate / finalize)
-        before it returns. If the snapshot doesn't have a value (no native
-        verb has run yet, or a TS-fallback path was taken), we fall back to
-        the legacy ``self._legacy.pull()``.
+        Reads from ``self._fit_state["last_metrics"]``, which is updated by
+        each native verb (``create_model``, ``tune_model``,
+        ``compare_models``, ensemble / blend / stack / calibrate /
+        finalize) before it returns. ``None`` if no metrics-emitting verb
+        has run yet — phase 6 removed the legacy ``self._legacy.pull()``
+        fallback.
         """
         self._require_fitted()
-        last = self._fit_state.get("last_metrics") if hasattr(self, "_fit_state") else None
-        if last is not None:
-            return last
-        # TS / unsupervised legacy fallback path — only reachable when a
-        # non-drained verb populated the legacy display container.
-        return self._legacy.pull(*args, **kwargs)
+        return self._fit_state.get("last_metrics") if hasattr(self, "_fit_state") else None
 
     def models(self, *args: Any, internal: bool = False, **kwargs: Any) -> pd.DataFrame:
         """Return a DataFrame describing the available models in the registry.
@@ -1753,12 +1714,10 @@ class Experiment(BaseEstimator):
         each container's ``get_dict(internal=True)`` directly. Falls back
         to the legacy holder only when the snapshot is empty.
 
-        Session-39: time-series tasks defer to ``legacy.models()`` because
-        the TS registry contains pseudo-entries (``ensemble_forecaster``)
-        that the legacy view filters out via ``model_type``-based rules.
-        Re-implementing those rules here would duplicate logic that lives
-        in ``time_series/forecasting/oop.py``; the drain happens when the
-        TS verbs themselves migrate.
+        Session-45 (phase 5d) added native TS filter for
+        ``model_type ∈ TSModelTypes`` so this method no longer defers to
+        legacy for any task. Phase 6 removed the legacy fallback for
+        empty registries — that case is now an error condition.
         """
         self._require_fitted()
         import pandas as _pd
@@ -1767,7 +1726,7 @@ class Experiment(BaseEstimator):
 
         registry = self._fit_state.get("model_registry", {}) if hasattr(self, "_fit_state") else {}
         if not registry:
-            return self._legacy.models(*args, internal=internal, **kwargs)
+            return _pd.DataFrame()
 
         # Time-series filters: legacy excludes containers whose model_type
         # isn't in TSModelTypes (specifically `ensemble_forecaster` whose
@@ -1825,16 +1784,13 @@ class Experiment(BaseEstimator):
         mutated by ``add_metric`` / ``remove_metric``.
         """
         self._require_fitted()
-        try:
-            metrics = self._get_metric_registry()
-            if not metrics:
-                # Time-series + any other task that doesn't populate the
-                # native registry falls through to legacy.
-                return self._legacy.get_metrics(*args, **kwargs)
-        except Exception:
-            return self._legacy.get_metrics(*args, **kwargs)
-
         import pandas as _pd
+
+        metrics = self._get_metric_registry() or {}
+        if not metrics:
+            # Phase 6: legacy fallback removed. Empty registry → empty
+            # DataFrame. (TS now builds its registry natively in s40.)
+            return _pd.DataFrame()
 
         rows: list[dict] = []
         for mid, container in metrics.items():
@@ -1913,15 +1869,10 @@ class Experiment(BaseEstimator):
 
         registry = self._get_metric_registry()
         if registry is None:
-            # Time-series falls back to legacy.
-            return self._legacy.add_metric(
-                id,
-                name,
-                score_func,
-                target=target,
-                greater_is_better=greater_is_better,
-                args=args,
-                **kwargs,
+            raise NotImplementedError(
+                f"add_metric() is not supported for task {self.task.value!r}: "
+                "no native metric registry yet. Open an issue if you need "
+                "custom metrics for this task."
             )
 
         # Build the right container for the task.
@@ -1954,15 +1905,10 @@ class Experiment(BaseEstimator):
                 is_custom=True,
             )
         else:
-            # Clustering / anomaly: use whichever task-specific container exists.
-            return self._legacy.add_metric(
-                id,
-                name,
-                score_func,
-                target=target,
-                greater_is_better=greater_is_better,
-                args=args,
-                **kwargs,
+            raise NotImplementedError(
+                f"add_metric() not yet supported for task {self.task.value!r}. "
+                "Phase 6 removed the legacy fallback. Open an issue if you "
+                "need custom metrics for clustering / anomaly / time-series."
             )
 
         registry[id] = container
@@ -1978,7 +1924,10 @@ class Experiment(BaseEstimator):
         self._require_fitted()
         registry = self._get_metric_registry()
         if registry is None:
-            return self._legacy.remove_metric(name_or_id)
+            raise NotImplementedError(
+                f"remove_metric() is not supported for task {self.task.value!r}: "
+                "no native metric registry yet."
+            )
 
         # Try direct ID match first.
         if name_or_id in registry:
@@ -2213,46 +2162,9 @@ class Experiment(BaseEstimator):
     # (which read transformed splits + the fold generator from it), but the
     # public API no longer requires legacy attribute lookups to function.
 
-    def _snapshot_fit_state(self) -> None:
-        """Cache references to the legacy state on ``self`` post-setup.
-
-        Called once from ``fit()`` after ``self._legacy.setup()`` returns.
-        We hold *references*, not copies — mutating ``self.X_train`` still
-        propagates to the underlying frame, matching legacy semantics.
-
-        Snapshot covers two tiers:
-
-        1. **User-facing accessors** (drained in session 29): ``X``, ``X_train``,
-           ``X_test``, ``y``, ``y_train``, ``y_test``, ``preprocess_pipeline``.
-        2. **Internal training state** (drained in session 30): the post-
-           preprocessing transformed splits, the CV fold generator, and the
-           model-container registry. The drained verbs (``create_model``,
-           ``tune_model``, ``compare_models``, ensemble / blend / stack /
-           calibrate / finalize / unsupervised create_model) read these from
-           ``self._fit_state`` instead of dispatching to ``self._legacy``.
-
-        Some attributes are task-specific (clustering / anomaly don't have
-        train/test splits); we ``getattr`` defensively so missing slots
-        become ``None`` rather than raising.
-        """
-        legacy = self._legacy
-        self._fit_state: dict[str, Any] = {
-            # ---- user-facing (session 29)
-            "X": getattr(legacy, "X", None),
-            "X_train": getattr(legacy, "X_train", None),
-            "X_test": getattr(legacy, "X_test", None),
-            "y": getattr(legacy, "y", None),
-            "y_train": getattr(legacy, "y_train", None),
-            "y_test": getattr(legacy, "y_test", None),
-            "preprocess_pipeline": getattr(legacy, "pipeline", None),
-            # ---- internal training state (session 30)
-            "X_transformed": getattr(legacy, "X_transformed", None),
-            "X_train_transformed": getattr(legacy, "X_train_transformed", None),
-            "y_transformed": getattr(legacy, "y_transformed", None),
-            "y_train_transformed": getattr(legacy, "y_train_transformed", None),
-            "fold_generator": getattr(legacy, "fold_generator", None),
-            "model_registry": dict(getattr(legacy, "_all_models_internal", {})),
-        }
+    # Phase 6: removed `_snapshot_fit_state` — it was only used by the
+    # legacy-fallback path in fit(). Native setup methods build _fit_state
+    # directly.
 
     @property
     def X(self) -> pd.DataFrame:
@@ -2362,13 +2274,13 @@ class Experiment(BaseEstimator):
             self._fit_state["last_metrics"] = df
 
     def _safe_pull(self):
-        """Legacy-fallback pull for the TS code path. Native verbs use
-        ``_set_last_metrics`` instead.
+        """Phase 6: legacy fallback removed. Now just reads from the
+        snapshot — same as ``pull()``. Kept as a name for callers; may
+        be merged into ``pull()`` in a future cleanup.
         """
-        try:
-            return self._legacy.pull()
-        except Exception:
-            return None
+        if hasattr(self, "_fit_state"):
+            return self._fit_state.get("last_metrics")
+        return None
 
     @staticmethod
     def _safe_params(model: Any) -> dict[str, Any]:

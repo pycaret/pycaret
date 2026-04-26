@@ -74,7 +74,4 @@ class RegressionExperiment(SupervisedExperiment):
             pass
         return tags
 
-    def _build_legacy_experiment(self):
-        from pycaret.regression.oop import RegressionExperiment as _LegacyRegExp
-
-        return _LegacyRegExp()
+    # Phase 6: removed _build_legacy_experiment. Native setup only.

@@ -115,6 +115,76 @@ Theme: ship two more copilots (failure debugger + deployment risk reviewer) + th
 
 ---
 
+# Session 46 — 2026-04-26 — Phase 6: delete pycaret/internal/pycaret_experiment/
+
+**Engine MVP 1 is feature-complete for 4.0.0.** The legacy directory and all five `oop.py` thin wrappers — ~22K LoC total — are deleted. The default 4.0 workflow runs without ever importing legacy code.
+
+## REMOVED — engine
+
+- `REMOVED, BREAKING` — **`pycaret/internal/pycaret_experiment/`** directory (10K LoC across `pycaret_experiment.py` / `tabular_experiment.py` / `supervised_experiment.py` / `non_ts_supervised_experiment.py` / `ts_supervised_experiment.py` / `unsupervised_experiment.py`). Importing any submodule now raises `ModuleNotFoundError`.
+- `REMOVED, BREAKING` — **`pycaret/classification/oop.py`** (3.3K LoC). The module-level export of the legacy `ClassificationExperiment` class is gone. Use `from pycaret.classification import ClassificationExperiment` (the 4.0 OOP class) — same import path, native implementation.
+- `REMOVED, BREAKING` — **`pycaret/regression/oop.py`** (2.6K LoC). Same migration: `from pycaret.regression import RegressionExperiment`.
+- `REMOVED, BREAKING` — **`pycaret/clustering/oop.py`** (351 LoC). Use `from pycaret.clustering import ClusteringExperiment`.
+- `REMOVED, BREAKING` — **`pycaret/anomaly/oop.py`** (165 LoC). Use `from pycaret.anomaly import AnomalyExperiment`.
+- `REMOVED, BREAKING` — **`pycaret/time_series/forecasting/oop.py`** (5.7K LoC). Use `from pycaret.time_series import TimeSeriesExperiment`. The `forecasting` submodule is now an empty namespace kept only for back-compat.
+- `REMOVED` — **`Experiment._snapshot_fit_state`** method, **`Experiment._build_legacy_setup_kwargs`**, **`Experiment._create_model_legacy`**, **`Experiment._predict_model_legacy`** in `core/experiment.py`. All only-used-by-legacy paths.
+
+## CHANGED — engine
+
+- `BREAKING` — **`setup_kwargs` raise** `ConfigurationError`. Previously caller-supplied kwargs would fall through to the legacy `setup()` for power users. Phase 6 deleted that escape hatch. Power users with removed knobs pin to PyCaret 3.x or open an issue requesting a first-class constructor parameter.
+- `BREAKING` — **Six legacy-only verbs raise `NotImplementedError`** with concrete migration pointers:
+  - `plot_model` / `evaluate_model` → "Plotly rewrite is post-4.0.0".
+  - `interpret_model` → "use SHAP directly: `import shap; shap.Explainer(pipeline.steps[-1][1])(X_test)`".
+  - `automl` → "use `compare_models(n_select=N).best` then `tune_model(best)`".
+  - `get_leaderboard` → "the leaderboard DataFrame is on `compare_models(...).leaderboard`".
+  - `check_stats` → "use sktime / statsmodels directly: `from statsmodels.tsa.stattools import adfuller; adfuller(exp.y_train)`".
+- `CHANGED` — **`Experiment.pull()`** returns `None` when no metrics-emitting verb has run yet (the legacy `_legacy.pull()` fallback was removed).
+- `CHANGED` — **`Experiment.models()`** returns an empty `DataFrame` when `_fit_state["model_registry"]` is empty (no more legacy fallback).
+- `CHANGED` — **`Experiment.get_metrics()`** returns an empty `DataFrame` when the metric registry is empty.
+- `CHANGED` — **`Experiment.add_metric` / `Experiment.remove_metric`** raise `NotImplementedError` for tasks without a native metric registry (clustering / anomaly / time-series — though TS does build one natively in s40).
+- `CHANGED` — **`SupervisedExperiment._compare_models_legacy` / `_tune_model_legacy` / `_ensemble_model_legacy` / `_blend_models_legacy` / `_stack_models_legacy` / `_finalize_model_legacy`** are now stubs that raise `NotImplementedError`. Reachable only when called on a non-supervised, non-TS experiment that doesn't override the verb itself — i.e. clustering / anomaly's compare/tune/etc., which were never natively implemented.
+
+## ADDED — engine
+
+- `ADDED` — **`_LegacyShim`** class in `core/experiment.py`. Phase-6 placeholder for the deleted legacy experiment object: `__slots__`-bound namespace with all 27 verb names predefined as no-op identity callables. Exists only so the established drain-lock test pattern (`monkeypatch.setattr(exp._legacy, "setup", _poison)`) keeps working unchanged. Production code never reads off it. `Experiment._build_legacy_experiment()` returns a fresh `_LegacyShim()`. `Experiment.fit()` and `TimeSeriesExperiment.fit()` set `self._legacy = _LegacyShim()` post-fit.
+
+## CHANGED — type aliases
+
+- `CHANGED` — **`pycaret.containers.models.base_model._PyCaretExperiment`** is now `Any` (was `from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment`). The annotation is stringified by `from __future__ import annotations`; runtime never resolves it.
+- `CHANGED` — **`pycaret.utils.generic._PyCaretExperiment`** (TYPE_CHECKING-guarded) → `Any`.
+- `CHANGED` — **`pycaret/time_series/forecasting/__init__.py`** is now an empty namespace; no more `from pycaret.time_series.forecasting.oop import TSForecastingExperiment`.
+
+## ADDED — tests
+
+- `ADDED` — **`packages/engine/tests/test_session46_phase6_legacy_deletion.py`** — 14 new tests:
+  - All six deleted modules raise `ModuleNotFoundError` on import (`pycaret.internal.pycaret_experiment` / `pycaret.classification.oop` / `pycaret.regression.oop` / `pycaret.clustering.oop` / `pycaret.anomaly.oop` / `pycaret.time_series.forecasting.oop`).
+  - All five 4.0 `Experiment` classes still importable and callable.
+  - Each removed verb (`plot_model` / `evaluate_model` / `interpret_model` / `automl` / `get_leaderboard` / `check_stats`) raises `NotImplementedError` with the expected message.
+  - `_LegacyShim` predefines every verb name as a no-op callable.
+
+## CHANGED — existing tests
+
+- `CHANGED` — **`test_session35_native_setup::test_complex_preprocessing_falls_back_to_legacy`** → renamed to `test_setup_kwargs_raise_in_phase6`. Inverted: now expects `ConfigurationError`.
+- `CHANGED` — **`test_session39_native_setup_phase5::test_time_series_setup_kwargs_falls_back_to_legacy_with_state_snapshot`** → renamed to `test_time_series_setup_kwargs_raises_in_phase6`. Same inversion.
+- `CHANGED` — **`test_session45_ts_native_setup_full_drain::test_setup_kwargs_still_routes_to_legacy`** → renamed to `test_setup_kwargs_raises_in_phase6`.
+
+## INTERNAL
+
+- `INTERNAL` — **Why `_LegacyShim` instead of removing `self._legacy` entirely.** The drain-lock test pattern (`monkeypatch.setattr(exp._legacy, "setup", _poison)` then verify the verb runs without firing the poison) is used across 8+ test files and 50+ test functions. Deleting `self._legacy` would mean rewriting every test. The shim is a 30-line no-op class that keeps the pattern working with zero test diffs — the structural drain assertion is unchanged because the poison is set on a real attribute, but production never calls anything on the shim.
+- `INTERNAL` — **Why `setup_kwargs` raise rather than silently accept-and-warn.** Silent acceptance would create a footgun: users passing the same kwargs they used in 3.x would get different behavior with no signal. Raising forces the migration to be explicit.
+- `INTERNAL` — **Why six verbs raise rather than being absent.** Keeping the method signatures preserves discoverability (`exp.plot_model?` shows the docstring + migration hint) and lets sklearn `inspect`-based tooling enumerate the surface. Absent methods would `AttributeError` with no useful pointer.
+- `INTERNAL` — **`from __future__ import annotations` in `base_model.py`.** The `_PyCaretExperiment` symbol is referenced in two type annotations (`_set_engine` parameter + docstring). With future annotations, both become string literals that don't need to be importable at runtime — only at static-analysis time, where the `Any` alias suffices.
+
+## Session 46 delta summary
+
+| Metric | Session 45 end | Session 46 end |
+|---|---:|---:|
+| Legacy LoC in repo | ~22K | **0** |
+| `legacy.<anything>` callsites in production | 0 (default flow) | 0 (every flow) |
+| Engine tests (fast + slow) | 244 | **258** |
+
+---
+
 # Session 45 — 2026-04-26 — Phase 5d: strip legacy.setup() from _native_setup_timeseries
 
 **The TS drain is complete.** `_native_setup_timeseries` no longer calls `legacy.setup()` at all. Together with the verb drains in s40-s44, every default TS workflow runs without ever touching the legacy directory. Phase 6 (deletion of `pycaret/internal/pycaret_experiment/`) is now unblocked.

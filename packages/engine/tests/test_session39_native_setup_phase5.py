@@ -118,22 +118,17 @@ def test_time_series_fold_generator_is_expanding_window_splitter():
 
 
 @pytest.mark.slow
-def test_time_series_setup_kwargs_falls_back_to_legacy_with_state_snapshot():
-    """When setup_kwargs forces legacy, _fit_state is still populated via
-    the post-setup snapshot helper.
+def test_time_series_setup_kwargs_raises_in_phase6():
+    """Phase 6 (s46) deleted the legacy directory. ``setup_kwargs`` no
+    longer fall through — they raise ``ConfigurationError``.
     """
     import pycaret.datasets
+    from pycaret.core.errors import ConfigurationError
     from pycaret.tasks import TimeSeriesExperiment
 
     df = pycaret.datasets.get_data("airline", verbose=False)
-    exp = TimeSeriesExperiment(fh=12, session_id=42).fit(df, html=False)
-
-    # Native NOT used because setup_kwargs are present.
-    assert exp._native_setup_used is False
-    # But _fit_state is still populated by the snapshot helper after legacy.setup.
-    assert hasattr(exp, "_fit_state")
-    assert exp._fit_state["y_train"] is not None
-    assert exp.y_train.shape[0] + exp.y_test.shape[0] <= exp.y.shape[0]
+    with pytest.raises(ConfigurationError, match="setup_kwargs are not supported"):
+        TimeSeriesExperiment(fh=12, session_id=42).fit(df, html=False)
 
 
 # ---------------------------------------------------------------------------

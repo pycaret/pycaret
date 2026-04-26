@@ -76,8 +76,4 @@ class ClassificationExperiment(SupervisedExperiment):
             pass
         return tags
 
-    def _build_legacy_experiment(self):
-        # Legacy class still houses the implementation during transition.
-        from pycaret.classification.oop import ClassificationExperiment as _LegacyClfExp
-
-        return _LegacyClfExp()
+    # Phase 6: removed _build_legacy_experiment. Native setup only.

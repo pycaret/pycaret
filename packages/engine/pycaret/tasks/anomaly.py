@@ -58,7 +58,4 @@ class AnomalyExperiment(UnsupervisedExperiment):
             verbose=verbose,
         )
 
-    def _build_legacy_experiment(self):
-        from pycaret.anomaly.oop import AnomalyExperiment as _LegacyAnomalyExp
-
-        return _LegacyAnomalyExp()
+    # Phase 6: removed _build_legacy_experiment. Native setup only.

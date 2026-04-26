@@ -59,7 +59,4 @@ class ClusteringExperiment(UnsupervisedExperiment):
             verbose=verbose,
         )
 
-    def _build_legacy_experiment(self):
-        from pycaret.clustering.oop import ClusteringExperiment as _LegacyClusterExp
-
-        return _LegacyClusterExp()
+    # Phase 6: removed _build_legacy_experiment. Native setup only.

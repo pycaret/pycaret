@@ -277,53 +277,17 @@ class SupervisedExperiment(Experiment):
             return False
         return sort in ascending_metrics
 
-    def _compare_models_legacy(
-        self,
-        *,
-        include: Any | None = None,
-        exclude: Any | None = None,
-        fold: Any | None = None,
-        cross_validation: bool = True,
-        sort: str | None = None,
-        n_select: int = 1,
-        turbo: bool = True,
-        fit_kwargs: dict | None = None,
-        round: int = 4,
-        verbose: bool = False,
-    ) -> CompareResult:
-        """Fallback for tasks whose compare_models hasn't been drained yet."""
-        t0 = time.perf_counter()
-        self.logger.log(EventKind.MODEL_COMPARE_STARTED)
-        kwargs: dict[str, Any] = {
-            "n_select": n_select,
-            "turbo": turbo,
-            "verbose": verbose,
-        }
-        if include is not None:
-            kwargs["include"] = include
-        if exclude is not None:
-            kwargs["exclude"] = exclude
-        if fold is not None:
-            kwargs["fold"] = fold
-        if sort is not None:
-            kwargs["sort"] = sort
-        if fit_kwargs is not None:
-            kwargs["fit_kwargs"] = fit_kwargs
-        kwargs["cross_validation"] = cross_validation
-        kwargs["round"] = round
-        models = self._legacy.compare_models(**kwargs)
-        leaderboard = self._safe_pull()
-        self.logger.log(
-            EventKind.MODEL_COMPARE_FINISHED,
-            duration_ms=(time.perf_counter() - t0) * 1000,
-            payload={"n_select": n_select},
-        )
-        models_list = models if isinstance(models, list) else [models]
-        return CompareResult(
-            best=models_list[0],
-            models=models_list,
-            leaderboard=leaderboard,
-            ranked_ids=self._ranked_ids_from_leaderboard(leaderboard),
+    def _compare_models_legacy(self, **kwargs: Any) -> CompareResult:
+        """Phase 6 stub. The legacy fallback was removed when
+        ``pycaret/internal/pycaret_experiment/`` was deleted. Reachable
+        only when called on a non-supervised, non-TS experiment that
+        doesn't override ``compare_models`` itself — i.e. clustering /
+        anomaly. Drain those if needed.
+        """
+        raise NotImplementedError(
+            f"compare_models() is not yet supported natively for task "
+            f"{self.task.value!r}. Phase 6 removed the legacy fallback. "
+            "Open an issue if you need cross-model comparison for this task."
         )
 
     # --------------------------------------------------------- tuning
@@ -570,38 +534,14 @@ class SupervisedExperiment(Experiment):
             metrics=metrics_df,
         )
 
-    def _tune_model_legacy(
-        self,
-        estimator: Any,
-        *,
-        fold: Any | None = None,
-        n_iter: int = 10,
-        custom_grid: dict | None = None,
-        optimize: str | None = None,
-        verbose: bool = False,
-    ) -> TuneResult:
-        """Fallback for tasks whose tune_model hasn't been drained yet."""
-        t0 = time.perf_counter()
-        self.logger.log(EventKind.MODEL_TUNE_STARTED)
-        kwargs: dict[str, Any] = {"n_iter": n_iter, "verbose": verbose}
-        if fold is not None:
-            kwargs["fold"] = fold
-        if custom_grid is not None:
-            kwargs["custom_grid"] = custom_grid
-        if optimize is not None:
-            kwargs["optimize"] = optimize
-        tuned = self._legacy.tune_model(estimator, **kwargs)
-        metrics = self._safe_pull()
-        self.logger.log(
-            EventKind.MODEL_TUNED,
-            duration_ms=(time.perf_counter() - t0) * 1000,
-        )
-        return TuneResult(
-            pipeline=tuned,
-            best_params=self._safe_params(tuned),
-            search=None,
-            cv_results=metrics,
-            metrics=metrics,
+    def _tune_model_legacy(self, estimator: Any, **kwargs: Any) -> TuneResult:
+        """Phase 6 stub. The legacy fallback was removed when
+        ``pycaret/internal/pycaret_experiment/`` was deleted.
+        Clustering / anomaly don't have a native tune path yet.
+        """
+        raise NotImplementedError(
+            f"tune_model() is not yet supported natively for task "
+            f"{self.task.value!r}. Phase 6 removed the legacy fallback."
         )
 
     # --------------------------------------------------------- ensembling
@@ -1003,74 +943,65 @@ class SupervisedExperiment(Experiment):
         )
         return FinalizeResult(pipeline=pipeline)
 
-    # --- legacy fallbacks for non-supervised tasks (TS / clustering / anomaly)
+    # --- phase 6 stubs for non-supervised tasks
+    # The legacy fallbacks were removed when ``pycaret/internal/
+    # pycaret_experiment/`` was deleted. Clustering / anomaly don't have
+    # native paths for these meta-estimator verbs (they don't really apply
+    # to unsupervised tasks). TS overrides finalize_model in its subclass
+    # (s44) so reaches a different entry point.
 
-    def _ensemble_model_legacy(
-        self, estimator: Any, *, method: str, n_estimators: int, fold: Any | None, verbose: bool
-    ) -> EnsembleResult:
-        out = self._legacy.ensemble_model(
-            estimator, method=method, n_estimators=n_estimators, fold=fold, verbose=verbose
+    def _ensemble_model_legacy(self, estimator: Any, **kwargs: Any) -> EnsembleResult:
+        raise NotImplementedError(
+            f"ensemble_model() not supported for task {self.task.value!r}. "
+            "Bagging / boosting are supervised-only; phase 6 removed the legacy fallback."
         )
-        metrics = self._safe_pull()
-        self.logger.log(EventKind.MODEL_ENSEMBLED)
-        return EnsembleResult(pipeline=out, method=method, metrics=metrics)
 
-    def _blend_models_legacy(
-        self,
-        estimators: list[Any],
-        *,
-        method: str,
-        weights: list[float] | None,
-        fold: Any | None,
-        verbose: bool,
-    ) -> BlendResult:
-        kwargs: dict = {"verbose": verbose}
-        if method != "auto":
-            kwargs["method"] = method
-        if weights is not None:
-            kwargs["weights"] = weights
-        if fold is not None:
-            kwargs["fold"] = fold
-        out = self._legacy.blend_models(estimators, **kwargs)
-        metrics = self._safe_pull()
-        self.logger.log(EventKind.MODEL_BLENDED)
-        return BlendResult(pipeline=out, metrics=metrics)
+    def _blend_models_legacy(self, estimators: list[Any], **kwargs: Any) -> BlendResult:
+        raise NotImplementedError(
+            f"blend_models() not supported for task {self.task.value!r}. "
+            "Voting is supervised-only; phase 6 removed the legacy fallback."
+        )
 
-    def _stack_models_legacy(
-        self,
-        estimators: list[Any],
-        *,
-        meta_model: Any | None,
-        fold: Any | None,
-        verbose: bool,
-    ) -> StackResult:
-        kwargs: dict = {"verbose": verbose}
-        if meta_model is not None:
-            kwargs["meta_model"] = meta_model
-        if fold is not None:
-            kwargs["fold"] = fold
-        out = self._legacy.stack_models(estimators, **kwargs)
-        metrics = self._safe_pull()
-        self.logger.log(EventKind.MODEL_STACKED)
-        return StackResult(pipeline=out, metrics=metrics)
+    def _stack_models_legacy(self, estimators: list[Any], **kwargs: Any) -> StackResult:
+        raise NotImplementedError(
+            f"stack_models() not supported for task {self.task.value!r}. "
+            "Stacking is supervised-only; phase 6 removed the legacy fallback."
+        )
 
     def _finalize_model_legacy(self, estimator: Any) -> FinalizeResult:
-        out = self._legacy.finalize_model(estimator)
-        self.logger.log(EventKind.MODEL_FINALIZED)
-        return FinalizeResult(pipeline=out)
+        raise NotImplementedError(
+            f"finalize_model() not yet supported natively for task "
+            f"{self.task.value!r}. Phase 6 removed the legacy fallback."
+        )
 
     # --------------------------------------------------------- interpretation
 
     def interpret_model(self, estimator: Any, *args: Any, **kwargs: Any) -> Any:
-        self._require_fitted()
-        return self._legacy.interpret_model(estimator, *args, **kwargs)
+        """Removed in PyCaret 4.0 (phase 6). The legacy SHAP / lime path was
+        deleted with the rest of ``pycaret/internal/pycaret_experiment/``.
+        """
+        raise NotImplementedError(
+            "interpret_model() was removed in PyCaret 4.0. Use SHAP "
+            "directly: `import shap; shap.Explainer(pipeline.steps[-1][1])"
+            "(X_test)` is the canonical replacement."
+        )
 
     # --------------------------------------------------------- leaderboard / automl
 
     def automl(self, *args: Any, **kwargs: Any) -> Any:
-        self._require_fitted()
-        return self._legacy.automl(*args, **kwargs)
+        """Removed in PyCaret 4.0 (phase 6). Use ``compare_models`` +
+        ``tune_model`` for the same workflow with explicit control.
+        """
+        raise NotImplementedError(
+            "automl() was removed in PyCaret 4.0. Equivalent: "
+            "`exp.compare_models(n_select=N).best` then `exp.tune_model(best)`."
+        )
 
     def get_leaderboard(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
-        self._require_fitted()
-        return self._legacy.get_leaderboard(*args, **kwargs)
+        """Removed in PyCaret 4.0 (phase 6). The leaderboard is the
+        ``leaderboard`` attribute of ``CompareResult``; no separate accessor.
+        """
+        raise NotImplementedError(
+            "get_leaderboard() was removed in PyCaret 4.0. The leaderboard "
+            "DataFrame is on `compare_models(...).leaderboard`."
+        )

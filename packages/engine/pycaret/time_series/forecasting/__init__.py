@@ -1,10 +1,13 @@
-"""Deep import path for the legacy TS forecasting class.
+"""Phase 6: this submodule was the deep import path for the deleted
+legacy ``TSForecastingExperiment``. Kept as an empty namespace for
+back-compat — anything that imports from
+``pycaret.time_series.forecasting`` should migrate to
+``pycaret.time_series`` (or ``pycaret.tasks``):
 
-In 4.0, users should import from `pycaret.time_series` (or `pycaret.tasks`).
-This module remains only so the legacy `_build_legacy_experiment()` call
-inside `TimeSeriesExperiment` can reach the 3.x implementation class.
+    from pycaret.time_series import TimeSeriesExperiment
+
+The legacy ``oop.py`` was deleted along with
+``pycaret/internal/pycaret_experiment/``.
 """
 
-from pycaret.time_series.forecasting.oop import TSForecastingExperiment
-
-__all__ = ["TSForecastingExperiment"]
+__all__: list[str] = []

@@ -227,22 +227,23 @@ def test_full_chain_no_legacy_verbs_called(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Legacy fallback still works when the user passes setup_kwargs.
+# setup_kwargs raise in PyCaret 4.0 (phase 6 deleted the legacy escape).
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.slow
-def test_setup_kwargs_still_routes_to_legacy():
-    """When setup_kwargs are passed, the legacy path takes over."""
+def test_setup_kwargs_raises_in_phase6():
+    """Phase 6 deleted the legacy directory. setup_kwargs no longer fall
+    through — they raise ConfigurationError pointing users at 3.x or at
+    requesting a first-class constructor param.
+    """
     import pycaret.datasets
+    from pycaret.core.errors import ConfigurationError
     from pycaret.tasks import TimeSeriesExperiment
 
     df = pycaret.datasets.get_data("airline", verbose=False)
-    # html=False is a legacy-only kwarg → forces legacy.setup.
-    exp = TimeSeriesExperiment(fh=12, session_id=42).fit(df, html=False)
-    assert exp._native_setup_used is False
-    # _fit_state still populated via the snapshot helper.
-    assert exp._fit_state["y_train"] is not None
+    with pytest.raises(ConfigurationError, match="setup_kwargs are not supported"):
+        TimeSeriesExperiment(fh=12, session_id=42).fit(df, html=False)
 
 
 # ---------------------------------------------------------------------------

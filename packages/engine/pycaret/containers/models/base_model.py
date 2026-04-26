@@ -2,12 +2,21 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
+from __future__ import annotations
+
 from typing import Any, Dict, List, Optional
 
 from pycaret.containers.base_container import BaseContainer
 from pycaret.internal.distributions import CategoricalDistribution
-from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
 from pycaret.utils.generic import get_allowed_engines, get_logger
+
+# Phase 6: ``_PyCaretExperiment`` was deleted with the rest of
+# ``pycaret/internal/pycaret_experiment/``. The type annotations below
+# are stringified by ``from __future__ import annotations`` so the name
+# only needs to be resolvable for static analysers, not at runtime.
+# Use ``Any`` as an alias so the surface keeps documenting that an
+# experiment-like object goes here.
+_PyCaretExperiment = Any  # type: ignore[assignment]
 
 
 class ModelContainer(BaseContainer):

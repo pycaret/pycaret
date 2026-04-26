@@ -78,21 +78,18 @@ class TimeSeriesExperiment(SupervisedExperiment):
             pass
         return tags
 
-    def _build_legacy_experiment(self):
-        from pycaret.time_series.forecasting.oop import TSForecastingExperiment
-
-        return TSForecastingExperiment()
+    # Phase 6: removed _build_legacy_experiment. Native setup only.
 
     # TS data shape is different — a univariate Series or DataFrame + target
-    # column — and the legacy setup() has its own param list. Skip the tabular
-    # supervised (X, y) coercion in the base fit().
+    # column. Skip the tabular supervised (X, y) coercion in the base fit().
     def fit(self, X, y=None, **setup_kwargs):
-        """TS-specific fit. Dispatches to the native phase-5a path or to
-        ``legacy.setup()`` with state snapshot, depending on the predicate.
+        """TS-specific fit. Native path only — phase 5d / 6 removed the
+        legacy fallback. Any caller-supplied ``setup_kwargs`` raise.
         """
         import time
         import uuid
 
+        from pycaret.core.errors import ConfigurationError
         from pycaret.logging.base import NullLogger
         from pycaret.logging.events import EventKind
         from pycaret.logging.memory import MemoryLogger
@@ -104,7 +101,21 @@ class TimeSeriesExperiment(SupervisedExperiment):
             data = X
 
         self._experiment_id = str(uuid.uuid4())
-        self._legacy = self._build_legacy_experiment()
+        # Phase 6: ``self._legacy`` is a no-op shim for back-compat with
+        # the drain-lock test pattern. Production code never reads it.
+        from pycaret.core.experiment import _LegacyShim
+
+        self._legacy = _LegacyShim()
+
+        if setup_kwargs:
+            raise ConfigurationError(
+                f"setup_kwargs are not supported in PyCaret 4.0: "
+                f"{sorted(setup_kwargs.keys())}. The legacy escape hatch "
+                "was removed in phase 6. Use PyCaret 3.x for the removed "
+                "options or open an issue requesting them as constructor "
+                "params."
+            )
+
         if self.logger is None:
             self.logger = (
                 MemoryLogger(experiment_id=self._experiment_id)
@@ -119,19 +130,9 @@ class TimeSeriesExperiment(SupervisedExperiment):
             payload={"target": self.target},
         )
 
-        # Phase 5a (s39): TS fit() goes through the same native dispatcher
-        # as the other tasks. The "native" TS path still calls legacy.setup
-        # underneath because TS verbs aren't drained yet — what we get is
-        # _fit_state population so accessors (y_train, y_test, fh, ...) work
-        # consistently across all task types.
-        self._native_setup_used = False
-        if self._can_use_native_setup(setup_kwargs):
-            self._native_setup_timeseries(data, setup_kwargs)
-            self._native_setup_used = True
-        else:
-            self._legacy.setup(**self._build_legacy_setup_kwargs(data, setup_kwargs))
-            self._snapshot_fit_state()
-
+        # Native TS setup — no legacy.
+        self._native_setup_timeseries(data, setup_kwargs)
+        self._native_setup_used = True
         self._fitted = True
         self.logger.log(
             EventKind.EXPERIMENT_FITTED,
@@ -140,36 +141,18 @@ class TimeSeriesExperiment(SupervisedExperiment):
         )
         return self
 
-    def _build_legacy_setup_kwargs(self, data, extra):
-        """TS legacy setup() has a different shape — override.
-
-        The TS setup signature does not accept the tabular `preprocess` /
-        `normalize` / `transformation` / `remove_outliers` flags; it has
-        its own fine-grained knobs (`transform_target`, `scale_target`,
-        `numeric_imputation_target`, etc.). Only the overlapping kwargs
-        are forwarded here; user-supplied extras are merged last.
-        """
-        kwargs = {
-            "data": data,
-            "target": self.target,
-            "fh": self.fh,
-            "seasonal_period": self.seasonal_period,
-            "session_id": self.session_id,
-            "fold": self.fold,
-            "fold_strategy": self.fold_strategy,
-            "n_jobs": self.n_jobs,
-            "use_gpu": self.use_gpu,
-            "verbose": self.verbose,
-            "html": False,
-            "log_experiment": False,
-        }
-        kwargs.update(extra)
-        return kwargs
-
     def check_stats(self, *args: Any, **kwargs: Any) -> Any:
-        """Time-series-specific statistical tests (ADF, KPSS, etc.)."""
-        self._require_fitted()
-        return self._legacy.check_stats(*args, **kwargs)
+        """Time-series-specific statistical tests (ADF, KPSS, etc.).
+
+        Removed in PyCaret 4.0 (phase 6). Run sktime / statsmodels tests
+        directly on ``exp.y_train`` — the experiment exposes the data,
+        the user picks the test.
+        """
+        raise NotImplementedError(
+            "check_stats() was removed in PyCaret 4.0. Use sktime / "
+            "statsmodels directly: e.g. `from statsmodels.tsa.stattools "
+            "import adfuller; adfuller(exp.y_train)`."
+        )
 
     # ------------------------------------------------- session 40 (phase 5b)
     # Native TS create_model — drains legacy.create_model. Reads from
@@ -360,17 +343,17 @@ class TimeSeriesExperiment(SupervisedExperiment):
         """Resolve the seasonal period for MASE/RMSSE scorers.
 
         Priority: explicit ``self.seasonal_period`` constructor arg →
-        ``self._legacy.primary_sp_to_use`` (legacy auto-detected) → 1.
+        auto-detected ``_fit_state["seasonal_period"]`` → 1.
         """
         if self.seasonal_period is not None:
             try:
                 return int(self.seasonal_period)
             except (TypeError, ValueError):
                 pass
-        legacy_sp = getattr(self._legacy, "primary_sp_to_use", None)
-        if legacy_sp is not None:
+        detected = self._fit_state.get("seasonal_period") if hasattr(self, "_fit_state") else None
+        if detected is not None:
             try:
-                return int(legacy_sp)
+                return int(detected)
             except (TypeError, ValueError):
                 pass
         return 1

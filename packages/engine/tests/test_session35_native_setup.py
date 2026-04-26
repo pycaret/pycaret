@@ -81,27 +81,25 @@ def test_native_setup_used_for_basic_regression(monkeypatch):
 
 
 @pytest.mark.slow
-def test_complex_preprocessing_falls_back_to_legacy():
-    """``setup_kwargs`` (caller-supplied) still forces legacy.
-
-    Originally session 35 used ``normalize=True`` here; sessions 36 + 37
-    made every constructor preprocessing flag native. The remaining
-    "still legacy" route is caller-supplied ``setup_kwargs`` — those keys
-    pass through to the legacy ``setup()``'s 100+ knobs and aren't
-    handled by the native chain yet.
+def test_setup_kwargs_raise_in_phase6():
+    """Phase 6 (s46) deleted the legacy directory. ``setup_kwargs`` no
+    longer fall through to a legacy escape hatch — they raise
+    ``ConfigurationError``. Originally session 35 used ``normalize=True``;
+    sessions 36 + 37 made every constructor preprocessing flag native;
+    session 46 closed the last back-door.
     """
     import pycaret.datasets
+    from pycaret.core.errors import ConfigurationError
     from pycaret.tasks import ClassificationExperiment
 
     df = pycaret.datasets.get_data("juice", verbose=False)
-    exp = ClassificationExperiment(
-        target="Purchase",
-        session_id=42,
-        n_jobs=1,
-        fold=3,
-    ).fit(df, html=False)  # extra setup_kwarg → forces legacy
-    # Native NOT used when extra setup_kwargs are passed.
-    assert exp._native_setup_used is False
+    with pytest.raises(ConfigurationError, match="setup_kwargs are not supported"):
+        ClassificationExperiment(
+            target="Purchase",
+            session_id=42,
+            n_jobs=1,
+            fold=3,
+        ).fit(df, html=False)
 
 
 @pytest.mark.slow
