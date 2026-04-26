@@ -26,12 +26,25 @@ dashboard without per-screen restyling.
 
 from __future__ import annotations
 
-from pycaret.plots import classification, regression
+from pycaret.plots import (
+    anomaly,
+    classification,
+    clustering,
+    eda,
+    feature,
+    regression,
+    time_series,
+)
 from pycaret.plots._base import PALETTE, default_layout
 
 __all__ = [
     "PALETTE",
+    "anomaly",
     "classification",
+    "clustering",
     "default_layout",
+    "eda",
+    "feature",
     "regression",
+    "time_series",
 ]
