@@ -1,37 +1,31 @@
 /**
- * Model Card — per-model deep-dive screen.
+ * Model Card — per-model deep-dive at /runs/:runId/model-card.
  *
- * Lives at /runs/:runId/model-card. Shows:
- *  - Header: model id, run status, promotion CTA, share link.
- *  - KPI strip: top metrics from the leaderboard for the chosen model.
- *  - Tabs: Diagnostics | Explainability | Curves | Raw.
- *  - Each tab is a grid of `<PlotlyFigure>` cards driven by the
- *    /runs/:runId/plots/:kind endpoint.
+ * Layout:
+ *   [breadcrumb] · h1 · description
+ *   [KPI strip from leaderboard]
+ *   [Tabs: Diagnostics | Explainability | Curves | Raw]
+ *   [grid of <PlotlyFigure> cards]
  *
- * The plot kinds shown depend on the run's task type — derived from
- * the registry response so we don't hard-code per-task lists here.
+ * Pre-flight: the Plot endpoints all 404 if the run hasn't been
+ * "promoted" yet — i.e., the trained pipeline isn't yet a Pipeline
+ * row in the workspace's registry. We detect that via a probe on
+ * the first plot kind. If the probe 404s with the well-known
+ * "No saved pipeline" detail, we replace the entire plots area
+ * with a single empty state + "Promote this run" button (modal).
  */
-
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 
 import { plotsApi, runsApi } from '../api/endpoints';
+import { errorMessage } from '../api/client';
 import { PlotlyFigure } from '../components/PlotlyFigure';
+import { Dialog } from '../components/Dialog';
 import type { PlotEnvelope, PlotRegistry } from '../api/types';
 
 type Tab = 'diagnostics' | 'explainability' | 'curves' | 'raw';
 
-interface TabConfig {
-  label: string;
-  kinds: string[];
-}
-
-/**
- * Map a task-type (lowercase) to per-tab plot kinds. Source-of-truth
- * lives in the API's plot registry; this dispatch decides which kinds
- * land on which tab.
- */
 const TAB_DISPATCH: Record<string, Record<Tab, string[]>> = {
   classification: {
     diagnostics: ['confusion_matrix', 'roc_curve', 'pr_curve', 'class_distribution'],
@@ -94,12 +88,24 @@ const PLOT_TITLES: Record<string, string> = {
   residual_diagnostics: 'Residual diagnostics',
 };
 
+function isNoPipelineError(err: unknown): boolean {
+  const msg = errorMessage(err).toLowerCase();
+  return (
+    msg.includes('no saved pipeline') ||
+    msg.includes('promote') ||
+    msg.includes('not yet promoted')
+  );
+}
+
+// ─── Plot card ────────────────────────────────────────────────────
+
 function PlotCard({ runId, kind }: { runId: string; kind: string }) {
   const q = useQuery<PlotEnvelope, Error>({
     queryKey: ['runs', runId, 'plots', kind],
     queryFn: () => plotsApi.forRun(runId, kind),
     enabled: !!runId,
     staleTime: 60_000,
+    retry: false,
   });
 
   return (
@@ -113,10 +119,9 @@ function PlotCard({ runId, kind }: { runId: string; kind: string }) {
   );
 }
 
+// ─── KPI strip ────────────────────────────────────────────────────
+
 function KpiStrip({ leaderboard }: { leaderboard: unknown }) {
-  // leaderboard is loosely typed (JSON from the API). Try to pull the
-  // first row's metric columns as KPI tiles. Falls back to an empty
-  // strip when the shape doesn't match.
   const tiles = useMemo<Array<{ label: string; value: string }>>(() => {
     const arr = Array.isArray(leaderboard) ? leaderboard : null;
     const top = arr && arr.length > 0 ? arr[0] : null;
@@ -125,7 +130,7 @@ function KpiStrip({ leaderboard }: { leaderboard: unknown }) {
     for (const [k, v] of Object.entries(top)) {
       if (k === 'Model') continue;
       if (typeof v === 'number') {
-        out.push({ label: k, value: v.toFixed(4) });
+        out.push({ label: k, value: Number.isInteger(v) ? String(v) : v.toFixed(4) });
       }
       if (out.length >= 6) break;
     }
@@ -134,15 +139,7 @@ function KpiStrip({ leaderboard }: { leaderboard: unknown }) {
 
   if (tiles.length === 0) {
     return (
-      <div
-        style={{
-          padding: 12,
-          background: 'rgba(91,141,239,0.06)',
-          borderRadius: 12,
-          fontSize: 12,
-          color: '#64748B',
-        }}
-      >
+      <div className="rounded-xl border border-dashed border-ink-300 dark:border-ink-700 bg-white dark:bg-ink-900 px-4 py-3 text-sm text-ink-500">
         No metric summary yet — promote the run or finish training to populate.
       </div>
     );
@@ -150,31 +147,161 @@ function KpiStrip({ leaderboard }: { leaderboard: unknown }) {
 
   return (
     <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${Math.min(tiles.length, 6)}, minmax(120px, 1fr))`,
-        gap: 12,
-      }}
+      className="grid gap-px rounded-xl overflow-hidden bg-ink-200 dark:bg-ink-800 border border-ink-200 dark:border-ink-800"
+      style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
     >
       {tiles.map((t) => (
-        <div
-          key={t.label}
-          className="card"
-          style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: 12 }}
-        >
-          <div style={{ fontSize: 11, textTransform: 'uppercase', color: '#64748B' }}>
+        <div key={t.label} className="bg-white dark:bg-ink-900 px-4 py-3">
+          <div className="text-xs font-medium text-ink-500 uppercase tracking-wider">
             {t.label}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#0F172A' }}>{t.value}</div>
+          <div className="mt-1 text-2xl font-semibold text-ink-900 dark:text-ink-50 tabular-nums">
+            {t.value}
+          </div>
         </div>
       ))}
     </div>
   );
 }
 
+// ─── Promote dialog ───────────────────────────────────────────────
+
+function PromoteDialog({
+  runId,
+  open,
+  onClose,
+  onSuccess,
+}: {
+  runId: string;
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+
+  useEffect(() => {
+    if (!open) {
+      setName('');
+      setDescription('');
+    }
+  }, [open]);
+
+  const promote = useMutation({
+    mutationFn: () =>
+      runsApi.promote(runId, {
+        name: name.trim(),
+        description: description.trim() || undefined,
+      }),
+    onSuccess: () => {
+      onSuccess();
+      onClose();
+    },
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Promote this run"
+      description="Save the trained pipeline into the workspace's pipeline registry. After promotion you can render diagnostics, deploy, and serve predictions."
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (name.trim()) promote.mutate();
+        }}
+        className="space-y-4"
+      >
+        <div>
+          <label className="field" htmlFor="promote-name">
+            Pipeline name <span className="text-ink-400 font-normal">*</span>
+          </label>
+          <input
+            id="promote-name"
+            className="input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. juice-baseline"
+            autoFocus
+            required
+          />
+        </div>
+        <div>
+          <label className="field" htmlFor="promote-desc">
+            Description
+          </label>
+          <textarea
+            id="promote-desc"
+            className="input resize-none"
+            rows={2}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Notes about this version, optional."
+          />
+        </div>
+        {promote.error && <p className="error">{errorMessage(promote.error)}</p>}
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} className="btn-ghost">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={promote.isPending || !name.trim()}
+          >
+            {promote.isPending ? 'Promoting…' : 'Promote run'}
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+// ─── Empty state for "no pipeline" ────────────────────────────────
+
+function NoPipelineEmptyState({
+  onPromote,
+  runId,
+}: {
+  onPromote: () => void;
+  runId: string;
+}) {
+  return (
+    <div className="rounded-xl bg-white dark:bg-ink-900 border border-dashed border-ink-300 dark:border-ink-700 px-6 py-14 text-center">
+      <div className="mx-auto h-12 w-12 rounded-xl bg-accent-50 dark:bg-accent-500/15 text-accent-600 dark:text-accent-400 flex items-center justify-center mb-4">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M12 2v6 M5 9l7-7 7 7 M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+        </svg>
+      </div>
+      <h3 className="text-base font-semibold text-ink-900 dark:text-ink-50">
+        This run hasn't been promoted yet
+      </h3>
+      <p className="mt-2 text-sm text-ink-500 max-w-xl mx-auto">
+        The Model Card needs a saved pipeline. Promoting registers the fitted
+        model into the workspace's pipeline registry — required for rendering
+        diagnostics, deploying, and serving predictions.
+      </p>
+      <div className="mt-6 flex items-center justify-center gap-2">
+        <button type="button" onClick={onPromote} className="btn-primary">
+          Promote this run
+        </button>
+        <Link to={`/runs/${runId}`} className="btn-ghost">
+          Back to run
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────
+
 export function ModelCard() {
+  const qc = useQueryClient();
   const { runId = '' } = useParams<{ runId: string }>();
   const [tab, setTab] = useState<Tab>('diagnostics');
+  const [promoteOpen, setPromoteOpen] = useState(false);
 
   const run = useQuery({
     queryKey: ['runs', runId],
@@ -192,14 +319,15 @@ export function ModelCard() {
     const r = run.data;
     if (!r) return '';
     const snap = (r.snapshot ?? {}) as Record<string, unknown>;
-    const task = (snap.task as string | undefined) ?? (snap.task_type as string | undefined) ?? '';
+    const task =
+      (snap.task as string | undefined) ??
+      (snap.task_type as string | undefined) ??
+      '';
     return task.toLowerCase();
   }, [run.data]);
 
   const dispatch = TAB_DISPATCH[taskKey] ?? null;
 
-  // Filter to plot kinds the API actually advertises for this task —
-  // protects against client/server skew.
   const supported = useMemo(() => {
     const set = new Set(registry.data?.tasks?.[taskKey] ?? []);
     if (!dispatch) return null;
@@ -211,102 +339,135 @@ export function ModelCard() {
     } as Record<Tab, string[]>;
   }, [dispatch, registry.data, taskKey]);
 
-  const tabs: Array<{ key: Tab; cfg: TabConfig }> = useMemo(() => {
+  const tabs = useMemo(() => {
     if (!supported) return [];
     return (
       [
-        { key: 'diagnostics', label: 'Diagnostics' },
-        { key: 'explainability', label: 'Explainability' },
-        { key: 'curves', label: 'Curves' },
-        { key: 'raw', label: 'Raw' },
-      ] as const
+        { key: 'diagnostics' as const, label: 'Diagnostics' },
+        { key: 'explainability' as const, label: 'Explainability' },
+        { key: 'curves' as const, label: 'Curves' },
+        { key: 'raw' as const, label: 'Raw' },
+      ]
     )
       .filter(({ key }) => supported[key].length > 0)
-      .map(({ key, label }) => ({ key, cfg: { label, kinds: supported[key] } }));
+      .map(({ key, label }) => ({ key, label, kinds: supported[key] }));
   }, [supported]);
 
   const activeKinds = supported?.[tab] ?? [];
 
+  // Pre-flight: probe the first available plot to detect the
+  // "no promoted pipeline" situation without rendering 4 broken cards.
+  const probeKind = activeKinds[0] ?? '';
+  const probe = useQuery<PlotEnvelope, Error>({
+    queryKey: ['runs', runId, 'plots', probeKind],
+    queryFn: () => plotsApi.forRun(runId, probeKind),
+    enabled: !!runId && !!probeKind,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const needsPromotion = probe.isError && isNoPipelineError(probe.error);
+
+  const handlePromoteSuccess = () => {
+    // Re-fetch all plots for this run + the registry.
+    qc.invalidateQueries({ queryKey: ['runs', runId] });
+    qc.invalidateQueries({
+      predicate: (q) => {
+        const k = q.queryKey;
+        return Array.isArray(k) && k[0] === 'runs' && k[1] === runId && k[2] === 'plots';
+      },
+    });
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* ─── Hero ─────────────────────────────────────────────── */}
       <header className="space-y-2">
-        <nav style={{ fontSize: 12, color: '#94A3B8' }}>
-          <Link to="/" style={{ color: 'inherit' }}>
+        <nav className="text-xs text-ink-500">
+          <Link to="/" className="hover:text-ink-900 dark:hover:text-ink-50 transition-colors">
             Workspaces
-          </Link>{' '}
-          /{' '}
-          <Link to={`/runs/${runId}`} style={{ color: 'inherit' }}>
+          </Link>
+          <span className="mx-1.5 text-ink-300 dark:text-ink-700">/</span>
+          <Link
+            to={`/runs/${runId}`}
+            className="hover:text-ink-900 dark:hover:text-ink-50 transition-colors"
+          >
             Run {runId.slice(0, 8)}…
-          </Link>{' '}
-          / Model card
+          </Link>
+          <span className="mx-1.5 text-ink-300 dark:text-ink-700">/</span>
+          <span className="text-ink-700 dark:text-ink-300">Model card</span>
         </nav>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', margin: 0 }}>
-          Model card
-        </h1>
-        <p style={{ color: '#64748B', fontSize: 13, margin: 0 }}>
-          {run.data?.status === 'succeeded'
-            ? `Diagnostics for the model produced by run ${runId.slice(0, 8)}.`
-            : 'Awaiting run completion…'}
-        </p>
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0">
+            <h1 className="h-page">Model card</h1>
+            <p className="mt-2 text-sm text-ink-500">
+              {run.data?.status === 'succeeded'
+                ? `Diagnostics for the model produced by run ${runId.slice(0, 8)}.`
+                : 'Awaiting run completion…'}
+            </p>
+          </div>
+          {!needsPromotion && (
+            <Link to={`/runs/${runId}`} className="btn-secondary shrink-0">
+              ← Back to run
+            </Link>
+          )}
+        </div>
       </header>
 
+      {/* ─── KPI strip ────────────────────────────────────────── */}
       <KpiStrip leaderboard={run.data?.leaderboard} />
 
-      {tabs.length > 0 ? (
+      {/* ─── Body: empty state or plots grid ─────────────────── */}
+      {needsPromotion ? (
+        <NoPipelineEmptyState
+          runId={runId}
+          onPromote={() => setPromoteOpen(true)}
+        />
+      ) : tabs.length > 0 ? (
         <>
+          {/* Tabs */}
           <div
             role="tablist"
-            style={{
-              display: 'flex',
-              gap: 4,
-              borderBottom: '1px solid rgba(148, 163, 184, 0.2)',
-            }}
+            className="flex gap-1 border-b border-ink-200 dark:border-ink-800"
           >
-            {tabs.map(({ key, cfg }) => (
+            {tabs.map(({ key, label }) => (
               <button
                 key={key}
                 role="tab"
                 aria-selected={tab === key}
                 onClick={() => setTab(key)}
-                style={{
-                  padding: '8px 14px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  background: 'transparent',
-                  color: tab === key ? '#5B8DEF' : '#64748B',
-                  border: 'none',
-                  borderBottom:
-                    tab === key ? '2px solid #5B8DEF' : '2px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'color 0.15s',
-                }}
+                className={`px-3.5 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                  tab === key
+                    ? 'border-ink-900 dark:border-ink-50 text-ink-900 dark:text-ink-50'
+                    : 'border-transparent text-ink-500 hover:text-ink-900 dark:hover:text-ink-50'
+                }`}
               >
-                {cfg.label}
+                {label}
               </button>
             ))}
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))',
-              gap: 16,
-            }}
-          >
+          {/* Plot grid */}
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
             {activeKinds.map((kind) => (
               <PlotCard key={kind} runId={runId} kind={kind} />
             ))}
           </div>
         </>
       ) : (
-        <div className="card">
-          <p style={{ color: '#64748B', fontSize: 13, margin: 0 }}>
-            {!taskKey
-              ? "Loading run details…"
-              : `No diagnostic plots available yet for task type "${taskKey}". Promote the run to generate them.`}
-          </p>
+        <div className="card text-sm text-ink-500">
+          {!taskKey
+            ? 'Loading run details…'
+            : `No diagnostic plots available yet for task type "${taskKey}".`}
         </div>
       )}
+
+      <PromoteDialog
+        runId={runId}
+        open={promoteOpen}
+        onClose={() => setPromoteOpen(false)}
+        onSuccess={handlePromoteSuccess}
+      />
     </div>
   );
 }
