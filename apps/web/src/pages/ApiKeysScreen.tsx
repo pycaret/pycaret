@@ -80,7 +80,7 @@ export function ApiKeysScreen() {
       {/* ────────── one-time plaintext panel */}
       {justCreated && (
         <div className="card border-accent-500/50 space-y-3">
-          <h2 className="text-sm font-medium text-accent-400">
+          <h2 className="text-sm font-medium text-accent-600">
             ✓ API key created — copy it now
           </h2>
           <p className="hint">

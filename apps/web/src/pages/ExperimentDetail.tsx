@@ -37,7 +37,7 @@ function formatDuration(ms: number | null): string {
 
 const STATUS_COLOR: Record<string, string> = {
   queued: 'text-ink-500',
-  running: 'text-accent-400',
+  running: 'text-accent-600',
   succeeded: 'text-success-500',
   failed: 'text-danger-500',
   cancelled: 'text-warn-500',

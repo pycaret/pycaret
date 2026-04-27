@@ -90,7 +90,7 @@ export function DeploymentDetail() {
                     {' · pipeline '}
                     <Link
                       to={`/workspaces/${d.workspace_id}/pipelines/${d.pipeline_id}`}
-                      className="text-accent-400 hover:underline"
+                      className="text-accent-600 hover:underline"
                     >
                       {pipeline.data.name}
                     </Link>

@@ -154,7 +154,7 @@ export function PipelineDetail() {
                         <td className="px-4 py-2">
                           <Link
                             to={`/deployments/${d.id}`}
-                            className="text-accent-400 hover:underline font-mono"
+                            className="text-accent-600 hover:underline font-mono"
                           >
                             {d.endpoint_slug}
                           </Link>

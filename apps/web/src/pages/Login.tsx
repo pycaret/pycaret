@@ -36,7 +36,7 @@ export function Login() {
           <p className="mt-2 text-sm text-ink-500">
             Welcome back.{' '}
             {status.data?.is_bootstrapped === false && (
-              <Link to="/setup" className="text-accent-400 hover:underline">
+              <Link to="/setup" className="text-accent-600 hover:underline">
                 First time? Run setup.
               </Link>
             )}

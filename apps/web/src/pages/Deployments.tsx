@@ -58,7 +58,7 @@ export function Deployments() {
       {deployments.data && deployments.data.length === 0 && (
         <div className="card text-sm text-ink-500">
           No deployments yet. Go to{' '}
-          <Link to={`/workspaces/${wsId}/pipelines`} className="text-accent-400 hover:underline">
+          <Link to={`/workspaces/${wsId}/pipelines`} className="text-accent-600 hover:underline">
             Pipelines
           </Link>{' '}
           and deploy one.
@@ -86,7 +86,7 @@ export function Deployments() {
                   <td className="px-4 py-2">
                     <Link
                       to={`/deployments/${d.id}`}
-                      className="text-accent-400 hover:underline font-mono"
+                      className="text-accent-600 hover:underline font-mono"
                     >
                       {d.endpoint_slug}
                     </Link>

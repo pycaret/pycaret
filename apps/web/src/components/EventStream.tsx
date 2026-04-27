@@ -46,7 +46,7 @@ function kindTone(kind: string): string {
   if (kind === TERMINAL_SENTINEL) return 'text-ink-500';
   if (kind === 'error' || kind.endsWith('.failed')) return 'text-danger-500';
   if (kind === 'warning') return 'text-warn-500';
-  if (kind.endsWith('.started')) return 'text-accent-400';
+  if (kind.endsWith('.started')) return 'text-accent-600';
   if (kind.endsWith('.finished') || kind.endsWith('.created') || kind.endsWith('.fitted'))
     return 'text-success-500';
   return 'text-ink-900';
@@ -152,7 +152,7 @@ export function EventStream({
           <span
             className={
               status === 'open'
-                ? 'text-accent-400'
+                ? 'text-accent-600'
                 : status === 'closed'
                   ? 'text-ink-500'
                   : status === 'error'
@@ -176,7 +176,7 @@ export function EventStream({
       )}
 
       {hasEvents && (
-        <ol className="card p-0 divide-y divide-ink-800 text-sm max-h-[32rem] overflow-auto">
+        <ol className="card p-0 divide-y divide-ink-200 text-sm max-h-[32rem] overflow-auto">
           {events.map((e, i) => (
             <li key={i} className="grid grid-cols-[auto_1fr_auto] gap-3 px-4 py-2">
               <span className="font-mono text-xs text-ink-400 tabular-nums">

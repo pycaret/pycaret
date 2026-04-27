@@ -78,7 +78,7 @@ export function Pipelines() {
                   <td className="px-4 py-2">
                     <Link
                       to={`/workspaces/${wsId}/pipelines/${p.id}`}
-                      className="text-accent-400 hover:underline"
+                      className="text-accent-600 hover:underline"
                     >
                       {p.name}
                     </Link>

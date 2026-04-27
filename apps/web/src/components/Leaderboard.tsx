@@ -87,7 +87,7 @@ export function Leaderboard({ rows, className }: LeaderboardProps) {
               >
                 {c}
                 {sortKey === c && (
-                  <span className="ml-1 text-accent-400">{sortDesc ? '▼' : '▲'}</span>
+                  <span className="ml-1 text-accent-600">{sortDesc ? '▼' : '▲'}</span>
                 )}
               </th>
             ))}

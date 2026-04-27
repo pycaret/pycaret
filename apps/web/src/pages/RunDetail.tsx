@@ -24,7 +24,7 @@ import type { Run } from '@/api/types';
 
 const STATUS_TONE: Record<string, string> = {
   queued: 'text-ink-500',
-  running: 'text-accent-400',
+  running: 'text-accent-600',
   succeeded: 'text-success-500',
   failed: 'text-danger-500',
   cancelled: 'text-warn-500',
@@ -196,7 +196,7 @@ export function RunDetail() {
               Created pipeline{' '}
               <Link
                 to={`/workspaces/${promote.data.workspace_id}/pipelines/${promote.data.id}`}
-                className="font-mono text-accent-400 hover:underline"
+                className="font-mono text-accent-600 hover:underline"
               >
                 {promote.data.name}
               </Link>
