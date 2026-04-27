@@ -87,23 +87,11 @@ export function WorkspaceDetail() {
 
       {/* ─── Projects ────────────────────────────────────────── */}
       <section>
-        <header className="mb-3 flex items-end justify-between gap-4">
-          <div>
-            <h2 className="h-section">Projects</h2>
-            <p className="text-sm text-ink-500 mt-0.5">
-              Each project groups experiments, runs, and pipelines around one ML problem.
-            </p>
-          </div>
-          {projectCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setNewProjectOpen(true)}
-              className="btn-secondary"
-            >
-              <PlusIcon />
-              New project
-            </button>
-          )}
+        <header className="mb-3">
+          <h2 className="h-section">Projects</h2>
+          <p className="text-sm text-ink-500 mt-0.5">
+            Each project groups experiments, runs, and pipelines around one ML problem.
+          </p>
         </header>
 
         {projects.isLoading && (

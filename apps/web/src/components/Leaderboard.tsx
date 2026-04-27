@@ -77,32 +77,37 @@ export function Leaderboard({ rows, className }: LeaderboardProps) {
   return (
     <div className={`card overflow-x-auto p-0 ${className ?? ''}`}>
       <table className="w-full text-sm">
-        <thead className="bg-white text-ink-500">
+        <thead className="bg-ink-50 dark:bg-ink-950 text-ink-600 dark:text-ink-400 border-b border-ink-200 dark:border-ink-800">
           <tr>
             {columns.map((c) => (
               <th
                 key={c}
-                className="px-3 py-2 text-left font-medium whitespace-nowrap cursor-pointer select-none hover:text-ink-900"
+                className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:text-ink-900 dark:hover:text-ink-50 transition-colors"
                 onClick={() => toggleSort(c)}
               >
                 {c}
                 {sortKey === c && (
-                  <span className="ml-1 text-accent-600">{sortDesc ? '▼' : '▲'}</span>
+                  <span className="ml-1 text-accent-600 dark:text-accent-400">
+                    {sortDesc ? '▼' : '▲'}
+                  </span>
                 )}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="text-ink-800 dark:text-ink-100">
           {sorted.map((r, i) => (
-            <tr key={i} className="border-t border-ink-200 hover:bg-ink-50">
+            <tr
+              key={i}
+              className="border-t border-ink-100 dark:border-ink-800 hover:bg-ink-50 dark:hover:bg-ink-800/40 transition-colors"
+            >
               {columns.map((c) => {
                 const v = r[c];
                 const isNum = isNumber(v);
                 return (
                   <td
                     key={c}
-                    className={`px-3 py-2 whitespace-nowrap ${
+                    className={`px-3 py-2.5 whitespace-nowrap ${
                       isNum ? 'font-mono tabular-nums text-right' : ''
                     }`}
                   >
