@@ -50,3 +50,4 @@ dask*/
 tmp/
 nbtest*.ipynb
 demo*.py
+.tmp-*
