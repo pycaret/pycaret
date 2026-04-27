@@ -14,9 +14,11 @@ const config = {
   images: {
     unoptimized: true,
   },
-  experimental: {
-    typedRoutes: false,
-  },
+  // Next.js 16 promoted typedRoutes from experimental to top-level. We
+  // keep it off because the site uses string hrefs (constructed from
+  // MDX front-matter / API tree) that the type-checker can't statically
+  // verify.
+  typedRoutes: false,
 };
 
 export default config;

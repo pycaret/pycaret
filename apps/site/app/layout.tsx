@@ -30,6 +30,9 @@ export const metadata: Metadata = {
   authors: [{ name: 'PyCaret contributors', url: 'https://github.com/pycaret/pycaret' }],
   creator: 'Moez Ali',
   openGraph: {
+    // OG image comes from the file-based `app/opengraph-image.tsx`
+    // convention; Next.js prerenders it to PNG at build time and
+    // wires the og:image / twitter:image meta tags automatically.
     type: 'website',
     locale: 'en_US',
     url: 'https://pycaret.org',
@@ -44,7 +47,14 @@ export const metadata: Metadata = {
     description: 'Low-code ML for Python.',
   },
   icons: {
-    icon: '/favicon.svg',
+    icon: { url: '/favicon.svg', type: 'image/svg+xml' },
+  },
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
