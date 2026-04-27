@@ -156,9 +156,9 @@ export function ModelComparison() {
 
       {pipeA && pipeB && (
         <div className="card">
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+          <h2 className="h-section mb-3">
             Metrics diff
-          </div>
+          </h2>
           {metricRows.length === 0 ? (
             <div style={{ color: '#94A3B8', fontSize: 13 }}>
               No leaderboard rows on at least one of the runs.

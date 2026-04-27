@@ -103,7 +103,7 @@ export function PredictionExplorer() {
         }}
       >
         <div className="card" style={{ padding: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Deployment</div>
+          <h2 className="h-section mb-2">Deployment</h2>
           {deployments.isLoading ? (
             <div style={{ color: '#94A3B8', fontSize: 13 }}>Loading…</div>
           ) : deployments.data?.length === 0 ? (
@@ -147,7 +147,7 @@ export function PredictionExplorer() {
         </div>
 
         <div className="card space-y-3">
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Request body</div>
+          <h2 className="h-section ">Request body</h2>
           <textarea
             value={inputJson}
             onChange={(e) => setInputJson(e.target.value)}
@@ -194,7 +194,7 @@ export function PredictionExplorer() {
       </div>
 
       <div className="card">
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Recent calls</div>
+        <h2 className="h-section mb-3">Recent calls</h2>
         {recent.length === 0 ? (
           <div style={{ color: '#94A3B8', fontSize: 13 }}>
             No calls yet. Hit Predict to populate this list.

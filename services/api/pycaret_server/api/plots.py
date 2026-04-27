@@ -155,32 +155,50 @@ def _resolve_run_task(run: Run) -> str:
     raise HTTPException(status_code=400, detail="Could not determine run task type.")
 
 
-def _load_dataset_frame(data_source_id: str | None, db: Session) -> Any:
-    """Load a DataSource's CSV / Parquet artifact into a DataFrame.
+def _load_dataset_frame(snap: dict[str, Any], db: Session) -> Any:
+    """Load the run's holdout source frame.
 
-    Returns None if the data_source isn't resolvable — callers fall
-    back to whatever default behaviour they want. The actual file path
-    lives in ``DataSource.config["path"]`` (see
-    ``api.data_sources.upload_csv``).
+    Tries (in order):
+      1. ``snap['data_source_id']`` → re-read the CSV upload from disk
+      2. ``snap['sklearn_dataset']`` → re-load via the same helper the
+         orchestrator uses for sklearn datasets (iris/wine/etc.)
+      3. Otherwise returns None — callers raise 404
+
+    ``data_inline`` runs are not re-loadable: the snapshot only stores
+    the row count, not the rows themselves. Plots for those runs need
+    a different strategy (store inline rows as a synthetic DataSource
+    at run-submit time, TODO).
     """
-    if not data_source_id:
-        return None
-    ds = db.get(DataSource, data_source_id)
-    if ds is None:
-        return None
-    cfg = ds.config or {}
-    path = cfg.get("path") or cfg.get("stored_path")
-    if not path:
-        return None
     import pandas as pd
 
-    try:
-        path_str = str(path)
-        if path_str.endswith(".parquet"):
-            return pd.read_parquet(path_str)
-        return pd.read_csv(path_str)
-    except Exception:
-        return None
+    # Path 1: CSV upload via DataSource row.
+    data_source_id = snap.get("data_source_id")
+    if data_source_id:
+        ds = db.get(DataSource, data_source_id)
+        if ds is not None:
+            cfg = ds.config or {}
+            path = cfg.get("path") or cfg.get("stored_path")
+            if path:
+                try:
+                    path_str = str(path)
+                    if path_str.endswith(".parquet"):
+                        return pd.read_parquet(path_str)
+                    return pd.read_csv(path_str)
+                except Exception:
+                    pass
+
+    # Path 2: bundled sklearn dataset (iris / wine / breast_cancer / diabetes).
+    sklearn_name = snap.get("sklearn_dataset")
+    if sklearn_name:
+        try:
+            from pycaret_server.runs.plans import load_sklearn_dataset
+
+            df, _target = load_sklearn_dataset(sklearn_name)
+            return df
+        except Exception:
+            pass
+
+    return None
 
 
 @router.get("/runs/{run_id}/plots/{kind}")
@@ -210,15 +228,36 @@ def render_run_plot(
     pipe_row = _resolve_run_pipeline(run_id, db)
     pipeline = _load_pipeline_artifact(pipe_row.stored_path)
 
-    # Recover the holdout frame from the run snapshot.
+    # Recover the holdout frame from the run snapshot. Falls back across
+    # data_source_id → sklearn_dataset (data_inline isn't re-loadable yet).
     snap = run.snapshot or {}
     target = snap.get("target")
-    df = _load_dataset_frame(snap.get("data_source_id"), db)
+    df = _load_dataset_frame(snap, db)
     if df is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Could not load the holdout dataset referenced by the run snapshot.",
-        )
+        # Be specific so the frontend can surface a useful empty state.
+        if snap.get("data_inline_rows"):
+            detail = (
+                "This run was created with inline rows (data_inline). "
+                "Plot rendering for inline-data runs is not yet supported — "
+                "re-run with a CSV upload or sklearn dataset to render diagnostics."
+            )
+        else:
+            detail = (
+                "Could not load the holdout dataset referenced by the run "
+                "snapshot. The original CSV may have been deleted from disk."
+            )
+        raise HTTPException(status_code=404, detail=detail)
+
+    # If the target wasn't pinned in the snapshot but we loaded a
+    # sklearn dataset, the helper exposes the conventional target name
+    # (e.g., "target" for iris). Re-derive only when missing.
+    if not target and snap.get("sklearn_dataset"):
+        try:
+            from pycaret_server.runs.plans import load_sklearn_dataset
+
+            _, target = load_sklearn_dataset(snap["sklearn_dataset"])
+        except Exception:
+            pass
 
     # Recompute a holdout split with the run's session_id for stability.
     figure = _compute_run_plot(task, kind, pipeline, df, target, snap)
@@ -346,7 +385,7 @@ def render_eda_plot(
     """
     if kind not in _PLOT_REGISTRY["eda"]:
         raise HTTPException(status_code=400, detail=f"Unknown EDA plot kind {kind!r}.")
-    df = _load_dataset_frame(data_source_id, db)
+    df = _load_dataset_frame({"data_source_id": data_source_id}, db)
     if df is None:
         raise HTTPException(status_code=404, detail="Dataset not found or unreadable.")
 
