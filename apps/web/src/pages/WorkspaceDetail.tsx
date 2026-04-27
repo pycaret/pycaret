@@ -11,6 +11,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import {
   dataSourcesApi,
+  deploymentsApi,
+  pipelinesApi,
   projectsApi,
   workspacesApi,
 } from '@/api/endpoints';
@@ -36,6 +38,16 @@ export function WorkspaceDetail() {
     queryFn: () => dataSourcesApi.list(id),
     enabled: !!id,
   });
+  const pipelines = useQuery({
+    queryKey: ['pipelines', 'by-workspace', id],
+    queryFn: () => pipelinesApi.list(id),
+    enabled: !!id,
+  });
+  const deployments = useQuery({
+    queryKey: ['deployments', 'by-workspace', id],
+    queryFn: () => deploymentsApi.list(id),
+    enabled: !!id,
+  });
 
   const [newProjectOpen, setNewProjectOpen] = useState(false);
 
@@ -43,6 +55,8 @@ export function WorkspaceDetail() {
   const csvCount = (dataSources.data ?? []).filter(
     (d) => d.kind === 'csv_upload',
   ).length;
+  const pipelineCount = pipelines.data?.length ?? 0;
+  const deploymentCount = deployments.data?.length ?? 0;
 
   return (
     <div className="space-y-10">
@@ -81,8 +95,16 @@ export function WorkspaceDetail() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden bg-ink-200 dark:bg-ink-800 border border-ink-200 dark:border-ink-800">
         <Stat label="Projects" value={projectCount} />
         <Stat label="Data sources" value={csvCount} />
-        <Stat label="Pipelines" value={'—'} hint="See pipelines tab" />
-        <Stat label="Deployments" value={'—'} hint="See deployments tab" />
+        <Stat
+          label="Pipelines"
+          value={pipelineCount}
+          to={`/workspaces/${id}/pipelines`}
+        />
+        <Stat
+          label="Deployments"
+          value={deploymentCount}
+          to={`/workspaces/${id}/deployments`}
+        />
       </div>
 
       {/* ─── Projects ────────────────────────────────────────── */}
@@ -116,35 +138,37 @@ export function WorkspaceDetail() {
         )}
 
         {projectCount > 0 && (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr">
             {projects.data?.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} className="h-full">
                 <Link
                   to={`/workspaces/${id}/projects/${p.id}`}
-                  className="block group rounded-xl bg-white dark:bg-ink-900 border border-ink-200 dark:border-ink-800 shadow-soft-1 p-4 hover:border-ink-300 dark:border-ink-700 hover:shadow-soft-2 transition-all"
+                  className="block h-full group rounded-xl bg-white dark:bg-ink-900 border border-ink-200 dark:border-ink-800 shadow-soft-1 p-4 hover:border-ink-300 dark:hover:border-ink-700 hover:shadow-soft-2 transition-all"
                 >
-                  <div className="flex items-start gap-3">
-                    <span className="h-9 w-9 rounded-md bg-accent-50 text-accent-600 flex items-center justify-center shrink-0">
+                  <div className="flex items-start gap-3 h-full">
+                    <span className="h-9 w-9 rounded-md bg-accent-50 dark:bg-accent-500/15 text-accent-600 dark:text-accent-400 flex items-center justify-center shrink-0">
                       <FolderIcon />
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-semibold text-ink-900 dark:text-ink-50 truncate group-hover:text-accent-700 transition-colors">
+                    <div className="min-w-0 flex-1 flex flex-col">
+                      <h3 className="text-sm font-semibold text-ink-900 dark:text-ink-50 truncate group-hover:text-accent-700 dark:group-hover:text-accent-400 transition-colors">
                         {p.name}
                       </h3>
-                      {p.description && (
+                      {p.description ? (
                         <p className="mt-1 text-xs text-ink-500 line-clamp-2">
                           {p.description}
                         </p>
+                      ) : (
+                        <p className="mt-1 text-xs text-ink-400 italic">
+                          No description
+                        </p>
                       )}
-                      {p.tags.length > 0 && (
-                        <div className="mt-2.5 flex flex-wrap gap-1">
-                          {p.tags.map((t) => (
-                            <span key={t} className="pill-neutral">
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <div className="mt-auto pt-3 flex flex-wrap gap-1 min-h-[20px]">
+                        {p.tags.map((t) => (
+                          <span key={t} className="pill-neutral">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </Link>
@@ -173,13 +197,15 @@ function Stat({
   label,
   value,
   hint,
+  to,
 }: {
   label: string;
   value: number | string;
   hint?: string;
+  to?: string;
 }) {
-  return (
-    <div className="bg-white dark:bg-ink-900 px-4 py-4">
+  const inner = (
+    <>
       <div className="text-xs font-medium text-ink-500 uppercase tracking-wider">
         {label}
       </div>
@@ -187,6 +213,21 @@ function Stat({
         {value}
       </div>
       {hint && <div className="text-xs text-ink-400 dark:text-ink-500 mt-0.5">{hint}</div>}
+    </>
+  );
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className="bg-white dark:bg-ink-900 px-4 py-4 hover:bg-ink-50 dark:hover:bg-ink-800/40 transition-colors"
+      >
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <div className="bg-white dark:bg-ink-900 px-4 py-4">
+      {inner}
     </div>
   );
 }
