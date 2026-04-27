@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/state/auth';
-import { authApi } from '@/api/endpoints';
+import { authApi, workspacesApi } from '@/api/endpoints';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CommandPalette } from '@/components/CommandPalette';
@@ -75,11 +75,23 @@ export function Layout() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-6 text-sm">
-          <NavGroup label="General" collapsed={sidebarCollapsed}>
-            <SidebarLink to="/" exact icon={<HomeIcon />} collapsed={sidebarCollapsed}>
-              Workspaces
-            </SidebarLink>
-          </NavGroup>
+          {!activeWsId && (
+            <div className="px-3 py-6 text-center">
+              <div className="mx-auto h-10 w-10 rounded-lg bg-ink-100 dark:bg-ink-800 text-ink-500 flex items-center justify-center mb-2">
+                <HomeIcon />
+              </div>
+              {!sidebarCollapsed && (
+                <>
+                  <p className="text-sm font-medium text-ink-700 dark:text-ink-300">
+                    Pick a workspace
+                  </p>
+                  <p className="mt-1 text-xs text-ink-500">
+                    Use the switcher in the top-right.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
 
           {activeWsId && (
             <NavGroup label="Workspace" collapsed={sidebarCollapsed}>
@@ -235,11 +247,12 @@ export function Layout() {
           </div>
           <div className="hidden md:block" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <WorkspaceSwitcher activeWsId={activeWsId} />
             <button
               type="button"
               className="hidden md:inline-flex items-center gap-2 rounded-md border border-ink-200 dark:border-ink-800
-                         bg-white dark:bg-ink-900 px-2.5 py-1 text-xs text-ink-600 dark:text-ink-400
+                         bg-white dark:bg-ink-900 px-2.5 py-1.5 text-xs text-ink-600 dark:text-ink-400
                          hover:bg-ink-50 dark:hover:bg-ink-800 hover:text-ink-900 dark:hover:text-ink-50
                          transition-colors"
               title="Open command palette"
@@ -264,6 +277,128 @@ export function Layout() {
       </div>
 
       <CommandPalette wsId={activeWsId} />
+    </div>
+  );
+}
+
+// ─── Workspace switcher ───────────────────────────────────────────
+
+function WorkspaceSwitcher({ activeWsId }: { activeWsId: string | undefined }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const nav = useNavigate();
+
+  const list = useQuery({
+    queryKey: ['workspaces'],
+    queryFn: workspacesApi.list,
+    staleTime: 30_000,
+  });
+
+  // Close on outside click + Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    setTimeout(() => document.addEventListener('click', onDoc), 0);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const active = list.data?.find((w) => w.id === activeWsId);
+  const label = active?.name ?? 'Pick a workspace';
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-2 rounded-md border border-ink-200 dark:border-ink-800
+                   bg-white dark:bg-ink-900 px-3 py-1.5 text-sm font-medium
+                   text-ink-800 dark:text-ink-100
+                   hover:bg-ink-50 dark:hover:bg-ink-800
+                   transition-colors max-w-[200px]"
+      >
+        <span
+          aria-hidden
+          className="h-5 w-5 rounded bg-accent-50 dark:bg-accent-500/15 text-accent-600 dark:text-accent-400 flex items-center justify-center shrink-0"
+        >
+          <HomeIcon />
+        </span>
+        <span className="truncate">{label}</span>
+        <ChevronDownIcon />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 w-72 z-50 rounded-lg border border-ink-200 dark:border-ink-800 bg-white dark:bg-ink-900 shadow-soft-3 py-1.5 text-sm">
+          <div className="px-3 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+            Workspaces
+          </div>
+          <ul className="max-h-72 overflow-y-auto">
+            {list.isLoading && (
+              <li className="px-3 py-2 text-ink-500 text-xs">Loading…</li>
+            )}
+            {list.data && list.data.length === 0 && (
+              <li className="px-3 py-2 text-ink-500 text-xs">No workspaces yet.</li>
+            )}
+            {list.data?.map((w) => {
+              const isActive = w.id === activeWsId;
+              return (
+                <li key={w.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      nav(`/workspaces/${w.id}`);
+                    }}
+                    className={`w-full text-left flex items-center gap-2.5 px-3 py-2 transition-colors ${
+                      isActive
+                        ? 'bg-ink-100 dark:bg-ink-800 text-ink-900 dark:text-ink-50'
+                        : 'text-ink-700 dark:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-800'
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className={`h-5 w-5 rounded flex items-center justify-center shrink-0 ${
+                        isActive
+                          ? 'bg-accent-500 text-white'
+                          : 'bg-ink-100 dark:bg-ink-800 text-ink-500'
+                      }`}
+                    >
+                      <HomeIcon />
+                    </span>
+                    <span className="truncate flex-1">{w.name}</span>
+                    {isActive && (
+                      <span className="text-accent-600 dark:text-accent-400 shrink-0">
+                        <CheckIcon />
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="border-t border-ink-100 dark:border-ink-800 mt-1 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                nav('/');
+              }}
+              className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-ink-700 dark:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-800 transition-colors"
+            >
+              <span className="text-ink-500"><GridIcon /></span>
+              <span>Manage all workspaces</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -521,5 +656,26 @@ const ChevronIcon = ({ direction }: { direction: 'left' | 'right' }) => (
     ) : (
       <path d="m9 18 6-6-6-6" />
     )}
+  </svg>
+);
+const ChevronDownIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="m6 9 6 6 6-6" />
+  </svg>
+);
+const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M20 6L9 17l-5-5" />
+  </svg>
+);
+const GridIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <rect x="14" y="14" width="7" height="7" rx="1" />
   </svg>
 );

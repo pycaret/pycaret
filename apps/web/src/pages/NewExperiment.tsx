@@ -117,6 +117,28 @@ function getCfg(d: DataSource): DataSourceConfig {
   return (d.config ?? {}) as DataSourceConfig;
 }
 
+function planLabelOf(plan: RunPlan): string {
+  return plan === 'compare'
+    ? 'Compare models'
+    : plan === 'setup'
+      ? 'Setup only'
+      : 'Single model';
+}
+
+function canSubmitReason(
+  name: string,
+  needsTarget: boolean,
+  target: string,
+  dataSourceId: string,
+  schema: unknown,
+): string {
+  if (!name.trim()) return 'Give the experiment a name to continue.';
+  if (!dataSourceId) return 'Pick a data source above to continue.';
+  if (needsTarget && !target.trim()) return 'Pick the target column to continue.';
+  if (!schema) return 'Loading the engine schema…';
+  return 'Ready when you are.';
+}
+
 // ─── Main page ────────────────────────────────────────────────────
 
 export function NewExperiment() {
@@ -220,7 +242,7 @@ export function NewExperiment() {
     !submit.isPending;
 
   return (
-    <div className="space-y-8 pb-32">
+    <div className="space-y-8">
       {/* ─── Hero ─────────────────────────────────────────────── */}
       <header className="space-y-2">
         <nav className="text-xs text-ink-500">
@@ -312,66 +334,77 @@ export function NewExperiment() {
         {dataSources.isLoading && (
           <div className="text-sm text-ink-500">Loading data sources…</div>
         )}
+
         {csvs.length === 0 && !dataSources.isLoading && (
-          <div className="rounded-xl bg-white dark:bg-ink-900 border border-dashed border-ink-300 dark:border-ink-700 px-6 py-10 text-center">
-            <p className="text-sm text-ink-700 dark:text-ink-300 mb-3">
-              No data sources in this workspace yet.
+          <div className="rounded-xl bg-ink-50 dark:bg-ink-950 border border-dashed border-ink-300 dark:border-ink-700 px-6 py-10 text-center">
+            <div className="mx-auto h-10 w-10 rounded-lg bg-white dark:bg-ink-900 text-ink-500 flex items-center justify-center mb-3 border border-ink-200 dark:border-ink-800">
+              <DataIcon />
+            </div>
+            <p className="text-sm font-medium text-ink-900 dark:text-ink-50">
+              No data sources in this workspace yet
+            </p>
+            <p className="text-xs text-ink-500 mt-1 max-w-sm mx-auto">
+              You need to upload a CSV before configuring an experiment. Head to
+              the workspace, drop a file in, then come back here.
             </p>
             <Link
               to={`/workspaces/${wsId}`}
-              className="btn-secondary"
+              className="btn-primary mt-4"
             >
               Upload a CSV →
             </Link>
           </div>
         )}
-        {csvs.length > 0 && (
-          <div className="grid gap-2 md:grid-cols-2">
-            {csvs.map((d) => (
-              <DataSourceCard
-                key={d.id}
-                ds={d}
-                selected={dataSourceId === d.id}
-                onSelect={() => setDataSourceId(d.id)}
-              />
-            ))}
-          </div>
-        )}
 
-        {needsTarget && (
-          <div className="mt-6">
-            <label className="field" htmlFor="target">
-              Target column <span className="text-ink-400 font-normal">*</span>
-            </label>
-            {cols && cols.length > 0 ? (
-              <select
-                id="target"
-                className="input max-w-md"
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-              >
-                <option value="">— pick a column —</option>
-                {cols.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id="target"
-                className="input max-w-md"
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                placeholder="e.g. churn"
-              />
+        {csvs.length > 0 && (
+          <>
+            <div className="grid gap-2 md:grid-cols-2">
+              {csvs.map((d) => (
+                <DataSourceCard
+                  key={d.id}
+                  ds={d}
+                  selected={dataSourceId === d.id}
+                  onSelect={() => setDataSourceId(d.id)}
+                />
+              ))}
+            </div>
+
+            {needsTarget && selectedDS && (
+              <div className="mt-5 pt-5 border-t border-ink-100 dark:border-ink-800">
+                <label className="field" htmlFor="target">
+                  Target column <span className="text-ink-400 font-normal">*</span>
+                </label>
+                {cols && cols.length > 0 ? (
+                  <select
+                    id="target"
+                    className="input max-w-md"
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                  >
+                    <option value="">— pick a column —</option>
+                    {cols.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id="target"
+                    className="input max-w-md"
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                    placeholder="e.g. churn"
+                  />
+                )}
+                <p className="hint mt-1.5">
+                  {target && cols?.includes(target)
+                    ? '✓ Auto-detected. Override above if you want a different column.'
+                    : `The column the model will learn to predict. ${selectedDS.name} has ${cols?.length ?? 0} columns.`}
+                </p>
+              </div>
             )}
-            <p className="hint mt-1.5">
-              {target && cols?.includes(target)
-                ? '✓ Auto-detected from column names. Override above if needed.'
-                : 'The column the model will learn to predict.'}
-            </p>
-          </div>
+          </>
         )}
       </Section>
 
@@ -411,7 +444,11 @@ export function NewExperiment() {
       <Section
         index="4"
         title="Advanced configuration"
-        description="Preprocessing, sampling, training knobs. Defaults are sensible — only open this if you need to tune."
+        description={
+          schema.data
+            ? `${schema.data.parameters.length} preprocessing, sampling, and training options. Defaults are sensible — open only to tune.`
+            : 'Preprocessing, sampling, and training options. Defaults are sensible — open only to tune.'
+        }
         collapsible
         open={advancedOpen}
         onToggle={() => setAdvancedOpen((v) => !v)}
@@ -438,41 +475,51 @@ export function NewExperiment() {
         )}
       </Section>
 
-      {/* ═══ Sticky summary + CTA ═══════════════════════════════ */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-ink-200 dark:border-ink-800 bg-white/85 dark:bg-ink-950/85 backdrop-blur-md md:left-60 lg:left-64">
-        <div className="mx-auto max-w-6xl px-6 py-3 flex items-center justify-between gap-4">
-          <SummaryStrip
-            name={name}
-            task={taskCfg.label}
-            target={needsTarget ? target : null}
-            dsName={selectedDS?.name}
-            dsRows={selectedDS ? getCfg(selectedDS).rows : null}
-            plan={plan}
-          />
+      {/* ═══ Final CTA — in-flow, prominent ═════════════════════ */}
+      <section className="rounded-xl bg-ink-900 dark:bg-white text-white dark:text-ink-900 p-6 shadow-soft-3">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-white dark:text-ink-900">
+              Ready to launch?
+            </h2>
+            <p className="mt-1 text-sm text-ink-300 dark:text-ink-600">
+              {!canSubmit
+                ? canSubmitReason(
+                    name,
+                    needsTarget,
+                    target,
+                    dataSourceId,
+                    schema.data,
+                  )
+                : `Will create "${name.trim()}", a ${taskCfg.label.toLowerCase()} experiment` +
+                  (needsTarget ? ` predicting ${target}` : '') +
+                  (selectedDS ? `, run a ${planLabelOf(plan).toLowerCase()} plan against ${selectedDS.name}.` : '.')}
+            </p>
+          </div>
           <div className="flex items-center gap-2 shrink-0">
             <Link
               to={`/workspaces/${wsId}/projects/${projectId}`}
-              className="btn-ghost"
+              className="btn-ghost text-white/70 hover:text-white hover:bg-white/10 dark:text-ink-600 dark:hover:bg-ink-100 dark:hover:text-ink-900"
             >
               Cancel
             </Link>
             <button
               type="button"
-              className="btn-primary"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-white text-ink-900 hover:bg-ink-100 dark:bg-ink-900 dark:text-white dark:hover:bg-ink-800 px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => submit.mutate()}
               disabled={!canSubmit}
             >
-              {submit.isPending ? 'Creating…' : 'Create & run'}
+              {submit.isPending ? 'Creating…' : 'Create & run experiment'}
               <ArrowRightIcon />
             </button>
           </div>
         </div>
         {submit.error && (
-          <div className="mx-auto max-w-6xl px-6 pb-2 text-xs text-danger-600">
+          <p className="mt-3 text-xs text-danger-500 bg-danger-500/15 rounded-md px-3 py-2">
             {errorMessage(submit.error)}
-          </div>
+          </p>
         )}
-      </div>
+      </section>
 
       <ExperimentDesignerModal
         workspaceId={wsId}
@@ -572,13 +619,9 @@ function TaskPill({
           {task.icon}
         </span>
         <div className="min-w-0">
-          <div
-            className={`text-sm font-semibold ${
-              selected
-                ? 'text-accent-700 dark:text-accent-300'
-                : 'text-ink-900 dark:text-ink-50'
-            }`}
-          >
+          {/* Label always sharp — accent-700 looked washed out against
+              the pale accent-50 selected background. */}
+          <div className="text-sm font-semibold text-ink-900 dark:text-ink-50">
             {task.label}
           </div>
           <div className="text-xs text-ink-500 mt-0.5">{task.description}</div>
@@ -679,64 +722,15 @@ function PlanOption({
           <span className="text-sm font-semibold text-ink-900 dark:text-ink-50">
             {label}
           </span>
-          {recommended && <span className="pill-accent">Recommended</span>}
+          {recommended && (
+            <span className="inline-flex items-center rounded-full bg-accent-500 text-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+              Recommended
+            </span>
+          )}
         </div>
         <p className="text-xs text-ink-500 mt-0.5">{description}</p>
       </div>
     </button>
-  );
-}
-
-// ─── Summary strip ───────────────────────────────────────────────
-
-function SummaryStrip({
-  name,
-  task,
-  target,
-  dsName,
-  dsRows,
-  plan,
-}: {
-  name: string;
-  task: string;
-  target: string | null;
-  dsName?: string;
-  dsRows?: number | null;
-  plan: RunPlan;
-}) {
-  const hasName = name.trim().length > 0;
-  const planLabel =
-    plan === 'compare' ? 'Compare models' : plan === 'setup' ? 'Setup only' : 'Single model';
-  return (
-    <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-      <span className="text-ink-500">Will create:</span>
-      <span className="pill-neutral">
-        {hasName ? name : 'unnamed'}
-      </span>
-      <span className="text-ink-300 dark:text-ink-700">·</span>
-      <span className="pill-accent">{task}</span>
-      {target && (
-        <>
-          <span className="text-ink-300 dark:text-ink-700">·</span>
-          <span className="text-ink-700 dark:text-ink-300">
-            target=<span className="font-mono">{target}</span>
-          </span>
-        </>
-      )}
-      {dsName && (
-        <>
-          <span className="text-ink-300 dark:text-ink-700">·</span>
-          <span className="text-ink-700 dark:text-ink-300 truncate">
-            {dsName}
-            {dsRows != null && (
-              <span className="text-ink-500 tabular-nums"> ({dsRows.toLocaleString()} rows)</span>
-            )}
-          </span>
-        </>
-      )}
-      <span className="text-ink-300 dark:text-ink-700">·</span>
-      <span className="pill-neutral">{planLabel}</span>
-    </div>
   );
 }
 

@@ -17,47 +17,53 @@ body,
   height: 100%;
 }
 
-body {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  background-color: #fafafa;       /* ink-50 */
-  color: #27272a;                  /* ink-800 — default body */
-  font-feature-settings: 'cv11', 'ss01', 'ss03'; /* Inter stylistic alts */
-}
+/* Base styles wrapped in @layer base so Tailwind utilities
+ * (text-white, dark:text-ink-900, etc.) always win on equal-or-higher
+ * specificity. Outside the layer these rules would beat utilities
+ * because element+class selectors have higher specificity than the
+ * single-class utility selectors. */
+@layer base {
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    background-color: #fafafa; /* ink-50 */
+    color: #27272a; /* ink-800 — default body */
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+  }
 
-/* Dark mode — class-based, toggled by .dark on <html>. */
-html.dark body {
-  background-color: #09090b;       /* ink-950 */
-  color: #d4d4d8;                  /* ink-300 */
-}
+  /* Dark mode — class-based, toggled by .dark on <html>. */
+  html.dark body {
+    background-color: #09090b; /* ink-950 */
+    color: #d4d4d8; /* ink-300 */
+  }
 
-/* Default heading contrast — pages that use plain <h1>/<h2>/<h3>
- * without an explicit text-ink-* class still get sharp, legible
- * typography. Pages can override with .h-page / .h-section / their
- * own classes when they need different weights or sizes. */
-h1, h2, h3, h4 {
-  color: #18181b; /* ink-900 */
-  letter-spacing: -0.01em;
-}
-html.dark h1,
-html.dark h2,
-html.dark h3,
-html.dark h4 {
-  color: #fafafa; /* ink-50 */
-}
-h1 { font-weight: 600; }
-h2 { font-weight: 600; }
-h3 { font-weight: 600; }
+  /* Default heading contrast — pages that use plain <h1>/<h2>/<h3>
+   * without an explicit text-ink-* class still get sharp, legible
+   * typography. When a page DOES set its own text-* class, that
+   * Tailwind utility (in the utilities layer) wins because of layer
+   * ordering. */
+  h1, h2, h3, h4 {
+    color: #18181b; /* ink-900 */
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  html.dark h1,
+  html.dark h2,
+  html.dark h3,
+  html.dark h4 {
+    color: #fafafa; /* ink-50 */
+  }
 
-/* Global table base — prevents Tailwind preflight from making <td>
- * cells inherit a stale / undefined color. Pages that use <table>
- * without explicit text-* classes get readable cells by default. */
-table {
-  color: #27272a; /* ink-800 */
-}
-html.dark table {
-  color: #fafafa; /* ink-50 */
+  /* Global table base — prevents Tailwind preflight from making <td>
+   * cells inherit a stale / undefined color. Pages that use <table>
+   * without explicit text-* classes get readable cells by default. */
+  table {
+    color: #27272a; /* ink-800 */
+  }
+  html.dark table {
+    color: #fafafa; /* ink-50 */
+  }
 }
 
 /* Subtle focus ring — accessible without being clown-like. */
