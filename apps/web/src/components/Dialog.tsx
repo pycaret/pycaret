@@ -85,12 +85,12 @@ export function Dialog({
       {/* Panel */}
       <div
         ref={ref}
-        className={`relative w-full ${sizeClass[size]} rounded-xl bg-white shadow-soft-3 border border-ink-200`}
+        className={`relative w-full ${sizeClass[size]} rounded-xl bg-white dark:bg-ink-900 shadow-soft-3 border border-ink-200`}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-3 border-b border-ink-100">
+        <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-3 border-b border-ink-100 dark:border-ink-800">
           <div className="min-w-0 flex-1">
-            <h2 id="dialog-title" className="text-base font-semibold text-ink-900">
+            <h2 id="dialog-title" className="text-base font-semibold text-ink-900 dark:text-ink-50">
               {title}
             </h2>
             {description && (
@@ -102,7 +102,7 @@ export function Dialog({
             data-dialog-close
             onClick={onClose}
             aria-label="Close dialog"
-            className="text-ink-400 hover:text-ink-700 transition-colors -mt-1 -mr-1 p-1 rounded-md hover:bg-ink-100"
+            className="text-ink-400 dark:text-ink-500 hover:text-ink-700 dark:text-ink-300 transition-colors -mt-1 -mr-1 p-1 rounded-md hover:bg-ink-100 dark:bg-ink-800"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -116,7 +116,7 @@ export function Dialog({
 
         {/* Footer (optional) */}
         {footer && (
-          <div className="px-6 py-4 border-t border-ink-100 bg-ink-50/40 rounded-b-xl flex items-center justify-end gap-2">
+          <div className="px-6 py-4 border-t border-ink-100 dark:border-ink-800 bg-ink-50 dark:bg-ink-950/40 rounded-b-xl flex items-center justify-end gap-2">
             {footer}
           </div>
         )}

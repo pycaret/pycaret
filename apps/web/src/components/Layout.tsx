@@ -1,17 +1,18 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/state/auth';
 import { authApi } from '@/api/endpoints';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CommandPalette } from '@/components/CommandPalette';
+import { useUIPrefs, type Theme } from '@/state/uiPrefs';
 
 /**
  * Authenticated app shell — persistent left sidebar + content pane.
  *
- * Modeled after Linear / Vercel / Resend: 248px sidebar with grouped
- * nav, a workspace-scoped section that only shows when you're inside
- * one, and a quiet user menu at the bottom. Top of the content pane
- * is a thin header with the search trigger.
+ * Linear/Vercel-style: 240px sidebar that collapses to 56px (icons
+ * only) when the user toggles. State persisted in localStorage.
+ * Light/dark/system theme toggle in the user menu. Slim top bar with
+ * search trigger.
  */
 export function Layout() {
   const nav = useNavigate();
@@ -19,6 +20,9 @@ export function Layout() {
   const clear = useAuthStore((s) => s.clear);
   const setUser = useAuthStore((s) => s.setUser);
   const user = useAuthStore((s) => s.user);
+
+  const sidebarCollapsed = useUIPrefs((s) => s.sidebarCollapsed);
+  const toggleSidebar = useUIPrefs((s) => s.toggleSidebar);
 
   const activeWsId = useMemo<string | undefined>(() => {
     const m = location.pathname.match(/\/workspaces\/([^/]+)/);
@@ -47,97 +51,119 @@ export function Layout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex bg-ink-50">
+    <div className="min-h-screen flex bg-ink-50 dark:bg-ink-950">
       {/* ─── Sidebar ─────────────────────────────────────────────── */}
-      <aside className="hidden md:flex md:w-60 lg:w-64 flex-col border-r border-ink-200 bg-white">
+      <aside
+        className={`hidden md:flex flex-col border-r border-ink-200 dark:border-ink-800 bg-white dark:bg-ink-900 transition-[width] duration-200 ease-out ${
+          sidebarCollapsed ? 'md:w-14' : 'md:w-60 lg:w-64'
+        }`}
+      >
         {/* Brand */}
-        <div className="flex h-14 items-center px-5 border-b border-ink-200">
+        <div className="flex h-14 items-center px-3 border-b border-ink-200 dark:border-ink-800 shrink-0">
           <Link
             to="/"
-            className="flex items-center gap-2.5 text-ink-900 font-semibold tracking-tight"
+            className="flex items-center gap-2.5 text-ink-900 dark:text-ink-50 font-semibold tracking-tight px-2"
+            title="Home"
           >
             <span
               aria-hidden
-              className="block h-6 w-6 rounded-md bg-gradient-to-br from-accent-400 to-accent-600 shadow-soft-1"
+              className="block h-6 w-6 shrink-0 rounded-md bg-gradient-to-br from-accent-400 to-accent-600 shadow-soft-1"
             />
-            PyCaret
+            {!sidebarCollapsed && <span>PyCaret</span>}
           </Link>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 text-sm">
-          <NavGroup label="General">
-            <SidebarLink to="/" exact icon={<HomeIcon />}>
+        <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-6 text-sm">
+          <NavGroup label="General" collapsed={sidebarCollapsed}>
+            <SidebarLink to="/" exact icon={<HomeIcon />} collapsed={sidebarCollapsed}>
               Workspaces
             </SidebarLink>
           </NavGroup>
 
           {activeWsId && (
-            <NavGroup label="Workspace">
+            <NavGroup label="Workspace" collapsed={sidebarCollapsed}>
               <SidebarLink
                 to={`/workspaces/${activeWsId}`}
                 exact
                 icon={<FolderIcon />}
+                collapsed={sidebarCollapsed}
               >
                 Projects
               </SidebarLink>
               <SidebarLink
                 to={`/workspaces/${activeWsId}/home`}
                 icon={<ActivityIcon />}
+                collapsed={sidebarCollapsed}
               >
                 Dashboard
               </SidebarLink>
               <SidebarLink
                 to={`/workspaces/${activeWsId}/compare`}
                 icon={<CompareIcon />}
+                collapsed={sidebarCollapsed}
               >
                 Compare runs
               </SidebarLink>
               <SidebarLink
                 to={`/workspaces/${activeWsId}/predictions`}
                 icon={<PredictIcon />}
+                collapsed={sidebarCollapsed}
               >
                 Predict
               </SidebarLink>
               <SidebarLink
                 to={`/workspaces/${activeWsId}/pipelines`}
                 icon={<PipelineIcon />}
+                collapsed={sidebarCollapsed}
               >
                 Pipelines
               </SidebarLink>
               <SidebarLink
                 to={`/workspaces/${activeWsId}/deployments`}
                 icon={<DeployIcon />}
+                collapsed={sidebarCollapsed}
               >
                 Deployments
               </SidebarLink>
               <SidebarLink
                 to={`/workspaces/${activeWsId}/drift`}
                 icon={<DriftIcon />}
+                collapsed={sidebarCollapsed}
               >
                 Drift
               </SidebarLink>
               <SidebarLink
                 to={`/workspaces/${activeWsId}/llm`}
                 icon={<SparkIcon />}
+                collapsed={sidebarCollapsed}
               >
                 LLM
               </SidebarLink>
               <SidebarLink
                 to={`/workspaces/${activeWsId}/members`}
                 icon={<UsersIcon />}
+                collapsed={sidebarCollapsed}
               >
                 Members
               </SidebarLink>
             </NavGroup>
           )}
 
-          <NavGroup label="Account">
-            <SidebarLink to="/account/api-keys" icon={<KeyIcon />}>
+          <NavGroup label="Account" collapsed={sidebarCollapsed}>
+            <SidebarLink
+              to="/account/api-keys"
+              icon={<KeyIcon />}
+              collapsed={sidebarCollapsed}
+            >
               API keys
             </SidebarLink>
             {user?.is_superuser && (
-              <SidebarLink to="/admin/audit" icon={<ShieldIcon />}>
+              <SidebarLink
+                to="/admin/audit"
+                icon={<ShieldIcon />}
+                collapsed={sidebarCollapsed}
+              >
                 Audit log
               </SidebarLink>
             )}
@@ -145,51 +171,62 @@ export function Layout() {
         </nav>
 
         {/* User menu — bottom anchor */}
-        <div className="border-t border-ink-200 p-3 relative">
+        <div className="border-t border-ink-200 dark:border-ink-800 p-2 relative shrink-0">
           <button
             type="button"
             onClick={() => setUserMenuOpen((v) => !v)}
-            className="w-full flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm
-                       text-ink-700 hover:bg-ink-100 transition-colors"
+            className={`w-full flex items-center gap-2.5 rounded-md py-1.5 text-sm
+                       text-ink-700 dark:text-ink-300
+                       hover:bg-ink-100 dark:hover:bg-ink-800 transition-colors ${
+                         sidebarCollapsed ? 'px-1.5 justify-center' : 'px-2'
+                       }`}
+            title={user?.email}
           >
             <span className="h-7 w-7 rounded-full bg-accent-500 text-white text-xs
-                             font-semibold flex items-center justify-center">
+                             font-semibold flex items-center justify-center shrink-0">
               {(user?.display_name ?? user?.email ?? '?').slice(0, 1).toUpperCase()}
             </span>
-            <span className="flex-1 text-left truncate">
-              {user?.display_name ?? user?.email ?? 'You'}
-            </span>
-            <DotsIcon />
+            {!sidebarCollapsed && (
+              <>
+                <span className="flex-1 text-left truncate">
+                  {user?.display_name ?? user?.email ?? 'You'}
+                </span>
+                <DotsIcon />
+              </>
+            )}
           </button>
+
           {userMenuOpen && (
-            <div
-              className="absolute bottom-14 left-3 right-3 rounded-md border border-ink-200
-                         bg-white shadow-soft-3 py-1 text-sm"
-            >
-              {user?.email && (
-                <div className="px-3 py-2 border-b border-ink-200">
-                  <div className="font-medium text-ink-800 truncate">
-                    {user.display_name ?? user.email}
-                  </div>
-                  <div className="text-xs text-ink-500 truncate">{user.email}</div>
-                </div>
-              )}
-              <button
-                onClick={logout}
-                className="w-full text-left px-3 py-2 text-ink-700 hover:bg-ink-50"
-              >
-                Sign out
-              </button>
-            </div>
+            <UserMenu
+              user={user}
+              collapsed={sidebarCollapsed}
+              onClose={() => setUserMenuOpen(false)}
+              onLogout={logout}
+            />
           )}
+        </div>
+
+        {/* Collapse toggle — sits in the gutter at the bottom */}
+        <div className="border-t border-ink-200 dark:border-ink-800 px-2 py-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="w-full flex items-center justify-center gap-2 rounded-md py-1
+                       text-xs text-ink-500 hover:text-ink-900 dark:hover:text-ink-50
+                       hover:bg-ink-100 dark:hover:bg-ink-800 transition-colors"
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <ChevronIcon direction={sidebarCollapsed ? 'right' : 'left'} />
+            {!sidebarCollapsed && <span>Collapse</span>}
+          </button>
         </div>
       </aside>
 
       {/* ─── Main column ─────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Slim top bar */}
-        <header className="h-14 flex items-center justify-between px-6 border-b border-ink-200 bg-white">
-          <div className="md:hidden flex items-center gap-2 text-ink-900 font-semibold">
+        <header className="h-14 flex items-center justify-between px-6 border-b border-ink-200 dark:border-ink-800 bg-white dark:bg-ink-900 shrink-0">
+          <div className="md:hidden flex items-center gap-2 text-ink-900 dark:text-ink-50 font-semibold">
             <span
               aria-hidden
               className="block h-5 w-5 rounded bg-gradient-to-br from-accent-400 to-accent-600"
@@ -201,8 +238,9 @@ export function Layout() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className="hidden md:inline-flex items-center gap-2 rounded-md border border-ink-200
-                         bg-white px-2.5 py-1 text-xs text-ink-600 hover:bg-ink-50 hover:text-ink-900
+              className="hidden md:inline-flex items-center gap-2 rounded-md border border-ink-200 dark:border-ink-800
+                         bg-white dark:bg-ink-900 px-2.5 py-1 text-xs text-ink-600 dark:text-ink-400
+                         hover:bg-ink-50 dark:hover:bg-ink-800 hover:text-ink-900 dark:hover:text-ink-50
                          transition-colors"
               title="Open command palette"
               onClick={() => {
@@ -230,20 +268,101 @@ export function Layout() {
   );
 }
 
+// ─── User menu popover ────────────────────────────────────────────
+
+function UserMenu({
+  user,
+  collapsed,
+  onClose,
+  onLogout,
+}: {
+  user: { email?: string; display_name?: string | null } | null | undefined;
+  collapsed: boolean;
+  onClose: () => void;
+  onLogout: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const theme = useUIPrefs((s) => s.theme);
+  const setTheme = useUIPrefs((s) => s.setTheme);
+
+  // Close on outside click.
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    setTimeout(() => document.addEventListener('click', onDoc), 0);
+    return () => document.removeEventListener('click', onDoc);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className={`absolute bottom-12 ${
+        collapsed ? 'left-14' : 'left-2 right-2'
+      } z-50 rounded-lg border border-ink-200 dark:border-ink-800
+         bg-white dark:bg-ink-900 shadow-soft-3 py-1 text-sm
+         ${collapsed ? 'w-56' : ''}`}
+    >
+      {user?.email && (
+        <div className="px-3 py-2 border-b border-ink-100 dark:border-ink-800">
+          <div className="font-medium text-ink-800 dark:text-ink-100 truncate">
+            {user.display_name ?? user.email}
+          </div>
+          <div className="text-xs text-ink-500 truncate">{user.email}</div>
+        </div>
+      )}
+
+      {/* Theme picker */}
+      <div className="px-3 py-2 border-b border-ink-100 dark:border-ink-800">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400 mb-1.5">
+          Theme
+        </div>
+        <div className="grid grid-cols-3 gap-1 rounded-md bg-ink-100 dark:bg-ink-800 p-0.5">
+          {(['light', 'dark', 'system'] as Theme[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTheme(t)}
+              className={`text-xs font-medium py-1 rounded transition-colors capitalize ${
+                theme === t
+                  ? 'bg-white dark:bg-ink-900 text-ink-900 dark:text-ink-50 shadow-soft-1'
+                  : 'text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-50'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <button
+        onClick={onLogout}
+        className="w-full text-left px-3 py-2 text-ink-700 dark:text-ink-300
+                   hover:bg-ink-50 dark:hover:bg-ink-800"
+      >
+        Sign out
+      </button>
+    </div>
+  );
+}
+
 // ─── Sidebar primitives ────────────────────────────────────────────
 
 function NavGroup({
   label,
+  collapsed,
   children,
 }: {
   label: string;
+  collapsed: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <div className="px-2.5 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-        {label}
-      </div>
+      {!collapsed && (
+        <div className="px-2.5 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-400 dark:text-ink-500">
+          {label}
+        </div>
+      )}
       <div className="space-y-0.5">{children}</div>
     </div>
   );
@@ -253,11 +372,13 @@ function SidebarLink({
   to,
   exact = false,
   icon,
+  collapsed,
   children,
 }: {
   to: string;
   exact?: boolean;
   icon?: React.ReactNode;
+  collapsed: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -265,11 +386,18 @@ function SidebarLink({
       to={to}
       end={exact}
       className={({ isActive }) =>
-        isActive ? 'nav-link-active' : 'nav-link'
+        `${isActive ? 'nav-link-active' : 'nav-link'} ${
+          collapsed ? 'justify-center px-1.5' : ''
+        }`
       }
+      title={collapsed ? String(children) : undefined}
     >
-      {icon && <span className="text-ink-500 [.nav-link-active_&]:text-ink-900">{icon}</span>}
-      <span className="truncate">{children}</span>
+      {icon && (
+        <span className="text-ink-500 dark:text-ink-400 [.nav-link-active_&]:text-ink-900 [.nav-link-active_&]:dark:text-ink-50 shrink-0">
+          {icon}
+        </span>
+      )}
+      {!collapsed && <span className="truncate">{children}</span>}
     </NavLink>
   );
 }
@@ -383,5 +511,15 @@ const DotsIcon = () => (
     <circle cx="12" cy="12" r="1" />
     <circle cx="19" cy="12" r="1" />
     <circle cx="5" cy="12" r="1" />
+  </svg>
+);
+const ChevronIcon = ({ direction }: { direction: 'left' | 'right' }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    {direction === 'left' ? (
+      <path d="m15 18-6-6 6-6" />
+    ) : (
+      <path d="m9 18 6-6-6-6" />
+    )}
   </svg>
 );

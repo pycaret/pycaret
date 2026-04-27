@@ -49,11 +49,11 @@ export function WorkspaceDetail() {
       {/* ─── Hero ─────────────────────────────────────────────── */}
       <header className="space-y-4">
         <nav className="text-xs text-ink-500">
-          <Link to="/" className="hover:text-ink-900 transition-colors">
+          <Link to="/" className="hover:text-ink-900 dark:text-ink-50 transition-colors">
             Workspaces
           </Link>
           <span className="mx-1.5 text-ink-300">/</span>
-          <span className="text-ink-700">{ws.data?.name ?? '…'}</span>
+          <span className="text-ink-700 dark:text-ink-300">{ws.data?.name ?? '…'}</span>
         </nav>
         <div className="flex items-start justify-between gap-6">
           <div className="min-w-0">
@@ -61,7 +61,7 @@ export function WorkspaceDetail() {
               {ws.data?.name ?? 'Loading…'}
             </h1>
             {ws.data?.description && (
-              <p className="mt-2 text-sm text-ink-600 max-w-2xl">
+              <p className="mt-2 text-sm text-ink-600 dark:text-ink-400 dark:text-ink-500 max-w-2xl">
                 {ws.data.description}
               </p>
             )}
@@ -78,7 +78,7 @@ export function WorkspaceDetail() {
       </header>
 
       {/* ─── Stats strip ─────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden bg-ink-200 border border-ink-200">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden bg-ink-200 dark:bg-ink-800 border border-ink-200 dark:border-ink-800">
         <Stat label="Projects" value={projectCount} />
         <Stat label="Data sources" value={csvCount} />
         <Stat label="Pipelines" value={'—'} hint="See pipelines tab" />
@@ -133,14 +133,14 @@ export function WorkspaceDetail() {
               <li key={p.id}>
                 <Link
                   to={`/workspaces/${id}/projects/${p.id}`}
-                  className="block group rounded-xl bg-white border border-ink-200 shadow-soft-1 p-4 hover:border-ink-300 hover:shadow-soft-2 transition-all"
+                  className="block group rounded-xl bg-white dark:bg-ink-900 border border-ink-200 dark:border-ink-800 shadow-soft-1 p-4 hover:border-ink-300 dark:border-ink-700 hover:shadow-soft-2 transition-all"
                 >
                   <div className="flex items-start gap-3">
                     <span className="h-9 w-9 rounded-md bg-accent-50 text-accent-600 flex items-center justify-center shrink-0">
                       <FolderIcon />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-semibold text-ink-900 truncate group-hover:text-accent-700 transition-colors">
+                      <h3 className="text-sm font-semibold text-ink-900 dark:text-ink-50 truncate group-hover:text-accent-700 transition-colors">
                         {p.name}
                       </h3>
                       {p.description && (
@@ -191,14 +191,14 @@ function Stat({
   hint?: string;
 }) {
   return (
-    <div className="bg-white px-4 py-4">
+    <div className="bg-white dark:bg-ink-900 px-4 py-4">
       <div className="text-xs font-medium text-ink-500 uppercase tracking-wider">
         {label}
       </div>
-      <div className="mt-1 text-2xl font-semibold text-ink-900 tabular-nums">
+      <div className="mt-1 text-2xl font-semibold text-ink-900 dark:text-ink-50 tabular-nums">
         {value}
       </div>
-      {hint && <div className="text-xs text-ink-400 mt-0.5">{hint}</div>}
+      {hint && <div className="text-xs text-ink-400 dark:text-ink-500 mt-0.5">{hint}</div>}
     </div>
   );
 }
@@ -217,11 +217,11 @@ function EmptyState({
   cta: { label: string; onClick: () => void };
 }) {
   return (
-    <div className="rounded-xl bg-white border border-dashed border-ink-300 px-6 py-12 text-center">
+    <div className="rounded-xl bg-white dark:bg-ink-900 border border-dashed border-ink-300 dark:border-ink-700 px-6 py-12 text-center">
       <div className="mx-auto h-12 w-12 rounded-xl bg-accent-50 text-accent-600 flex items-center justify-center mb-4">
         {icon}
       </div>
-      <h3 className="text-sm font-semibold text-ink-900">{title}</h3>
+      <h3 className="text-sm font-semibold text-ink-900 dark:text-ink-50">{title}</h3>
       <p className="mt-1.5 text-sm text-ink-500 max-w-md mx-auto">
         {description}
       </p>
@@ -294,7 +294,7 @@ function NewProjectDialog({
       >
         <div>
           <label className="field" htmlFor="p-name">
-            Name <span className="text-ink-400 font-normal">*</span>
+            Name <span className="text-ink-400 dark:text-ink-500 font-normal">*</span>
           </label>
           <input
             id="p-name"

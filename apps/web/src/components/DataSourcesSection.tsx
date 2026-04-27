@@ -84,7 +84,7 @@ export function DataSourcesSection({ workspaceId }: DataSourcesSectionProps) {
       )}
 
       {csvs.length > 0 && (
-        <ul className="rounded-xl bg-white border border-ink-200 shadow-soft-1 divide-y divide-ink-100">
+        <ul className="rounded-xl bg-white dark:bg-ink-900 border border-ink-200 dark:border-ink-800 shadow-soft-1 divide-y divide-ink-100">
           {csvs.map((d) => {
             const cfg = d.config as {
               rows?: number;
@@ -97,11 +97,11 @@ export function DataSourcesSection({ workspaceId }: DataSourcesSectionProps) {
                 className="px-4 py-3 flex items-center justify-between gap-3"
               >
                 <div className="min-w-0 flex items-center gap-3">
-                  <span className="h-8 w-8 rounded-md bg-ink-100 text-ink-600 flex items-center justify-center shrink-0">
+                  <span className="h-8 w-8 rounded-md bg-ink-100 dark:bg-ink-800 text-ink-600 dark:text-ink-400 dark:text-ink-500 flex items-center justify-center shrink-0">
                     <DataIcon />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-ink-900 truncate">
+                    <p className="text-sm font-medium text-ink-900 dark:text-ink-50 truncate">
                       {d.name}
                     </p>
                     <p className="text-xs text-ink-500 mt-0.5">
@@ -234,7 +234,7 @@ function UploadDialog({
               setFile(f);
               if (f && !name) setName(f.name);
             }}
-            className="text-sm text-ink-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-ink-200 file:bg-white file:text-ink-800 file:cursor-pointer file:font-medium hover:file:bg-ink-50"
+            className="text-sm text-ink-700 dark:text-ink-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-ink-200 file:bg-white dark:bg-ink-900 file:text-ink-800 dark:text-ink-100 file:cursor-pointer file:font-medium hover:file:bg-ink-50 dark:bg-ink-950"
           />
         </div>
         <div>
@@ -285,11 +285,11 @@ function EmptyState({
   cta: { label: string; onClick: () => void };
 }) {
   return (
-    <div className="rounded-xl bg-white border border-dashed border-ink-300 px-6 py-10 text-center">
-      <div className="mx-auto h-10 w-10 rounded-lg bg-ink-100 text-ink-500 flex items-center justify-center mb-3">
+    <div className="rounded-xl bg-white dark:bg-ink-900 border border-dashed border-ink-300 dark:border-ink-700 px-6 py-10 text-center">
+      <div className="mx-auto h-10 w-10 rounded-lg bg-ink-100 dark:bg-ink-800 text-ink-500 flex items-center justify-center mb-3">
         {icon}
       </div>
-      <h3 className="text-sm font-semibold text-ink-900">{title}</h3>
+      <h3 className="text-sm font-semibold text-ink-900 dark:text-ink-50">{title}</h3>
       <p className="mt-1 text-sm text-ink-500 max-w-md mx-auto">{description}</p>
       <button
         type="button"

@@ -22,9 +22,33 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   background-color: #fafafa;       /* ink-50 */
-  color: #3f3f46;                  /* ink-700 — default body text */
+  color: #27272a;                  /* ink-800 — default body */
   font-feature-settings: 'cv11', 'ss01', 'ss03'; /* Inter stylistic alts */
 }
+
+/* Dark mode — class-based, toggled by .dark on <html>. */
+html.dark body {
+  background-color: #09090b;       /* ink-950 */
+  color: #d4d4d8;                  /* ink-300 */
+}
+
+/* Default heading contrast — pages that use plain <h1>/<h2>/<h3>
+ * without an explicit text-ink-* class still get sharp, legible
+ * typography. Pages can override with .h-page / .h-section / their
+ * own classes when they need different weights or sizes. */
+h1, h2, h3, h4 {
+  color: #18181b; /* ink-900 */
+  letter-spacing: -0.01em;
+}
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4 {
+  color: #fafafa; /* ink-50 */
+}
+h1 { font-weight: 600; }
+h2 { font-weight: 600; }
+h3 { font-weight: 600; }
 
 /* Subtle focus ring — accessible without being clown-like. */
 :focus-visible {
@@ -41,17 +65,22 @@ body {
            disabled:opacity-50 disabled:cursor-not-allowed
            focus-visible:outline-none focus-visible:ring-2
            focus-visible:ring-accent-500 focus-visible:ring-offset-2
-           focus-visible:ring-offset-white;
+           focus-visible:ring-offset-white
+           dark:focus-visible:ring-offset-ink-950;
   }
   .btn-primary {
-    @apply btn bg-ink-900 text-white hover:bg-ink-800 active:bg-ink-950;
+    @apply btn bg-ink-900 text-white hover:bg-ink-800 active:bg-ink-950
+           dark:bg-white dark:text-ink-900 dark:hover:bg-ink-200;
   }
   .btn-secondary {
     @apply btn bg-white text-ink-800 border border-ink-200
-           hover:bg-ink-50 hover:border-ink-300;
+           hover:bg-ink-50 hover:border-ink-300
+           dark:bg-ink-900 dark:text-ink-100 dark:border-ink-800
+           dark:hover:bg-ink-800 dark:hover:border-ink-700;
   }
   .btn-ghost {
-    @apply btn text-ink-700 hover:bg-ink-100 hover:text-ink-900;
+    @apply btn text-ink-700 hover:bg-ink-100 hover:text-ink-900
+           dark:text-ink-300 dark:hover:bg-ink-800 dark:hover:text-ink-50;
   }
   .btn-accent {
     @apply btn bg-accent-500 text-white hover:bg-accent-600 active:bg-accent-700;
@@ -62,7 +91,8 @@ body {
 
   /* ─── Form primitives ────────────────────────────────────────── */
   .field {
-    @apply block text-sm font-medium text-ink-700 mb-1.5;
+    @apply block text-sm font-medium text-ink-700 mb-1.5
+           dark:text-ink-300;
   }
   .input {
     @apply block w-full rounded-md bg-white border border-ink-200
@@ -70,40 +100,49 @@ body {
            shadow-soft-1
            focus:outline-none focus:border-accent-500 focus:ring-1
            focus:ring-accent-500
-           disabled:bg-ink-50 disabled:text-ink-500 disabled:cursor-not-allowed;
+           disabled:bg-ink-50 disabled:text-ink-500 disabled:cursor-not-allowed
+           dark:bg-ink-900 dark:border-ink-800 dark:text-ink-50
+           dark:placeholder-ink-500 dark:shadow-none
+           dark:disabled:bg-ink-950 dark:disabled:text-ink-500;
   }
   .input-bare {
     @apply block w-full bg-transparent border-0 outline-none ring-0
-           text-sm text-ink-900 placeholder-ink-400;
+           text-sm text-ink-900 placeholder-ink-400
+           dark:text-ink-50 dark:placeholder-ink-500;
   }
 
   /* ─── Surfaces ───────────────────────────────────────────────── */
   .card {
-    @apply rounded-xl bg-white border border-ink-200 shadow-soft-1 p-6;
+    @apply rounded-xl bg-white border border-ink-200 shadow-soft-1 p-6
+           dark:bg-ink-900 dark:border-ink-800 dark:shadow-none;
   }
   .card-tight {
-    @apply rounded-lg bg-white border border-ink-200 shadow-soft-1 p-4;
+    @apply rounded-lg bg-white border border-ink-200 shadow-soft-1 p-4
+           dark:bg-ink-900 dark:border-ink-800 dark:shadow-none;
   }
 
   /* ─── Typography helpers ─────────────────────────────────────── */
   .h-page {
-    @apply text-2xl font-semibold tracking-tight text-ink-900;
+    @apply text-2xl font-semibold tracking-tight text-ink-900
+           dark:text-ink-50;
   }
   .h-section {
-    @apply text-base font-semibold text-ink-900;
+    @apply text-base font-semibold text-ink-900
+           dark:text-ink-50;
   }
   .hint {
-    @apply text-xs text-ink-500;
+    @apply text-xs text-ink-500 dark:text-ink-500;
   }
   .muted {
-    @apply text-ink-500;
+    @apply text-ink-500 dark:text-ink-500;
   }
   .error {
-    @apply text-xs text-danger-600 mt-1;
+    @apply text-xs text-danger-600 mt-1 dark:text-danger-500;
   }
   .kbd {
     @apply inline-flex items-center rounded border border-ink-200 bg-white
-           px-1.5 py-0.5 font-mono text-[10px] text-ink-600 shadow-soft-1;
+           px-1.5 py-0.5 font-mono text-[10px] text-ink-600 shadow-soft-1
+           dark:bg-ink-900 dark:border-ink-800 dark:text-ink-400 dark:shadow-none;
   }
 
   /* ─── Status pills ───────────────────────────────────────────── */
@@ -111,20 +150,22 @@ body {
     @apply inline-flex items-center rounded-full px-2 py-0.5
            text-xs font-medium;
   }
-  .pill-neutral { @apply pill bg-ink-100 text-ink-700; }
-  .pill-success { @apply pill bg-success-50 text-success-600; }
-  .pill-danger  { @apply pill bg-danger-50 text-danger-600; }
-  .pill-warn    { @apply pill bg-warn-50 text-warn-600; }
-  .pill-accent  { @apply pill bg-accent-50 text-accent-700; }
+  .pill-neutral { @apply pill bg-ink-100 text-ink-700 dark:bg-ink-800 dark:text-ink-200; }
+  .pill-success { @apply pill bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500; }
+  .pill-danger  { @apply pill bg-danger-50 text-danger-600 dark:bg-danger-500/15 dark:text-danger-500; }
+  .pill-warn    { @apply pill bg-warn-50 text-warn-600 dark:bg-warn-500/15 dark:text-warn-500; }
+  .pill-accent  { @apply pill bg-accent-50 text-accent-700 dark:bg-accent-500/15 dark:text-accent-400; }
 
   /* ─── Sidebar nav-link ───────────────────────────────────────── */
   .nav-link {
     @apply flex items-center gap-2.5 rounded-md px-2.5 py-1.5
            text-sm font-medium text-ink-600
            hover:bg-ink-100 hover:text-ink-900
-           transition-colors;
+           transition-colors
+           dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-ink-50;
   }
   .nav-link-active {
-    @apply nav-link bg-ink-100 text-ink-900;
+    @apply nav-link bg-ink-100 text-ink-900
+           dark:bg-ink-800 dark:text-ink-50;
   }
 }
