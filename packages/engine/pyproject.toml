@@ -14,7 +14,7 @@ keywords = [
   "time-series",
   "llm-agents",
 ]
-license = "MIT"
+license = "LicenseRef-FSL-1.1-MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "PyCaret developers" }]
 maintainers = [{ name = "Moez Ali", email = "moez.ali@queensu.ca" }]

@@ -210,9 +210,33 @@ See [`docs/revamp/VISION.md`](docs/revamp/VISION.md) for the product statement.
 
 ## Licensing
 
-- Engine (`packages/engine/`) is **MIT**.
-- Platform packages (`services/*`, `apps/*`) are **dual-licensed MIT OR BUSL-1.1**. Self-host freely; the BSL grant covers multi-tenant hosted commercialisation, auto-converting to MIT/Apache-2.0 after 3 years. See [`docs/revamp/DECISIONS.md`](docs/revamp/DECISIONS.md) for rationale.
+PyCaret 4.0 ships under the **Functional Source License (FSL-1.1-MIT)** — the same license Sentry, Convex, and Keep use. The short version:
+
+- **Free** for individual use, internal corporate use, non-commercial education / research, and consulting work delivered on top of PyCaret.
+- **Not free** to use as the basis of a competing AutoML product or hosted service.
+- **Auto-converts to MIT** two years after each release. The 4.0.0 release becomes plain MIT in 2028, the next minor in two years from its release date, and so on.
+
+See [`LICENSE`](LICENSE) for the full text.
+
+**Per-package detail:**
+
+- `packages/engine/` (the `pycaret` library) and `apps/site/` are FSL-1.1-MIT.
+- `services/api/` and `apps/web/` (the Control Plane backend + frontend) are **dual-licensed FSL-1.1-MIT OR BUSL-1.1**. Self-host freely; the BSL grant kicks in for multi-tenant hosted commercialisation and auto-converts after three years.
+
+Rationale and the chain of decisions: [`docs/revamp/DECISIONS.md`](docs/revamp/DECISIONS.md).
+
+The 3.x line on PyPI (`pycaret <= 3.4.0`) remains MIT — license changes only apply to 4.0+.
 
 ## Contributing
 
-PyCaret is under active revamp. Read [`AGENTS.md`](AGENTS.md) (for AI agents) and [`CONTRIBUTING.md`](CONTRIBUTING.md) (for humans). Bug reports welcome; large feature PRs should discuss in an issue first.
+PyCaret is under active revamp and is **Claude-Code-first**: anyone can clone the repo, run Claude Code in their own checkout (using their own Claude credentials), pick a maintainer-`Approved` issue, and let the agent open a PR.
+
+```bash
+gh repo clone pycaret/pycaret && cd pycaret
+claude
+> /work-on-approved-issue
+```
+
+Compute is community-funded — there's **no** Claude API key in this repo's secrets and **no** CI bot that auto-fixes issues. The Claude Code setup lives in [`CLAUDE.md`](CLAUDE.md) (entry point), [`.claude/`](.claude/) (slash commands + sub-agents + permissions), and per-directory `CLAUDE.md` files. Cross-vendor instructions for non-Claude agents live in [`AGENTS.md`](AGENTS.md).
+
+Traditional contributions — clone, edit, PR — are also first-class. Read [`CONTRIBUTING.md`](CONTRIBUTING.md). Bug reports welcome; large feature PRs should discuss in an issue first.

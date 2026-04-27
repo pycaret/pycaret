@@ -4,6 +4,38 @@ ADR-style. Newest at top. Each entry: **date | decision | alternatives considere
 
 ---
 
+## 2026-04-27 (post-shipping · decision 2) · Engine moves from MIT to FSL-1.1-MIT
+
+- **Decision:** Relicense the `pycaret` engine (`packages/engine/`) and the public `apps/site/` from **MIT** to **FSL-1.1-MIT** (Functional Source License with MIT Future grant) starting with **PyCaret 4.0**. The 3.x line on PyPI (`pycaret <= 3.4.0`) stays MIT — the relicense applies prospectively to 4.0+ only. Each released 4.0+ version auto-converts to plain MIT on the second anniversary of its release date. The platform packages (`services/api/`, `apps/web/`) stay dual-licensed under FSL-1.1-MIT OR BUSL-1.1.
+- **Alternatives:**
+  - **Stay on MIT** (rejected — gives the maintainer no commercial recourse if a competitor builds a hosted PyCaret-as-a-Service).
+  - **Apache 2.0 + Commons Clause** (rejected — Commons Clause is widely seen as deceptive "open-source-but-not-actually" branding; FSL is more honest about the restriction).
+  - **AGPLv3** (rejected — many enterprise legal teams blanket-block AGPL imports; for a `pip install` library, this would tank corporate adoption hard).
+  - **Elastic License v2** (rejected — its "no offering as a service" trigger doesn't fire usefully for a library people import; FSL's "Competing Use" definition is the right shape for this product).
+  - **PolyForm Small Business / Noncommercial** (rejected — too restrictive for a library; would block legitimate internal corporate use that we want to encourage).
+- **Why:**
+  - PyCaret is a Python *library* people `pip install`, not an application people deploy. The license has to be permissive enough that enterprise legal review doesn't blanket-block it. FSL passes most filters because it explicitly permits internal commercial use; what it forbids is *competing* commercial use. That's a narrow restriction in practice.
+  - The two-year auto-MIT clause is the trust mechanism: every release becomes truly open-source eventually, so the ecosystem doesn't permanently fork. A user who's nervous about the FSL terms can pin to a 2+ year-old version, which is plain MIT.
+  - The maintainer is the long-term steward and has stated commercial intent. FSL-1.1-MIT is the most-mainstream, least-adoption-hostile way to retain commercial leverage on the engine.
+  - Aligns the engine's posture with the platform. Previously engine was MIT (any use) while platform was MIT-or-BSL — the asymmetry was confusing. Now both prevent direct competing-product hosting; both auto-convert to permissive eventually.
+  - Owner answer: "MIT is too free, lets make it more restrictive so if there is commercial angle in this, i as a creator and maintainer benefit from it. ... FSL on engine."
+
+---
+
+## 2026-04-27 (post-shipping · decision 1) · Repo is Claude-Code-first; no CI bot auto-fixes issues
+
+- **Decision:** Add `CLAUDE.md` at the repo root + per-major-directory, plus `.claude/{settings.json, commands/, agents/}`, to make the repo first-class for Claude Code. Contributors clone the repo, run Claude Code in their own checkout (using their own subscription / API key), pick a maintainer-`Approved` issue, and have the agent open a PR. **There is no `ANTHROPIC_API_KEY` in repo secrets and no GitHub Action that auto-fixes issues.** Compute is community-funded by whoever runs the agent.
+- **Alternatives:**
+  - **GitHub Action with maintainer-paid Anthropic API key, triggered on `Approved` label** (rejected — cost concentrates on the maintainer; opens API-abuse vectors via crafted issue payloads; the maintainer explicitly opted out: "i dont wanna put my own api key for any runners").
+  - **Hybrid: action for trusted contributors + local for everyone else** (rejected — the trust gate adds operational complexity for marginal benefit; user explicitly chose pure-local).
+- **Why:**
+  - Distributes the compute cost across whoever wants to actually fix issues, instead of concentrating on the maintainer.
+  - Fixes happen with the contributor's own context window, identity, and judgment — they own the PR they open.
+  - The maintainer retains the merge gate. The bottleneck is intentional and is *human review*, not *agent execution*.
+  - Owner answer: "everybody woudl do locally and use their own claude. when i m working i m using my own claude code windows. i dont wanna put my own api key for any runners. ... agent should be allowed to touch anything. eventually the right to approve merge to main branch is with me."
+
+---
+
 ## 2026-04-24 (session 13 · restructure decision 4) · Product name is "PyCaret"; UI brand is "PyCaret Control Plane"
 
 - **Decision:** The product — library + platform together — is branded **PyCaret**. The web UI's top-level title and marketing surface is **PyCaret Control Plane** (to communicate "this is not just the library, it's the managed platform"). Package names on registries stay simple: `pycaret` on PyPI (engine), `pycaret-server` on PyPI (backend), `@pycaret/ui` on npm (web app). OpenAPI `info.title` = "PyCaret Control Plane" so `/docs` looks like the right product.

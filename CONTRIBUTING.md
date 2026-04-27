@@ -2,7 +2,26 @@
 
 Thanks for considering a contribution.
 
-> **⚠ If you are an AI coding agent, read [`AGENTS.md`](AGENTS.md) first.** It is your 60-second briefing and lists the non-negotiables.
+> **⚠ If you are an AI coding agent, read [`AGENTS.md`](AGENTS.md) first** (cross-vendor briefing) **and [`CLAUDE.md`](CLAUDE.md) if you are Claude Code** (slash commands, sub-agents, permission allowlist).
+
+## The Claude-Code-first contributor flow
+
+This project is **Claude-Code-first**. Instead of a CI bot fixing
+issues automatically, contributions look like this:
+
+1. **You open an issue** describing the bug or feature.
+2. **The maintainer ([@moezali1](https://github.com/moezali1))** reviews and either closes it or adds the **`Approved`** label.
+3. **You** (or anyone) clone the repo, fire up Claude Code in your own checkout (using **your own** Claude subscription / API key), and run:
+   ```bash
+   claude
+   > /work-on-approved-issue
+   ```
+   The slash command lists Approved issues, you pick one, and the agent fixes it end-to-end — branch, failing test, fix, lint, PR — locally, on your laptop, with your credits.
+4. The agent opens a PR against `main`. Maintainer reviews and merges.
+
+There is **no `ANTHROPIC_API_KEY` in this repo's secrets**. There is **no GitHub Action that runs Claude on issues automatically**. Compute is community-funded by whoever runs the agent. Contributors who don't use Claude Code can still contribute the traditional way (clone, edit, PR) — both flows are first-class.
+
+The Claude Code config lives in [`CLAUDE.md`](CLAUDE.md) (entry point), [`.claude/`](.claude/) (commands + sub-agents + settings), and the per-directory `CLAUDE.md` files under `packages/engine/`, `apps/web/`, and `apps/site/`.
 
 ## The 30-second overview
 
@@ -111,7 +130,7 @@ Append to [`docs/revamp/release_notes_pycaret4.md`](docs/revamp/release_notes_py
 
 ## Licensing
 
-- Engine (`packages/engine/`) is **MIT**.
-- Platform packages (`services/*`, `apps/*`) are **dual-licensed MIT OR BUSL-1.1**. See [`docs/revamp/DECISIONS.md § 2026-04-23 · decision 5`](docs/revamp/DECISIONS.md) for the rationale.
-- Contributions to platform packages imply acceptance of the BSL posture (self-host freely; if you run it as a multi-tenant hosted SaaS to third parties, the BSL grant becomes relevant until it converts to MIT/Apache-2.0 after 3 years).
+- Engine (`packages/engine/`) and the public site (`apps/site/`) are **FSL-1.1-MIT** (Functional Source License, MIT Future Variant). Free for any non-Competing use; auto-converts to MIT two years after each release. See [`LICENSE`](LICENSE) for the full text.
+- Platform packages (`services/api/`, `apps/web/`) are **dual-licensed FSL-1.1-MIT OR BUSL-1.1**. See [`docs/revamp/DECISIONS.md`](docs/revamp/DECISIONS.md) for rationale.
+- Contributions imply you grant the project the right to distribute your contribution under these licenses, including the future-MIT grant.
 
