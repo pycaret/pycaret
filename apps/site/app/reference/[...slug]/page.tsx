@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 
 import { listApiModules, getApiModule, moduleSlug } from '@/lib/api-tree';
 import type { ApiClass, ApiFunction } from '@/lib/api-tree';
+import { Docstring } from '@/components/Docstring';
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -41,11 +42,8 @@ export default async function ApiModulePage({ params }: PageProps) {
       <h1 className="font-mono text-3xl font-semibold tracking-tight text-ink-900">
         {qualname}
       </h1>
-      {mod.docstring && (
-        <p className="mt-4 whitespace-pre-line text-base leading-relaxed text-ink-600">
-          {mod.docstring}
-        </p>
-      )}
+      <Docstring text={mod.docstring} />
+
 
       <SectionHeader title="Classes" count={mod.classes.length} />
       {mod.classes.map((cls) => (
@@ -95,11 +93,8 @@ function ClassCard({ cls }: { cls: ApiClass }) {
           </span>
         )}
       </div>
-      {cls.docstring && (
-        <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink-600">
-          {cls.docstring}
-        </p>
-      )}
+      <Docstring text={cls.docstring} variant="compact" />
+
       {cls.attributes.length > 0 && (
         <div className="mt-4">
           <div className="text-xs font-semibold uppercase tracking-wider text-ink-400">
@@ -146,15 +141,8 @@ function FunctionCard({ fn, compact = false }: { fn: ApiFunction; compact?: bool
           {fn.signature.replace(`${fn.name}`, '')}
         </span>
       </div>
-      {fn.docstring && (
-        <p
-          className={`whitespace-pre-line leading-relaxed text-ink-600 ${
-            compact ? 'mt-2 text-xs' : 'mt-3 text-sm'
-          }`}
-        >
-          {fn.docstring}
-        </p>
-      )}
+      <Docstring text={fn.docstring} variant="compact" />
+
     </section>
   );
 }

@@ -2,6 +2,7 @@
  * Footer with link columns + license note. Same minimal aesthetic as
  * the rest of the site.
  */
+import Image from 'next/image';
 import Link from 'next/link';
 
 const COLUMNS = [
@@ -59,15 +60,14 @@ export function SiteFooter() {
       <div className="mx-auto max-w-6xl px-6 py-12">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2">
-              <span
-                aria-hidden
-                className="block h-6 w-6 rounded-md bg-gradient-to-br from-accent-500 to-accent-700"
-              />
-              <span className="text-sm font-semibold tracking-tight text-ink-900">
-                PyCaret
-              </span>
-            </div>
+            <Image
+              src="/logo.png"
+              alt="PyCaret"
+              width={168}
+              height={24}
+              className="h-6 w-auto"
+            />
+
             <p className="mt-3 text-sm text-ink-500">
               Low-code machine learning for Python. Open-source under MIT.
             </p>

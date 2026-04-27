@@ -5,6 +5,7 @@
  * collapses the nav into a slide-down sheet via the details/summary
  * idiom (zero JS, screen-reader friendly).
  */
+import Image from 'next/image';
 import Link from 'next/link';
 import { Github } from 'lucide-react';
 
@@ -20,14 +21,19 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-ink-100 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2 group">
-            <span
-              aria-hidden
-              className="block h-7 w-7 rounded-md bg-gradient-to-br from-accent-500 to-accent-700 shadow-sm transition-transform group-hover:scale-105"
+          <Link
+            href="/"
+            className="flex items-center group"
+            aria-label="PyCaret home"
+          >
+            <Image
+              src="/logo.png"
+              alt="PyCaret"
+              width={196}
+              height={28}
+              className="h-7 w-auto transition-transform group-hover:scale-[1.02]"
+              priority
             />
-            <span className="text-base font-semibold tracking-tight text-ink-900">
-              PyCaret
-            </span>
           </Link>
           <nav className="hidden items-center gap-6 text-sm md:flex">
             {NAV.map((item) => (

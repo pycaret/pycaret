@@ -8,6 +8,9 @@
  * Static export prerenders the ImageResponse to `/opengraph-image.png`
  * at build time — no runtime image generation in production.
  */
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { ImageResponse } from 'next/og';
 
 // Static export requires explicit force-static on metadata routes.
@@ -16,6 +19,15 @@ export const dynamic = 'force-static';
 export const alt = 'PyCaret — Low-code machine learning for Python';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
+
+// Read the real wordmark from /public at build time and inline as base64
+// so Satori (which renders the OG card) has it available without a
+// network fetch.
+const LOGO_DATA_URI = (() => {
+  const file = path.join(process.cwd(), 'public', 'logo.png');
+  const buf = fs.readFileSync(file);
+  return `data:image/png;base64,${buf.toString('base64')}`;
+})();
 
 export default async function OgImage() {
   return new ImageResponse(
@@ -34,33 +46,22 @@ export default async function OgImage() {
           color: '#fff',
         }}
       >
-        {/* Top: brand mark */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <div
-            style={{
-              width: 96,
-              height: 96,
-              borderRadius: 22,
-              background: 'linear-gradient(135deg, #5B8DEF 0%, #3457B0 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 60,
-              fontWeight: 700,
-              color: '#fff',
-            }}
-          >
-            P
-          </div>
-          <div
-            style={{
-              fontSize: 56,
-              fontWeight: 700,
-              letterSpacing: '-0.02em',
-            }}
-          >
-            PyCaret
-          </div>
+        {/* Top: real wordmark on a white plate so the dark logo
+            stays legible against the navy gradient. Satori doesn't
+            support CSS filters, so we use a contrasting plate
+            instead of inverting the PNG. */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: '#ffffff',
+            borderRadius: 18,
+            padding: '18px 28px',
+            boxShadow: '0 6px 24px rgba(0,0,0,0.18)',
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LOGO_DATA_URI} alt="PyCaret" width={360} height={52} />
         </div>
 
         {/* Middle: headline */}
