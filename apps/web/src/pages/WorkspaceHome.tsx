@@ -155,38 +155,35 @@ export function WorkspaceHome() {
         }}
       >
         <div className="card">
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Recent runs</div>
+          <h2 className="h-section mb-3">Recent runs</h2>
           {recentRuns.isLoading ? (
-            <div style={{ color: '#94A3B8', fontSize: 13 }}>Loading…</div>
+            <div className="text-sm text-ink-500">Loading…</div>
           ) : (recentRuns.data?.length ?? 0) === 0 ? (
-            <div style={{ color: '#94A3B8', fontSize: 13 }}>
+            <div className="text-sm text-ink-500">
               No runs yet. Start with{' '}
-              <Link to={`/workspaces/${wsId}`}>a new experiment</Link>.
+              <Link to={`/workspaces/${wsId}`} className="text-accent-600 hover:text-accent-700">
+                a new experiment
+              </Link>
+              .
             </div>
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <ul className="space-y-1.5">
               {recentRuns.data!.map((r: { id: string; status: string; duration_ms: number | null }) => (
                 <li
                   key={r.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 12px',
-                    borderRadius: 10,
-                    background: 'rgba(91,141,239,0.04)',
-                  }}
+                  className="flex items-center justify-between gap-3 px-3 py-2 rounded-md hover:bg-ink-50 dark:hover:bg-ink-800/50 transition-colors"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <StatusPill status={r.status} />
                     <Link
                       to={`/runs/${r.id}`}
-                      style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}
+                      className="text-sm font-mono text-ink-800 dark:text-ink-100 hover:text-accent-700 dark:hover:text-accent-400 truncate"
+                      title={r.id}
                     >
-                      Run {r.id.slice(0, 8)}…
+                      {r.id}
                     </Link>
                   </div>
-                  <div style={{ fontSize: 12, color: '#64748B' }}>
+                  <div className="text-xs text-ink-500 tabular-nums shrink-0">
                     {r.duration_ms != null
                       ? `${(r.duration_ms / 1000).toFixed(1)}s`
                       : '—'}
@@ -198,7 +195,7 @@ export function WorkspaceHome() {
         </div>
 
         <div className="card">
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Shortcuts</div>
+          <h2 className="h-section mb-3">Shortcuts</h2>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[
               { to: `/workspaces/${wsId}`, label: 'Datasets & projects' },

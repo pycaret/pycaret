@@ -50,6 +50,16 @@ h1 { font-weight: 600; }
 h2 { font-weight: 600; }
 h3 { font-weight: 600; }
 
+/* Global table base — prevents Tailwind preflight from making <td>
+ * cells inherit a stale / undefined color. Pages that use <table>
+ * without explicit text-* classes get readable cells by default. */
+table {
+  color: #27272a; /* ink-800 */
+}
+html.dark table {
+  color: #fafafa; /* ink-50 */
+}
+
 /* Subtle focus ring — accessible without being clown-like. */
 :focus-visible {
   outline: 2px solid theme('colors.accent.500');

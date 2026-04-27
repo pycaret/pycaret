@@ -10,10 +10,10 @@ import { Link, useParams } from 'react-router-dom';
 import { deploymentsApi, workspacesApi } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
 
-const STATUS_TONE: Record<string, string> = {
-  active: 'text-success-500',
-  paused: 'text-warn-500',
-  archived: 'text-ink-500',
+const STATUS_PILL: Record<string, 'success' | 'warn' | 'neutral'> = {
+  active: 'success',
+  paused: 'warn',
+  archived: 'neutral',
 };
 
 export function Deployments() {
@@ -66,48 +66,53 @@ export function Deployments() {
       )}
 
       {deployments.data && deployments.data.length > 0 && (
-        <div className="card overflow-hidden p-0">
+        <div className="rounded-xl bg-white dark:bg-ink-900 border border-ink-200 dark:border-ink-800 shadow-soft-1 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-white text-ink-500">
+            <thead className="bg-ink-50 dark:bg-ink-950 text-ink-600 dark:text-ink-400 border-b border-ink-200 dark:border-ink-800">
               <tr>
-                <th className="px-4 py-2 text-left font-medium">Slug</th>
-                <th className="px-4 py-2 text-left font-medium">Status</th>
-                <th className="px-4 py-2 text-left font-medium">Auth</th>
-                <th className="px-4 py-2 text-right font-medium">Predictions</th>
-                <th className="px-4 py-2 text-right font-medium">Errors</th>
-                <th className="px-4 py-2 text-right font-medium">p50</th>
-                <th className="px-4 py-2 text-right font-medium">p95</th>
-                <th className="px-4 py-2 text-left font-medium">Last hit</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Slug</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Status</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Auth</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider">Predictions</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider">Errors</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider">p50</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider">p95</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Last hit</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="text-ink-800 dark:text-ink-100">
               {deployments.data.map((d) => (
-                <tr key={d.id} className="border-t border-ink-200 hover:bg-ink-50">
-                  <td className="px-4 py-2">
+                <tr
+                  key={d.id}
+                  className="border-t border-ink-100 dark:border-ink-800 hover:bg-ink-50 dark:hover:bg-ink-800/40 transition-colors"
+                >
+                  <td className="px-4 py-2.5">
                     <Link
                       to={`/deployments/${d.id}`}
-                      className="text-accent-600 hover:underline font-mono"
+                      className="text-accent-600 dark:text-accent-400 hover:text-accent-700 hover:underline font-mono text-xs"
                     >
                       {d.endpoint_slug}
                     </Link>
                   </td>
-                  <td className={`px-4 py-2 ${STATUS_TONE[d.status] ?? ''}`}>
-                    {d.status}
+                  <td className="px-4 py-2.5">
+                    <span className={`pill-${STATUS_PILL[d.status] ?? 'neutral'}`}>
+                      {d.status}
+                    </span>
                   </td>
-                  <td className="px-4 py-2 font-mono text-xs">{d.auth_mode}</td>
-                  <td className="px-4 py-2 text-right font-mono text-xs tabular-nums">
+                  <td className="px-4 py-2.5 text-xs">{d.auth_mode}</td>
+                  <td className="px-4 py-2.5 text-right font-mono text-xs tabular-nums">
                     {d.inference_count}
                   </td>
-                  <td className={`px-4 py-2 text-right font-mono text-xs tabular-nums ${d.error_count > 0 ? 'text-danger-500' : ''}`}>
+                  <td className={`px-4 py-2.5 text-right font-mono text-xs tabular-nums ${d.error_count > 0 ? 'text-danger-600 dark:text-danger-500 font-medium' : ''}`}>
                     {d.error_count}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-xs tabular-nums">
+                  <td className="px-4 py-2.5 text-right font-mono text-xs tabular-nums">
                     {d.p50_latency_ms?.toFixed(1) ?? '—'}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-xs tabular-nums">
+                  <td className="px-4 py-2.5 text-right font-mono text-xs tabular-nums">
                     {d.p95_latency_ms?.toFixed(1) ?? '—'}
                   </td>
-                  <td className="px-4 py-2 text-xs text-ink-500">
+                  <td className="px-4 py-2.5 text-xs text-ink-500">
                     {d.last_inference_at
                       ? new Date(d.last_inference_at).toLocaleString()
                       : '—'}

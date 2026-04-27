@@ -84,19 +84,19 @@ export function Layout() {
           {activeWsId && (
             <NavGroup label="Workspace" collapsed={sidebarCollapsed}>
               <SidebarLink
+                to={`/workspaces/${activeWsId}/home`}
+                icon={<ActivityIcon />}
+                collapsed={sidebarCollapsed}
+              >
+                Dashboard
+              </SidebarLink>
+              <SidebarLink
                 to={`/workspaces/${activeWsId}`}
                 exact
                 icon={<FolderIcon />}
                 collapsed={sidebarCollapsed}
               >
                 Projects
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/home`}
-                icon={<ActivityIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Dashboard
               </SidebarLink>
               <SidebarLink
                 to={`/workspaces/${activeWsId}/compare`}
