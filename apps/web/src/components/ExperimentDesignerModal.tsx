@@ -58,7 +58,7 @@ export function ExperimentDesignerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/80 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 px-4"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
@@ -69,7 +69,7 @@ export function ExperimentDesignerModal({
       >
         <header className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-sm font-medium text-ink-100">AI experiment designer</h2>
+            <h2 className="text-sm font-medium text-ink-900">AI experiment designer</h2>
             <p className="hint mt-1">
               Describe what you want to do + pick a dataset; the LLM proposes a
               full RunConfig.
@@ -140,22 +140,22 @@ export function ExperimentDesignerModal({
         </form>
 
         {advice && (
-          <section className="mt-6 space-y-5 border-t border-ink-800 pt-6">
+          <section className="mt-6 space-y-5 border-t border-ink-200 pt-6">
             {advice.suggested_action && (
               <div>
-                <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+                <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                   Suggested action
                 </h3>
-                <p className="text-ink-100">{advice.suggested_action}</p>
+                <p className="text-ink-900">{advice.suggested_action}</p>
               </div>
             )}
 
             {advice.reasoning_summary && (
               <div>
-                <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+                <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                   Reasoning
                 </h3>
-                <p className="text-sm text-ink-200/80 whitespace-pre-wrap">
+                <p className="text-sm text-ink-600 whitespace-pre-wrap">
                   {advice.reasoning_summary}
                 </p>
               </div>
@@ -163,7 +163,7 @@ export function ExperimentDesignerModal({
 
             {advice.risk_flags.length > 0 && (
               <div>
-                <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+                <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                   Risk flags
                 </h3>
                 <div className="flex flex-wrap gap-1">
@@ -180,10 +180,10 @@ export function ExperimentDesignerModal({
             )}
 
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+              <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                 Suggested RunConfig
               </h3>
-              <pre className="bg-ink-950 border border-ink-800 rounded p-3 font-mono text-xs text-ink-100 overflow-x-auto">
+              <pre className="bg-white border border-ink-200 rounded p-3 font-mono text-xs text-ink-900 overflow-x-auto">
                 {JSON.stringify(advice.suggested_config_json, null, 2)}
               </pre>
               <p className="hint mt-2">

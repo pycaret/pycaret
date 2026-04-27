@@ -33,7 +33,7 @@ export function Workspaces() {
         {list.error && <p className="error">{errorMessage(list.error)}</p>}
 
         {list.data && list.data.length === 0 && (
-          <div className="card text-sm text-ink-200/70">
+          <div className="card text-sm text-ink-500">
             No workspaces yet. Create your first one →
           </div>
         )}
@@ -45,11 +45,11 @@ export function Workspaces() {
                 to={`/workspaces/${w.id}`}
                 className="card block hover:border-accent-500 transition-colors"
               >
-                <h3 className="font-medium text-ink-100">{w.name}</h3>
+                <h3 className="font-medium text-ink-900">{w.name}</h3>
                 {w.description && (
-                  <p className="mt-1 text-sm text-ink-200/70">{w.description}</p>
+                  <p className="mt-1 text-sm text-ink-500">{w.description}</p>
                 )}
-                <p className="mt-2 text-xs text-ink-200/50">
+                <p className="mt-2 text-xs text-ink-400">
                   Created {new Date(w.created_at).toLocaleDateString()}
                 </p>
               </Link>
@@ -60,7 +60,7 @@ export function Workspaces() {
 
       <aside className="md:w-80">
         <div className="card">
-          <h2 className="text-sm font-medium text-ink-100 mb-4">New workspace</h2>
+          <h2 className="text-sm font-medium text-ink-900 mb-4">New workspace</h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();

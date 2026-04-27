@@ -23,7 +23,7 @@ import { FailureDebuggerCard } from '@/components/FailureDebuggerCard';
 import type { Run } from '@/api/types';
 
 const STATUS_TONE: Record<string, string> = {
-  queued: 'text-ink-200/60',
+  queued: 'text-ink-500',
   running: 'text-accent-400',
   succeeded: 'text-success-500',
   failed: 'text-danger-500',
@@ -81,8 +81,8 @@ export function RunDetail() {
   return (
     <div className="space-y-8">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Workspaces
           </Link>
           <span className="mx-1">/</span>
@@ -96,8 +96,8 @@ export function RunDetail() {
                 {r?.status ?? '…'}
               </span>
             </h1>
-            <p className="mt-1 text-sm text-ink-200/70">
-              <span className="font-mono text-xs text-ink-200/50">{runId}</span>
+            <p className="mt-1 text-sm text-ink-500">
+              <span className="font-mono text-xs text-ink-400">{runId}</span>
               {r?.duration_ms != null && (
                 <>
                   {' '}
@@ -146,7 +146,7 @@ export function RunDetail() {
 
       {/* ────────── Leaderboard */}
       <section>
-        <h2 className="text-sm font-medium text-ink-100 mb-3">Leaderboard</h2>
+        <h2 className="text-sm font-medium text-ink-900 mb-3">Leaderboard</h2>
         <Leaderboard rows={asLeaderboardRows(r?.leaderboard ?? null)} />
       </section>
 
@@ -157,7 +157,7 @@ export function RunDetail() {
       {/* ────────── Promote */}
       {r?.status === 'succeeded' && (
         <section>
-          <h2 className="text-sm font-medium text-ink-100 mb-3">Promote fitted pipeline</h2>
+          <h2 className="text-sm font-medium text-ink-900 mb-3">Promote fitted pipeline</h2>
           <div className="card flex items-end gap-3">
             <div className="flex-1">
               <label className="field" htmlFor="promote-name">
@@ -208,15 +208,15 @@ export function RunDetail() {
 
       {/* ────────── Snapshot */}
       <section>
-        <h2 className="text-sm font-medium text-ink-100 mb-3">Request snapshot</h2>
+        <h2 className="text-sm font-medium text-ink-900 mb-3">Request snapshot</h2>
         {snapshotEntries.length === 0 ? (
           <p className="hint">Snapshot not available.</p>
         ) : (
           <dl className="card grid gap-2 md:grid-cols-2">
             {snapshotEntries.map(([k, v]) => (
               <div key={k} className="flex justify-between gap-4">
-                <dt className="text-sm text-ink-200/70 font-mono">{k}</dt>
-                <dd className="text-sm text-ink-100 font-mono text-right break-all">
+                <dt className="text-sm text-ink-500 font-mono">{k}</dt>
+                <dd className="text-sm text-ink-900 font-mono text-right break-all">
                   {typeof v === 'object' && v !== null
                     ? JSON.stringify(v)
                     : String(v ?? '—')}

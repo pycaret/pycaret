@@ -64,7 +64,7 @@ export function AnalyzeDatasetModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/80 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 px-4"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
@@ -75,10 +75,10 @@ export function AnalyzeDatasetModal({
       >
         <header className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-sm font-medium text-ink-100">AI dataset consultant</h2>
+            <h2 className="text-sm font-medium text-ink-900">AI dataset consultant</h2>
             <p className="hint mt-1">
               Analyzing{' '}
-              <code className="font-mono text-ink-100">{dataSourceName}</code>
+              <code className="font-mono text-ink-900">{dataSourceName}</code>
             </p>
           </div>
           <button onClick={onClose} className="btn-ghost text-xs" aria-label="Close">
@@ -95,19 +95,19 @@ export function AnalyzeDatasetModal({
           <div className="space-y-5">
             {advice.suggested_action && (
               <section>
-                <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+                <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                   Suggested action
                 </h3>
-                <p className="text-ink-100">{advice.suggested_action}</p>
+                <p className="text-ink-900">{advice.suggested_action}</p>
               </section>
             )}
 
             {advice.reasoning_summary && (
               <section>
-                <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+                <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                   Reasoning
                 </h3>
-                <p className="text-sm text-ink-200/80 whitespace-pre-wrap">
+                <p className="text-sm text-ink-600 whitespace-pre-wrap">
                   {advice.reasoning_summary}
                 </p>
               </section>
@@ -115,7 +115,7 @@ export function AnalyzeDatasetModal({
 
             {advice.risk_flags.length > 0 && (
               <section>
-                <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+                <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                   Risk flags
                 </h3>
                 <div className="flex flex-wrap gap-1">
@@ -132,10 +132,10 @@ export function AnalyzeDatasetModal({
             )}
 
             <section>
-              <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+              <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                 Suggested config
               </h3>
-              <pre className="bg-ink-950 border border-ink-800 rounded p-3 font-mono text-xs text-ink-100 overflow-x-auto">
+              <pre className="bg-white border border-ink-200 rounded p-3 font-mono text-xs text-ink-900 overflow-x-auto">
                 {JSON.stringify(advice.suggested_config_json, null, 2)}
               </pre>
               <p className="hint mt-2">
@@ -146,7 +146,7 @@ export function AnalyzeDatasetModal({
             </section>
 
             {analyze.data && (
-              <p className="hint pt-3 border-t border-ink-800">
+              <p className="hint pt-3 border-t border-ink-200">
                 {analyze.data.provider} · {analyze.data.model_name} ·{' '}
                 {analyze.data.latency_ms?.toFixed(0)}ms
               </p>

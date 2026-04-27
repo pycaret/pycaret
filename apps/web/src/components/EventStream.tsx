@@ -43,13 +43,13 @@ function fmtTime(ts: number): string {
 }
 
 function kindTone(kind: string): string {
-  if (kind === TERMINAL_SENTINEL) return 'text-ink-200/60';
+  if (kind === TERMINAL_SENTINEL) return 'text-ink-500';
   if (kind === 'error' || kind.endsWith('.failed')) return 'text-danger-500';
   if (kind === 'warning') return 'text-warn-500';
   if (kind.endsWith('.started')) return 'text-accent-400';
   if (kind.endsWith('.finished') || kind.endsWith('.created') || kind.endsWith('.fitted'))
     return 'text-success-500';
-  return 'text-ink-100';
+  return 'text-ink-900';
 }
 
 export function EventStream({
@@ -147,22 +147,22 @@ export function EventStream({
   return (
     <div className={className}>
       <header className="mb-3 flex items-center justify-between text-xs">
-        <h3 className="text-sm font-medium text-ink-100">Event stream</h3>
+        <h3 className="text-sm font-medium text-ink-900">Event stream</h3>
         <div className="flex items-center gap-2">
           <span
             className={
               status === 'open'
                 ? 'text-accent-400'
                 : status === 'closed'
-                  ? 'text-ink-200/60'
+                  ? 'text-ink-500'
                   : status === 'error'
                     ? 'text-danger-500'
-                    : 'text-ink-200/70'
+                    : 'text-ink-500'
             }
           >
             ● {statusLabel}
           </span>
-          <span className="text-ink-200/50">{events.length} events</span>
+          <span className="text-ink-400">{events.length} events</span>
         </div>
       </header>
 
@@ -179,7 +179,7 @@ export function EventStream({
         <ol className="card p-0 divide-y divide-ink-800 text-sm max-h-[32rem] overflow-auto">
           {events.map((e, i) => (
             <li key={i} className="grid grid-cols-[auto_1fr_auto] gap-3 px-4 py-2">
-              <span className="font-mono text-xs text-ink-200/50 tabular-nums">
+              <span className="font-mono text-xs text-ink-400 tabular-nums">
                 {fmtTime(e.timestamp)}
               </span>
               <div className="min-w-0">
@@ -187,11 +187,11 @@ export function EventStream({
                   {fmtKind(e.kind)}
                 </span>
                 {e.message && (
-                  <span className="ml-2 text-ink-200/80">{e.message}</span>
+                  <span className="ml-2 text-ink-600">{e.message}</span>
                 )}
               </div>
               {e.duration_ms != null && (
-                <span className="font-mono text-xs text-ink-200/50 tabular-nums">
+                <span className="font-mono text-xs text-ink-400 tabular-nums">
                   {e.duration_ms < 1000
                     ? `${e.duration_ms.toFixed(0)}ms`
                     : `${(e.duration_ms / 1000).toFixed(1)}s`}

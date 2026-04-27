@@ -61,15 +61,15 @@ export function ApiKeysScreen() {
   return (
     <div className="max-w-3xl space-y-8">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Workspaces
           </Link>
           <span className="mx-1">/</span>
           <span>API keys</span>
         </nav>
         <h1 className="text-xl font-semibold">API keys</h1>
-        <p className="mt-1 text-sm text-ink-200/70">
+        <p className="mt-1 text-sm text-ink-500">
           Personal programmatic-access tokens for CI pipelines + scripts. Revoking
           a key soft-deletes it; the audit trail stays. Middleware that accepts
           keys via <code className="font-mono">X-PyCaret-Key</code> lands in
@@ -87,7 +87,7 @@ export function ApiKeysScreen() {
             This plaintext will <strong>never</strong> be shown again. Store it in
             your secret manager now.
           </p>
-          <pre className="bg-ink-950 border border-ink-800 rounded p-3 font-mono text-xs text-ink-100 overflow-x-auto">
+          <pre className="bg-white border border-ink-200 rounded p-3 font-mono text-xs text-ink-900 overflow-x-auto">
             {justCreated.token}
           </pre>
           <div className="flex items-center justify-end gap-2">
@@ -108,7 +108,7 @@ export function ApiKeysScreen() {
 
       {/* ────────── create form */}
       <div className="card space-y-4">
-        <h2 className="text-sm font-medium text-ink-100">New API key</h2>
+        <h2 className="text-sm font-medium text-ink-900">New API key</h2>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -158,7 +158,7 @@ export function ApiKeysScreen() {
       {/* ────────── existing keys */}
       <section>
         <header className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-sm font-medium text-ink-100">Your keys</h2>
+          <h2 className="text-sm font-medium text-ink-900">Your keys</h2>
           <span className="hint">{keys.data?.length ?? 0} total</span>
         </header>
 
@@ -166,7 +166,7 @@ export function ApiKeysScreen() {
         {keys.error && <p className="error">{errorMessage(keys.error)}</p>}
 
         {keys.data && keys.data.length === 0 && (
-          <div className="card text-sm text-ink-200/70">
+          <div className="card text-sm text-ink-500">
             No API keys yet. Create one above.
           </div>
         )}
@@ -174,7 +174,7 @@ export function ApiKeysScreen() {
         {keys.data && keys.data.length > 0 && (
           <div className="card p-0 overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-ink-800 text-ink-200/70">
+              <thead className="bg-white text-ink-500">
                 <tr>
                   <th className="px-4 py-2 text-left font-medium">Name</th>
                   <th className="px-4 py-2 text-left font-medium">Prefix</th>
@@ -186,26 +186,26 @@ export function ApiKeysScreen() {
               </thead>
               <tbody>
                 {keys.data.map((k) => (
-                  <tr key={k.id} className="border-t border-ink-800 hover:bg-ink-800/50">
-                    <td className="px-4 py-2 font-medium text-ink-100">{k.name}</td>
-                    <td className="px-4 py-2 font-mono text-xs text-ink-200/70">
+                  <tr key={k.id} className="border-t border-ink-200 hover:bg-ink-50">
+                    <td className="px-4 py-2 font-medium text-ink-900">{k.name}</td>
+                    <td className="px-4 py-2 font-mono text-xs text-ink-500">
                       {k.prefix}…
                     </td>
                     <td
                       className={`px-4 py-2 ${
                         isActive(k)
                           ? 'text-success-500'
-                          : 'text-ink-200/60'
+                          : 'text-ink-500'
                       }`}
                     >
                       {k.revoked_at ? 'revoked' : isActive(k) ? 'active' : 'expired'}
                     </td>
-                    <td className="px-4 py-2 text-xs text-ink-200/60">
+                    <td className="px-4 py-2 text-xs text-ink-500">
                       {k.expires_at
                         ? new Date(k.expires_at).toLocaleDateString()
                         : '—'}
                     </td>
-                    <td className="px-4 py-2 text-xs text-ink-200/60">
+                    <td className="px-4 py-2 text-xs text-ink-500">
                       {new Date(k.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-2 text-right">

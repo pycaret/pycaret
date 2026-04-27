@@ -66,12 +66,12 @@ export function ParamInput({
           <input
             id={id}
             type="checkbox"
-            className="h-4 w-4 rounded border-ink-700 bg-ink-900 text-accent-500 focus:ring-accent-400"
+            className="h-4 w-4 rounded border-ink-200 bg-white text-accent-500 focus:ring-accent-400"
             checked={checked}
             onChange={(e) => onChange(e.target.checked)}
             disabled={disabled}
           />
-          <span className="text-sm text-ink-100">{param.name}</span>
+          <span className="text-sm text-ink-900">{param.name}</span>
         </label>
       );
     }
@@ -217,7 +217,7 @@ export function DynamicForm({
     <div className="space-y-8">
       {grouped.map(([group, params]) => (
         <fieldset key={group} className="space-y-4">
-          <legend className="text-xs uppercase tracking-wider text-ink-200/60 mb-2">
+          <legend className="text-xs uppercase tracking-wider text-ink-500 mb-2">
             {group}
           </legend>
           {params.map((p) => (

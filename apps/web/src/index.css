@@ -2,7 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Root-level global tweaks — restraint is the whole point. */
+/*
+ * Design system — light theme, modern minimalist SaaS aesthetic.
+ * References: Linear, Vercel, Resend, Stripe dashboard.
+ *
+ * Philosophy: lots of whitespace, one accent color (teal), subtle borders,
+ * no heavy shadows, no gradients, no clip-path tricks. The data is the
+ * decoration.
+ */
+
 html,
 body,
 #root {
@@ -13,54 +21,110 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  background-color: #fafafa;       /* ink-50 */
+  color: #3f3f46;                  /* ink-700 — default body text */
+  font-feature-settings: 'cv11', 'ss01', 'ss03'; /* Inter stylistic alts */
 }
 
-/* Subtle focus ring — accessible but not clown-like. */
+/* Subtle focus ring — accessible without being clown-like. */
 :focus-visible {
   outline: 2px solid theme('colors.accent.500');
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 @layer components {
-  /* Button primitives — three tiers. */
+  /* ─── Buttons — three tiers ──────────────────────────────────── */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2
-           text-sm font-medium transition-colors
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-md
+           px-3.5 py-2 text-sm font-medium transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus-visible:outline-none focus-visible:ring-2
+           focus-visible:ring-accent-500 focus-visible:ring-offset-2
+           focus-visible:ring-offset-white;
   }
   .btn-primary {
-    @apply btn bg-accent-500 text-ink-950 hover:bg-accent-400 focus-visible:outline-accent-400;
+    @apply btn bg-ink-900 text-white hover:bg-ink-800 active:bg-ink-950;
   }
   .btn-secondary {
-    @apply btn bg-ink-800 text-ink-100 hover:bg-ink-700 border border-ink-700;
+    @apply btn bg-white text-ink-800 border border-ink-200
+           hover:bg-ink-50 hover:border-ink-300;
   }
   .btn-ghost {
-    @apply btn text-ink-200 hover:bg-ink-800;
+    @apply btn text-ink-700 hover:bg-ink-100 hover:text-ink-900;
+  }
+  .btn-accent {
+    @apply btn bg-accent-500 text-white hover:bg-accent-600 active:bg-accent-700;
   }
   .btn-danger {
     @apply btn bg-danger-600 text-white hover:bg-danger-500;
   }
 
+  /* ─── Form primitives ────────────────────────────────────────── */
   .field {
-    @apply block text-sm text-ink-200 mb-1;
+    @apply block text-sm font-medium text-ink-700 mb-1.5;
   }
   .input {
-    @apply block w-full rounded-md bg-ink-900 border border-ink-700
-           px-3 py-2 text-sm text-ink-100
-           placeholder-ink-700
-           focus:outline-none focus:border-accent-500;
+    @apply block w-full rounded-md bg-white border border-ink-200
+           px-3 py-2 text-sm text-ink-900 placeholder-ink-400
+           shadow-soft-1
+           focus:outline-none focus:border-accent-500 focus:ring-1
+           focus:ring-accent-500
+           disabled:bg-ink-50 disabled:text-ink-500 disabled:cursor-not-allowed;
   }
+  .input-bare {
+    @apply block w-full bg-transparent border-0 outline-none ring-0
+           text-sm text-ink-900 placeholder-ink-400;
+  }
+
+  /* ─── Surfaces ───────────────────────────────────────────────── */
   .card {
-    @apply rounded-lg border border-ink-800 bg-ink-900 p-5;
+    @apply rounded-xl bg-white border border-ink-200 shadow-soft-1 p-6;
+  }
+  .card-tight {
+    @apply rounded-lg bg-white border border-ink-200 shadow-soft-1 p-4;
+  }
+
+  /* ─── Typography helpers ─────────────────────────────────────── */
+  .h-page {
+    @apply text-2xl font-semibold tracking-tight text-ink-900;
+  }
+  .h-section {
+    @apply text-base font-semibold text-ink-900;
   }
   .hint {
-    @apply text-xs text-ink-200/60;
+    @apply text-xs text-ink-500;
+  }
+  .muted {
+    @apply text-ink-500;
   }
   .error {
-    @apply text-xs text-danger-500 mt-1;
+    @apply text-xs text-danger-600 mt-1;
   }
   .kbd {
-    @apply inline-block rounded border border-ink-700 bg-ink-800 px-1.5 py-0.5 font-mono text-xs;
+    @apply inline-flex items-center rounded border border-ink-200 bg-white
+           px-1.5 py-0.5 font-mono text-[10px] text-ink-600 shadow-soft-1;
+  }
+
+  /* ─── Status pills ───────────────────────────────────────────── */
+  .pill {
+    @apply inline-flex items-center rounded-full px-2 py-0.5
+           text-xs font-medium;
+  }
+  .pill-neutral { @apply pill bg-ink-100 text-ink-700; }
+  .pill-success { @apply pill bg-success-50 text-success-600; }
+  .pill-danger  { @apply pill bg-danger-50 text-danger-600; }
+  .pill-warn    { @apply pill bg-warn-50 text-warn-600; }
+  .pill-accent  { @apply pill bg-accent-50 text-accent-700; }
+
+  /* ─── Sidebar nav-link ───────────────────────────────────────── */
+  .nav-link {
+    @apply flex items-center gap-2.5 rounded-md px-2.5 py-1.5
+           text-sm font-medium text-ink-600
+           hover:bg-ink-100 hover:text-ink-900
+           transition-colors;
+  }
+  .nav-link-active {
+    @apply nav-link bg-ink-100 text-ink-900;
   }
 }

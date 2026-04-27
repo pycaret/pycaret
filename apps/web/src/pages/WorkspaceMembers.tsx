@@ -79,19 +79,19 @@ export function WorkspaceMembers() {
   return (
     <div className="space-y-8">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Workspaces
           </Link>
           <span className="mx-1">/</span>
-          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-100">
+          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-900">
             {ws.data?.name ?? '…'}
           </Link>
           <span className="mx-1">/</span>
           <span>Members</span>
         </nav>
         <h1 className="text-xl font-semibold">Members</h1>
-        <p className="mt-1 text-sm text-ink-200/70">
+        <p className="mt-1 text-sm text-ink-500">
           {isAdmin
             ? 'Invite existing users + manage roles. Email invites (with account creation) land in V2.'
             : 'Read-only view — only workspace admins can change membership.'}
@@ -101,7 +101,7 @@ export function WorkspaceMembers() {
       {/* ────────── invite form (admins only) */}
       {isAdmin && (
         <div className="card">
-          <h2 className="text-sm font-medium text-ink-100 mb-4">Invite an existing user</h2>
+          <h2 className="text-sm font-medium text-ink-900 mb-4">Invite an existing user</h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -152,7 +152,7 @@ export function WorkspaceMembers() {
       {/* ────────── list */}
       <section>
         <header className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-sm font-medium text-ink-100">All members</h2>
+          <h2 className="text-sm font-medium text-ink-900">All members</h2>
           <span className="hint">{members.data?.length ?? 0} total</span>
         </header>
         {members.isLoading && <p className="hint">Loading…</p>}
@@ -161,7 +161,7 @@ export function WorkspaceMembers() {
         {members.data && members.data.length > 0 && (
           <div className="card p-0 overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-ink-800 text-ink-200/70">
+              <thead className="bg-white text-ink-500">
                 <tr>
                   <th className="px-4 py-2 text-left font-medium">User</th>
                   <th className="px-4 py-2 text-left font-medium">Role</th>
@@ -232,13 +232,13 @@ function MemberRow({
   disabled,
 }: MemberRowProps) {
   return (
-    <tr className="border-t border-ink-800 hover:bg-ink-800/50">
+    <tr className="border-t border-ink-200 hover:bg-ink-50">
       <td className="px-4 py-2">
-        <div className="font-medium text-ink-100">
+        <div className="font-medium text-ink-900">
           {m.display_name ?? m.email}
-          {isMe && <span className="ml-2 text-xs text-ink-200/60">(you)</span>}
+          {isMe && <span className="ml-2 text-xs text-ink-500">(you)</span>}
         </div>
-        <div className="text-xs text-ink-200/60 font-mono">{m.email}</div>
+        <div className="text-xs text-ink-500 font-mono">{m.email}</div>
       </td>
       <td className="px-4 py-2">
         {isAdmin ? (
@@ -257,11 +257,11 @@ function MemberRow({
         )}
       </td>
       <td className="px-4 py-2">
-        <span className={m.is_active ? 'text-success-500' : 'text-ink-200/60'}>
+        <span className={m.is_active ? 'text-success-500' : 'text-ink-500'}>
           {m.is_active ? 'active' : 'deactivated'}
         </span>
       </td>
-      <td className="px-4 py-2 text-xs text-ink-200/60">
+      <td className="px-4 py-2 text-xs text-ink-500">
         {new Date(m.created_at).toLocaleDateString()}
       </td>
       {isAdmin && (

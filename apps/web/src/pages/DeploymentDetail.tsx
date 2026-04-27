@@ -18,7 +18,7 @@ import { PredictTester } from '@/components/PredictTester';
 const STATUS_TONE: Record<string, string> = {
   active: 'text-success-500',
   paused: 'text-warn-500',
-  archived: 'text-ink-200/60',
+  archived: 'text-ink-500',
 };
 
 export function DeploymentDetail() {
@@ -57,8 +57,8 @@ export function DeploymentDetail() {
   return (
     <div className="space-y-8">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Workspaces
           </Link>
           <span className="mx-1">/</span>
@@ -66,7 +66,7 @@ export function DeploymentDetail() {
             <>
               <Link
                 to={`/workspaces/${d.workspace_id}/deployments`}
-                className="hover:text-ink-100"
+                className="hover:text-ink-900"
               >
                 Deployments
               </Link>
@@ -81,7 +81,7 @@ export function DeploymentDetail() {
               {d?.endpoint_slug ?? 'Loading…'}
             </h1>
             {d && (
-              <p className="mt-1 text-sm text-ink-200/70">
+              <p className="mt-1 text-sm text-ink-500">
                 <span className={STATUS_TONE[d.status] ?? ''}>{d.status}</span>
                 {' · '}
                 <span className="font-mono">{d.auth_mode}</span>
@@ -126,7 +126,7 @@ export function DeploymentDetail() {
           <div className="space-y-8">
             {/* ────────── metrics */}
             <section>
-              <h2 className="text-sm font-medium text-ink-100 mb-3">Metrics</h2>
+              <h2 className="text-sm font-medium text-ink-900 mb-3">Metrics</h2>
               <dl className="grid gap-3 grid-cols-2 md:grid-cols-4">
                 <Stat k="predictions" v={d.inference_count.toString()} />
                 <Stat
@@ -161,7 +161,7 @@ export function DeploymentDetail() {
           {/* ────────── right column — metadata */}
           <aside className="space-y-4">
             <div className="card space-y-2 text-sm">
-              <h3 className="text-sm font-medium text-ink-100">Metadata</h3>
+              <h3 className="text-sm font-medium text-ink-900">Metadata</h3>
               <MetaRow k="deployment_id" v={d.id} />
               <MetaRow k="workspace_id" v={d.workspace_id} />
               <MetaRow k="pipeline_id" v={d.pipeline_id} />
@@ -185,10 +185,10 @@ function Stat({
 }) {
   return (
     <div className="card">
-      <p className="text-xs uppercase tracking-wider text-ink-200/60">{k}</p>
+      <p className="text-xs uppercase tracking-wider text-ink-500">{k}</p>
       <p
         className={`mt-1 font-mono text-2xl tabular-nums ${
-          tone === 'danger' ? 'text-danger-500' : 'text-ink-100'
+          tone === 'danger' ? 'text-danger-500' : 'text-ink-900'
         }`}
       >
         {v}
@@ -200,8 +200,8 @@ function Stat({
 function MetaRow({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex justify-between gap-3">
-      <span className="text-xs text-ink-200/60 font-mono shrink-0">{k}</span>
-      <span className="text-xs text-ink-100 font-mono text-right break-all" title={v}>
+      <span className="text-xs text-ink-500 font-mono shrink-0">{k}</span>
+      <span className="text-xs text-ink-900 font-mono text-right break-all" title={v}>
         {v}
       </span>
     </div>

@@ -24,7 +24,7 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
 const STATUS_TONE: Record<string, string> = {
   active: 'text-success-500',
   paused: 'text-warn-500',
-  archived: 'text-ink-200/60',
+  archived: 'text-ink-500',
 };
 
 export function PipelineDetail() {
@@ -77,18 +77,18 @@ export function PipelineDetail() {
   return (
     <div className="space-y-8">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Workspaces
           </Link>
           <span className="mx-1">/</span>
-          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-100">
+          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-900">
             {ws.data?.name ?? '…'}
           </Link>
           <span className="mx-1">/</span>
           <Link
             to={`/workspaces/${wsId}/pipelines`}
-            className="hover:text-ink-100"
+            className="hover:text-ink-900"
           >
             Pipelines
           </Link>
@@ -99,7 +99,7 @@ export function PipelineDetail() {
           {pipeline.data?.name ?? 'Loading…'}
         </h1>
         {pipeline.data?.description && (
-          <p className="text-sm text-ink-200/70 mt-1">
+          <p className="text-sm text-ink-500 mt-1">
             {pipeline.data.description}
           </p>
         )}
@@ -109,7 +109,7 @@ export function PipelineDetail() {
         <div className="space-y-8">
           {/* ────────── metadata */}
           <section>
-            <h2 className="text-sm font-medium text-ink-100 mb-3">Metadata</h2>
+            <h2 className="text-sm font-medium text-ink-900 mb-3">Metadata</h2>
             {pipeline.error && <p className="error">{errorMessage(pipeline.error)}</p>}
             {pipeline.data && (
               <dl className="card grid gap-2 md:grid-cols-2">
@@ -126,19 +126,19 @@ export function PipelineDetail() {
           {/* ────────── existing deployments */}
           <section>
             <header className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-sm font-medium text-ink-100">Deployments</h2>
+              <h2 className="text-sm font-medium text-ink-900">Deployments</h2>
               <span className="hint">{pipelineDeployments.length} total</span>
             </header>
             {deployments.isLoading && <p className="hint">Loading…</p>}
             {pipelineDeployments.length === 0 && !deployments.isLoading && (
-              <div className="card text-sm text-ink-200/70">
+              <div className="card text-sm text-ink-500">
                 This pipeline hasn't been deployed yet. Use the panel on the right →
               </div>
             )}
             {pipelineDeployments.length > 0 && (
               <div className="card overflow-hidden p-0">
                 <table className="w-full text-sm">
-                  <thead className="bg-ink-800 text-ink-200/70">
+                  <thead className="bg-white text-ink-500">
                     <tr>
                       <th className="px-4 py-2 text-left font-medium">Slug</th>
                       <th className="px-4 py-2 text-left font-medium">Status</th>
@@ -150,7 +150,7 @@ export function PipelineDetail() {
                   </thead>
                   <tbody>
                     {pipelineDeployments.map((d) => (
-                      <tr key={d.id} className="border-t border-ink-800 hover:bg-ink-800/50">
+                      <tr key={d.id} className="border-t border-ink-200 hover:bg-ink-50">
                         <td className="px-4 py-2">
                           <Link
                             to={`/deployments/${d.id}`}
@@ -184,7 +184,7 @@ export function PipelineDetail() {
         {/* ────────── deploy form */}
         <aside>
           <div className="card space-y-4">
-            <h2 className="text-sm font-medium text-ink-100">New deployment</h2>
+            <h2 className="text-sm font-medium text-ink-900">New deployment</h2>
 
             <div>
               <label className="field" htmlFor="slug">
@@ -279,9 +279,9 @@ function Row({
 }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt className="text-sm text-ink-200/70 font-mono shrink-0">{k}</dt>
+      <dt className="text-sm text-ink-500 font-mono shrink-0">{k}</dt>
       <dd
-        className={`text-sm text-ink-100 text-right break-all ${mono ? 'font-mono' : ''}`}
+        className={`text-sm text-ink-900 text-right break-all ${mono ? 'font-mono' : ''}`}
         title={title ? v : undefined}
       >
         {v}

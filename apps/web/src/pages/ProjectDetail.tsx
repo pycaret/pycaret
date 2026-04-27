@@ -26,12 +26,12 @@ export function ProjectDetail() {
   return (
     <div className="space-y-8">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Workspaces
           </Link>
           <span className="mx-1">/</span>
-          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-100">
+          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-900">
             {ws.data?.name ?? '…'}
           </Link>
           <span className="mx-1">/</span>
@@ -41,7 +41,7 @@ export function ProjectDetail() {
           <div>
             <h1 className="text-xl font-semibold">{project.data?.name ?? 'Loading…'}</h1>
             {project.data?.description && (
-              <p className="text-sm text-ink-200/70 mt-1">{project.data.description}</p>
+              <p className="text-sm text-ink-500 mt-1">{project.data.description}</p>
             )}
             {project.data && project.data.tags.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
@@ -72,7 +72,7 @@ export function ProjectDetail() {
         {experiments.error && <p className="error">{errorMessage(experiments.error)}</p>}
 
         {experiments.data && experiments.data.length === 0 && (
-          <div className="card text-sm text-ink-200/70">
+          <div className="card text-sm text-ink-500">
             No experiments yet. Create your first one →
           </div>
         )}
@@ -86,8 +86,8 @@ export function ProjectDetail() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="font-medium text-ink-100">{e.name}</h3>
-                    <p className="mt-1 text-sm text-ink-200/70">
+                    <h3 className="font-medium text-ink-900">{e.name}</h3>
+                    <p className="mt-1 text-sm text-ink-500">
                       <span className="kbd">{e.task}</span>
                       {e.target && (
                         <>
@@ -97,7 +97,7 @@ export function ProjectDetail() {
                       )}
                     </p>
                   </div>
-                  <p className="text-xs text-ink-200/50 shrink-0">
+                  <p className="text-xs text-ink-400 shrink-0">
                     {new Date(e.created_at).toLocaleDateString()}
                   </p>
                 </div>

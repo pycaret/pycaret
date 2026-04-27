@@ -22,9 +22,9 @@ function verdictTone(suggestedAction: string): string {
   const v = suggestedAction.toUpperCase();
   if (v.startsWith('RETRAIN NOW')) return 'text-danger-500';
   if (v.startsWith('INVESTIGATE')) return 'text-warn-500';
-  if (v.startsWith('MONITOR')) return 'text-ink-200';
+  if (v.startsWith('MONITOR')) return 'text-ink-700';
   if (v.startsWith('NO ACTION')) return 'text-success-500';
-  return 'text-ink-100';
+  return 'text-ink-900';
 }
 
 export function DriftAnalysisModal({ report, open, onClose }: DriftAnalysisModalProps) {
@@ -57,7 +57,7 @@ export function DriftAnalysisModal({ report, open, onClose }: DriftAnalysisModal
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/80 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 px-4"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
@@ -68,14 +68,14 @@ export function DriftAnalysisModal({ report, open, onClose }: DriftAnalysisModal
       >
         <header className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-sm font-medium text-ink-100">✨ Drift analysis</h2>
+            <h2 className="text-sm font-medium text-ink-900">✨ Drift analysis</h2>
             <p className="hint mt-1">
               Report from{' '}
-              <span className="font-mono text-ink-100">
+              <span className="font-mono text-ink-900">
                 {new Date(report.window_start).toLocaleDateString()}
               </span>{' '}
               to{' '}
-              <span className="font-mono text-ink-100">
+              <span className="font-mono text-ink-900">
                 {new Date(report.window_end).toLocaleDateString()}
               </span>{' '}
               · overall score {report.drift_score.toFixed(3)} ({report.drift_status})
@@ -88,14 +88,14 @@ export function DriftAnalysisModal({ report, open, onClose }: DriftAnalysisModal
 
         {/* ─────────────── the snapshot the analyst is reading from */}
         <section className="mb-5">
-          <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-2">
+          <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-2">
             Feature drift snapshot
           </h3>
           {sortedFeatures.length === 0 ? (
             <p className="hint">No per-feature breakdown recorded.</p>
           ) : (
             <table className="w-full text-xs">
-              <thead className="text-ink-200/60">
+              <thead className="text-ink-500">
                 <tr>
                   <th className="text-left font-medium py-1">Feature</th>
                   <th className="text-left font-medium py-1">Kind</th>
@@ -104,9 +104,9 @@ export function DriftAnalysisModal({ report, open, onClose }: DriftAnalysisModal
               </thead>
               <tbody>
                 {sortedFeatures.map(([name, entry]) => (
-                  <tr key={name} className="border-t border-ink-800">
-                    <td className="py-1 font-mono text-ink-100">{name}</td>
-                    <td className="py-1 font-mono text-ink-200/70">{entry.kind}</td>
+                  <tr key={name} className="border-t border-ink-200">
+                    <td className="py-1 font-mono text-ink-900">{name}</td>
+                    <td className="py-1 font-mono text-ink-500">{entry.kind}</td>
                     <td className="py-1 text-right font-mono">
                       {entry.score.toFixed(3)}
                     </td>
@@ -125,7 +125,7 @@ export function DriftAnalysisModal({ report, open, onClose }: DriftAnalysisModal
           <div className="space-y-5">
             {advice.suggested_action && (
               <section>
-                <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+                <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                   Verdict
                 </h3>
                 <p className={`text-lg font-medium ${tone}`}>{advice.suggested_action}</p>
@@ -134,10 +134,10 @@ export function DriftAnalysisModal({ report, open, onClose }: DriftAnalysisModal
 
             {advice.reasoning_summary && (
               <section>
-                <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+                <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                   Reasoning
                 </h3>
-                <p className="text-sm text-ink-200/80 whitespace-pre-wrap">
+                <p className="text-sm text-ink-600 whitespace-pre-wrap">
                   {advice.reasoning_summary}
                 </p>
               </section>
@@ -145,7 +145,7 @@ export function DriftAnalysisModal({ report, open, onClose }: DriftAnalysisModal
 
             {advice.risk_flags.length > 0 && (
               <section>
-                <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+                <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                   Risks flagged
                 </h3>
                 <div className="flex flex-wrap gap-1">
@@ -160,17 +160,17 @@ export function DriftAnalysisModal({ report, open, onClose }: DriftAnalysisModal
 
             {Object.keys(advice.suggested_config_json).length > 0 && (
               <section>
-                <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+                <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                   Hints
                 </h3>
-                <pre className="bg-ink-950 border border-ink-800 rounded p-3 font-mono text-xs text-ink-100 overflow-x-auto">
+                <pre className="bg-white border border-ink-200 rounded p-3 font-mono text-xs text-ink-900 overflow-x-auto">
                   {JSON.stringify(advice.suggested_config_json, null, 2)}
                 </pre>
               </section>
             )}
 
             {analyze.data && (
-              <p className="hint pt-3 border-t border-ink-800">
+              <p className="hint pt-3 border-t border-ink-200">
                 {analyze.data.provider} · {analyze.data.model_name} ·{' '}
                 {analyze.data.latency_ms?.toFixed(0)}ms
               </p>

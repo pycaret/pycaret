@@ -91,19 +91,19 @@ export function LLMSettings() {
   return (
     <div className="space-y-8 max-w-2xl">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Workspaces
           </Link>
           <span className="mx-1">/</span>
-          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-100">
+          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-900">
             {ws.data?.name ?? '…'}
           </Link>
           <span className="mx-1">/</span>
           <span>LLM</span>
         </nav>
         <h1 className="text-xl font-semibold">LLM provider settings</h1>
-        <p className="mt-1 text-sm text-ink-200/70">
+        <p className="mt-1 text-sm text-ink-500">
           Configure which LLM answers dataset + experiment consultations for this
           workspace. The LLM is <strong>advisory</strong>: it proposes configs +
           risk flags, and the deterministic engine executes what you approve.
@@ -195,11 +195,11 @@ export function LLMSettings() {
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-ink-700 bg-ink-900 text-accent-500"
+            className="h-4 w-4 rounded border-ink-200 bg-white text-accent-500"
             checked={enabled}
             onChange={(e) => setEnabled(e.target.checked)}
           />
-          <span className="text-sm text-ink-100">Enabled</span>
+          <span className="text-sm text-ink-900">Enabled</span>
         </label>
 
         {save.error && <p className="error">{errorMessage(save.error)}</p>}

@@ -67,7 +67,7 @@ export function PredictTester({ endpointSlug }: PredictTesterProps) {
 
   return (
     <div className="card space-y-4">
-      <h2 className="text-sm font-medium text-ink-100">Test a prediction</h2>
+      <h2 className="text-sm font-medium text-ink-900">Test a prediction</h2>
 
       <div>
         <label className="field" htmlFor="rows">
@@ -101,8 +101,8 @@ export function PredictTester({ endpointSlug }: PredictTesterProps) {
       {predict.data && (
         <section className="space-y-3">
           <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-ink-100">Response</span>
-            <span className="font-mono text-xs text-ink-200/60 tabular-nums">
+            <span className="font-medium text-ink-900">Response</span>
+            <span className="font-mono text-xs text-ink-500 tabular-nums">
               {predict.data.latency_ms.toFixed(1)}ms · request{' '}
               <span title={predict.data.request_id}>
                 {predict.data.request_id.slice(0, 8)}…
@@ -111,7 +111,7 @@ export function PredictTester({ endpointSlug }: PredictTesterProps) {
           </div>
           <div className="card p-0 overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-ink-800 text-ink-200/70">
+              <thead className="bg-white text-ink-500">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Index</th>
                   <th className="px-3 py-2 text-left font-medium">Prediction</th>
@@ -121,7 +121,7 @@ export function PredictTester({ endpointSlug }: PredictTesterProps) {
                 {predict.data.predictions.map((p) => (
                   <tr
                     key={p.index}
-                    className="border-t border-ink-800 hover:bg-ink-800/50"
+                    className="border-t border-ink-200 hover:bg-ink-50"
                   >
                     <td className="px-3 py-2 font-mono text-xs tabular-nums">
                       {p.index}

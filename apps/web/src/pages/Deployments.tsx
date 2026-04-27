@@ -13,7 +13,7 @@ import { errorMessage } from '@/api/client';
 const STATUS_TONE: Record<string, string> = {
   active: 'text-success-500',
   paused: 'text-warn-500',
-  archived: 'text-ink-200/60',
+  archived: 'text-ink-500',
 };
 
 export function Deployments() {
@@ -35,19 +35,19 @@ export function Deployments() {
   return (
     <div className="space-y-8">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Workspaces
           </Link>
           <span className="mx-1">/</span>
-          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-100">
+          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-900">
             {ws.data?.name ?? '…'}
           </Link>
           <span className="mx-1">/</span>
           <span>Deployments</span>
         </nav>
         <h1 className="text-xl font-semibold">Deployments</h1>
-        <p className="mt-1 text-sm text-ink-200/70">
+        <p className="mt-1 text-sm text-ink-500">
           Slug-addressable prediction endpoints backed by promoted pipelines.
         </p>
       </header>
@@ -56,7 +56,7 @@ export function Deployments() {
       {deployments.error && <p className="error">{errorMessage(deployments.error)}</p>}
 
       {deployments.data && deployments.data.length === 0 && (
-        <div className="card text-sm text-ink-200/70">
+        <div className="card text-sm text-ink-500">
           No deployments yet. Go to{' '}
           <Link to={`/workspaces/${wsId}/pipelines`} className="text-accent-400 hover:underline">
             Pipelines
@@ -68,7 +68,7 @@ export function Deployments() {
       {deployments.data && deployments.data.length > 0 && (
         <div className="card overflow-hidden p-0">
           <table className="w-full text-sm">
-            <thead className="bg-ink-800 text-ink-200/70">
+            <thead className="bg-white text-ink-500">
               <tr>
                 <th className="px-4 py-2 text-left font-medium">Slug</th>
                 <th className="px-4 py-2 text-left font-medium">Status</th>
@@ -82,7 +82,7 @@ export function Deployments() {
             </thead>
             <tbody>
               {deployments.data.map((d) => (
-                <tr key={d.id} className="border-t border-ink-800 hover:bg-ink-800/50">
+                <tr key={d.id} className="border-t border-ink-200 hover:bg-ink-50">
                   <td className="px-4 py-2">
                     <Link
                       to={`/deployments/${d.id}`}
@@ -107,7 +107,7 @@ export function Deployments() {
                   <td className="px-4 py-2 text-right font-mono text-xs tabular-nums">
                     {d.p95_latency_ms?.toFixed(1) ?? '—'}
                   </td>
-                  <td className="px-4 py-2 text-xs text-ink-200/60">
+                  <td className="px-4 py-2 text-xs text-ink-500">
                     {d.last_inference_at
                       ? new Date(d.last_inference_at).toLocaleString()
                       : '—'}

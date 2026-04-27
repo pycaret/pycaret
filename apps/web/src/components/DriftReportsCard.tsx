@@ -18,7 +18,7 @@ import { DriftAnalysisModal } from './DriftAnalysisModal';
 
 const STATUS_TONE: Record<string, string> = {
   none: 'text-success-500',
-  mild: 'text-ink-200',
+  mild: 'text-ink-700',
   moderate: 'text-warn-500',
   severe: 'text-danger-500',
 };
@@ -107,7 +107,7 @@ export function DriftReportsCard({ deploymentId }: DriftReportsCardProps) {
   return (
     <section>
       <header className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-sm font-medium text-ink-100">Drift reports</h2>
+        <h2 className="text-sm font-medium text-ink-900">Drift reports</h2>
         <div className="flex items-center gap-3">
           <span className="hint">{reports.data?.length ?? 0} total</span>
           <button
@@ -214,7 +214,7 @@ export function DriftReportsCard({ deploymentId }: DriftReportsCardProps) {
       {reports.error && <p className="error">{errorMessage(reports.error)}</p>}
 
       {reports.data && reports.data.length === 0 && (
-        <div className="card text-sm text-ink-200/70">
+        <div className="card text-sm text-ink-500">
           No drift reports yet. Record one manually above, or POST to{' '}
           <code className="font-mono text-xs">
             /api/v1/deployments/{deploymentId}/drift-reports
@@ -226,7 +226,7 @@ export function DriftReportsCard({ deploymentId }: DriftReportsCardProps) {
       {reports.data && reports.data.length > 0 && (
         <div className="card p-0 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-ink-800 text-ink-200/70">
+            <thead className="bg-white text-ink-500">
               <tr>
                 <th className="px-4 py-2 text-left font-medium">Window</th>
                 <th className="px-4 py-2 text-left font-medium">Score</th>
@@ -239,9 +239,9 @@ export function DriftReportsCard({ deploymentId }: DriftReportsCardProps) {
               {reports.data.map((r) => (
                 <tr
                   key={r.id}
-                  className="border-t border-ink-800 hover:bg-ink-800/50"
+                  className="border-t border-ink-200 hover:bg-ink-50"
                 >
-                  <td className="px-4 py-2 text-xs text-ink-200/70 font-mono">
+                  <td className="px-4 py-2 text-xs text-ink-500 font-mono">
                     {new Date(r.window_start).toLocaleDateString()} →{' '}
                     {new Date(r.window_end).toLocaleDateString()}
                   </td>

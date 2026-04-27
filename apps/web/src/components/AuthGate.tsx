@@ -22,7 +22,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (resolving) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-ink-200/60">
+      <div className="min-h-screen flex items-center justify-center text-ink-500">
         Restoring session…
       </div>
     );

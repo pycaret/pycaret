@@ -26,7 +26,7 @@ export function FailureDebuggerCard({ runId }: FailureDebuggerCardProps) {
     <section className="card space-y-4 border-danger-500/30">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-sm font-medium text-ink-100">✨ AI diagnosis</h2>
+          <h2 className="text-sm font-medium text-ink-900">✨ AI diagnosis</h2>
           <p className="hint mt-1">
             Reads the error + event tail and suggests a minimal fix. Advisory
             — check the reasoning before retrying.
@@ -44,22 +44,22 @@ export function FailureDebuggerCard({ runId }: FailureDebuggerCardProps) {
       {debug.error && <p className="error">{errorMessage(debug.error)}</p>}
 
       {advice && (
-        <div className="space-y-4 border-t border-ink-800 pt-4">
+        <div className="space-y-4 border-t border-ink-200 pt-4">
           {advice.suggested_action && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+              <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                 Suggested fix
               </h3>
-              <p className="text-ink-100">{advice.suggested_action}</p>
+              <p className="text-ink-900">{advice.suggested_action}</p>
             </div>
           )}
 
           {advice.reasoning_summary && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+              <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                 Diagnosis
               </h3>
-              <p className="text-sm text-ink-200/80 whitespace-pre-wrap">
+              <p className="text-sm text-ink-600 whitespace-pre-wrap">
                 {advice.reasoning_summary}
               </p>
             </div>
@@ -67,7 +67,7 @@ export function FailureDebuggerCard({ runId }: FailureDebuggerCardProps) {
 
           {advice.risk_flags.length > 0 && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+              <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                 Caveats
               </h3>
               <div className="flex flex-wrap gap-1">
@@ -82,10 +82,10 @@ export function FailureDebuggerCard({ runId }: FailureDebuggerCardProps) {
 
           {Object.keys(advice.suggested_config_json).length > 0 && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+              <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                 Suggested config
               </h3>
-              <pre className="bg-ink-950 border border-ink-800 rounded p-3 font-mono text-xs text-ink-100 overflow-x-auto">
+              <pre className="bg-white border border-ink-200 rounded p-3 font-mono text-xs text-ink-900 overflow-x-auto">
                 {JSON.stringify(advice.suggested_config_json, null, 2)}
               </pre>
             </div>

@@ -31,7 +31,7 @@ export function RunExplainerCard({ runId }: RunExplainerCardProps) {
     <section className="card space-y-4">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-sm font-medium text-ink-100">✨ AI explanation</h2>
+          <h2 className="text-sm font-medium text-ink-900">✨ AI explanation</h2>
           <p className="hint mt-1">
             Reads the leaderboard + event stream and proposes next experiments.
             Advisory — your call what to run next.
@@ -49,22 +49,22 @@ export function RunExplainerCard({ runId }: RunExplainerCardProps) {
       {explain.error && <p className="error">{errorMessage(explain.error)}</p>}
 
       {advice && (
-        <div className="space-y-4 border-t border-ink-800 pt-4">
+        <div className="space-y-4 border-t border-ink-200 pt-4">
           {advice.suggested_action && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+              <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                 Next step
               </h3>
-              <p className="text-ink-100">{advice.suggested_action}</p>
+              <p className="text-ink-900">{advice.suggested_action}</p>
             </div>
           )}
 
           {advice.reasoning_summary && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+              <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                 What happened
               </h3>
-              <p className="text-sm text-ink-200/80 whitespace-pre-wrap">
+              <p className="text-sm text-ink-600 whitespace-pre-wrap">
                 {advice.reasoning_summary}
               </p>
             </div>
@@ -72,13 +72,13 @@ export function RunExplainerCard({ runId }: RunExplainerCardProps) {
 
           {nextActions.length > 0 && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+              <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                 Ideas to try
               </h3>
-              <ul className="text-sm text-ink-200/80 list-disc list-inside space-y-1">
+              <ul className="text-sm text-ink-600 list-disc list-inside space-y-1">
                 {nextActions.map((a) => (
                   <li key={a}>
-                    <code className="font-mono text-xs text-ink-100">{a}</code>
+                    <code className="font-mono text-xs text-ink-900">{a}</code>
                   </li>
                 ))}
               </ul>
@@ -87,7 +87,7 @@ export function RunExplainerCard({ runId }: RunExplainerCardProps) {
 
           {advice.risk_flags.length > 0 && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+              <h3 className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                 Flags
               </h3>
               <div className="flex flex-wrap gap-1">

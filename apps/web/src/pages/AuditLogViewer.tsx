@@ -55,8 +55,8 @@ export function AuditLogViewer() {
   return (
     <div className="space-y-6">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Home
           </Link>
           <span className="mx-1">/</span>
@@ -65,7 +65,7 @@ export function AuditLogViewer() {
           <span>Audit log</span>
         </nav>
         <h1 className="text-xl font-semibold">Audit log</h1>
-        <p className="mt-1 text-sm text-ink-200/70">
+        <p className="mt-1 text-sm text-ink-500">
           Every mutating API call (POST / PATCH / PUT / DELETE) on /api/v1/* is
           recorded here with the caller + scrubbed payload. Reads are not
           logged.
@@ -132,7 +132,7 @@ export function AuditLogViewer() {
       {rows.data && (
         <section className="card p-0 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-ink-800 text-ink-200/70">
+            <thead className="bg-white text-ink-500">
               <tr>
                 <th className="px-4 py-2 text-left font-medium">When</th>
                 <th className="px-4 py-2 text-left font-medium">Action</th>
@@ -182,22 +182,22 @@ function RowCells({
       ? 'text-danger-500'
       : row.status_code && row.status_code >= 400
         ? 'text-warn-500'
-        : 'text-ink-200/80';
+        : 'text-ink-600';
   return (
     <>
       <tr
-        className="border-t border-ink-800 hover:bg-ink-800/50 cursor-pointer"
+        className="border-t border-ink-200 hover:bg-ink-50 cursor-pointer"
         onClick={onToggle}
       >
-        <td className="px-4 py-2 text-xs text-ink-200/60 font-mono whitespace-nowrap">
+        <td className="px-4 py-2 text-xs text-ink-500 font-mono whitespace-nowrap">
           {new Date(row.created_at).toLocaleString()}
         </td>
-        <td className="px-4 py-2 font-mono text-xs text-ink-100">{row.action}</td>
-        <td className="px-4 py-2 font-mono text-xs text-ink-200/70">
+        <td className="px-4 py-2 font-mono text-xs text-ink-900">{row.action}</td>
+        <td className="px-4 py-2 font-mono text-xs text-ink-500">
           {row.method}
         </td>
         <td
-          className="px-4 py-2 font-mono text-xs text-ink-200/70 truncate max-w-md"
+          className="px-4 py-2 font-mono text-xs text-ink-500 truncate max-w-md"
           title={row.path}
         >
           {row.path}
@@ -205,41 +205,41 @@ function RowCells({
         <td className={`px-4 py-2 font-mono text-xs ${tone}`}>
           {row.status_code ?? '—'}
         </td>
-        <td className="px-4 py-2 font-mono text-xs text-ink-200/70 truncate max-w-xs">
+        <td className="px-4 py-2 font-mono text-xs text-ink-500 truncate max-w-xs">
           {row.user_id ?? '—'}
         </td>
       </tr>
       {expanded && (
-        <tr className="border-t border-ink-800 bg-ink-950/50">
+        <tr className="border-t border-ink-200 bg-white/80">
           <td colSpan={6} className="px-4 py-3">
             <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <p className="text-xs uppercase tracking-wider text-ink-200/60 mb-1">
+                <p className="text-xs uppercase tracking-wider text-ink-500 mb-1">
                   Payload (scrubbed)
                 </p>
-                <pre className="bg-ink-950 border border-ink-800 rounded p-2 font-mono text-xs text-ink-100 overflow-x-auto">
+                <pre className="bg-white border border-ink-200 rounded p-2 font-mono text-xs text-ink-900 overflow-x-auto">
                   {row.payload ? JSON.stringify(row.payload, null, 2) : '(none)'}
                 </pre>
               </div>
-              <div className="space-y-1 text-xs text-ink-200/70 font-mono">
+              <div className="space-y-1 text-xs text-ink-500 font-mono">
                 <p>
-                  workspace_id: <span className="text-ink-100">{row.workspace_id ?? '—'}</span>
+                  workspace_id: <span className="text-ink-900">{row.workspace_id ?? '—'}</span>
                 </p>
                 <p>
                   target_type:{' '}
-                  <span className="text-ink-100">{row.target_type ?? '—'}</span>
+                  <span className="text-ink-900">{row.target_type ?? '—'}</span>
                 </p>
                 <p>
-                  target_id: <span className="text-ink-100">{row.target_id ?? '—'}</span>
+                  target_id: <span className="text-ink-900">{row.target_id ?? '—'}</span>
                 </p>
                 <p>
-                  ip_address: <span className="text-ink-100">{row.ip_address ?? '—'}</span>
+                  ip_address: <span className="text-ink-900">{row.ip_address ?? '—'}</span>
                 </p>
                 <p
                   className="truncate"
                   title={row.user_agent ?? undefined}
                 >
-                  user_agent: <span className="text-ink-100">{row.user_agent ?? '—'}</span>
+                  user_agent: <span className="text-ink-900">{row.user_agent ?? '—'}</span>
                 </p>
               </div>
             </div>

@@ -67,7 +67,7 @@ export function DataSourcesCard({ workspaceId }: DataSourcesCardProps) {
   return (
     <div className="card space-y-4">
       <header className="flex items-baseline justify-between">
-        <h2 className="text-sm font-medium text-ink-100">Data sources</h2>
+        <h2 className="text-sm font-medium text-ink-900">Data sources</h2>
         <span className="hint">{csvs.length} CSV</span>
       </header>
 
@@ -87,8 +87,8 @@ export function DataSourcesCard({ workspaceId }: DataSourcesCardProps) {
             return (
               <li key={d.id} className="px-5 py-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium text-ink-100 truncate">{d.name}</p>
-                  <p className="text-xs text-ink-200/60 mt-0.5">
+                  <p className="font-medium text-ink-900 truncate">{d.name}</p>
+                  <p className="text-xs text-ink-500 mt-0.5">
                     {cfg.rows != null && <>{cfg.rows.toLocaleString()} rows · </>}
                     {fmtBytes(cfg.size_bytes)}
                     {cfg.columns?.length != null && <> · {cfg.columns.length} cols</>}
@@ -127,7 +127,7 @@ export function DataSourcesCard({ workspaceId }: DataSourcesCardProps) {
           e.preventDefault();
           if (file) upload.mutate();
         }}
-        className="space-y-3 border-t border-ink-800 pt-4"
+        className="space-y-3 border-t border-ink-200 pt-4"
       >
         <div>
           <label className="field" htmlFor="csv-file">
@@ -143,7 +143,7 @@ export function DataSourcesCard({ workspaceId }: DataSourcesCardProps) {
               setFile(f);
               if (f && !name) setName(f.name);
             }}
-            className="text-sm text-ink-200/80 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-ink-800 file:text-ink-100 file:cursor-pointer hover:file:bg-ink-700"
+            className="text-sm text-ink-600 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-white file:text-ink-900 file:cursor-pointer hover:file:bg-ink-100"
           />
         </div>
         <div>

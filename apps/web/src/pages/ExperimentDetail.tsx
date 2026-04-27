@@ -36,7 +36,7 @@ function formatDuration(ms: number | null): string {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  queued: 'text-ink-200/60',
+  queued: 'text-ink-500',
   running: 'text-accent-400',
   succeeded: 'text-success-500',
   failed: 'text-danger-500',
@@ -143,18 +143,18 @@ export function ExperimentDetail() {
   return (
     <div className="space-y-8">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Workspaces
           </Link>
           <span className="mx-1">/</span>
-          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-100">
+          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-900">
             {ws.data?.name ?? '…'}
           </Link>
           <span className="mx-1">/</span>
           <Link
             to={`/workspaces/${wsId}/projects/${projectId}`}
-            className="hover:text-ink-100"
+            className="hover:text-ink-900"
           >
             {project.data?.name ?? '…'}
           </Link>
@@ -165,7 +165,7 @@ export function ExperimentDetail() {
           {experiment.data?.name ?? 'Loading…'}
         </h1>
         {experiment.data && (
-          <p className="mt-1 text-sm text-ink-200/70">
+          <p className="mt-1 text-sm text-ink-500">
             <span className="kbd">{experiment.data.task}</span>
             {experiment.data.target && (
               <>
@@ -182,7 +182,7 @@ export function ExperimentDetail() {
         <div className="space-y-8">
           {/* Config overview */}
           <section>
-            <h2 className="text-sm font-medium text-ink-100 mb-3">Setup parameters</h2>
+            <h2 className="text-sm font-medium text-ink-900 mb-3">Setup parameters</h2>
             {setupEntries.length === 0 ? (
               <p className="hint">
                 Using engine defaults for every parameter (none overridden).
@@ -191,8 +191,8 @@ export function ExperimentDetail() {
               <dl className="card grid gap-2 md:grid-cols-2">
                 {setupEntries.map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-4">
-                    <dt className="text-sm text-ink-200/70 font-mono">{k}</dt>
-                    <dd className="text-sm text-ink-100 font-mono">
+                    <dt className="text-sm text-ink-500 font-mono">{k}</dt>
+                    <dd className="text-sm text-ink-900 font-mono">
                       {typeof v === 'object' ? JSON.stringify(v) : String(v)}
                     </dd>
                   </div>
@@ -212,7 +212,7 @@ export function ExperimentDetail() {
             {runs.error && <p className="error">{errorMessage(runs.error)}</p>}
 
             {runs.data && runs.data.length === 0 && (
-              <div className="card text-sm text-ink-200/70">
+              <div className="card text-sm text-ink-500">
                 No runs yet. Submit one from the right panel →
               </div>
             )}
@@ -220,7 +220,7 @@ export function ExperimentDetail() {
             {runs.data && runs.data.length > 0 && (
               <div className="card overflow-hidden p-0">
                 <table className="w-full text-sm">
-                  <thead className="bg-ink-800 text-ink-200/70">
+                  <thead className="bg-white text-ink-500">
                     <tr>
                       <th className="px-4 py-2 text-left font-medium">Status</th>
                       <th className="px-4 py-2 text-left font-medium">Plan</th>
@@ -241,7 +241,7 @@ export function ExperimentDetail() {
                       return (
                         <tr
                           key={r.id}
-                          className="border-t border-ink-800 hover:bg-ink-800/50 cursor-pointer"
+                          className="border-t border-ink-200 hover:bg-ink-50 cursor-pointer"
                           onClick={() => {
                             window.location.href = `/runs/${r.id}`;
                           }}
@@ -260,7 +260,7 @@ export function ExperimentDetail() {
                           <td className="px-4 py-2 font-mono text-xs">
                             {formatDuration(r.duration_ms)}
                           </td>
-                          <td className="px-4 py-2 text-xs text-ink-200/60">
+                          <td className="px-4 py-2 text-xs text-ink-500">
                             {new Date(r.created_at).toLocaleString()}
                           </td>
                         </tr>
@@ -276,7 +276,7 @@ export function ExperimentDetail() {
         {/* ────────── Sidebar: new run */}
         <aside>
           <div className="card space-y-4">
-            <h2 className="text-sm font-medium text-ink-100">New run</h2>
+            <h2 className="text-sm font-medium text-ink-900">New run</h2>
 
             <div>
               <label className="field" htmlFor="plan">

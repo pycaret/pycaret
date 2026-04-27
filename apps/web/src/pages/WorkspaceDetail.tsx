@@ -46,8 +46,8 @@ export function WorkspaceDetail() {
   return (
     <div className="space-y-8">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Workspaces
           </Link>
           <span className="mx-1">/</span>
@@ -57,7 +57,7 @@ export function WorkspaceDetail() {
           <div>
             <h1 className="text-xl font-semibold">{ws.data?.name ?? 'Loading…'}</h1>
             {ws.data?.description && (
-              <p className="text-sm text-ink-200/70 mt-1">{ws.data.description}</p>
+              <p className="text-sm text-ink-500 mt-1">{ws.data.description}</p>
             )}
           </div>
           {id && (
@@ -103,7 +103,7 @@ export function WorkspaceDetail() {
           {projects.error && <p className="error">{errorMessage(projects.error)}</p>}
 
           {projects.data && projects.data.length === 0 && (
-            <div className="card text-sm text-ink-200/70">
+            <div className="card text-sm text-ink-500">
               No projects yet. Create one on the right →
             </div>
           )}
@@ -115,9 +115,9 @@ export function WorkspaceDetail() {
                   to={`/workspaces/${id}/projects/${p.id}`}
                   className="card block hover:border-accent-500 transition-colors"
                 >
-                  <h3 className="font-medium text-ink-100">{p.name}</h3>
+                  <h3 className="font-medium text-ink-900">{p.name}</h3>
                   {p.description && (
-                    <p className="mt-1 text-sm text-ink-200/70">{p.description}</p>
+                    <p className="mt-1 text-sm text-ink-500">{p.description}</p>
                   )}
                   {p.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -136,7 +136,7 @@ export function WorkspaceDetail() {
 
         <aside className="md:w-80 space-y-4">
           <div className="card">
-            <h2 className="text-sm font-medium text-ink-100 mb-4">New project</h2>
+            <h2 className="text-sm font-medium text-ink-900 mb-4">New project</h2>
             <form
               onSubmit={(e) => {
                 e.preventDefault();

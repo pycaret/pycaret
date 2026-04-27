@@ -77,12 +77,12 @@ export function Leaderboard({ rows, className }: LeaderboardProps) {
   return (
     <div className={`card overflow-x-auto p-0 ${className ?? ''}`}>
       <table className="w-full text-sm">
-        <thead className="bg-ink-800 text-ink-200/70">
+        <thead className="bg-white text-ink-500">
           <tr>
             {columns.map((c) => (
               <th
                 key={c}
-                className="px-3 py-2 text-left font-medium whitespace-nowrap cursor-pointer select-none hover:text-ink-100"
+                className="px-3 py-2 text-left font-medium whitespace-nowrap cursor-pointer select-none hover:text-ink-900"
                 onClick={() => toggleSort(c)}
               >
                 {c}
@@ -95,7 +95,7 @@ export function Leaderboard({ rows, className }: LeaderboardProps) {
         </thead>
         <tbody>
           {sorted.map((r, i) => (
-            <tr key={i} className="border-t border-ink-800 hover:bg-ink-800/50">
+            <tr key={i} className="border-t border-ink-200 hover:bg-ink-50">
               {columns.map((c) => {
                 const v = r[c];
                 const isNum = isNumber(v);

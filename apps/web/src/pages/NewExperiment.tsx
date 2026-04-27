@@ -110,18 +110,18 @@ export function NewExperiment() {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <header>
-        <nav className="text-xs text-ink-200/60 mb-2">
-          <Link to="/" className="hover:text-ink-100">
+        <nav className="text-xs text-ink-500 mb-2">
+          <Link to="/" className="hover:text-ink-900">
             Workspaces
           </Link>
           <span className="mx-1">/</span>
-          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-100">
+          <Link to={`/workspaces/${wsId}`} className="hover:text-ink-900">
             {ws.data?.name ?? '…'}
           </Link>
           <span className="mx-1">/</span>
           <Link
             to={`/workspaces/${wsId}/projects/${projectId}`}
-            className="hover:text-ink-100"
+            className="hover:text-ink-900"
           >
             {project.data?.name ?? '…'}
           </Link>
@@ -139,7 +139,7 @@ export function NewExperiment() {
             ✨ Ask AI
           </button>
         </div>
-        <p className="text-sm text-ink-200/70 mt-1">
+        <p className="text-sm text-ink-500 mt-1">
           Configure the task + preprocessing. You'll pick a data source + run plan on
           the next screen.
         </p>
@@ -154,7 +154,7 @@ export function NewExperiment() {
       >
         {/* ────────── Identity */}
         <section className="card space-y-5">
-          <h2 className="text-sm font-medium text-ink-100">Identity</h2>
+          <h2 className="text-sm font-medium text-ink-900">Identity</h2>
 
           <div>
             <label className="field" htmlFor="name">
@@ -218,7 +218,7 @@ export function NewExperiment() {
 
         {/* ────────── Setup parameters (dynamic, engine-driven) */}
         <section className="card">
-          <h2 className="text-sm font-medium text-ink-100 mb-6">Setup parameters</h2>
+          <h2 className="text-sm font-medium text-ink-900 mb-6">Setup parameters</h2>
 
           {schema.isLoading && (
             <p className="hint">Loading schema from the engine…</p>
