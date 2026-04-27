@@ -1,6 +1,6 @@
 name: CI
 
-# 4.0 CI. Runs on v4 (4.0 development branch) and any PRs targeting it.
+# 4.0 CI. Runs on main and any PRs targeting it.
 # - lint: ruff check + format check
 # - test: pytest on ubuntu + windows × python 3.11 / 3.12 / 3.13
 # - notebooks: re-execute all canonical notebooks (nightly + on-demand)
@@ -9,9 +9,9 @@ name: CI
 
 on:
   push:
-    branches: [v4, master, main]
+    branches: [main]
   pull_request:
-    branches: [v4, master, main]
+    branches: [main]
   schedule:
     # Re-execute the canonical notebook suite nightly at 05:00 UTC so any
     # upstream dep regression (sklearn / NumPy / pandas / sktime) shows up

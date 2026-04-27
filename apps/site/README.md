@@ -26,7 +26,7 @@ npm run dev    # http://localhost:3001
 npm run build  # static export to ./out
 ```
 
-CI builds on every push to `v4` / `main` and deploys to GitHub Pages
+CI builds on every push to `main` and deploys to GitHub Pages
 (see `.github/workflows/site.yml`). Switching to Vercel / Cloudflare
 Pages is a one-line change in the workflow.
 

@@ -73,7 +73,7 @@ pycaret-server = "pycaret_server.cli:main"
 [project.urls]
 Repository = "https://github.com/pycaret/pycaret"
 Issues = "https://github.com/pycaret/pycaret/issues"
-"Platform plan" = "https://github.com/pycaret/pycaret/blob/v4/docs/revamp/PLATFORM_PLAN.md"
+"Platform plan" = "https://github.com/pycaret/pycaret/blob/main/docs/revamp/PLATFORM_PLAN.md"
 
 [build-system]
 requires = ["hatchling>=1.25"]

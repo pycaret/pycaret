@@ -8,9 +8,8 @@ body:
     attributes:
       value: |
         ## Before filing
-        - PyCaret 4.0 is still WIP on the [`v4` branch](https://github.com/pycaret/pycaret/tree/v4). If you're on `master` (3.4.0) please **use 3.x templates**, not this one.
-        - For 4.0 bugs, install from the v4 branch: `pip install git+https://github.com/pycaret/pycaret.git@v4`
-        - Check [`docs/revamp/KILL_LIST.md`](https://github.com/pycaret/pycaret/blob/v4/docs/revamp/KILL_LIST.md) — the feature you're asking about may have been deliberately removed in 4.0.
+        - Install: `pip install pycaret` (PyPI) or `pip install git+https://github.com/pycaret/pycaret.git` for the latest `main`.
+        - Check [`docs/revamp/KILL_LIST.md`](https://github.com/pycaret/pycaret/blob/main/docs/revamp/KILL_LIST.md) — the feature you're asking about may have been deliberately removed in 4.0.
         - Search [existing issues](https://github.com/pycaret/pycaret/issues) before filing.
 
   - type: checkboxes
@@ -20,7 +19,7 @@ body:
       options:
         - label: I have searched existing issues and this isn't a duplicate.
           required: true
-        - label: I'm reporting against the **4.0 `v4` branch**, not 3.x.
+        - label: I'm reporting against **PyCaret 4.0** (the OOP `Experiment(...).fit(df)` API), not 3.x.
           required: true
         - label: I've confirmed the feature I'm asking about is not on the 4.0 kill list (`docs/revamp/KILL_LIST.md`).
           required: true

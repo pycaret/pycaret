@@ -112,11 +112,11 @@ test = [
 [project.urls]
 Homepage = "https://pycaret.org/"
 Repository = "https://github.com/pycaret/pycaret"
-Documentation = "https://pycaret.gitbook.io/"
+Documentation = "https://pycaret.org/docs"
 Issues = "https://github.com/pycaret/pycaret/issues"
-Changelog = "https://github.com/pycaret/pycaret/blob/v4/CHANGELOG.md"
-"Release notes (engineering)" = "https://github.com/pycaret/pycaret/blob/v4/docs/revamp/release_notes_pycaret4.md"
-"4.0 status" = "https://github.com/pycaret/pycaret/blob/v4/docs/revamp/STATUS.md"
+Changelog = "https://pycaret.org/changelog"
+"Release notes (engineering)" = "https://pycaret.org/blog"
+"4.0 status" = "https://github.com/pycaret/pycaret/blob/main/docs/revamp/STATUS.md"
 
 [build-system]
 requires = ["hatchling>=1.25"]

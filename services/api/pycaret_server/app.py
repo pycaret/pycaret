@@ -84,7 +84,7 @@ def create_app() -> FastAPI:
         version=__version__,
         description=(
             "PyCaret 4.0 application-platform backend. "
-            "See https://github.com/pycaret/pycaret/blob/v4/docs/revamp/PLATFORM_PLAN.md"
+            "See https://github.com/pycaret/pycaret/blob/main/docs/revamp/PLATFORM_PLAN.md"
         ),
         docs_url="/docs",
         redoc_url="/redoc",

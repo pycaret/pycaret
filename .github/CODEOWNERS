@@ -1,6 +1,6 @@
 # CODEOWNERS — PyCaret 4.0
 #
-# Default: @moezali1 reviews everything on v4 during the revamp.
+# Default: @moezali1 reviews everything on main during the revamp.
 # As the project scales up, ownership for specific areas gets delegated.
 
 *                                @moezali1

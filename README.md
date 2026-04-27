@@ -6,9 +6,9 @@
 
 ### The engine, the control plane, and the UI — all in one self-hosted box.
 
-[![CI](https://github.com/pycaret/pycaret/actions/workflows/test.yml/badge.svg?branch=v4)](https://github.com/pycaret/pycaret/actions/workflows/test.yml)
+[![CI](https://github.com/pycaret/pycaret/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/pycaret/pycaret/actions/workflows/test.yml)
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/pycaret/pycaret)
-[![License](https://img.shields.io/pypi/l/pycaret.svg)](https://github.com/pycaret/pycaret/blob/v4/LICENSE)
+[![License](https://img.shields.io/pypi/l/pycaret.svg)](https://github.com/pycaret/pycaret/blob/main/LICENSE)
 
 [Vision](docs/revamp/VISION.md) ·
 [Architecture](docs/revamp/ARCHITECTURE.md) ·
@@ -21,9 +21,9 @@
 
 ---
 
-> ## ⚠ 4.0 is **work in progress** — you're looking at the `v4` branch
+> ## ⚠ 4.0 is **work in progress** — you're looking at `main` (the 4.0 line)
 >
-> PyCaret 4.0 is a ground-up architectural revamp. It lives on the **`v4` branch**. The `master` branch is still 3.4.0.
+> PyCaret 4.0 is a ground-up architectural revamp. It now lives on `main`. The 3.x release line is frozen on PyPI as `pycaret 3.4.0` (no further commits).
 >
 > Track progress in [`docs/revamp/STATUS.md`](docs/revamp/STATUS.md) and [`docs/revamp/ROADMAP.md`](docs/revamp/ROADMAP.md).
 
@@ -95,7 +95,7 @@ Supported: Python 3.11 / 3.12 / 3.13.
 **The full Control Plane, from source:**
 
 ```bash
-git clone -b v4 https://github.com/pycaret/pycaret.git
+git clone https://github.com/pycaret/pycaret.git
 cd pycaret
 
 # Backend (terminal 1)

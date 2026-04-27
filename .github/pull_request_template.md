@@ -1,6 +1,4 @@
-<!-- PyCaret 4.0 pull request template.
-     If your PR targets master (3.4.x), delete this and use free-form.
-     If it targets v4, fill in the sections below. -->
+<!-- PyCaret 4.0 pull request template. Fill in the sections below. -->
 
 ## Summary
 

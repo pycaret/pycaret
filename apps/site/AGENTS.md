@@ -70,7 +70,7 @@ index sorts by date desc.
 
 Don't — it's auto-generated. The `scripts/gen_api_tree.py` script
 walks the `pycaret` package via griffe and emits
-`content/api-tree.json`. CI runs it on every push to `v4`/`main`.
+`content/api-tree.json`. CI runs it on every push to `main`.
 To regenerate locally:
 
 ```bash
@@ -108,7 +108,7 @@ the API tree + release notes are fresh.
 
 ## Deployment
 
-CI (`.github/workflows/site.yml`) builds on every push to `v4`/`main`
+CI (`.github/workflows/site.yml`) builds on every push to `main`
 and deploys to GitHub Pages. To switch to Vercel / Cloudflare Pages,
 point the deploy step at the `apps/site/out/` directory — the build
 itself is portable.

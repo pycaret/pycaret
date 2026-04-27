@@ -2,7 +2,7 @@ name: Site
 
 on:
   push:
-    branches: [v4, main]
+    branches: [main]
     paths:
       - "apps/site/**"
       - "packages/engine/pycaret/**"
@@ -69,7 +69,7 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: build
-    if: github.ref == 'refs/heads/v4' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     environment:
       name: github-pages

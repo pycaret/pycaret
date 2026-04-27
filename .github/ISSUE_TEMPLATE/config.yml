@@ -13,13 +13,13 @@ contact_links:
     url: https://github.com/pycaret/pycaret/issues/4177
     about: Why the pre-4.0 backlog was bulk-closed and how to file new 4.0 issues.
   - name: PyCaret 4.0 status
-    url: https://github.com/pycaret/pycaret/blob/v4/docs/revamp/STATUS.md
+    url: https://github.com/pycaret/pycaret/blob/main/docs/revamp/STATUS.md
     about: What's landed and what's still in play for the 4.0 revamp.
   - name: What was removed in 4.0 (kill list)
-    url: https://github.com/pycaret/pycaret/blob/v4/docs/revamp/KILL_LIST.md
+    url: https://github.com/pycaret/pycaret/blob/main/docs/revamp/KILL_LIST.md
     about: Check here before filing. If your feature is on the kill list, we won't reinstate it in core.
   - name: Contributor guide
-    url: https://github.com/pycaret/pycaret/blob/v4/CONTRIBUTING.md
+    url: https://github.com/pycaret/pycaret/blob/main/CONTRIBUTING.md
     about: How to contribute to PyCaret 4.0.
   - name: Discussion / community
     url: https://github.com/pycaret/pycaret/discussions
