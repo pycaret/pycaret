@@ -115,6 +115,3 @@ Append to [`docs/revamp/release_notes_pycaret4.md`](docs/revamp/release_notes_py
 - Platform packages (`services/*`, `apps/*`) are **dual-licensed MIT OR BUSL-1.1**. See [`docs/revamp/DECISIONS.md § 2026-04-23 · decision 5`](docs/revamp/DECISIONS.md) for the rationale.
 - Contributions to platform packages imply acceptance of the BSL posture (self-host freely; if you run it as a multi-tenant hosted SaaS to third parties, the BSL grant becomes relevant until it converts to MIT/Apache-2.0 after 3 years).
 
-## Code of conduct
-
-See [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
