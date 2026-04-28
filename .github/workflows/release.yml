@@ -48,7 +48,7 @@ jobs:
     # lands in the standard workspace-root dist/, which the upload-artifact
     # step expects.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.13"
