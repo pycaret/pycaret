@@ -42,6 +42,15 @@ class Settings(BaseSettings):
     access_token_ttl_minutes: int = 60
     refresh_token_ttl_days: int = 30
 
+    # --- secrets encryption ---
+    # Fernet key for at-rest encryption of LLM API keys + future cloud creds.
+    # Generate one with:
+    #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    # If unset, an ephemeral per-process key is generated and a warning is
+    # logged; encrypted values do NOT survive restart. Set this in any
+    # environment that stores real credentials.
+    secrets_key: str | None = None
+
     # --- artifact storage ---
     # Root dir where Run outputs (run.ipynb, fitted_pipeline.pkl, leaderboard.json,
     # events.jsonl, preview.html) land. In prod, a persistent volume or S3.

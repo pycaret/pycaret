@@ -39,6 +39,8 @@ dask*/
 # Local dev SQLite DB produced by `alembic upgrade head` / dev server.
 /services/api/pycaret.db
 /services/api/pycaret.db-journal
+/pycaret.db
+/pycaret.db-journal
 
 # IDE / editor
 .vscode/settings.json

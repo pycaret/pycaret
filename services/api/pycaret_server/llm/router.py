@@ -26,6 +26,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from pycaret_server.crypto import decrypt as _decrypt_secret
 from pycaret_server.db import LLMConsultation, LLMProviderSetting
 from pycaret_server.llm.providers import LLMProvider, get_provider
 from pycaret_server.llm.schemas import LLMAdvice
@@ -77,9 +78,10 @@ class LLMRouter:
     def build_provider(self, setting: LLMProviderSetting) -> LLMProvider:
         if not setting.api_key_encrypted:
             raise NoLLMConfigured(f"LLM provider {setting.provider!r} has no API key set.")
+        api_key = _decrypt_secret(setting.api_key_encrypted)
         return get_provider(
             provider=setting.provider,
-            api_key=setting.api_key_encrypted,
+            api_key=api_key,
             model_name=setting.model_name,
             base_url=setting.base_url,
         )

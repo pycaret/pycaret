@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from pycaret_server.api.schemas import SetupStatusResponse  # noqa: F401 — keeps import graph stable
 from pycaret_server.api.workspaces import _require_access, _require_admin
 from pycaret_server.auth import CurrentUser
+from pycaret_server.crypto import encrypt as _encrypt_secret
 from pycaret_server.db import (
     DataSource,
     Deployment,
@@ -170,7 +171,7 @@ def upsert_settings(
         row = LLMProviderSetting(
             workspace_id=workspace_id,
             provider=payload.provider,
-            api_key_encrypted=payload.api_key,
+            api_key_encrypted=_encrypt_secret(payload.api_key) if payload.api_key else None,
             base_url=payload.base_url,
             model_name=payload.model_name,
             enabled=payload.enabled,
@@ -181,7 +182,7 @@ def upsert_settings(
     else:
         # Preserve existing key if caller passed no new one (PUT-merge).
         if payload.api_key is not None:
-            row.api_key_encrypted = payload.api_key
+            row.api_key_encrypted = _encrypt_secret(payload.api_key)
         row.base_url = payload.base_url
         row.model_name = payload.model_name
         row.enabled = payload.enabled

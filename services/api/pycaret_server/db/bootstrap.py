@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
 _log = logging.getLogger(__name__)
@@ -45,15 +45,38 @@ def ensure_schema(engine: Engine, *, dev_auto_migrate: bool = True) -> None:
     has_any_user_table = insp.has_table("users")
 
     if has_alembic:
-        _log.debug("alembic_version table present; leaving schema alone")
+        # alembic_version is present. In dev, bring the schema up to head so
+        # newer migrations land without operator action. In prod we leave it
+        # alone — explicit ``alembic upgrade head`` is the deploy contract.
+        if dev_auto_migrate:
+            try:
+                _run_alembic("upgrade", "head", url=str(engine.url))
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("dev auto-migrate failed (continuing): %s", exc)
+        else:
+            _log.debug("alembic_version table present; leaving schema alone")
         return
 
     if has_any_user_table and not has_alembic:
+        # Pre-Alembic legacy DB. Detect which revision matches the current
+        # schema and stamp there. If the detected revision is behind head and
+        # we're in dev, also run upgrade head so the missing tables get
+        # created.
+        revision, is_head = _detect_revision(insp)
+        if is_head:
+            _log.info(
+                "Legacy DB schema already matches alembic head — stamping head."
+            )
+            _run_alembic("stamp", "head", url=str(engine.url))
+            return
         _log.warning(
-            "Database has tables but no alembic_version — legacy create_all schema. "
-            "Stamping as baseline. Future migrations will work from here."
+            "Legacy DB without alembic_version. Detected schema revision %r — "
+            "stamping there and upgrading to head.",
+            revision,
         )
-        _run_alembic("stamp", "head", url=str(engine.url))
+        _run_alembic("stamp", revision, url=str(engine.url))
+        if dev_auto_migrate:
+            _run_alembic("upgrade", "head", url=str(engine.url))
         return
 
     if not dev_auto_migrate:
@@ -64,6 +87,36 @@ def ensure_schema(engine: Engine, *, dev_auto_migrate: bool = True) -> None:
 
     _log.info("Empty database — applying baseline migration")
     _run_alembic("upgrade", "head", url=str(engine.url))
+
+
+def _detect_revision(insp) -> tuple[str, bool]:
+    """Identify which migration matches the current set of tables/columns.
+
+    Walks revisions from newest → oldest and returns the first revision whose
+    distinguishing tables are all present. Falls back to baseline if nothing
+    past baseline is detected.
+
+    Returns ``(revision_id, is_head)`` — ``is_head`` is True only when the
+    newest fingerprint matched, so the caller can skip a redundant
+    ``upgrade head`` in that case.
+    """
+    # Each entry: (revision_id, [tables that must all exist for this revision]).
+    # Order matters — newest first. The check returns the latest match.
+    REVISION_FINGERPRINTS: list[tuple[str, list[str]]] = [
+        # session 24: scheduled_jobs / webhook_subscriptions / experiment_templates
+        ("b2c3d4e5f6a7", ["scheduled_jobs", "webhook_subscriptions", "experiment_templates"]),
+        # session 22: prediction_logs / trials / model_library
+        ("a1b2c3d4e5f6", ["prediction_logs", "trials", "model_library"]),
+        # session 21: audit_logs / drift_reports
+        ("0cd9d5ea2e17", ["audit_logs", "drift_reports"]),
+        # session 17: llm_provider_settings / llm_consultations
+        ("d582b350c276", ["llm_provider_settings", "llm_consultations"]),
+    ]
+    for idx, (rev, required) in enumerate(REVISION_FINGERPRINTS):
+        if all(insp.has_table(t) for t in required):
+            return rev, idx == 0
+    # Default: pre-LLM baseline.
+    return "9f9b7c770df0", False
 
 
 def _run_alembic(*argv: str, url: str) -> None:

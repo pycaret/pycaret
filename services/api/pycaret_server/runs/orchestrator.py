@@ -31,12 +31,13 @@ import pandas as pd
 from pycaret.core.tasks import TaskType
 
 from pycaret_server.config import get_settings
-from pycaret_server.db import Artifact, Run, get_session
+from pycaret_server.db import Artifact, Experiment, Project, Run, Trial, get_session
 from pycaret_server.runs.broker import event_broker
 from pycaret_server.runs.logger_bridge import DBEventLogger
 from pycaret_server.runs.plans import (
     PlanName,
     execute_plan,
+    execute_search_plan,
     load_csv,
     load_inline,
     load_sklearn_dataset,
@@ -183,17 +184,40 @@ class RunOrchestrator:
             _checkpoint()
             df, target = self._load_data(spec)
             _checkpoint()
-            exp = _build_experiment(spec.task, target or spec.target, spec.setup_params)
-            exp.logger = DBEventLogger(run_id=spec.run_id, experiment_id=spec.experiment_id)
-            exp.fit(df)
-            _checkpoint()
 
-            outcome = execute_plan(
-                exp,
-                spec.plan,
-                model_id=spec.model_id,
-                plan_params=spec.plan_params,
-            )
+            if spec.plan == "search":
+                # Search plan re-fits per variant; orchestrator owns the
+                # build/fit loop instead of pre-fitting one experiment.
+                def _build(setup_params: dict[str, Any], tgt: str | None):
+                    exp_inner = _build_experiment(spec.task, tgt, setup_params)
+                    exp_inner.logger = DBEventLogger(
+                        run_id=spec.run_id, experiment_id=spec.experiment_id
+                    )
+                    return exp_inner
+
+                outcome = execute_search_plan(
+                    build_exp=_build,
+                    df=df,
+                    target=target or spec.target,
+                    base_setup_params=spec.setup_params,
+                    plan_params=spec.plan_params,
+                    checkpoint=_checkpoint,
+                )
+            else:
+                exp = _build_experiment(
+                    spec.task, target or spec.target, spec.setup_params
+                )
+                exp.logger = DBEventLogger(
+                    run_id=spec.run_id, experiment_id=spec.experiment_id
+                )
+                exp.fit(df)
+                _checkpoint()
+                outcome = execute_plan(
+                    exp,
+                    spec.plan,
+                    model_id=spec.model_id,
+                    plan_params=spec.plan_params,
+                )
             _checkpoint()
 
             artifact_row = None
@@ -210,6 +234,7 @@ class RunOrchestrator:
                 metrics_summary=_summarise_metrics(leaderboard),
                 extra_artifact=artifact_row,
             )
+            _fire_run_event(spec.run_id, "run.succeeded")
         except _CancelledError:
             _log.info("run %s cancelled", spec.run_id)
             self._transition(
@@ -219,6 +244,7 @@ class RunOrchestrator:
                 duration_ms=(datetime.now(UTC) - t0).total_seconds() * 1000,
                 error="cancelled by user",
             )
+            _fire_run_event(spec.run_id, "run.cancelled")
         except Exception as exc:  # noqa: BLE001 — persist *everything* the worker throws
             _log.exception("run %s failed", spec.run_id)
             self._transition(
@@ -228,6 +254,7 @@ class RunOrchestrator:
                 duration_ms=(datetime.now(UTC) - t0).total_seconds() * 1000,
                 error=f"{type(exc).__name__}: {exc}",
             )
+            _fire_run_event(spec.run_id, "run.failed")
         finally:
             # Close the WebSocket stream cleanly.
             event_broker.close_run(spec.run_id)
@@ -298,6 +325,7 @@ class RunOrchestrator:
                 run.duration_ms = duration_ms
             if leaderboard is not None:
                 run.leaderboard = leaderboard
+                _persist_trials(session, run, leaderboard)
             if metrics_summary is not None:
                 run.metrics_summary = metrics_summary
             if error is not None:
@@ -337,6 +365,87 @@ def _summarise_metrics(
         "rows": len(leaderboard),
         "best": leaderboard[0] if leaderboard else None,
     }
+
+
+def _fire_run_event(run_id: str, event_type: str) -> None:
+    """Best-effort webhook fan-out for run lifecycle transitions.
+
+    Loads the workspace_id off the run's experiment → project chain and
+    asynchronously dispatches. Never raises so a webhook target outage
+    can't escalate into a run-status corruption.
+    """
+    try:
+        from pycaret_server.webhooks import fire_event_async
+
+        with get_session() as s:
+            run: Run | None = s.get(Run, run_id)
+            if run is None:
+                return
+            workspace_id = (
+                s.query(Project.workspace_id)
+                .join(Experiment, Experiment.project_id == Project.id)
+                .filter(Experiment.id == run.experiment_id)
+                .scalar()
+            )
+            if not workspace_id:
+                return
+            payload = {
+                "workspace_id": workspace_id,
+                "run_id": run.id,
+                "experiment_id": run.experiment_id,
+                "status": run.status,
+                "duration_ms": run.duration_ms,
+                "error": run.error,
+            }
+        fire_event_async(event_type, payload)
+    except Exception:  # noqa: BLE001
+        _log.exception("failed to fire webhook %s for run %s", event_type, run_id)
+
+
+def _persist_trials(
+    session,
+    run: Run,
+    leaderboard: dict | list | None,
+) -> None:
+    """Promote each leaderboard row to a queryable ``Trial``.
+
+    Idempotent: clears any existing trials for this run before inserting,
+    so re-running a leaderboard write (e.g. retry) doesn't duplicate.
+    """
+    rows = leaderboard if isinstance(leaderboard, list) else None
+    if not rows:
+        return
+
+    workspace_id = (
+        session.query(Project.workspace_id)
+        .join(Experiment, Experiment.project_id == Project.id)
+        .filter(Experiment.id == run.experiment_id)
+        .scalar()
+    )
+    if workspace_id is None:
+        return
+
+    # Idempotent re-runs: drop existing trials for this run first.
+    session.query(Trial).filter(Trial.run_id == run.id).delete(synchronize_session=False)
+
+    for rank_idx, lb_row in enumerate(rows):
+        if not isinstance(lb_row, dict):
+            continue
+        model_id = str(lb_row.get("Model") or lb_row.get("index") or f"trial_{rank_idx}")
+        # Strip the model id off the metrics map so it isn't doubly persisted.
+        metrics = {k: v for k, v in lb_row.items() if k not in ("Model", "index")}
+        session.add(
+            Trial(
+                id=str(uuid.uuid4()),
+                run_id=run.id,
+                workspace_id=workspace_id,
+                model_id=model_id,
+                rank=rank_idx + 1,
+                metrics=metrics,
+                is_best=(rank_idx == 0),
+                fitted_pipeline_id=None,
+            )
+        )
 
 
 # ---------------------------------------------------------------- singleton

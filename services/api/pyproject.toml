@@ -33,6 +33,8 @@ dependencies = [
   "pyjwt>=2.9",                      # JWT auth
   "python-multipart>=0.0.12",        # CSV upload support
   "python-dateutil>=2.9",            # date parsing
+  "cryptography>=43",                # Fernet for at-rest secret encryption
+  "apscheduler>=3.10",               # in-process scheduler for drift + retraining
 ]
 
 [project.optional-dependencies]

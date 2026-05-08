@@ -68,17 +68,20 @@ def _serialise(m: WorkspaceMember, u: User) -> MemberRead:
 
 
 def _admin_count(db: Session, workspace_id: str) -> int:
-    """Count currently-active admins in the workspace.
+    """Count currently-active admin-class members in the workspace.
 
-    "Last admin" guard reads this + refuses to drop below 1.
+    "Last admin" guard reads this + refuses to drop below 1. Counts every
+    role in ``ADMIN_ROLES`` since any of them can perform admin-only writes.
     """
+    from pycaret_server.api.workspaces import ADMIN_ROLES
+
     return int(
         db.scalar(
             select(func.count())
             .select_from(WorkspaceMember)
             .where(
                 WorkspaceMember.workspace_id == workspace_id,
-                WorkspaceMember.role == "admin",
+                WorkspaceMember.role.in_(ADMIN_ROLES),
             )
         )
         or 0
@@ -143,6 +146,14 @@ def invite_member(
     if existing is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "user is already a member of this workspace")
 
+    from pycaret_server.api.workspaces import VALID_ROLES
+
+    if payload.role not in VALID_ROLES:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"invalid role {payload.role!r}; valid: {sorted(VALID_ROLES)}",
+        )
+
     m = WorkspaceMember(
         workspace_id=workspace_id,
         user_id=target.id,
@@ -176,8 +187,17 @@ def change_role(
     if m is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "member not found")
 
-    # If we're demoting an admin, refuse if that drops the workspace to zero admins.
-    if m.role == "admin" and payload.role != "admin" and _admin_count(db, workspace_id) <= 1:
+    from pycaret_server.api.workspaces import ADMIN_ROLES, VALID_ROLES
+
+    if payload.role not in VALID_ROLES:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"invalid role {payload.role!r}; valid: {sorted(VALID_ROLES)}",
+        )
+
+    # Last-admin guard: refuse if this change drops the admin-class count to 0.
+    is_demotion = m.role in ADMIN_ROLES and payload.role not in ADMIN_ROLES
+    if is_demotion and _admin_count(db, workspace_id) <= 1:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             "cannot demote the last admin of this workspace",
@@ -213,7 +233,9 @@ def remove_member(
     if m is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "member not found")
 
-    if m.role == "admin" and _admin_count(db, workspace_id) <= 1:
+    from pycaret_server.api.workspaces import ADMIN_ROLES
+
+    if m.role in ADMIN_ROLES and _admin_count(db, workspace_id) <= 1:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             "cannot remove the last admin of this workspace",

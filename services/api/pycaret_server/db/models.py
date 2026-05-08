@@ -352,6 +352,14 @@ class Pipeline(UUIDMixin, TimestampMixin, Base):
     stored_path: Mapped[str] = mapped_column(String(1024), nullable=False)
     sha256: Mapped[str | None] = mapped_column(String(64), index=True)
     params: Mapped[dict | None] = mapped_column(JSON)  # estimator.get_params(deep=False)
+    # Versioning lineage (Spec § 4.7): pipelines that share a ``family_id``
+    # are revisions of the same logical model. ``version`` increments within
+    # a family. The first promotion creates a new family; subsequent
+    # promotions of the same name within a workspace bump the version and
+    # reuse the family_id so deployment rollback is just "select an earlier
+    # row in the same family".
+    family_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     created_by: Mapped[str] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
@@ -573,4 +581,219 @@ class AuditLog(UUIDMixin, Base):
         nullable=False,
         index=True,
         default=lambda: datetime.now(UTC),
+    )
+
+
+class PredictionLog(UUIDMixin, Base):
+    """Append-only log of every prediction served by a deployment.
+
+    Spec § 4.11 / § 11.2 (drift). Written by the ``/deployments/{slug}/predict``
+    handler after each successful (or failed) inference. Drift detection,
+    rate-limit forensics, and post-hoc auditing all read from this table.
+
+    Sampling: ``request_sample`` and ``response_sample`` capture *up to*
+    ``MAX_LOG_ROWS`` records to bound storage; the full ``n_rows`` count is
+    always exact. Set ``request_sample = None`` to disable input retention
+    on a per-deployment basis (future privacy switch).
+
+    No ``updated_at`` — rows are immutable.
+    """
+
+    __tablename__ = "prediction_logs"
+
+    deployment_id: Mapped[str] = mapped_column(
+        ForeignKey("deployments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    request_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    n_rows: Mapped[int] = mapped_column(Integer, nullable=False)
+    latency_ms: Mapped[float | None] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(16), default="ok", nullable=False, index=True)
+    error: Mapped[str | None] = mapped_column(Text)
+    request_sample: Mapped[list | None] = mapped_column(JSON)
+    response_sample: Mapped[list | None] = mapped_column(JSON)
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+        default=lambda: datetime.now(UTC),
+    )
+
+
+class ModelLibrary(UUIDMixin, TimestampMixin, Base):
+    """Workspace-scoped, editable view of the engine's model registry.
+
+    The engine ships a hardcoded set of models per task in
+    ``pycaret.api.list_models(task)``. ``ModelLibrary`` mirrors that set into
+    DB rows the workspace admin can enable/disable and override params on.
+
+    v1 semantics: rows are populated lazily on first read of a (workspace,
+    task) pair via ``sync_from_engine``. Subsequent reads serve the DB.
+    Engine-side enforcement (filtering ``compare_models`` by enabled rows)
+    is V2; for now this is a UI-driven catalog.
+
+    Unique on (workspace_id, task_type, model_id).
+    """
+
+    __tablename__ = "model_library"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "task_type", "model_id", name="uq_model_library_ws_task_model"
+        ),
+    )
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    task_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    model_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    custom_params: Mapped[dict | None] = mapped_column(JSON)
+    created_by: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+
+
+class ScheduledJob(UUIDMixin, TimestampMixin, Base):
+    """Cron / interval-scheduled background job (drift monitor, retrain, …).
+
+    Spec § 4.13 / § 11.2. Hydrated into the in-process scheduler at startup
+    (see ``pycaret_server.scheduler``). v1: each row's ``kind`` picks one of
+    a small set of built-in handlers. Workspace-scoped so each tenant
+    schedules its own jobs.
+
+    ``schedule`` is one of:
+      * ``{"interval_seconds": int}`` — fixed interval
+      * ``{"cron": "0 */6 * * *"}``    — cron expression (UTC)
+
+    ``target_id`` is the FK kind-specific:
+      * ``kind="drift_monitor"``  → deployment_id
+      * ``kind="retrain"``        → experiment_id
+    """
+
+    __tablename__ = "scheduled_jobs"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    target_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    schedule: Mapped[dict] = mapped_column(JSON, nullable=False)
+    spec: Mapped[dict | None] = mapped_column(JSON)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_status: Mapped[str | None] = mapped_column(String(16))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    last_run_run_id: Mapped[str | None] = mapped_column(String(36))
+    created_by: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+
+
+class WebhookSubscription(UUIDMixin, TimestampMixin, Base):
+    """Outgoing webhook target — fired on platform events.
+
+    Spec § 12.4. Each row matches a workspace + a list of event types
+    (e.g. ``run.succeeded``, ``run.failed``, ``deployment.created``,
+    ``drift.alert``). Payloads are JSON-POSTed to ``url``; an HMAC of
+    the body using ``secret`` is sent in ``X-PyCaret-Signature``.
+
+    ``filters`` is a free-form match dict (e.g. ``{"experiment_id": "..."}``);
+    rows whose filters subset-match the event's payload are fired.
+    """
+
+    __tablename__ = "webhook_subscriptions"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    url: Mapped[str] = mapped_column(String(512), nullable=False)
+    event_types: Mapped[list] = mapped_column(JSON, nullable=False)
+    secret_encrypted: Mapped[str | None] = mapped_column(Text)
+    filters: Mapped[dict | None] = mapped_column(JSON)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    last_fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_status_code: Mapped[int | None] = mapped_column(Integer)
+    last_error: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+
+
+class ExperimentTemplate(UUIDMixin, TimestampMixin, Base):
+    """Saved experiment configuration that can be reused as a starting point.
+
+    Spec § 4.14. A workspace admin captures a known-good ``setup_params``
+    dict + plan defaults (``plan_params``) and surfaces it on the New
+    Experiment screen so users can pick a template instead of filling out
+    the dynamic form from scratch.
+    """
+
+    __tablename__ = "experiment_templates"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    task: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    setup_params: Mapped[dict] = mapped_column(JSON, nullable=False)
+    plan_params: Mapped[dict | None] = mapped_column(JSON)
+    created_by: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+
+
+class Trial(UUIDMixin, TimestampMixin, Base):
+    """One AutoML candidate from a ``compare_models`` / ``automl`` run.
+
+    Spec § 4.6: promote the JSON ``Run.leaderboard`` rows into queryable
+    entities so the UI's Trials tab can sort, filter, link to fitted
+    pipelines, and rank cross-run. Written by ``RunOrchestrator`` at the
+    same time it persists the leaderboard JSON; the JSON column on Run
+    stays for backwards-compat callers but Trial rows are the source of
+    truth going forward.
+
+    ``model_id`` is the engine model registry id (``"lr"``, ``"rf"``, …).
+    ``rank`` is 1-based on the leaderboard's primary sort metric.
+    ``metrics`` is the row's per-metric values as written by
+    ``CompareResult.leaderboard``.
+    """
+
+    __tablename__ = "trials"
+
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    model_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    rank: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    metrics: Mapped[dict] = mapped_column(JSON, nullable=False)
+    is_best: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    fitted_pipeline_id: Mapped[str | None] = mapped_column(
+        ForeignKey("pipelines.id", ondelete="SET NULL"), index=True
     )

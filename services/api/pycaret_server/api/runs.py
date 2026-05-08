@@ -31,8 +31,9 @@ from pycaret_server.api.schemas import EventResponse, RunCreate, RunResponse
 from pycaret_server.api.workspaces import _require_access
 from pycaret_server.auth import CurrentUser
 from pycaret_server.auth.tokens import decode_token
-from pycaret_server.db import DataSource, Event, Experiment, Project, Run, User, get_db
+from pycaret_server.db import DataSource, Event, Experiment, Project, Run, Trial, User, get_db
 from pycaret_server.runs.broker import event_broker
+from pycaret_server.runs.dispatch import dispatch_run
 from pycaret_server.runs.orchestrator import RunSpec, get_orchestrator
 
 router = APIRouter(tags=["runs"])
@@ -41,10 +42,28 @@ router = APIRouter(tags=["runs"])
 # ------------------------------------------------------------------- helpers
 
 
-def _serialise_run(r: Run) -> RunResponse:
+def _serialise_run(r: Run, db: Session | None = None) -> RunResponse:
+    """Serialise a Run row.
+
+    When ``db`` is provided we walk Experiment → Project to resolve
+    ``project_id`` + ``workspace_id`` so deep-linked clients (the React
+    sidebar's `/runs/:id` route) recover their context without a chain of
+    extra requests.
+    """
+    project_id: str | None = None
+    workspace_id: str | None = None
+    if db is not None:
+        exp = db.get(Experiment, r.experiment_id)
+        if exp is not None:
+            project_id = exp.project_id
+            proj = db.get(Project, exp.project_id)
+            if proj is not None:
+                workspace_id = proj.workspace_id
     return RunResponse(
         id=r.id,
         experiment_id=r.experiment_id,
+        project_id=project_id,
+        workspace_id=workspace_id,
         status=r.status,
         started_at=r.started_at,
         finished_at=r.finished_at,
@@ -106,91 +125,7 @@ def submit_run(
 ) -> RunResponse:
     """Enqueue a run. Returns 202 with a Run row in status='queued'."""
     e = _experiment_access(experiment_id, user, db)
-
-    if payload.plan not in ("setup", "create", "compare"):
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            f"invalid plan {payload.plan!r}; must be one of setup|create|compare",
-        )
-    if payload.plan == "create" and not payload.model_id:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "plan='create' requires model_id",
-        )
-    if not (payload.sklearn_dataset or payload.data_inline or payload.data_source_id):
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "must supply sklearn_dataset, data_inline, or data_source_id",
-        )
-
-    # Resolve data_source_id -> CSV path + guard workspace access.
-    data_source_path: str | None = None
-    if payload.data_source_id:
-        ds = db.get(DataSource, payload.data_source_id)
-        if ds is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "data source not found")
-        project_ws = db.get(Project, e.project_id).workspace_id
-        if ds.workspace_id != project_ws:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                "data source belongs to a different workspace than the experiment",
-            )
-        if ds.kind != "csv_upload":
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                f"data source kind {ds.kind!r} not yet supported for runs; "
-                "only 'csv_upload' is implemented",
-            )
-        data_source_path = (ds.config or {}).get("path")
-        if not data_source_path:
-            raise HTTPException(
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "data source missing 'path' in config",
-            )
-
-    # Resolve target: prefer explicit payload.target, fall back to experiment.target.
-    effective_target = payload.target or e.target
-
-    # Snapshot the experiment config into the run for reproducibility.
-    snapshot = {
-        "task": e.task,
-        "target": effective_target,
-        "setup_params": dict(e.setup_params or {}),
-        "plan": payload.plan,
-        "model_id": payload.model_id,
-        "plan_params": dict(payload.plan_params or {}),
-        "sklearn_dataset": payload.sklearn_dataset,
-        "data_inline_rows": len(payload.data_inline) if payload.data_inline else 0,
-        "data_source_id": payload.data_source_id,
-    }
-
-    r = Run(
-        experiment_id=e.id,
-        status="queued",
-        created_by=user.id,
-        snapshot=snapshot,
-    )
-    db.add(r)
-    db.commit()
-    db.refresh(r)
-
-    spec = RunSpec(
-        run_id=r.id,
-        experiment_id=e.id,
-        task=TaskType(e.task),
-        target=effective_target,
-        setup_params=dict(e.setup_params or {}),
-        plan=payload.plan,  # type: ignore[arg-type]
-        model_id=payload.model_id,
-        plan_params=dict(payload.plan_params or {}),
-        sklearn_dataset=payload.sklearn_dataset,
-        data_inline=list(payload.data_inline) if payload.data_inline else None,
-        data_source_path=data_source_path,
-        target_override=payload.target,
-    )
-    get_orchestrator().submit(spec)
-
-    return _serialise_run(r)
+    return _serialise_run(dispatch_run(db, e, payload, user_id=user.id), db)
 
 
 @router.post("/runs/{run_id}/cancel", response_model=RunResponse)
@@ -207,11 +142,11 @@ def cancel_run(
     """
     r = _run_access(run_id, user, db)
     if r.status in ("succeeded", "failed", "cancelled"):
-        return _serialise_run(r)
+        return _serialise_run(r, db)
     get_orchestrator().cancel(run_id)
     # Don't refresh — the worker may still be running. The status flip happens
     # when the checkpoint trips; the client can poll or watch the WS for it.
-    return _serialise_run(r)
+    return _serialise_run(r, db)
 
 
 @router.get(
@@ -227,7 +162,7 @@ def list_runs(
     rows = db.scalars(
         select(Run).where(Run.experiment_id == experiment_id).order_by(Run.created_at.desc())
     ).all()
-    return [_serialise_run(r) for r in rows]
+    return [_serialise_run(r, db) for r in rows]
 
 
 # ---------------------------------------------------------------- fetch + events
@@ -239,7 +174,40 @@ def get_run(
     user: CurrentUser,
     db: Annotated[Session, Depends(get_db)],
 ) -> RunResponse:
-    return _serialise_run(_run_access(run_id, user, db))
+    return _serialise_run(_run_access(run_id, user, db), db)
+
+
+@router.get("/runs/{run_id}/trials")
+def list_trials(
+    run_id: str,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    """Return the trials persisted for this run.
+
+    A trial is one candidate model from a ``compare_models`` / ``automl`` plan,
+    promoted from the leaderboard JSON into a queryable row. Sorted by ``rank``
+    ascending (best first).
+    """
+    _run_access(run_id, user, db)
+    rows = db.scalars(
+        select(Trial).where(Trial.run_id == run_id).order_by(Trial.rank.asc())
+    ).all()
+    return {
+        "run_id": run_id,
+        "items": [
+            {
+                "id": t.id,
+                "model_id": t.model_id,
+                "rank": t.rank,
+                "metrics": t.metrics,
+                "is_best": t.is_best,
+                "fitted_pipeline_id": t.fitted_pipeline_id,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+            }
+            for t in rows
+        ],
+    }
 
 
 @router.get("/runs/{run_id}/events", response_model=list[EventResponse])
@@ -276,14 +244,14 @@ def wait_for_run(
     the UI uses the WebSocket to stay async."""
     r = _run_access(run_id, user, db)
     if r.status in ("succeeded", "failed", "cancelled"):
-        return _serialise_run(r)
+        return _serialise_run(r, db)
     try:
         get_orchestrator().wait_for(run_id, timeout=timeout_s)
     except Exception:
         # Propagate the run row as-is; status will reflect what actually happened.
         pass
     db.refresh(r)
-    return _serialise_run(r)
+    return _serialise_run(r, db)
 
 
 # ---------------------------------------------------------------- WebSocket

@@ -142,6 +142,8 @@ class RunCreate(BaseModel):
 class RunResponse(BaseModel):
     id: str
     experiment_id: str
+    project_id: str | None = None
+    workspace_id: str | None = None
     status: str
     started_at: datetime | None
     finished_at: datetime | None

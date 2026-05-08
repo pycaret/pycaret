@@ -18,9 +18,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from pycaret_server import __version__
 from pycaret_server.api import (
+    admin,
     api_keys,
     audit,
     auth,
+    backup,
     data_sources,
     deployments,
     describe,
@@ -28,10 +30,14 @@ from pycaret_server.api import (
     experiments,
     llm,
     members,
+    model_library,
     plots,
     projects,
     runs,
+    schedules,
     setup,
+    templates,
+    webhooks,
     workspaces,
 )
 from pycaret_server.audit import AuditLogMiddleware
@@ -40,6 +46,7 @@ from pycaret_server.db import Base, engine
 from pycaret_server.db.bootstrap import ensure_schema
 from pycaret_server.llm.router import reset_router as reset_llm_router
 from pycaret_server.runs.orchestrator import reset_orchestrator
+from pycaret_server.scheduler import register_jobs_from_db, shutdown_scheduler
 from pycaret_server.serving import reset_registry
 
 
@@ -63,6 +70,17 @@ async def _lifespan(app: FastAPI):
     _ = Base
 
     settings.artifact_dir.mkdir(parents=True, exist_ok=True)
+
+    # Hydrate scheduled jobs from the DB. Best-effort: the scheduler is a
+    # convenience layer, never the critical path — log + carry on if any
+    # individual job fails to register.
+    try:
+        register_jobs_from_db()
+    except Exception:  # noqa: BLE001
+        import logging
+
+        logging.getLogger(__name__).exception("scheduler hydration failed")
+
     try:
         yield
     finally:
@@ -73,6 +91,7 @@ async def _lifespan(app: FastAPI):
         reset_orchestrator()
         reset_registry()
         reset_llm_router()
+        shutdown_scheduler()
 
 
 def create_app() -> FastAPI:
@@ -120,8 +139,14 @@ def create_app() -> FastAPI:
         deployments.router,
         drift.router,
         llm.router,
+        model_library.router,
+        schedules.router,
+        templates.router,
+        webhooks.router,
+        backup.router,
         audit.router,
         plots.router,
+        admin.router,
     ):
         app.include_router(router, prefix="/api/v1")
 

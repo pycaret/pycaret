@@ -21,7 +21,7 @@ from typing import Any, Literal
 import pandas as pd
 from pycaret.core.experiment import Experiment
 
-PlanName = Literal["setup", "create", "compare"]
+PlanName = Literal["setup", "create", "compare", "search"]
 
 
 @dataclass
@@ -63,7 +63,123 @@ def execute_plan(
             extra={"ranked_ids": list(getattr(result, "ranked_ids", []) or [])},
         )
 
+    if plan == "search":
+        raise RuntimeError(
+            "plan='search' must be handled by the orchestrator (it iterates "
+            "preprocessing variants by re-fitting the experiment)."
+        )
+
     raise ValueError(f"unknown plan {plan!r}")
+
+
+def execute_search_plan(
+    *,
+    build_exp,
+    df: pd.DataFrame,
+    target: str | None,
+    base_setup_params: dict[str, Any],
+    plan_params: dict[str, Any] | None,
+    checkpoint=lambda: None,
+) -> PlanOutcome:
+    """Iterate preprocessing variants, run ``compare_models`` for each, aggregate.
+
+    ``plan_params`` keys:
+      * ``variants``: list of dicts. Each is a ``setup_params`` *override*
+        merged on top of ``base_setup_params``. If empty, defaults to
+        ``[{}, {"normalize": True}, {"normalize": True, "transformation": True}]``.
+      * ``compare_params``: dict passed to ``compare_models`` for every variant.
+      * ``optimize``: metric name passed as ``compare_models(sort=...)``.
+
+    Returns a single ``PlanOutcome`` whose ``leaderboard`` is the
+    concatenation of every variant's leaderboard with a ``Variant`` column,
+    and whose ``best_model`` is the globally-best fitted pipeline.
+    """
+    params = dict(plan_params or {})
+    variants_in = params.get("variants")
+    if not variants_in:
+        variants = [
+            {},
+            {"normalize": True},
+            {"normalize": True, "transformation": True},
+        ]
+    else:
+        variants = list(variants_in)
+
+    compare_params = dict(params.get("compare_params") or {})
+    if "optimize" in params and "sort" not in compare_params:
+        compare_params["sort"] = params["optimize"]
+
+    aggregated: list[pd.DataFrame] = []
+    best_overall = None
+    best_score: float | None = None
+    best_lower_is_better = False
+
+    for idx, override in enumerate(variants):
+        checkpoint()
+        merged = {**base_setup_params, **(override or {})}
+        exp = build_exp(merged, target)
+        exp.fit(df)
+        result = exp.compare_models(**compare_params)
+        lb = getattr(result, "leaderboard", None)
+        if lb is None or lb.empty:
+            continue
+        lb = lb.copy()
+        lb.insert(0, "Variant", idx)
+        aggregated.append(lb)
+
+        candidate = getattr(result, "best", None)
+        if candidate is None:
+            continue
+        # Use the first numeric column as the ranking key (mirrors
+        # ``CompareResult.leaderboard`` ordering, which is already sorted by
+        # the optimize metric).
+        first_row = lb.iloc[0]
+        sort_col = compare_params.get("sort") or _first_metric_col(lb)
+        if sort_col not in lb.columns:
+            continue
+        score = float(first_row[sort_col])
+        lower_is_better = sort_col.lower() in {"mae", "mse", "rmse", "rmsle", "mape"}
+        if best_overall is None or _is_better(
+            score, best_score, lower_is_better
+        ):
+            best_overall = candidate
+            best_score = score
+            best_lower_is_better = lower_is_better
+
+    if not aggregated:
+        return PlanOutcome()
+
+    final = pd.concat(aggregated, ignore_index=True)
+    sort_col = compare_params.get("sort") or _first_metric_col(final)
+    if sort_col in final.columns:
+        final = final.sort_values(
+            by=sort_col, ascending=best_lower_is_better
+        ).reset_index(drop=True)
+
+    return PlanOutcome(
+        leaderboard=final,
+        best_model=best_overall,
+        extra={
+            "n_variants": len(variants),
+            "best_score": best_score,
+            "sort_metric": sort_col,
+        },
+    )
+
+
+def _first_metric_col(df: pd.DataFrame) -> str:
+    for c in df.columns:
+        if c in ("Variant", "Model"):
+            continue
+        if pd.api.types.is_numeric_dtype(df[c]):
+            return c
+    return "Model"
+
+
+def _is_better(score: float, current_best: float | None, lower_is_better: bool) -> bool:
+    if current_best is None:
+        return True
+    return score < current_best if lower_is_better else score > current_best
 
 
 # -------------------------------------------------------------- data loaders

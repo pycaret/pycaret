@@ -43,11 +43,17 @@ from pycaret_server.db import (
     Deployment,
     Experiment,
     Pipeline,
+    PredictionLog,
     Project,
     Run,
     get_db,
 )
 from pycaret_server.serving import get_registry
+
+# Cap on input/output rows persisted per PredictionLog row. Total prediction
+# count remains exact via PredictionLog.n_rows; this just bounds storage of
+# the actual feature/label payloads.
+_MAX_LOG_ROWS = 50
 
 router = APIRouter(tags=["deployments"])
 
@@ -69,6 +75,8 @@ def _serialise_pipeline(p: Pipeline) -> dict:
         "stored_path": p.stored_path,
         "sha256": p.sha256,
         "params": dict(p.params or {}),
+        "family_id": p.family_id,
+        "version": p.version,
         "created_at": p.created_at,
         "created_by": p.created_by,
     }
@@ -135,6 +143,22 @@ def promote_run(
     if not name:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "name is required")
 
+    # Versioning: pipelines that share (workspace_id, name) are revisions of
+    # the same logical model. Compute family_id + next version by looking
+    # up the latest existing row with that name.
+    prior = db.scalar(
+        select(Pipeline)
+        .where(Pipeline.workspace_id == p.workspace_id, Pipeline.name == str(name))
+        .order_by(Pipeline.version.desc())
+        .limit(1)
+    )
+    if prior is None:
+        family_id = str(uuid.uuid4())
+        version = 1
+    else:
+        family_id = prior.family_id or prior.id
+        version = (prior.version or 1) + 1
+
     pipe = Pipeline(
         workspace_id=p.workspace_id,
         name=str(name),
@@ -145,6 +169,8 @@ def promote_run(
         stored_path=art.path,
         sha256=art.sha256,
         params=None,
+        family_id=family_id,
+        version=version,
         created_by=user.id,
     )
     db.add(pipe)
@@ -182,6 +208,47 @@ def get_pipeline(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "pipeline not found")
     _require_access(user, db, p.workspace_id)
     return _serialise_pipeline(p)
+
+
+@router.get("/pipelines/{pipeline_id}/versions")
+def list_pipeline_versions(
+    pipeline_id: str,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    """Return every revision in the same ``family`` as ``pipeline_id``.
+
+    Versioning model: Pipelines that share ``(workspace_id, name)`` are
+    revisions of the same logical model and share a ``family_id``. This
+    endpoint lists them in version-descending order so the UI can build a
+    "rollback to..." picker.
+    """
+    p = db.get(Pipeline, pipeline_id)
+    if p is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "pipeline not found")
+    _require_access(user, db, p.workspace_id)
+
+    if p.family_id:
+        stmt = (
+            select(Pipeline)
+            .where(
+                Pipeline.workspace_id == p.workspace_id,
+                Pipeline.family_id == p.family_id,
+            )
+            .order_by(Pipeline.version.desc())
+        )
+    else:
+        # Older rows without a family_id — fall back to name match.
+        stmt = (
+            select(Pipeline)
+            .where(
+                Pipeline.workspace_id == p.workspace_id,
+                Pipeline.name == p.name,
+            )
+            .order_by(Pipeline.created_at.desc())
+        )
+    rows = db.scalars(stmt).all()
+    return {"family_id": p.family_id, "items": [_serialise_pipeline(r) for r in rows]}
 
 
 @router.delete("/pipelines/{pipeline_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -301,6 +368,68 @@ def delete_deployment(
     db.commit()
 
 
+@router.post("/deployments/{deployment_id}/rollback")
+def rollback_deployment(
+    deployment_id: str,
+    payload: dict,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    """Repoint a deployment at a different Pipeline in the same family.
+
+    Payload::
+
+        {"pipeline_id": "<uuid>"}
+
+    The target Pipeline must belong to the same workspace AND share the
+    deployment's current family_id (or the same name if family_id is unset).
+    The in-memory registry is evicted so the next ``/predict`` reloads the
+    new artifact.
+    """
+    d = db.get(Deployment, deployment_id)
+    if d is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "deployment not found")
+    _require_access(user, db, d.workspace_id)
+
+    target_id = (payload or {}).get("pipeline_id")
+    if not target_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "pipeline_id is required")
+
+    target = db.get(Pipeline, target_id)
+    if target is None or target.workspace_id != d.workspace_id:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "target pipeline not in this workspace",
+        )
+
+    current = db.get(Pipeline, d.pipeline_id)
+    if current is None:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "underlying pipeline row missing",
+        )
+    same_family = (
+        current.family_id is not None
+        and current.family_id == target.family_id
+    )
+    same_name_fallback = (
+        current.family_id is None and current.name == target.name
+    )
+    if not (same_family or same_name_fallback):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "target pipeline is not in the same family/name as the current pipeline",
+        )
+
+    d.pipeline_id = target.id
+    db.commit()
+    db.refresh(d)
+    get_registry().evict(d.endpoint_slug)
+
+    p50, p95 = get_registry().latency_percentiles(d.endpoint_slug)
+    return _serialise_deployment(d, (p50, p95))
+
+
 # --------------------------------------------------------- SERVE (by slug)
 
 
@@ -347,10 +476,25 @@ def predict(
             "underlying pipeline row missing — deployment is orphaned",
         )
 
+    request_id = str(uuid.uuid4())
     try:
         preds, latency = get_registry().predict(endpoint_slug, pipe_row.stored_path, rows)
     except Exception as exc:  # noqa: BLE001
         d.error_count += 1
+        db.add(
+            PredictionLog(
+                deployment_id=d.id,
+                workspace_id=d.workspace_id,
+                request_id=request_id,
+                n_rows=len(rows),
+                latency_ms=None,
+                status="error",
+                error=f"{type(exc).__name__}: {exc}",
+                request_sample=rows[:_MAX_LOG_ROWS],
+                response_sample=None,
+                user_id=user.id,
+            )
+        )
         db.commit()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"prediction failed: {exc}") from exc
 
@@ -360,6 +504,21 @@ def predict(
     p50, p95 = get_registry().latency_percentiles(endpoint_slug)
     d.p50_latency_ms = p50
     d.p95_latency_ms = p95
+
+    db.add(
+        PredictionLog(
+            deployment_id=d.id,
+            workspace_id=d.workspace_id,
+            request_id=request_id,
+            n_rows=len(rows),
+            latency_ms=latency,
+            status="ok",
+            error=None,
+            request_sample=rows[:_MAX_LOG_ROWS],
+            response_sample=preds[:_MAX_LOG_ROWS],
+            user_id=user.id,
+        )
+    )
     db.commit()
 
     return {
@@ -367,5 +526,58 @@ def predict(
         "endpoint_slug": endpoint_slug,
         "predictions": preds,
         "latency_ms": latency,
-        "request_id": str(uuid.uuid4()),
+        "request_id": request_id,
+    }
+
+
+# --------------------------------------------------------- prediction logs
+
+
+@router.get("/deployments/{deployment_id}/prediction-logs")
+def list_prediction_logs(
+    deployment_id: str,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+    limit: int = 100,
+    offset: int = 0,
+    status_filter: str | None = None,
+) -> dict:
+    """Paginated read of prediction logs for a deployment.
+
+    Sorted newest-first. ``limit`` clamped to [1, 500]. Use ``status_filter='ok'``
+    or ``status_filter='error'`` to scope to a single class.
+    """
+    d = db.get(Deployment, deployment_id)
+    if d is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "deployment not found")
+    _require_access(user, db, d.workspace_id)
+
+    limit = max(1, min(500, limit))
+    offset = max(0, offset)
+
+    stmt = select(PredictionLog).where(PredictionLog.deployment_id == deployment_id)
+    if status_filter in ("ok", "error"):
+        stmt = stmt.where(PredictionLog.status == status_filter)
+    stmt = stmt.order_by(PredictionLog.created_at.desc()).limit(limit).offset(offset)
+
+    rows = db.scalars(stmt).all()
+    return {
+        "deployment_id": deployment_id,
+        "limit": limit,
+        "offset": offset,
+        "items": [
+            {
+                "id": r.id,
+                "request_id": r.request_id,
+                "created_at": r.created_at.isoformat(),
+                "n_rows": r.n_rows,
+                "latency_ms": r.latency_ms,
+                "status": r.status,
+                "error": r.error,
+                "request_sample": r.request_sample,
+                "response_sample": r.response_sample,
+                "user_id": r.user_id,
+            }
+            for r in rows
+        ],
     }

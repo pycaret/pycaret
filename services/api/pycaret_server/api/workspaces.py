@@ -117,10 +117,21 @@ def _require_access(user, db: Session, workspace_id: str) -> WorkspaceMember | N
     return m
 
 
+# Roles with admin-equivalent privileges. Spec § 17.2 expanded the set
+# from {admin, member} to a 7-role lattice; ``ADMIN_ROLES`` are the ones
+# that still pass ``_require_admin`` (workspace-wide write access).
+ADMIN_ROLES = frozenset({"owner", "admin", "project_admin"})
+
+# All recognised roles. Used to validate writes via the members API.
+VALID_ROLES = frozenset(
+    {"owner", "admin", "project_admin", "ml_engineer", "data_scientist", "viewer", "service_account", "member"}
+)
+
+
 def _require_admin(user, db: Session, workspace_id: str) -> None:
-    """Raise 403 unless user is superuser OR workspace admin."""
+    """Raise 403 unless user is superuser OR holds an admin-class workspace role."""
     if user.is_superuser:
         return
     m = _require_access(user, db, workspace_id)
-    if m is None or m.role != "admin":
+    if m is None or m.role not in ADMIN_ROLES:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "workspace admin required")
