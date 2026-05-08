@@ -1,9 +1,10 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/state/auth';
-import { authApi, workspacesApi } from '@/api/endpoints';
+import { authApi, runsApi, workspacesApi } from '@/api/endpoints';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CommandPalette } from '@/components/CommandPalette';
+import { AIAdvisorWidget } from '@/components/AIAdvisorWidget';
 import { useUIPrefs, type Theme } from '@/state/uiPrefs';
 
 /**
@@ -24,10 +25,27 @@ export function Layout() {
   const sidebarCollapsed = useUIPrefs((s) => s.sidebarCollapsed);
   const toggleSidebar = useUIPrefs((s) => s.toggleSidebar);
 
-  const activeWsId = useMemo<string | undefined>(() => {
+  // Most routes embed the workspace ID directly in the URL. `/runs/:id` is
+  // a flat path — fall back to the workspace_id the backend serialises onto
+  // the Run response so the sidebar keeps its context.
+  const wsFromUrl = useMemo<string | undefined>(() => {
     const m = location.pathname.match(/\/workspaces\/([^/]+)/);
     return m ? m[1] : undefined;
   }, [location.pathname]);
+
+  const runIdFromUrl = useMemo<string | undefined>(() => {
+    const m = location.pathname.match(/^\/runs\/([^/]+)/);
+    return m ? m[1] : undefined;
+  }, [location.pathname]);
+
+  const runForCtx = useQuery({
+    queryKey: ['runs', runIdFromUrl],
+    queryFn: () => runsApi.get(runIdFromUrl!),
+    enabled: !!runIdFromUrl && !wsFromUrl,
+    staleTime: 60_000,
+  });
+
+  const activeWsId = wsFromUrl ?? runForCtx.data?.workspace_id ?? undefined;
 
   const me = useQuery({
     queryKey: ['auth', 'me'],
@@ -146,6 +164,27 @@ export function Layout() {
                 Drift
               </SidebarLink>
               <SidebarLink
+                to={`/workspaces/${activeWsId}/schedules`}
+                icon={<ClockIcon />}
+                collapsed={sidebarCollapsed}
+              >
+                Schedules
+              </SidebarLink>
+              <SidebarLink
+                to={`/workspaces/${activeWsId}/templates`}
+                icon={<TemplateIcon />}
+                collapsed={sidebarCollapsed}
+              >
+                Templates
+              </SidebarLink>
+              <SidebarLink
+                to={`/workspaces/${activeWsId}/webhooks`}
+                icon={<HookIcon />}
+                collapsed={sidebarCollapsed}
+              >
+                Webhooks
+              </SidebarLink>
+              <SidebarLink
                 to={`/workspaces/${activeWsId}/llm`}
                 icon={<SparkIcon />}
                 collapsed={sidebarCollapsed}
@@ -159,6 +198,13 @@ export function Layout() {
               >
                 Members
               </SidebarLink>
+              <SidebarLink
+                to={`/workspaces/${activeWsId}/admin`}
+                icon={<ShieldIcon />}
+                collapsed={sidebarCollapsed}
+              >
+                Admin
+              </SidebarLink>
             </NavGroup>
           )}
 
@@ -171,13 +217,22 @@ export function Layout() {
               API keys
             </SidebarLink>
             {user?.is_superuser && (
-              <SidebarLink
-                to="/admin/audit"
-                icon={<ShieldIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Audit log
-              </SidebarLink>
+              <>
+                <SidebarLink
+                  to="/admin/users"
+                  icon={<UsersIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Platform users
+                </SidebarLink>
+                <SidebarLink
+                  to="/admin/audit"
+                  icon={<ShieldIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Audit log
+                </SidebarLink>
+              </>
             )}
           </NavGroup>
         </nav>
@@ -277,6 +332,7 @@ export function Layout() {
       </div>
 
       <CommandPalette wsId={activeWsId} />
+      <AIAdvisorWidget />
     </div>
   );
 }
@@ -677,5 +733,25 @@ const GridIcon = () => (
     <rect x="14" y="3" width="7" height="7" rx="1" />
     <rect x="3" y="14" width="7" height="7" rx="1" />
     <rect x="14" y="14" width="7" height="7" rx="1" />
+  </svg>
+);
+const ClockIcon = () => (
+  <svg {...stroke}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </svg>
+);
+const TemplateIcon = () => (
+  <svg {...stroke}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M3 9h18" />
+    <path d="M9 21V9" />
+  </svg>
+);
+const HookIcon = () => (
+  <svg {...stroke}>
+    <path d="M18 6V3" />
+    <path d="M18 6a4 4 0 0 0-4 4v6a3 3 0 1 1-6 0v-2" />
+    <circle cx="18" cy="3" r="1" />
   </svg>
 );

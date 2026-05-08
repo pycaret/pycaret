@@ -1,46 +1,35 @@
 /**
  * Workspace home — `/workspaces/:wsId/home`.
  *
- * Replaces the bare workspace landing screen with a real cockpit:
- *  - KPI strip: active experiments / runs in last 7d / pipelines /
- *    deployments healthy.
- *  - Recent runs feed (status pill + duration).
- *  - Quick links: New experiment, Datasets, Compare, Drift, Predictions.
- *
- * Data sources: existing `experimentsApi.list`, `runsApi.list`,
- * `pipelinesApi.list`, `deploymentsApi.list`. No new endpoints.
+ * Cockpit-style landing page with KPI strip, recent runs, and a modern
+ * shortcuts column. No inline styles — all design tokens via Tailwind +
+ * existing primitive classes.
  */
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 
-import { deploymentsApi, experimentsApi, pipelinesApi, projectsApi, runsApi, workspacesApi } from '../api/endpoints';
+import {
+  deploymentsApi,
+  experimentsApi,
+  pipelinesApi,
+  projectsApi,
+  runsApi,
+  workspacesApi,
+} from '@/api/endpoints';
+
+const STATUS_PILL: Record<string, string> = {
+  succeeded: 'pill-success',
+  running: 'pill-accent',
+  queued: 'pill-neutral',
+  failed: 'pill-danger',
+  cancelled: 'pill-warn',
+};
 
 function StatusPill({ status }: { status: string }) {
-  const palette: Record<string, [string, string]> = {
-    succeeded: ['#22C55E', 'rgba(34,197,94,0.12)'],
-    running: ['#5B8DEF', 'rgba(91,141,239,0.12)'],
-    queued: ['#94A3B8', 'rgba(148,163,184,0.12)'],
-    failed: ['#EF4444', 'rgba(239,68,68,0.12)'],
-    cancelled: ['#F59E0B', 'rgba(245,158,11,0.12)'],
-  };
-  const [fg, bg] = palette[status] ?? ['#64748B', 'rgba(100,116,139,0.12)'];
-  return (
-    <span
-      style={{
-        fontSize: 11,
-        fontWeight: 600,
-        padding: '2px 8px',
-        borderRadius: 999,
-        color: fg,
-        background: bg,
-        textTransform: 'capitalize',
-      }}
-    >
-      {status}
-    </span>
-  );
+  const cls = STATUS_PILL[status] ?? 'pill-neutral';
+  return <span className={`${cls} capitalize`}>{status}</span>;
 }
 
 export function WorkspaceHome() {
@@ -91,9 +80,7 @@ export function WorkspaceHome() {
       );
       return lists
         .flat()
-        .sort((a: { created_at: string }, b: { created_at: string }) =>
-          b.created_at > a.created_at ? 1 : -1,
-        )
+        .sort((a, b) => (b.created_at > a.created_at ? 1 : -1))
         .slice(0, 12);
     },
     enabled: !!experiments.data,
@@ -102,7 +89,7 @@ export function WorkspaceHome() {
   const last7dCount = useMemo(() => {
     if (!recentRuns.data) return 0;
     const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return recentRuns.data.filter((r: { created_at: string }) => Date.parse(r.created_at) >= cutoff).length;
+    return recentRuns.data.filter((r) => Date.parse(r.created_at) >= cutoff).length;
   }, [recentRuns.data]);
 
   const tiles = [
@@ -113,120 +100,274 @@ export function WorkspaceHome() {
     { label: 'Deployments', value: deployments.data?.length ?? '—' },
   ];
 
+  const shortcuts: ShortcutRow[] = [
+    {
+      to: `/workspaces/${wsId}`,
+      label: 'Datasets & projects',
+      desc: 'Upload CSVs, organise projects',
+      icon: <FolderIcon />,
+    },
+    {
+      to: `/workspaces/${wsId}/pipelines`,
+      label: 'Pipelines registry',
+      desc: 'Promoted, fitted pipelines',
+      icon: <PipelineIcon />,
+    },
+    {
+      to: `/workspaces/${wsId}/deployments`,
+      label: 'Deployments',
+      desc: 'Live serving endpoints',
+      icon: <DeployIcon />,
+    },
+    {
+      to: `/workspaces/${wsId}/predictions`,
+      label: 'Prediction explorer',
+      desc: 'Hit any deployment with JSON',
+      icon: <ZapIcon />,
+    },
+    {
+      to: `/workspaces/${wsId}/compare`,
+      label: 'Model comparison',
+      desc: 'Diff runs side-by-side',
+      icon: <CompareIcon />,
+    },
+    {
+      to: `/workspaces/${wsId}/drift`,
+      label: 'Drift dashboard',
+      desc: 'Distribution shift over time',
+      icon: <DriftIcon />,
+    },
+    {
+      to: `/workspaces/${wsId}/schedules`,
+      label: 'Schedules',
+      desc: 'Cron-style monitors + retraining',
+      icon: <ClockIcon />,
+    },
+    {
+      to: `/workspaces/${wsId}/webhooks`,
+      label: 'Webhooks',
+      desc: 'Outgoing event hooks',
+      icon: <HookIcon />,
+    },
+    {
+      to: `/workspaces/${wsId}/llm`,
+      label: 'LLM settings',
+      desc: 'Configure AI provider',
+      icon: <SparkIcon />,
+    },
+    {
+      to: `/workspaces/${wsId}/members`,
+      label: 'Members',
+      desc: 'Roles + invitations',
+      icon: <UsersIcon />,
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* ─── Header ──────────────────────────────────────────── */}
       <header className="space-y-1">
-        <nav style={{ fontSize: 12, color: '#94A3B8' }}>
-          <Link to="/" style={{ color: 'inherit' }}>Workspaces</Link> / {ws.data?.name ?? ''}
+        <nav className="text-xs text-ink-500">
+          <Link to="/" className="hover:text-ink-900 dark:hover:text-ink-50">
+            Workspaces
+          </Link>
+          <span className="mx-1.5 text-ink-300">/</span>
+          <span className="text-ink-700 dark:text-ink-300">{ws.data?.name ?? ''}</span>
         </nav>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', margin: 0 }}>
-          {ws.data?.name ?? 'Workspace'}
-        </h1>
-        <p style={{ color: '#64748B', fontSize: 13, margin: 0 }}>
+        <h1 className="h-page">{ws.data?.name ?? 'Workspace'}</h1>
+        <p className="text-sm text-ink-500">
           Overview of activity, models, and deployments.
         </p>
       </header>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${tiles.length}, minmax(140px, 1fr))`,
-          gap: 12,
-        }}
-      >
+      {/* ─── KPI strip ───────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {tiles.map((t) => (
-          <div key={t.label} className="card" style={{ padding: 14 }}>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', color: '#64748B' }}>
+          <div key={t.label} className="card-tight">
+            <p className="text-[11px] uppercase tracking-wider text-ink-500 font-medium">
               {t.label}
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 700, color: '#0F172A', marginTop: 4 }}>
+            </p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-ink-900 dark:text-ink-50">
               {t.value}
-            </div>
+            </p>
           </div>
         ))}
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '2fr 1fr',
-          gap: 16,
-          alignItems: 'start',
-        }}
-      >
-        <div className="card">
-          <h2 className="h-section mb-3">Recent runs</h2>
+      {/* ─── Recent runs + Shortcuts ─────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Recent runs spans 2 cols on lg+ */}
+        <section className="card lg:col-span-2">
+          <h2 className="h-section mb-4">Recent runs</h2>
           {recentRuns.isLoading ? (
-            <div className="text-sm text-ink-500">Loading…</div>
+            <p className="text-sm text-ink-500">Loading…</p>
           ) : (recentRuns.data?.length ?? 0) === 0 ? (
-            <div className="text-sm text-ink-500">
+            <p className="text-sm text-ink-500">
               No runs yet. Start with{' '}
-              <Link to={`/workspaces/${wsId}`} className="text-accent-600 hover:text-accent-700">
+              <Link
+                to={`/workspaces/${wsId}`}
+                className="text-accent-600 hover:underline"
+              >
                 a new experiment
               </Link>
               .
-            </div>
+            </p>
           ) : (
-            <ul className="space-y-1.5">
-              {recentRuns.data!.map((r: { id: string; status: string; duration_ms: number | null }) => (
-                <li
-                  key={r.id}
-                  className="flex items-center justify-between gap-3 px-3 py-2 rounded-md hover:bg-ink-50 dark:hover:bg-ink-800/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <StatusPill status={r.status} />
-                    <Link
-                      to={`/runs/${r.id}`}
-                      className="text-sm font-mono text-ink-800 dark:text-ink-100 hover:text-accent-700 dark:hover:text-accent-400 truncate"
-                      title={r.id}
-                    >
-                      {r.id}
-                    </Link>
-                  </div>
-                  <div className="text-xs text-ink-500 tabular-nums shrink-0">
-                    {r.duration_ms != null
-                      ? `${(r.duration_ms / 1000).toFixed(1)}s`
-                      : '—'}
-                  </div>
+            <ul className="-mx-2">
+              {recentRuns.data!.map((r) => (
+                <li key={r.id}>
+                  <Link
+                    to={`/runs/${r.id}`}
+                    className="flex items-center justify-between gap-3 px-2 py-1.5 rounded-md hover:bg-ink-50 dark:hover:bg-ink-800/40 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <StatusPill status={r.status} />
+                      <span
+                        className="text-sm font-mono text-ink-700 dark:text-ink-300 group-hover:text-ink-900 dark:group-hover:text-ink-50 truncate"
+                        title={r.id}
+                      >
+                        {r.id}
+                      </span>
+                    </div>
+                    <span className="text-xs text-ink-500 tabular-nums shrink-0">
+                      {r.duration_ms != null
+                        ? `${(r.duration_ms / 1000).toFixed(1)}s`
+                        : '—'}
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </section>
 
-        <div className="card">
-          <h2 className="h-section mb-3">Shortcuts</h2>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[
-              { to: `/workspaces/${wsId}`, label: 'Datasets & projects' },
-              { to: `/workspaces/${wsId}/pipelines`, label: 'Pipelines registry' },
-              { to: `/workspaces/${wsId}/deployments`, label: 'Deployments' },
-              { to: `/workspaces/${wsId}/predictions`, label: 'Prediction explorer' },
-              { to: `/workspaces/${wsId}/compare`, label: 'Model comparison' },
-              { to: `/workspaces/${wsId}/drift`, label: 'Drift dashboard' },
-              { to: `/workspaces/${wsId}/llm`, label: 'LLM settings' },
-              { to: `/workspaces/${wsId}/members`, label: 'Members' },
-            ].map((s) => (
+        {/* Shortcuts — modern: small icon + label + description, subtle hover */}
+        <section className="card">
+          <h2 className="h-section mb-4">Shortcuts</h2>
+          <ul className="-mx-2">
+            {shortcuts.map((s) => (
               <li key={s.to}>
                 <Link
                   to={s.to}
-                  style={{
-                    display: 'block',
-                    padding: '8px 12px',
-                    borderRadius: 10,
-                    fontSize: 13,
-                    color: '#5B8DEF',
-                    background: 'rgba(91,141,239,0.06)',
-                    textDecoration: 'none',
-                  }}
+                  className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-ink-50 dark:hover:bg-ink-800/40 transition-colors group"
                 >
-                  → {s.label}
+                  <span className="shrink-0 text-ink-400 group-hover:text-ink-700 dark:group-hover:text-ink-200 transition-colors">
+                    {s.icon}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-medium text-ink-800 dark:text-ink-100 group-hover:text-ink-900 dark:group-hover:text-ink-50">
+                      {s.label}
+                    </span>
+                    <span className="block text-xs text-ink-500 truncate">{s.desc}</span>
+                  </span>
+                  <span className="shrink-0 text-ink-300 group-hover:text-ink-500 dark:group-hover:text-ink-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ChevronRightIcon />
+                  </span>
                 </Link>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       </div>
     </div>
   );
 }
+
+// ─── Shortcut data shape ──────────────────────────────────────────
+
+interface ShortcutRow {
+  to: string;
+  label: string;
+  desc: string;
+  icon: React.ReactNode;
+}
+
+// ─── Inline 16px icons (lucide-style, currentColor) ───────────────
+
+const stroke = {
+  width: '16',
+  height: '16',
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: '1.75',
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  'aria-hidden': true,
+};
+
+const FolderIcon = () => (
+  <svg {...stroke}>
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+  </svg>
+);
+const PipelineIcon = () => (
+  <svg {...stroke}>
+    <circle cx="6" cy="6" r="2" />
+    <circle cx="6" cy="18" r="2" />
+    <circle cx="18" cy="12" r="2" />
+    <path d="M8 6h6a2 2 0 0 1 2 2v2" />
+    <path d="M8 18h6a2 2 0 0 0 2-2v-2" />
+  </svg>
+);
+const DeployIcon = () => (
+  <svg {...stroke}>
+    <path d="M5 12 12 5l7 7" />
+    <path d="M12 5v14" />
+  </svg>
+);
+const ZapIcon = () => (
+  <svg {...stroke}>
+    <path d="M13 2 4 14h7l-1 8 9-12h-7z" />
+  </svg>
+);
+const CompareIcon = () => (
+  <svg {...stroke}>
+    <path d="M3 12h18" />
+    <path d="M9 6 3 12l6 6" />
+    <path d="m15 6 6 6-6 6" />
+  </svg>
+);
+const DriftIcon = () => (
+  <svg {...stroke}>
+    <path d="M3 17l4-7 5 4 5-9 4 7" />
+  </svg>
+);
+const ClockIcon = () => (
+  <svg {...stroke}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </svg>
+);
+const HookIcon = () => (
+  <svg {...stroke}>
+    <path d="M18 6V3" />
+    <path d="M18 6a4 4 0 0 0-4 4v6a3 3 0 1 1-6 0v-2" />
+    <circle cx="18" cy="3" r="1" />
+  </svg>
+);
+const SparkIcon = () => (
+  <svg {...stroke}>
+    <path d="M12 3v3" />
+    <path d="M12 18v3" />
+    <path d="M3 12h3" />
+    <path d="M18 12h3" />
+    <path d="M5.6 5.6l2.1 2.1" />
+    <path d="M16.3 16.3l2.1 2.1" />
+    <path d="M5.6 18.4l2.1-2.1" />
+    <path d="M16.3 7.7l2.1-2.1" />
+  </svg>
+);
+const UsersIcon = () => (
+  <svg {...stroke}>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+const ChevronRightIcon = () => (
+  <svg {...stroke}>
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);

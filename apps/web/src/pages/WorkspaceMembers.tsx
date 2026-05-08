@@ -13,7 +13,18 @@ import { Link, useParams } from 'react-router-dom';
 import { membersApi, workspacesApi } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
 import { useAuthStore } from '@/state/auth';
-import type { MemberRead, WorkspaceRole } from '@/api/types';
+import { ADMIN_WORKSPACE_ROLES, type MemberRead, type WorkspaceRole } from '@/api/types';
+
+const ROLE_OPTIONS: WorkspaceRole[] = [
+  'owner',
+  'admin',
+  'project_admin',
+  'ml_engineer',
+  'data_scientist',
+  'member',
+  'viewer',
+  'service_account',
+];
 
 export function WorkspaceMembers() {
   const { wsId = '' } = useParams<{ wsId: string }>();
@@ -39,10 +50,14 @@ export function WorkspaceMembers() {
     return mine?.role ?? null;
   }, [members.data, me]);
 
-  const isAdmin = myRole === 'admin' || me?.is_superuser === true;
-  // Drive the last-admin guard in the UI. Mirrors the server check.
+  const isAdmin =
+    (myRole !== null && ADMIN_WORKSPACE_ROLES.has(myRole)) ||
+    me?.is_superuser === true;
+  // Drive the last-admin guard in the UI. Mirrors the server check
+  // (any admin-class role counts; see ADMIN_WORKSPACE_ROLES).
   const adminCount = useMemo(
-    () => (members.data ?? []).filter((m) => m.role === 'admin').length,
+    () =>
+      (members.data ?? []).filter((m) => ADMIN_WORKSPACE_ROLES.has(m.role)).length,
     [members.data],
   );
 
@@ -133,8 +148,11 @@ export function WorkspaceMembers() {
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as WorkspaceRole)}
               >
-                <option value="member">member</option>
-                <option value="admin">admin</option>
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
               </select>
             </div>
             <button
@@ -175,7 +193,8 @@ export function WorkspaceMembers() {
               <tbody>
                 {members.data.map((m) => {
                   const isMe = m.user_id === me?.id;
-                  const isLastAdmin = m.role === 'admin' && adminCount <= 1;
+                  const isLastAdmin =
+                    ADMIN_WORKSPACE_ROLES.has(m.role) && adminCount <= 1;
                   return (
                     <MemberRow
                       key={m.user_id}
@@ -249,8 +268,11 @@ function MemberRow({
             title={isLastAdmin ? "Can't demote the last admin" : undefined}
             onChange={(e) => onChangeRole(e.target.value as WorkspaceRole)}
           >
-            <option value="member">member</option>
-            <option value="admin">admin</option>
+            {ROLE_OPTIONS.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
           </select>
         ) : (
           <span className="font-mono text-xs">{m.role}</span>

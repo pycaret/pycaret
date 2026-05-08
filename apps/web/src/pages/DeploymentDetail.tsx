@@ -12,7 +12,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { deploymentsApi, pipelinesApi } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
+import { DeploymentVersionsCard } from '@/components/DeploymentVersionsCard';
 import { DriftReportsCard } from '@/components/DriftReportsCard';
+import { PredictionLogsCard } from '@/components/PredictionLogsCard';
 import { PredictTester } from '@/components/PredictTester';
 
 const STATUS_TONE: Record<string, string> = {
@@ -153,6 +155,15 @@ export function DeploymentDetail() {
 
             {/* ────────── test form */}
             <PredictTester endpointSlug={d.endpoint_slug} />
+
+            {/* ────────── versions + rollback (session 24) */}
+            <DeploymentVersionsCard
+              deploymentId={d.id}
+              currentPipelineId={d.pipeline_id}
+            />
+
+            {/* ────────── recent predictions (session 22) */}
+            <PredictionLogsCard deploymentId={d.id} />
 
             {/* ────────── drift reports (session 21) */}
             <DriftReportsCard deploymentId={d.id} />

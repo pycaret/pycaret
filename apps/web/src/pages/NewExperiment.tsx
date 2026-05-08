@@ -25,6 +25,7 @@ import {
   experimentsApi,
   projectsApi,
   runsApi,
+  templatesApi,
   workspacesApi,
 } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
@@ -122,7 +123,9 @@ function planLabelOf(plan: RunPlan): string {
     ? 'Compare models'
     : plan === 'setup'
       ? 'Setup only'
-      : 'Single model';
+      : plan === 'search'
+        ? 'AutoML search'
+        : 'Single model';
 }
 
 function canSubmitReason(
@@ -200,6 +203,14 @@ export function NewExperiment() {
     if (guess) setTarget(guess);
   }, [cols, needsTarget, target]);
 
+  // Templates available for this task — let the user pre-fill from a saved
+  // (setup_params, plan_params) bundle.
+  const templates = useQuery({
+    queryKey: ['workspaces', wsId, 'templates', task],
+    queryFn: () => templatesApi.list(wsId!, task),
+    enabled: !!wsId,
+  });
+
   // Engine-driven schema for advanced config.
   const schema = useQuery({
     queryKey: ['describe', 'setup-params', task],
@@ -221,8 +232,19 @@ export function NewExperiment() {
         target: needsTarget ? target.trim() || null : null,
         setup_params: stripDefaults(schema.data, seededParams),
       });
+      const planParams =
+        plan === 'search'
+          ? {
+              variants: [
+                {},
+                { normalize: true },
+                { normalize: true, transformation: true },
+              ],
+            }
+          : undefined;
       const run = await runsApi.submit(exp.id, {
         plan,
+        plan_params: planParams,
         data_source_id: dataSourceId || null,
         target: needsTarget ? target.trim() || null : null,
       });
@@ -284,6 +306,38 @@ export function NewExperiment() {
           </button>
         </div>
       </header>
+
+      {/* ═══ Optional — pre-fill from a saved template ═══════════ */}
+      {templates.data && templates.data.items.length > 0 && (
+        <section className="card">
+          <div className="flex items-center gap-3">
+            <span className="text-xs uppercase tracking-wider text-ink-500">
+              Start from template
+            </span>
+            <select
+              className="input flex-1 max-w-md"
+              defaultValue=""
+              onChange={(e) => {
+                const t = templates.data?.items.find((x) => x.id === e.target.value);
+                if (!t) return;
+                setParams(t.setup_params as ParamValues);
+                setAdvancedOpen(true);
+              }}
+            >
+              <option value="">— pick to pre-fill setup params —</option>
+              {templates.data.items.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="hint mt-2">
+            Templates pre-fill the advanced configuration. You can still tweak any
+            param before submitting.
+          </p>
+        </section>
+      )}
 
       {/* ═══ STEP 1 — Identity & task ═══════════════════════════ */}
       <Section
@@ -436,6 +490,13 @@ export function NewExperiment() {
             onSelect={setPlan}
             label="Create a single model"
             description="Train one model end-to-end. Picks the engine's default for this task. Pick a specific model after the first run."
+          />
+          <PlanOption
+            value="search"
+            current={plan}
+            onSelect={setPlan}
+            label="AutoML search"
+            description="Iterate preprocessing variants × every model, aggregate into a single ranked leaderboard. Slower but covers more configurations."
           />
         </div>
       </Section>

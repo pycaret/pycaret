@@ -87,6 +87,8 @@ export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancell
 export interface Run {
   id: string;
   experiment_id: string;
+  project_id: string | null;
+  workspace_id: string | null;
   status: RunStatus;
   started_at: string | null;
   finished_at: string | null;
@@ -184,7 +186,7 @@ export interface DataSource {
 
 // ───────────────────────────────────────────────────────────────── runs form
 
-export type RunPlan = 'setup' | 'create' | 'compare';
+export type RunPlan = 'setup' | 'create' | 'compare' | 'search';
 
 /** Payload for POST /experiments/:id/runs. */
 export interface RunCreate {
@@ -210,6 +212,8 @@ export interface Pipeline {
   stored_path: string;
   sha256: string | null;
   params: Record<string, unknown>;
+  family_id: string | null;
+  version: number;
   created_at: string;
   created_by: string;
 }
@@ -337,7 +341,22 @@ export interface ApiKeyCreateRequest {
 
 // ──────────────────────────────────────────────────────────── workspace members
 
-export type WorkspaceRole = 'admin' | 'member';
+export type WorkspaceRole =
+  | 'owner'
+  | 'admin'
+  | 'project_admin'
+  | 'ml_engineer'
+  | 'data_scientist'
+  | 'viewer'
+  | 'service_account'
+  | 'member';
+
+/** Admin-class roles — match the backend's `ADMIN_ROLES` set. */
+export const ADMIN_WORKSPACE_ROLES: ReadonlySet<WorkspaceRole> = new Set([
+  'owner',
+  'admin',
+  'project_admin',
+]);
 
 export interface MemberRead {
   user_id: string;

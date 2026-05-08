@@ -17,17 +17,18 @@ import { Link, useParams } from 'react-router-dom';
 import { runsApi } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
 import { EventStream } from '@/components/EventStream';
-import { Leaderboard } from '@/components/Leaderboard';
 import { RunExplainerCard } from '@/components/RunExplainerCard';
 import { FailureDebuggerCard } from '@/components/FailureDebuggerCard';
+import { TrialsCard } from '@/components/TrialsCard';
+import { RunRunningCard } from '@/components/RunRunningCard';
 import type { Run } from '@/api/types';
 
-const STATUS_TONE: Record<string, string> = {
-  queued: 'text-ink-500',
-  running: 'text-accent-600',
-  succeeded: 'text-success-500',
-  failed: 'text-danger-500',
-  cancelled: 'text-warn-500',
+const STATUS_PILL: Record<string, string> = {
+  queued: 'pill-neutral',
+  running: 'pill-accent',
+  succeeded: 'pill-success',
+  failed: 'pill-danger',
+  cancelled: 'pill-warn',
 };
 
 function formatDuration(ms: number | null | undefined): string {
@@ -41,14 +42,6 @@ function formatDuration(ms: number | null | undefined): string {
 
 function isPending(r: Run | undefined): boolean {
   return !!r && (r.status === 'queued' || r.status === 'running');
-}
-
-function asLeaderboardRows(
-  lb: Run['leaderboard'],
-): Record<string, unknown>[] | null {
-  if (!lb) return null;
-  if (Array.isArray(lb)) return lb;
-  return null;
 }
 
 export function RunDetail() {
@@ -82,32 +75,34 @@ export function RunDetail() {
     <div className="space-y-8">
       <header>
         <nav className="text-xs text-ink-500 mb-2">
-          <Link to="/" className="hover:text-ink-900">
+          <Link to="/" className="hover:text-ink-900 dark:hover:text-ink-50">
             Workspaces
           </Link>
-          <span className="mx-1">/</span>
-          <span>Run {runId.slice(0, 8)}…</span>
+          <span className="mx-1.5 text-ink-300">/</span>
+          <span className="text-ink-700 dark:text-ink-300 font-mono">
+            Run · {runId}
+          </span>
         </nav>
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold flex items-center gap-3">
-              Run
-              <span className={STATUS_TONE[r?.status ?? 'queued'] ?? ''}>
-                {r?.status ?? '…'}
-              </span>
-            </h1>
-            <p className="mt-1 text-sm text-ink-500">
-              <span className="font-mono text-xs text-ink-400">{runId}</span>
-              {r?.duration_ms != null && (
-                <>
-                  {' '}
-                  • ran for{' '}
-                  <span className="font-mono">{formatDuration(r.duration_ms)}</span>
-                </>
+            <div className="flex items-center gap-3">
+              <h1 className="h-page">Run</h1>
+              {r?.status && (
+                <span className={`${STATUS_PILL[r.status] ?? 'pill-neutral'} capitalize`}>
+                  {r.status}
+                </span>
               )}
-            </p>
+            </div>
+            {r?.duration_ms != null && (
+              <p className="mt-2 text-sm text-ink-500">
+                ran for{' '}
+                <span className="font-mono text-ink-700 dark:text-ink-300">
+                  {formatDuration(r.duration_ms)}
+                </span>
+              </p>
+            )}
             {r?.error && (
-              <pre className="mt-3 card text-xs whitespace-pre-wrap text-danger-500">
+              <pre className="mt-3 card text-xs whitespace-pre-wrap text-danger-600 dark:text-danger-500">
                 {r.error}
               </pre>
             )}
@@ -139,16 +134,22 @@ export function RunDetail() {
         {cancel.error && <p className="error mt-2">{errorMessage(cancel.error)}</p>}
       </header>
 
-      {/* ────────── Live stream (takes the full width; leaderboard stacks below) */}
+      {/* ────────── While pending: animated progress card */}
+      {r && isPending(r) && (
+        <RunRunningCard
+          runId={runId}
+          status={r.status as 'queued' | 'running'}
+          startedAt={r.started_at ?? r.created_at}
+        />
+      )}
+
+      {/* ────────── Live event stream — collapses behind the progress card */}
       <section>
         {r && <EventStream runId={runId} />}
       </section>
 
-      {/* ────────── Leaderboard */}
-      <section>
-        <h2 className="text-sm font-medium text-ink-900 mb-3">Leaderboard</h2>
-        <Leaderboard rows={asLeaderboardRows(r?.leaderboard ?? null)} />
-      </section>
+      {/* ────────── Trials / leaderboard — succeeded runs */}
+      {r?.status === 'succeeded' && runId && <TrialsCard runId={runId} />}
 
       {/* ────────── AI explainer (succeeded runs) / debugger (failed runs) */}
       {r?.status === 'succeeded' && runId && <RunExplainerCard runId={runId} />}
@@ -157,7 +158,7 @@ export function RunDetail() {
       {/* ────────── Promote */}
       {r?.status === 'succeeded' && (
         <section>
-          <h2 className="text-sm font-medium text-ink-900 mb-3">Promote fitted pipeline</h2>
+          <h2 className="h-section mb-3">Promote fitted pipeline</h2>
           <div className="card flex items-end gap-3">
             <div className="flex-1">
               <label className="field" htmlFor="promote-name">
@@ -208,31 +209,35 @@ export function RunDetail() {
 
       {/* ────────── Snapshot */}
       <section>
-        <h2 className="text-sm font-medium text-ink-900 mb-3">Request snapshot</h2>
+        <h2 className="h-section">Request snapshot</h2>
+        <p className="text-xs text-ink-500 mb-3">
+          Frozen copy of every parameter the engine received when this run was
+          submitted. Use it to reproduce the result.
+        </p>
         {snapshotEntries.length === 0 ? (
-          <p className="hint">Snapshot not available.</p>
+          <p className="text-sm text-ink-500">Snapshot not available.</p>
         ) : (
-          <dl className="card grid gap-2 md:grid-cols-2">
+          <dl className="card divide-y divide-ink-100 dark:divide-ink-800 p-0">
             {snapshotEntries.map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-4">
-                <dt className="text-sm text-ink-500 font-mono">{k}</dt>
-                <dd className="text-sm text-ink-900 font-mono text-right break-all">
-                  {typeof v === 'object' && v !== null
-                    ? JSON.stringify(v)
-                    : String(v ?? '—')}
+              <div
+                key={k}
+                className="grid grid-cols-3 gap-4 px-4 py-2.5 text-sm"
+              >
+                <dt className="text-ink-500 font-mono text-xs col-span-1 truncate">
+                  {k}
+                </dt>
+                <dd className="text-ink-900 dark:text-ink-50 font-mono text-xs col-span-2 break-all">
+                  {v == null
+                    ? <span className="text-ink-400">—</span>
+                    : typeof v === 'object'
+                      ? JSON.stringify(v)
+                      : String(v)}
                 </dd>
               </div>
             ))}
           </dl>
         )}
       </section>
-
-      {terminal && (
-        <p className="hint text-center">
-          Run reached terminal state <code>{r?.status}</code>. The event stream has
-          closed.
-        </p>
-      )}
     </div>
   );
 }

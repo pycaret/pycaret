@@ -136,9 +136,13 @@ describe('<EventStream>', () => {
       });
       ws._close(1000);
     });
-    // Status indicator renders as "● closed" — find via the bullet prefix so we
-    // don't collide with the "RUN CLOSED" event-log entry.
-    expect(screen.getByText(/●\s+closed/)).toBeInTheDocument();
+    // Status indicator renders inside a pill — find by the exact text "closed"
+    // on a span carrying a pill class so we don't collide with the
+    // "RUN CLOSED" event-log entry.
+    const pill = screen
+      .getAllByText('closed')
+      .find((el) => el.className.includes('pill'));
+    expect(pill).toBeTruthy();
   });
 
   it('surfaces an auth-failure close code as an error', () => {

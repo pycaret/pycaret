@@ -146,32 +146,40 @@ export function EventStream({
 
   return (
     <div className={className}>
-      <header className="mb-3 flex items-center justify-between text-xs">
-        <h3 className="text-sm font-medium text-ink-900">Event stream</h3>
-        <div className="flex items-center gap-2">
+      <header className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          <h3 className="h-section">Event log</h3>
+          <p className="text-xs text-ink-500 mt-0.5">
+            Every structured event the engine emitted during this run.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs shrink-0">
           <span
             className={
               status === 'open'
-                ? 'text-accent-600'
+                ? 'pill-accent'
                 : status === 'closed'
-                  ? 'text-ink-500'
+                  ? 'pill-neutral'
                   : status === 'error'
-                    ? 'text-danger-500'
-                    : 'text-ink-500'
+                    ? 'pill-danger'
+                    : 'pill-neutral'
             }
           >
-            ● {statusLabel}
+            {statusLabel}
           </span>
-          <span className="text-ink-400">{events.length} events</span>
+          <span className="text-ink-500 tabular-nums">
+            {events.length} {events.length === 1 ? 'event' : 'events'}
+          </span>
         </div>
       </header>
 
-      {lastError && <p className="error mb-2">{lastError}</p>}
+      {lastError && <p className="text-sm text-danger-600 mb-2">{lastError}</p>}
 
       {!hasEvents && showEmptyHint && (
-        <p className="hint">
-          Waiting for events… the stream shows every structured `Event` emitted by the
-          engine as the run progresses.
+        <p className="text-sm text-ink-500">
+          {status === 'closed'
+            ? 'No events were emitted by this run.'
+            : 'Waiting for events…'}
         </p>
       )}
 

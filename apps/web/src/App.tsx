@@ -24,6 +24,12 @@ import { LLMSettings } from '@/pages/LLMSettings';
 import { ApiKeysScreen } from '@/pages/ApiKeysScreen';
 import { WorkspaceMembers } from '@/pages/WorkspaceMembers';
 import { AuditLogViewer } from '@/pages/AuditLogViewer';
+import { AdminUsers } from '@/pages/AdminUsers';
+import { AdminWorkspace } from '@/pages/AdminWorkspace';
+import { AdminIntegrations } from '@/pages/AdminIntegrations';
+import { Schedules } from '@/pages/Schedules';
+import { ExperimentTemplates } from '@/pages/ExperimentTemplates';
+import { Webhooks } from '@/pages/Webhooks';
 
 export default function App() {
   return (
@@ -79,6 +85,18 @@ export default function App() {
         />
         <Route path="/account/api-keys" element={<ApiKeysScreen />} />
         <Route path="/admin/audit" element={<AuditLogViewer />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/workspaces/:wsId/admin" element={<AdminWorkspace />} />
+        <Route
+          path="/workspaces/:wsId/admin/integrations"
+          element={<AdminIntegrations />}
+        />
+        <Route path="/workspaces/:wsId/schedules" element={<Schedules />} />
+        <Route
+          path="/workspaces/:wsId/templates"
+          element={<ExperimentTemplates />}
+        />
+        <Route path="/workspaces/:wsId/webhooks" element={<Webhooks />} />
       </Route>
       <Route
         path="*"

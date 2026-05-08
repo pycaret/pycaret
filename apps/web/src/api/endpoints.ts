@@ -142,6 +142,21 @@ export const runsApi = {
       .then((r) => r.data),
   promote: (run_id: string, body: { name: string; description?: string; tags?: string[] }) =>
     api.post<Pipeline>(`/runs/${run_id}/promote`, body).then((r) => r.data),
+  trials: (run_id: string) =>
+    api
+      .get<{
+        run_id: string;
+        items: Array<{
+          id: string;
+          model_id: string;
+          rank: number;
+          metrics: Record<string, number>;
+          is_best: boolean;
+          fitted_pipeline_id: string | null;
+          created_at: string | null;
+        }>;
+      }>(`/runs/${run_id}/trials`)
+      .then((r) => r.data),
 };
 
 // ───────────────────────────── pipelines (workspace-scoped fitted-model registry)
@@ -153,6 +168,12 @@ export const pipelinesApi = {
       .then((r) => r.data),
   get: (pipeline_id: string) =>
     api.get<Pipeline>(`/pipelines/${pipeline_id}`).then((r) => r.data),
+  versions: (pipeline_id: string) =>
+    api
+      .get<{ family_id: string | null; items: Pipeline[] }>(
+        `/pipelines/${pipeline_id}/versions`,
+      )
+      .then((r) => r.data),
   remove: (pipeline_id: string) =>
     api.delete<void>(`/pipelines/${pipeline_id}`).then((r) => r.data),
 };
@@ -192,6 +213,265 @@ export const deploymentsApi = {
   predict: (endpoint_slug: string, body: PredictRequest) =>
     api
       .post<PredictResponse>(`/deployments/${endpoint_slug}/predict`, body)
+      .then((r) => r.data),
+  predictionLogs: (
+    deployment_id: string,
+    opts?: { limit?: number; offset?: number; status_filter?: 'ok' | 'error' },
+  ) =>
+    api
+      .get<{
+        deployment_id: string;
+        limit: number;
+        offset: number;
+        items: Array<{
+          id: string;
+          request_id: string;
+          created_at: string;
+          n_rows: number;
+          latency_ms: number | null;
+          status: 'ok' | 'error';
+          error: string | null;
+          request_sample: Array<Record<string, unknown>> | null;
+          response_sample: Array<{ index: number; prediction: unknown }> | null;
+          user_id: string | null;
+        }>;
+      }>(`/deployments/${deployment_id}/prediction-logs`, { params: opts })
+      .then((r) => r.data),
+  rollback: (deployment_id: string, body: { pipeline_id: string }) =>
+    api
+      .post<Deployment>(`/deployments/${deployment_id}/rollback`, body)
+      .then((r) => r.data),
+};
+
+// ───────────────────────────── schedules
+
+export interface Schedule {
+  id: string;
+  workspace_id: string;
+  kind: 'drift_monitor' | 'retrain';
+  target_id: string | null;
+  schedule: { interval_seconds?: number; cron?: string };
+  spec: Record<string, unknown> | null;
+  enabled: boolean;
+  last_run_at: string | null;
+  last_status: string | null;
+  last_error: string | null;
+  last_run_run_id: string | null;
+}
+
+export const schedulesApi = {
+  list: (workspace_id: string) =>
+    api
+      .get<{ items: Schedule[] }>(`/workspaces/${workspace_id}/schedules`)
+      .then((r) => r.data),
+  create: (
+    workspace_id: string,
+    body: {
+      kind: 'drift_monitor' | 'retrain';
+      target_id: string;
+      schedule: { interval_seconds?: number; cron?: string };
+      spec?: Record<string, unknown> | null;
+      enabled?: boolean;
+    },
+  ) =>
+    api
+      .post<Schedule>(`/workspaces/${workspace_id}/schedules`, body)
+      .then((r) => r.data),
+  patch: (
+    job_id: string,
+    body: {
+      schedule?: { interval_seconds?: number; cron?: string };
+      spec?: Record<string, unknown> | null;
+      enabled?: boolean;
+    },
+  ) => api.patch<Schedule>(`/schedules/${job_id}`, body).then((r) => r.data),
+  remove: (job_id: string) =>
+    api.delete<void>(`/schedules/${job_id}`).then((r) => r.data),
+  runNow: (job_id: string) =>
+    api.post<Schedule>(`/schedules/${job_id}/run-now`).then((r) => r.data),
+};
+
+// ───────────────────────────── experiment templates
+
+export interface ExperimentTemplate {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  task: string;
+  setup_params: Record<string, unknown>;
+  plan_params: Record<string, unknown> | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export const templatesApi = {
+  list: (workspace_id: string, task?: string) =>
+    api
+      .get<{ items: ExperimentTemplate[] }>(
+        `/workspaces/${workspace_id}/experiment-templates`,
+        { params: task ? { task } : undefined },
+      )
+      .then((r) => r.data),
+  create: (
+    workspace_id: string,
+    body: {
+      name: string;
+      task: string;
+      setup_params: Record<string, unknown>;
+      description?: string;
+      plan_params?: Record<string, unknown> | null;
+    },
+  ) =>
+    api
+      .post<ExperimentTemplate>(
+        `/workspaces/${workspace_id}/experiment-templates`,
+        body,
+      )
+      .then((r) => r.data),
+  patch: (
+    template_id: string,
+    body: Partial<{
+      name: string;
+      description: string | null;
+      setup_params: Record<string, unknown>;
+      plan_params: Record<string, unknown> | null;
+    }>,
+  ) =>
+    api
+      .patch<ExperimentTemplate>(
+        `/experiment-templates/${template_id}`,
+        body,
+      )
+      .then((r) => r.data),
+  remove: (template_id: string) =>
+    api
+      .delete<void>(`/experiment-templates/${template_id}`)
+      .then((r) => r.data),
+};
+
+// ───────────────────────────── webhooks
+
+export interface Webhook {
+  id: string;
+  workspace_id: string;
+  url: string;
+  event_types: string[];
+  has_secret: boolean;
+  filters: Record<string, unknown> | null;
+  enabled: boolean;
+  last_fired_at: string | null;
+  last_status_code: number | null;
+  last_error: string | null;
+}
+
+export const webhooksApi = {
+  list: (workspace_id: string) =>
+    api
+      .get<{ items: Webhook[] }>(`/workspaces/${workspace_id}/webhooks`)
+      .then((r) => r.data),
+  create: (
+    workspace_id: string,
+    body: {
+      url: string;
+      event_types: string[];
+      secret?: string;
+      filters?: Record<string, unknown>;
+      enabled?: boolean;
+    },
+  ) =>
+    api
+      .post<Webhook>(`/workspaces/${workspace_id}/webhooks`, body)
+      .then((r) => r.data),
+  patch: (
+    webhook_id: string,
+    body: Partial<{
+      url: string;
+      event_types: string[];
+      secret: string | null;
+      filters: Record<string, unknown> | null;
+      enabled: boolean;
+    }>,
+  ) => api.patch<Webhook>(`/webhooks/${webhook_id}`, body).then((r) => r.data),
+  remove: (webhook_id: string) =>
+    api.delete<void>(`/webhooks/${webhook_id}`).then((r) => r.data),
+  test: (webhook_id: string) =>
+    api.post<Webhook>(`/webhooks/${webhook_id}/test`).then((r) => r.data),
+};
+
+// ───────────────────────────── model library (workspace-scoped, editable)
+
+export interface ModelLibraryRow {
+  id: string;
+  workspace_id: string;
+  task_type: string;
+  model_id: string;
+  name: string;
+  enabled: boolean;
+  custom_params: Record<string, unknown> | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export const modelLibraryApi = {
+  list: (workspace_id: string, task?: string) =>
+    api
+      .get<{ workspace_id: string; items: ModelLibraryRow[] }>(
+        `/workspaces/${workspace_id}/model-library`,
+        { params: task ? { task } : undefined },
+      )
+      .then((r) => r.data),
+  patch: (
+    workspace_id: string,
+    row_id: string,
+    body: { enabled?: boolean; custom_params?: Record<string, unknown> | null },
+  ) =>
+    api
+      .patch<ModelLibraryRow>(
+        `/workspaces/${workspace_id}/model-library/${row_id}`,
+        body,
+      )
+      .then((r) => r.data),
+  sync: (workspace_id: string, task?: string) =>
+    api
+      .post<{
+        workspace_id: string;
+        synced_tasks: string[];
+        had_existing_rows: boolean;
+      }>(
+        `/workspaces/${workspace_id}/model-library/sync`,
+        null,
+        { params: task ? { task } : undefined },
+      )
+      .then((r) => r.data),
+};
+
+// ───────────────────────────── platform admin (superuser-only)
+
+export interface UserAdminRead {
+  id: string;
+  email: string;
+  display_name: string | null;
+  is_superuser: boolean;
+  is_active: boolean;
+  workspace_count: number;
+  created_at: string | null;
+}
+
+export const adminApi = {
+  listUsers: (opts?: { limit?: number; offset?: number }) =>
+    api
+      .get<{ items: UserAdminRead[]; limit: number; offset: number }>(
+        '/admin/users',
+        { params: opts },
+      )
+      .then((r) => r.data),
+  patchUser: (
+    user_id: string,
+    body: { is_superuser?: boolean; is_active?: boolean },
+  ) =>
+    api
+      .patch<UserAdminRead>(`/admin/users/${user_id}`, body)
       .then((r) => r.data),
 };
 
