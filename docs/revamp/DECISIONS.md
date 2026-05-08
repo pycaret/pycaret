@@ -4,6 +4,77 @@ ADR-style. Newest at top. Each entry: **date | decision | alternatives considere
 
 ---
 
+## 2026-05-08 (session 54 · decision 5) · Schedules use APScheduler in-process, not Celery / RQ / Arq
+
+- **Decision:** The platform's scheduled-job layer (`drift_monitor` + `retrain` kinds) is backed by `APScheduler`'s `BackgroundScheduler` running inside the FastAPI process. Hydrated from the `scheduled_jobs` table at startup; new schedules are added/removed via REST and propagated to the scheduler immediately. **No Redis, no separate worker process, no `Job` queue table.** Add `apscheduler>=3.10` to the server's core deps.
+- **Alternatives:**
+  - **Celery + Redis** (rejected — drags Redis into the dependency surface for self-hosters; the user's stated goal is "drop a `pip install` and go," not "configure 3 services"). Adds operational complexity (broker monitoring, dead-letter queues) that the actual workload — a handful of cron-style jobs per workspace — does not need.
+  - **RQ + Redis** (rejected — same Redis drag).
+  - **Arq + Redis** (rejected — same Redis drag, plus async-only API).
+  - **Defer scheduling entirely until V2** (rejected — drift detection is a V1 feature per spec § 11.2; a half-working "configure cron yourself" experience is worse than an in-process scheduler).
+- **Why:**
+  - The realistic v1 workload is < 100 scheduled jobs per platform instance. APScheduler in-process handles this comfortably without a separate worker.
+  - The pluggability point we *do* care about is the orchestrator's `submit()` boundary, not the scheduler. If a user later needs multi-worker concurrency for runs themselves, swap `RunOrchestrator` to a queue-backed implementation; schedule definitions stay unchanged.
+  - Self-hosters get one more reason to pick PyCaret over Databricks/DataRobot: zero infra dependencies for the V1 install.
+  - Owner direction: "no infra for now."
+
+---
+
+## 2026-05-08 (session 22 · decision 4) · Pipeline rollback uses a `family_id`, not parent links
+
+- **Decision:** Pipelines that share `(workspace_id, name)` are revisions of the same logical model and share a `family_id` (UUID minted on the first promotion). The `version` column auto-increments within a family on each subsequent promote. Deployment rollback via `POST /deployments/{id}/rollback` requires the target pipeline to share the deployment's current `family_id`.
+- **Alternatives:**
+  - **`parent_pipeline_id` (linked-list)** (rejected — walking the chain to "list all versions" is N queries; finding `family_id == X` is one query).
+  - **No versioning; new promotes mint independent rows** (rejected — leaves users with no way to roll back; forcing them to re-promote-and-redeploy on every revert defeats the purpose).
+  - **Repurpose existing `Run.snapshot.previous_pipeline_id`** (rejected — couples versioning to the run-snapshot blob; querying it requires JSON-path syntax that varies by DB engine).
+- **Why:**
+  - One indexed column lets every "show me the history of this pipeline" query be `WHERE workspace_id = X AND family_id = Y ORDER BY version DESC`.
+  - The first promotion creates the family; that's the only nuance the API has to surface.
+  - Falls back gracefully to `name`-matching for legacy rows from before this column existed.
+
+---
+
+## 2026-05-08 (session 22 · decision 3) · Secrets encryption: Fernet first, KMS later
+
+- **Decision:** All at-rest secrets (LLM API keys today, future cloud creds + webhook signing keys) are encrypted with `cryptography.fernet.Fernet` (AES-128-CBC + HMAC-SHA256). Key rides in env var `PYCARET_SECRETS_KEY`. Stored values are prefixed with `ENC:v1:` so reads can transparently fall back to plaintext for rows written before this module existed. KMS / Vault wrapping is V2.
+- **Alternatives:**
+  - **AWS KMS / GCP KMS / Vault from day one** (rejected — drags a cloud-provider SDK into self-host installs that don't have one; gates V1 features on infra many users can't provide).
+  - **Plaintext for now, encryption "later"** (rejected — once a column ships unencrypted, every existing deployment's data is exposed; encryption-on-write must come before any production user lands secrets).
+  - **Per-row encryption keys (envelope encryption)** (rejected — overkill for V1; saves no real attacker work without KMS-managed root keys, which is itself V2).
+- **Why:**
+  - Fernet has been a stable PyCA primitive for a decade. The `cryptography` package is already pulled in by `[mysql]`; adding it to core costs nothing operationally.
+  - The `ENC:v1:` prefix gives a clean migration path: V2 KMS-wrapped storage gets `ENC:v2:`, the read path branches on prefix, no schema churn.
+  - Ephemeral-key dev mode + loud warning means dev iteration stays painless; prod deploys must explicitly set the env var.
+
+---
+
+## 2026-05-08 (session 24 · decision 2) · UI surfaces V2 features on dedicated pages, not in a giant Settings tab
+
+- **Decision:** Each V2 platform feature gets its own top-level workspace screen and sidebar entry: **Schedules** (`/workspaces/:id/schedules`), **Templates** (`/workspaces/:id/templates`), **Webhooks** (`/workspaces/:id/webhooks`), plus an **Admin hub** (`/workspaces/:id/admin`) that aggregates members + LLM + audit + model library. The Admin hub is a navigation index (3 link cards + ModelLibrarySection inline), not a single mega-page.
+- **Alternatives:**
+  - **Single "Settings" tab with internal sub-tabs** (rejected — every modern dev tool has moved away from settings drawers; deep-linkable pages are easier to bookmark, share, and instrument).
+  - **Configure-from-detail-page pattern** (e.g. set up a drift monitor from `/deployments/:id`, schedule retraining from `/experiments/:id`) (rejected — fine for one-off use, but means there's no "show me all schedules in this workspace" view; users can't audit configuration in aggregate).
+- **Why:**
+  - Linear / Vercel / Stripe all do dedicated pages. Familiar mental model.
+  - Each page has a clean URL → makes Admin's job easier (deep-link to the specific config they want a teammate to check).
+  - The detail-page convenience is preserved by adding a "Configure schedule" / "Configure webhook" button on the relevant detail pages that deep-links into the dedicated page with pre-filled state. Not yet implemented — V2.1 polish.
+  - Owner direction: "modern SaaS look, like Linear / GitHub / OpenAI."
+
+---
+
+## 2026-05-08 (session 54 · decision 1) · Trials table > leaderboard JSON
+
+- **Decision:** Every successful `compare_models` / `automl` / `search` run persists one **`Trial` row per leaderboard entry** at orchestrator commit time, in addition to the legacy JSON `Run.leaderboard` column. The UI's `<TrialsCard>` reads from the `trials` table, not from `Run.leaderboard`. Run.leaderboard JSON stays for backwards-compatibility callers but is no longer the source of truth in the UI.
+- **Alternatives:**
+  - **Keep JSON-only** (rejected — UI features like sort/filter/cross-run-compare/link-to-fitted-pipeline all require either query-side JSON parsing or a denormalised view; making the row first-class once is cheaper than re-deriving it on every read).
+  - **Replace `Run.leaderboard` entirely** (rejected — breaks SDK consumers who already read it; cheap to keep both during a deprecation window).
+- **Why:**
+  - First-class rows let the UI build a proper Trials view: full model name resolution from `describeApi.models`, per-metric horizontal-bar chart, link-out to the promoted pipeline, sort/filter without parsing JSON client-side.
+  - The orchestrator's `_persist_trials` helper is idempotent (deletes existing trials for the run id before inserting), so a retry/resume flow doesn't double-write.
+  - Owner direction: "table is closer to what i want… let's use ur brain and have options like if i toggle to visualization view."
+
+---
+
 ## 2026-04-27 (post-shipping · decision 2) · Engine moves from MIT to FSL-1.1-MIT
 
 - **Decision:** Relicense the `pycaret` engine (`packages/engine/`) and the public `apps/site/` from **MIT** to **FSL-1.1-MIT** (Functional Source License with MIT Future grant) starting with **PyCaret 4.0**. The 3.x line on PyPI (`pycaret <= 3.4.0`) stays MIT — the relicense applies prospectively to 4.0+ only. Each released 4.0+ version auto-converts to plain MIT on the second anniversary of its release date. The platform packages (`services/api/`, `apps/web/`) stay dual-licensed under FSL-1.1-MIT OR BUSL-1.1.

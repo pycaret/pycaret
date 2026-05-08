@@ -1,6 +1,54 @@
 # PyCaret 4.0 Revamp — Status
 
-*Updated: 2026-04-26, end of session 46*
+*Updated: 2026-05-08, end of session 54*
+
+## Sessions 47–54 — V2 platform + UI surfacing + design refresh — ✅
+
+**Engine MVP-1 is complete.** All six legacy verbs that shipped as `NotImplementedError` stubs in `4.0.0a2` are now functional. Core deps trimmed from 12 → 10 (no more `imbalanced-learn` / `category-encoders`). PyPI: `4.0.0a8`.
+
+**Control plane V2 features all landed.** Encrypted secrets, prediction logs, trials, model library, scheduled jobs (drift monitor + retraining), webhooks, experiment templates, pipeline versioning + rollback, AutoML pipeline search, expanded role lattice, backup/restore. New `pycaret-client` SDK package. 26 DB tables in current schema (up from 14 in session 9 baseline).
+
+**UI is feature-complete for V1 + most of V2.** Every backend endpoint has a UI surface. Design-system unification pass complete: `h-page` / `h-section` / `pill-*` / canonical table styling consistent across all pages. WorkspaceHome dashboard rebuilt with modern Linear/Vercel-style shortcut rows (icon + label + description + chevron-on-hover). ExperimentDetail's permanent right-sidebar replaced with a header CTA + Dialog. RunDetail gets a `<RunRunningCard>` with animated progress + skeleton bars while a run is in flight; `<TrialsCard>` resolves `model_id → "Logistic Regression"` and offers a Table / Chart toggle (Plotly horizontal bar chart per metric).
+
+### Headline metrics
+
+| | Session 46 end | Session 54 end |
+|---|---|---|
+| Engine tests | 258 | **330** (+72; 1 skip on `[interpret]` extra) |
+| Backend tests | 90 | **115** (+25 across sessions 22-24) |
+| UI tests | 33 | **59** (+26) |
+| DB tables | 16 | **26** (+10: `prediction_logs`, `trials`, `model_library`, `scheduled_jobs`, `webhook_subscriptions`, `experiment_templates`, …) |
+| Engine core deps | 12 | **10** |
+| PyPI engine version | `4.0.0a2` | **`4.0.0a8`** |
+
+### Headline V2 features
+
+- **Drift monitor** — APScheduler job (`drift_monitor` kind) snapshots prediction-log distributions per numeric / categorical feature. PSI for numeric (capped per-feature at 1.0), Cramer's V for categorical. Auto-fires `drift.alert` webhook on `moderate`/`severe` scores.
+- **Scheduled retraining** — APScheduler job (`retrain` kind) re-runs a configured experiment via `dispatch_run`. Carries `RunCreate`-shaped spec.
+- **Pipeline versioning + rollback** — Pipelines that share `(workspace_id, name)` are revisions of the same `family_id`. Promote bumps `version`. New `POST /deployments/{id}/rollback` repoints at any earlier version in the family; in-memory registry evicted so the next `/predict` reloads.
+- **AutoML pipeline search** — new `plan="search"`. Orchestrator iterates preprocessing variants (each a `setup_params` override), runs `compare_models` per variant, concatenates leaderboards, returns globally-best fitted pipeline.
+- **Webhooks** — HMAC-SHA256-signed POSTs on platform events (`run.{succeeded,failed,cancelled}`, `deployment.*`, `drift.alert`, `schedule.failed`). Best-effort fire-and-forget; never blocks the originating action.
+- **Encrypted secrets** — Fernet (AES-128-CBC + HMAC-SHA256) for stored LLM keys + webhook secrets. `PYCARET_SECRETS_KEY` env var; ephemeral fallback in dev with loud warning. Stored values prefixed with `ENC:v1:` for back-compat with legacy plaintext rows.
+- **Backup/restore** — `GET /admin/backup` streams a tarball (database.json + raw artifacts). `POST /admin/restore` (multipart) wipes + reloads with a `confirm=true` guard. Superuser-only.
+- **Roles lattice** — widened from `{admin, member}` to 7 roles per Spec § 17.2.
+- **Engine introspection** — `Experiment.plot_model(estimator, plot=)` and `Experiment.evaluate_model(estimator)` dispatch to a per-task plot registry. 16+ plot kinds for classification, 12 regression, 6 clustering, 4 anomaly, 8 time-series. All return `plotly.graph_objects.Figure`.
+
+### What's still pending (intentionally)
+
+Per the user's most recent direction "leave infra for the end":
+- `docker-compose.prod.yml` (Postgres + MinIO + Redis + Caddy + TLS).
+- K8s Helm chart + per-cloud Terraform (AWS / GCP / Azure).
+- `services/worker` container (depends on a job-queue swap; APScheduler in-process is fine for V1).
+
+Truly post-V2 items that should not block a `4.0.0` release:
+- SSO / SAML / OAuth / LDAP (each is half-a-session per provider).
+- Electron desktop installer.
+- K8s-native run execution (V3); distributed AutoML (V3 opt-in via Ray).
+- Plugin marketplace / model-card governance reports (V3).
+
+Engine MVP-1 is shippable. The platform is feature-complete for E2E testing.
+
+---
 
 ## Session 46 — Phase 6: delete `pycaret/internal/pycaret_experiment/` — ✅
 

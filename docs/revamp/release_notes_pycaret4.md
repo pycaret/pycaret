@@ -42,6 +42,114 @@
 
 ---
 
+# Sessions 20–54 — 2026-04-24 → 2026-05-08 — V2 platform + UI surfacing + design refresh
+
+Consolidated catch-up entry covering the arc from the failure-debugger / API-key landing in session 19 through the engine MVP-1 finish (sessions 22-46), the V2 platform features (sessions 22-24, server-side; tagged on top of MVP-1 numbering), and the front-end surface that exposes them (UI sessions through s54). Written retroactively from the shipped code; individual sessions weren't entered as their own headers during the build, but each block below maps to a concrete roadmap milestone.
+
+Baseline: session 19 left the platform with 4-of-6 LLM copilots, API keys + workspace members + audit logs not yet wired, and the engine god-class still partially undrained. Engine `4.0.0a2` was the last published wheel.
+
+Theme: graduate every "stub" to "real implementation" across all three layers. Engine: revive every `NotImplementedError` verb. Server: deliver V2 control-plane features (drift monitor, scheduled retraining, deployment versioning, webhooks, AutoML pipeline search, encrypted secrets, backup/restore, expanded roles). Web: surface every new endpoint + a full design-system unification pass.
+
+## ADDED — Engine: revive the six legacy-only verbs (sessions 53–54)
+
+- `ADDED` — **`Experiment.get_leaderboard()`** returns a defensive copy of the most recent ``compare_models`` leaderboard. Snapshotted into ``_fit_state["last_leaderboard"]`` after every supervised + time-series ``compare_models`` call. Raises ``RuntimeError`` if no compare has run.
+- `ADDED` — **`Experiment.automl()`** — convenience wrapper for ``compare_models(n_select=1)`` → ``tune_model``. Returns a fitted ``sklearn.pipeline.Pipeline``. Pass-throughs for ``optimize`` / ``n_iter`` / ``turbo`` / ``include`` / ``exclude`` / ``fold`` / ``fit_kwargs`` / ``round`` / ``verbose``.
+- `ADDED` — **`Experiment.interpret_model()`** — wraps ``shap.Explainer`` over a pipeline's preprocessor + final estimator. Returns a ``shap.Explanation``. ``plot=`` argument renders ``'summary'`` / ``'beeswarm'`` / ``'bar'`` / ``'waterfall'`` inline. SHAP is an opt-in extra: ``pip install pycaret[interpret]``.
+- `ADDED` — **`TimeSeriesExperiment.check_stats()`** — runs Summary / Ljung-Box (white noise) / ADF + KPSS (stationarity) / Shapiro-Wilk (normality) over the experiment's series. Returns a 6-column ``DataFrame``. ``test=`` filter and ``split='all'|'train'|'test'``.
+- `ADDED` — **`Experiment.plot_model(estimator, plot=None, save=False, **kw)`** — looks up ``plot`` in a per-task registry and returns a ``plotly.graph_objects.Figure``. ``save=True`` writes ``f"{plot}.png"`` (requires ``pycaret[export]`` for ``kaleido``); ``save="my.png"`` writes to that path.
+- `ADDED` — **`Experiment.evaluate_model(estimator)`** — returns a ``dict[str, Figure]`` of the curated diagnostic bundle for the task. Plots that fail (e.g. shap missing, estimator lacking ``feature_importances_``) are silently dropped rather than raising.
+- `ADDED` — **Per-task plot registries** on every leaf class. Classification (16 kinds), Regression (12), Clustering (6), Anomaly (4), Time-series (8). Default plots: ``auc / residuals / cluster / score / forecast``.
+- `ADDED` — **`[interpret] = ["shap>=0.46"]`** optional extra. Folded into ``[full]``.
+- `ADDED` — **22 new tests** in ``test_session53_revive_legacy_verbs.py`` + ``test_session54_plot_model_dispatcher.py``.
+
+## REMOVED — Engine: drop transitional core deps (sessions 47-50 area)
+
+- `REMOVED, BREAKING` — **`imbalanced-learn` from core deps.** The legacy ``Pipeline`` class that subclassed ``imblearn.pipeline.Pipeline`` is also gone — every native verb has been operating on ``sklearn.pipeline.Pipeline`` since session 24. ``fix_imbalance`` users now install ``imbalanced-learn`` themselves.
+- `REMOVED, BREAKING` — **`category-encoders` from core deps.** The 4.0 native preprocessor uses sklearn-native encoders (``OneHotEncoder`` / ``OrdinalEncoder`` / ``TargetEncoder``).
+- `REMOVED` — **Deleted ``packages/engine/pycaret/internal/preprocess/``** (the entire legacy preprocessor: preprocessor.py, transformers.py, iterative_imputer.py, target/, time_series/forecasting/preprocessor.py).
+- `REMOVED` — **Deleted ``packages/engine/pycaret/internal/pipeline.py``** (the legacy ``Pipeline`` and ``TimeSeriesPipeline`` classes).
+- `REMOVED` — **Deleted ``packages/engine/pycaret/internal/patches/sklearn.py``** (the only file that imported ``internal.pipeline``).
+- `CHANGED` — **`packages/engine/pycaret/utils/_show_versions.py`** — pruned the dep list from a 35-name 3.x relic down to a clean 10-required + 9-optional view that matches the actual ship surface.
+
+## ADDED — Engine: published 4.0.0a3 → a8 to PyPI
+
+- `BUILD` — **`4.0.0a3`** (first PyPI release of the 4.0 line). `4.0.0a1` and `4.0.0a2` had only ever been distributed via GitHub release downloads.
+- `BUILD` — **`4.0.0a4`** — relaxed `scikit-learn>=1.7` → `>=1.5` and `imbalanced-learn>=0.13` → `>=0.12` after the `a3` install triggered Colab kernel restart-loops by force-upgrading the preinstalled scientific stack.
+- `BUILD` — **`4.0.0a5`** — capped `ipython>=8.18,<9` after `a4` pulled IPython 9.x which removed `IPython.utils.coloransi.TermColors.Green` that `google.colab._shell_customizations` reads at kernel startup.
+- `BUILD` — **`4.0.0a6`** — revived `get_leaderboard` / `automl` / `interpret_model` / `check_stats`. Added `[interpret]` extra. Fixed `__version__` hardcoded to `4.0.0a2` in `pycaret/__init__.py`.
+- `BUILD` — **`4.0.0a7`** — revived `plot_model` / `evaluate_model` (Plotly dispatchers wired into per-task plot registries).
+- `BUILD` — **`4.0.0a8`** — dropped `imbalanced-learn` + `category-encoders` from core deps. Core surface lands at **10 deps** (numpy, pandas, scipy, scikit-learn, joblib, plotly, tqdm, requests, jinja2, ipython).
+
+## ADDED — Server: control-plane V2 features
+
+- `ADDED` — **Secrets encryption** ([services/api/pycaret_server/crypto.py](../../services/api/pycaret_server/crypto.py)). Fernet-backed at-rest encryption for LLM API keys + future cloud creds. Stored ciphertext is prefixed with ``ENC:v1:`` so reads can transparently fall back to plaintext for rows written before this module existed. Key rides in env var ``PYCARET_SECRETS_KEY``; missing key in dev synthesises an ephemeral per-process key with a loud warning. Added `cryptography>=43` to backend core deps.
+- `ADDED` — **`PredictionLog` table** ([db/models.py](../../services/api/pycaret_server/db/models.py)). Append-only log of every served prediction. Drift detection, latency forensics, audit. The `/deployments/{slug}/predict` handler writes one row per call (ok or error path). Sample of input/output rows capped at 50 per log entry. New `GET /api/v1/deployments/{id}/prediction-logs` endpoint paginates with `status_filter`.
+- `ADDED` — **`Trial` table** + auto-persistence. Promotes the JSON `Run.leaderboard` rows into queryable entities so the UI can sort, filter, link to fitted pipelines. Written by `RunOrchestrator._transition` whenever leaderboard JSON lands. New `GET /api/v1/runs/{id}/trials` endpoint.
+- `ADDED` — **`ModelLibrary` table** + lazy-seed CRUD. Workspace-scoped, editable mirror of the engine's model registry. Lazy-seeded from `pycaret.api.list_models` on first read of a (workspace, task) pair. v1 enforcement is informational; engine-side filtering ships in V2.
+- `ADDED` — **Admin user routes** (`/api/v1/admin/users` GET + PATCH). Superuser-only. Toggles ``is_superuser`` / ``is_active`` with last-superuser + self-deactivation guards.
+- `ADDED` — **`ScheduledJob` table** + `services/api/pycaret_server/scheduler.py` (APScheduler in-process). Two job kinds: `drift_monitor` (snapshots prediction-log distributions vs. baseline; writes a `DriftReport` row) and `retrain` (re-runs a configured experiment via `dispatch_run`). New `/workspaces/{id}/schedules` CRUD + `POST /schedules/{id}/run-now` for immediate execution.
+- `ADDED` — **`drift_monitor.py`** — PSI for numeric features, chi² (Cramer's V) for categorical, mean as aggregate. Auto-writes `DriftReport` row + fires `drift.alert` webhook on `moderate`/`severe` scores.
+- `ADDED` — **`WebhookSubscription` table** + delivery infrastructure ([webhooks.py](../../services/api/pycaret_server/webhooks.py)). HMAC-SHA256-signed POSTs fired on platform events: `run.{succeeded,failed,cancelled}`, `deployment.{created,deleted,rollback}`, `drift.alert`, `schedule.failed`. Secrets stored encrypted via the new crypto module. Best-effort fire-and-forget on a daemon thread so a slow webhook target can't pin a user request. New `/workspaces/{id}/webhooks` CRUD + `POST /webhooks/{id}/test` for synthetic ping.
+- `ADDED` — **`ExperimentTemplate` table** + CRUD. Saved (task, setup_params, plan_params) bundles users can pre-fill the New Experiment screen from. New `/workspaces/{id}/experiment-templates` CRUD.
+- `ADDED` — **Pipeline versioning** ([deployments.py](../../services/api/pycaret_server/api/deployments.py)). Pipelines that share `(workspace_id, name)` are revisions of the same logical model and share a `family_id`. Promote bumps `version`. New `GET /pipelines/{id}/versions`. New `POST /deployments/{id}/rollback` repoints the deployment at any earlier pipeline in the same family; in-memory registry is evicted so the next `/predict` reloads.
+- `ADDED` — **`plan="search"`** ([runs/plans.py](../../services/api/pycaret_server/runs/plans.py)). AutoML pipeline search: orchestrator iterates a list of preprocessing variants (each a `setup_params` override merged on top of the experiment defaults), runs `compare_models` per variant, concatenates leaderboards into a single `Variant`-tagged DataFrame, returns the globally-best fitted pipeline.
+- `ADDED` — **Backup/restore** ([api/backup.py](../../services/api/pycaret_server/api/backup.py)). Superuser-only. `GET /admin/backup` streams a tarball containing `database.json` (every row from every table) + raw artifacts under the artifact dir. `POST /admin/restore` (multipart) wipes + reloads from the tarball with a `confirm=true` guard.
+- `ADDED` — **Expanded user-role lattice** (Spec § 17.2). `WorkspaceMember.role` widened from `{admin, member}` to 7 roles: `owner / admin / project_admin / ml_engineer / data_scientist / viewer / service_account` plus the legacy `member`. `ADMIN_ROLES` set governs admin gating + the last-admin guard.
+- `ADDED` — **`pycaret-client` SDK** ([packages/sdk-python/](../../packages/sdk-python/)). Python HTTP client for the Control Plane. Hand-written namespaced façades (`cp.workspaces.list()`, `cp.runs.submit(...)`, `cp.deployments.predict(...)`, etc.). To be published as `pycaret-client` on PyPI.
+- `ADDED` — **`runs/dispatch.py:dispatch_run`** extracted from the route handler so the scheduler (and any future programmatic enqueue path) can submit a Run without going through HTTP.
+- `ADDED` — **Single Alembic migration `b2c3d4e5f6a7`** covering `scheduled_jobs` + `webhook_subscriptions` + `experiment_templates` + `pipelines.family_id` + `pipelines.version`. Plus prior `a1b2c3d4e5f6` for `prediction_logs` + `trials` + `model_library`.
+
+## FIXED — Server bootstrap auto-migrate
+
+- `FIXED` — **`db/bootstrap.py`** — pre-Alembic legacy DBs were being stamped at `head` even when their actual schema was older, so newer migrations never landed and `OperationalError: no such table: trials` would appear at first prediction. Fix: detect the schema state by walking distinguishing tables (newest fingerprint first), stamp at the matched revision, then `upgrade head` if behind. When already at head, stamp head (no upgrade) — this also avoids polluting Alembic's process-global ScriptDirectory cache that breaks tests bootstrapping many DBs.
+- `CHANGED` — **`db/bootstrap.py`** — when `alembic_version` is already present in dev, also run `upgrade head` so newer migrations land between server boots without operator action.
+
+## ADDED — Web: surface every new endpoint
+
+- `ADDED` — **Schedules screen** (`/workspaces/:wsId/schedules`) + `<NewScheduleForm>`. Lists active drift-monitor + retrain schedules with last-run state. Toggle / run-now / delete inline.
+- `ADDED` — **Experiment templates screen** (`/workspaces/:wsId/templates`). CRUD with a JSON `setup_params` editor. Templates surface as a "Start from template" picker on the New Experiment screen.
+- `ADDED` — **Webhooks screen** (`/workspaces/:wsId/webhooks`) + `<NewWebhookForm>`. Event-type checkboxes, secret input, test-fire button.
+- `ADDED` — **`<TrialsCard>`** on RunDetail. Resolves `model_id` → full model name via `describeApi.models(task)` so rows show "Logistic Regression / Random Forest" instead of `lr / rf`. Two view modes: Table (sortable columns + inline progress bar on the primary metric) and Chart (Plotly horizontal bar chart with metric picker; "higher is better" / "lower is better" caption auto-flips per metric; best-row tinted green).
+- `ADDED` — **`<PredictionLogsCard>`** on DeploymentDetail. Status filter, auto-refresh, latency in tabular-nums, truncated request-id.
+- `ADDED` — **`<DeploymentVersionsCard>`** on DeploymentDetail. Lists every Pipeline in the family with rollback button per row; current version pilled green.
+- `ADDED` — **`<RunRunningCard>`** — animated "in flight" card that replaces the empty leaderboard while a run is queued / running. Pulsing accent dot, current stage from the latest event, live elapsed-time counter, skeleton bars where the leaderboard will land. Polls `/runs/{id}/events` every 1.5 s.
+- `ADDED` — **Admin screens** — `/admin/users` (superuser-only platform user mgmt with `is_superuser` + `is_active` toggles), `/workspaces/:wsId/admin` (workspace admin hub: members + LLM + audit cards + ModelLibrarySection inline), `/workspaces/:wsId/admin/integrations` (LLM / webhooks / object-storage / SSO cards).
+- `ADDED` — **`<BackupRestoreCard>`** on AdminUsers. Download tarball / upload + confirm restore.
+- `ADDED` — **`<AIAdvisorWidget>`** floating button + side panel (mounted in Layout). Shows the workspace's recent LLM consultations + provider status + quick-jump links. "Connect a provider" prompt when none configured.
+- `ADDED` — **API client methods** in [endpoints.ts](../../apps/web/src/api/endpoints.ts): `pipelinesApi.versions`, `deploymentsApi.rollback / predictionLogs`, full `schedulesApi`, `templatesApi`, `webhooksApi`, `modelLibraryApi`, `adminApi`, `runsApi.trials`.
+- `ADDED` — **AutoML search plan option** on NewExperiment (4th plan kind). Submits with default preprocessing variants `[{}, {normalize:true}, {normalize:true, transformation:true}]`.
+- `ADDED` — **Sidebar navigation entries** — Schedules / Templates / Webhooks (each with a custom 16px lucide-style SVG icon — Clock, Template, Hook). Workspace-scoped Admin link below LLM. Superuser-only "Platform users" entry under Account.
+- `ADDED` — **`workspace_id` + `project_id` on the Run response** so `/runs/:id` deep-links can resolve the active workspace for the sidebar. `Layout.tsx` reads `runForCtx.data?.workspace_id` as a fallback when the URL doesn't carry a `/workspaces/:wsId/...` segment.
+- `ADDED` — **Run-context fields propagated into [api/types.ts](../../apps/web/src/api/types.ts)** + `Pipeline.family_id` + `Pipeline.version` + `RunPlan` widened to include `'search'` + `WorkspaceRole` widened to the 7-role lattice + `ADMIN_WORKSPACE_ROLES` exported set.
+
+## CHANGED — Web: design-system unification
+
+- `CHANGED` — **WorkspaceHome dashboard rebuild** — replaced inline `style={{...}}` everywhere with design tokens. KPI strip uses `card-tight` + tabular-nums. Recent-runs row uses `pill-success / pill-accent / pill-warn / pill-danger / pill-neutral` (no more bespoke colored badges). Shortcuts panel rebuilt to the modern Linear/Vercel/GitHub pattern: `icon + label + small description + chevron-on-hover`, `hover:bg-ink-50` rows, `text-ink-400 → text-ink-700` icon transition. 10 lucide-style 16px SVG icons inline.
+- `CHANGED` — **ProjectDetail full rewrite** — clean breadcrumb, `h-page` header, tags as `kbd`, primary "New experiment" CTA. Drops `<DataSourcesSection>` inline so users upload CSVs in project context. Experiments list rendered as a tight rows-with-divider list (matches the data-sources list visually) instead of a stack of cards. Empty-state with beaker icon + first-experiment CTA.
+- `CHANGED, BREAKING` — **ExperimentDetail full rewrite** — replaced the permanent right-sidebar "New run" form with a header CTA button that opens a `<Dialog>`. New-run defaulting fixed: defaults to whatever data source the experiment's most recent run used (was hard-coded to `sklearn:iris`). Sklearn samples now only appear in the dropdown when zero CSVs are registered (true demo case) or when a prior run actually used one. Runs table resolves `data_source_id` UUIDs to friendly CSV names + uses pill primitives for status. Plan dropdown gains the `search` option.
+- `CHANGED` — **RunDetail polish** — full run UUID in breadcrumb (mono, no truncation). Status badge in header is now a `pill-*` class. Removed duplicate UUID under the title. Request snapshot redesigned as a 3-col `dl` with `divide-y` rows. Dropped the standalone `<Leaderboard>` section — TrialsCard is the single canonical view. "Event stream" → "Event log" with a one-line description; status pill instead of bullet-prefix text; empty-state copy is context-aware ("No events were emitted by this run." when terminal vs. "Waiting for events…" while connecting).
+- `CHANGED` — **Schedules / Templates / Webhooks / Admin pages design unification.** All use `h-page` / `h-section`, `space-y-8`, canonical table pattern (`bg-white text-ink-500` thead, `px-4 py-2 text-left font-medium`, `border-t hover:bg-ink-50` rows), `pill-*` for status, `rounded-xl border-dashed border-ink-300 p-8 text-center` empty states.
+- `CHANGED` — **`<AIAdvisorWidget>`** — was a circular candy-teal floating bubble; now a small rounded-full pill with the spark icon + "AI" label that flips to `bg-ink-900 text-white` when open.
+- `CHANGED` — **`<Leaderboard>`** — canonical white-thead pattern, model column bolded, sort chevron in accent.
+- `CHANGED` — **`<EventStream>`** — header uses `h-section`, status pill instead of `● open` text, context-aware empty state.
+
+## TESTS
+
+- `TESTS` — **265 → 330 engine tests passing** (1 skip on `[interpret]` extra). New: `test_session53_revive_legacy_verbs.py` (11 tests) + `test_session54_plot_model_dispatcher.py` (19 tests). Sessions 47-52 plot tests now run as part of the engine suite (previously excluded).
+- `TESTS` — **115 backend tests passing.** New: `test_session22.py` (9 tests — encryption + prediction logs + trials), `test_session23.py` (8 tests — model library + admin), `test_session24.py` (9 tests — schedules + templates + webhooks + pipeline versioning + search plan).
+- `TESTS` — **59 UI tests passing.** Updated `EventStream.test.tsx` to match the new pill-based status indicator (replaced the `● closed` regex match).
+
+## DEPS
+
+- `DEPS, BREAKING` — **Engine core deps: 12 → 10.** Dropped `imbalanced-learn` + `category-encoders`.
+- `DEPS` — **Engine core: capped `ipython>=8.18,<9`** to coexist with Colab's preinstalled `google.colab` extension which depends on the IPython 8.x `coloransi.TermColors` API.
+- `DEPS` — **Engine core: relaxed `scikit-learn>=1.7` → `>=1.5`** + `imbalanced-learn>=0.13` → `>=0.12` (before the dep was dropped) to avoid forcing upgrades on Colab/Kaggle preinstalled images.
+- `DEPS` — **New engine optional extra `[interpret] = ["shap>=0.46"]`** — folded into `[full]`.
+- `DEPS` — **Server core: added `cryptography>=43`** (was previously only in `[mysql]` extra) for Fernet at-rest secret encryption.
+- `DEPS` — **Server core: added `apscheduler>=3.10`** for the in-process scheduler.
+
+---
+
 # Session 19 — 2026-04-24 — Failure debugger + Deployment reviewer + API keys
 
 Baseline: session 18 completed the three classic copilots (3 of 6 types from SPEC § 12.2) + the router/provider infrastructure. No admin surface yet; only dataset-adjacent advisories.
