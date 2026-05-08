@@ -75,3 +75,55 @@ class RegressionExperiment(SupervisedExperiment):
         return tags
 
     # Phase 6: removed _build_legacy_experiment. Native setup only.
+
+    # ---------- session 54: plot_model / evaluate_model wiring ----------
+
+    def _default_plot_kind(self) -> str:
+        return "residuals"
+
+    def _evaluate_plot_set(self) -> list[str]:
+        return ["residuals", "residuals_distribution", "prediction_error", "feature"]
+
+    def _build_plot_registry(self, estimator):
+        from pycaret.plots import feature as fp
+        from pycaret.plots import regression as rp
+
+        feature_names = list(self.X_test.columns)
+
+        return {
+            "residuals": lambda **kw: rp.residuals(estimator, self.X_test, self.y_test, **kw),
+            "residuals_distribution": lambda **kw: rp.residuals_distribution(
+                estimator, self.X_test, self.y_test, **kw
+            ),
+            "prediction_error": lambda **kw: rp.prediction_error(
+                estimator, self.X_test, self.y_test, **kw
+            ),
+            "error": lambda **kw: rp.prediction_error(
+                estimator, self.X_test, self.y_test, **kw
+            ),
+            "learning": lambda **kw: rp.learning_curve(
+                estimator, self.X_train, self.y_train, **kw
+            ),
+            "learning_curve": lambda **kw: rp.learning_curve(
+                estimator, self.X_train, self.y_train, **kw
+            ),
+            "feature": lambda **kw: rp.feature_importance(estimator, feature_names, **kw),
+            "permutation": lambda **kw: fp.permutation_importance(
+                estimator, self.X_test, self.y_test, feature_names=feature_names, **kw
+            ),
+            "pdp": lambda feature, **kw: fp.partial_dependence(
+                estimator, self.X_test, feature, feature_names=feature_names, **kw
+            ),
+            "ice": lambda feature, **kw: fp.ice_curve(
+                estimator, self.X_test, feature, feature_names=feature_names, **kw
+            ),
+            "shap_summary": lambda **kw: fp.shap_summary(
+                estimator, self.X_test, feature_names=feature_names, **kw
+            ),
+            "summary": lambda **kw: fp.shap_summary(
+                estimator, self.X_test, feature_names=feature_names, **kw
+            ),
+            "shap_beeswarm": lambda **kw: fp.shap_beeswarm(
+                estimator, self.X_test, feature_names=feature_names, **kw
+            ),
+        }

@@ -747,6 +747,8 @@ class Experiment(BaseEstimator):
             "model_registry": model_registry,
             # session 31 — last metrics for pull()
             "last_metrics": None,
+            # session 47 — last leaderboard from compare_models() for get_leaderboard()
+            "last_leaderboard": None,
             # session 35 — extras specific to native setup
             "label_encoder": label_encoder,
             "numeric_cols": numeric_cols,
@@ -886,6 +888,8 @@ class Experiment(BaseEstimator):
             "model_registry": model_registry,
             # session 31
             "last_metrics": None,
+            # session 47 — last leaderboard from compare_models() for get_leaderboard()
+            "last_leaderboard": None,
             # session 35 extras
             "label_encoder": None,
             "numeric_cols": numeric_cols,
@@ -1076,6 +1080,8 @@ class Experiment(BaseEstimator):
             "fold_generator": fold_generator,
             "model_registry": model_registry,
             "last_metrics": None,
+            # session 47 — last leaderboard from compare_models() for get_leaderboard()
+            "last_leaderboard": None,
             # TS-specific slots.
             "fh": fh,
             "seasonal_period": (
@@ -1667,27 +1673,127 @@ class Experiment(BaseEstimator):
         except Exception:
             return None
 
-    def plot_model(self, estimator: Any, *args: Any, **kwargs: Any) -> Any:
-        """Plot model diagnostics.
+    def plot_model(
+        self,
+        estimator: Any,
+        plot: str | None = None,
+        *,
+        save: bool | str = False,
+        **kwargs: Any,
+    ) -> Any:
+        """Render a single Plotly diagnostic for a fitted estimator.
 
-        Removed in 4.0 (phase 6) pending the Plotly-native plot registry
-        rewrite. The legacy matplotlib / yellowbrick path was deleted with
-        the rest of ``pycaret/internal/pycaret_experiment/``.
+        Session 54 reimplementation. Each task class registers a dictionary
+        of named plots in ``_build_plot_registry(estimator)``. ``plot=`` looks
+        up the entry and returns a ``plotly.graph_objects.Figure``.
+
+        Parameters
+        ----------
+        estimator
+            A fitted ``sklearn.pipeline.Pipeline`` (or ``ForecastingPipeline``
+            for time-series). Some plots — like classification's
+            ``class_distribution`` — ignore the estimator and use the
+            experiment's data only; pass any fitted pipeline.
+        plot : str, optional
+            Plot kind. Defaults to the task's canonical first-look diagnostic
+            (``'auc'`` for classification, ``'residuals'`` for regression,
+            ``'cluster'`` for clustering, ``'score'`` for anomaly,
+            ``'forecast'`` for time-series). Pass an unknown kind to see the
+            full set in the ``ValueError`` message.
+        save : bool | str, default False
+            ``False`` → return the Figure. ``True`` → write to
+            ``f"{plot}.png"`` and return that path. A string → write to that
+            path. Static export requires ``pycaret[export]`` (pulls
+            ``kaleido``).
+        **kwargs
+            Passed through to the underlying plot function.
+
+        Returns
+        -------
+        plotly.graph_objects.Figure | str
+            The figure, or the saved path when ``save`` is truthy.
+        """
+        self._require_fitted()
+        registry = self._build_plot_registry(estimator)
+        if plot is None:
+            plot = self._default_plot_kind()
+        if plot not in registry:
+            raise ValueError(
+                f"Unknown plot kind {plot!r} for task {self.task.value!r}. "
+                f"Valid: {sorted(registry.keys())}"
+            )
+        fig = registry[plot](**kwargs)
+        if save:
+            path = save if isinstance(save, str) else f"{plot}.png"
+            try:
+                fig.write_image(path)
+            except Exception as e:  # noqa: BLE001
+                raise RuntimeError(
+                    f"plot_model(save={save!r}) requires kaleido. "
+                    "Install with: pip install pycaret[export]. "
+                    f"Original error: {e}"
+                ) from e
+            return path
+        return fig
+
+    def evaluate_model(self, estimator: Any, **kwargs: Any) -> dict:
+        """Render the curated diagnostic bundle for a task.
+
+        Session 54 reimplementation. Returns a ``dict`` mapping plot kind →
+        ``plotly.graph_objects.Figure``. Iterates the curated subset of
+        plots that the task class declares in ``_evaluate_plot_set()``,
+        calling each plot function defensively — any one that raises (e.g.
+        a SHAP entry without ``shap`` installed) is simply skipped, not
+        propagated.
+
+        The 3.x version showed an interactive ipywidget tab strip. The 4.0
+        version returns the underlying figures so callers can render them
+        however they want — ``fig.show()`` in notebooks, ``fig.to_dict()``
+        for HTTP transport, etc.
+
+        Returns
+        -------
+        dict[str, plotly.graph_objects.Figure]
+            One Figure per plot kind that succeeded.
+        """
+        self._require_fitted()
+        registry = self._build_plot_registry(estimator)
+        out: dict[str, Any] = {}
+        for kind in self._evaluate_plot_set():
+            if kind not in registry:
+                continue
+            try:
+                out[kind] = registry[kind](**kwargs)
+            except Exception:  # noqa: BLE001
+                # Best-effort: skip plots that fail (e.g. shap not installed,
+                # estimator lacking feature_importances_).
+                continue
+        return out
+
+    # --- subclass hooks for plot_model / evaluate_model -----------------------
+
+    def _build_plot_registry(self, estimator: Any) -> dict[str, Any]:
+        """Map plot kind → zero-arg-or-kwargs callable returning a Figure.
+
+        Each leaf task class overrides this to register the plot kinds it
+        supports. The base implementation raises so an experiment without
+        plot wiring is loud instead of silently empty.
         """
         raise NotImplementedError(
-            "plot_model() was removed in PyCaret 4.0. The Plotly-native "
-            "replacement is on the roadmap (post-4.0.0). Use a forecaster's "
-            "own .plot()/.predict() output until then."
+            f"plot_model() is not wired for task {self.task.value!r}. "
+            "Open an issue if you need this."
         )
 
-    def evaluate_model(self, estimator: Any, *args: Any, **kwargs: Any) -> Any:
-        """Interactive evaluation widget.
-
-        Removed in 4.0 (phase 6). Same Plotly rewrite target as plot_model.
-        """
+    def _default_plot_kind(self) -> str:
+        """Plot kind used when the caller passes ``plot=None``."""
         raise NotImplementedError(
-            "evaluate_model() was removed in PyCaret 4.0. The interactive "
-            "Plotly replacement is on the roadmap (post-4.0.0)."
+            f"_default_plot_kind() is not wired for task {self.task.value!r}."
+        )
+
+    def _evaluate_plot_set(self) -> list[str]:
+        """Curated list of plot kinds rendered by ``evaluate_model``."""
+        raise NotImplementedError(
+            f"_evaluate_plot_set() is not wired for task {self.task.value!r}."
         )
 
     # ----------------------------------------------- session-31 native verbs

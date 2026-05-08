@@ -59,3 +59,36 @@ class AnomalyExperiment(UnsupervisedExperiment):
         )
 
     # Phase 6: removed _build_legacy_experiment. Native setup only.
+
+    # ---------- session 54: plot_model / evaluate_model wiring ----------
+
+    def _default_plot_kind(self) -> str:
+        return "score"
+
+    def _evaluate_plot_set(self) -> list[str]:
+        return ["score", "anomaly_map"]
+
+    def _build_plot_registry(self, estimator):
+        from pycaret.plots import anomaly as ap
+
+        feature_names = list(self.X.columns)
+
+        return {
+            "score": lambda **kw: ap.score_distribution(estimator, self.X, **kw),
+            "anomaly_map": lambda **kw: ap.anomaly_map(estimator, self.X, **kw),
+            "feature_anomaly": lambda feature_x, feature_y, **kw: ap.feature_anomaly_scatter(
+                estimator,
+                self.X,
+                feature_x,
+                feature_y,
+                feature_names=feature_names,
+                **kw,
+            ),
+            "score_vs_feature": lambda feature, **kw: ap.score_vs_feature(
+                estimator,
+                self.X,
+                feature,
+                feature_names=feature_names,
+                **kw,
+            ),
+        }

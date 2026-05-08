@@ -6,6 +6,148 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ---
 
+## [4.0.0a8] — 2026-05-08
+
+**Drop ``imbalanced-learn`` and ``category-encoders``.** Both were left in core deps as transitional placeholders for the legacy 3.x preprocessor. Sessions 35-39 drained that preprocessor; it has been unreachable from any active code path for weeks. This release removes the deps and deletes the corresponding dead code. Core dep count: **12 → 10**.
+
+### Removed
+
+- ``imbalanced-learn`` — gone from core deps. The legacy ``Pipeline`` class that subclassed ``imblearn.pipeline.Pipeline`` is also gone — every native verb has been operating on ``sklearn.pipeline.Pipeline`` since session 24.
+- ``category-encoders`` — gone from core deps. The 4.0 native preprocessor uses sklearn-native encoders (``OneHotEncoder`` / ``OrdinalEncoder``); BaseN / Target encoder users were already on sklearn 1.3+'s native ``TargetEncoder`` path through the engine setup.
+- Deleted ``packages/engine/pycaret/internal/preprocess/`` (the entire legacy preprocessor: preprocessor.py, transformers.py, iterative_imputer.py, target/, time_series/forecasting/preprocessor.py).
+- Deleted ``packages/engine/pycaret/internal/pipeline.py`` (the legacy ``Pipeline`` and ``TimeSeriesPipeline`` classes).
+- Deleted ``packages/engine/pycaret/internal/patches/sklearn.py`` (the only file that imported ``internal.pipeline``).
+- ``packages/engine/pycaret/utils/_show_versions.py`` — pruned the dep list from 35 stale 3.x names down to the 10 we actually require + the 9 we ship as opt-in extras.
+
+### Core dep set after a8
+
+```
+numpy, pandas, scipy, scikit-learn, joblib, plotly, tqdm, requests, jinja2, ipython
+```
+
+That's it. Down from ~60 in 3.x.
+
+### Verified
+
+- Engine test suite: **330 pass / 1 skip** (no regression vs ``a7``).
+- Clean-venv smoke test: ``pip install pycaret==4.0.0a8`` in a fresh ``python -m venv`` pulls 0 of {imblearn, category-encoders}; ``ClassificationExperiment(...).compare_models()`` runs to completion.
+
+### Install
+
+```bash
+pip install --pre pycaret==4.0.0a8
+```
+
+---
+
+## [4.0.0a7] — 2026-05-08
+
+**Revive ``plot_model`` and ``evaluate_model``.** The Plotly plot library that landed in sessions 47-52 (33 chart functions across ``pycaret.plots.{classification,regression,feature,clustering,anomaly,time_series}``) is now wired into the OOP entry points. Together with ``a6``, **all six** verbs that originally shipped as ``NotImplementedError`` stubs in ``a2`` are now functional.
+
+### Added
+
+- ``Experiment.plot_model(estimator, plot=None, save=False, **kw)`` — looks up ``plot`` in a per-task registry and returns a ``plotly.graph_objects.Figure``. ``save=True`` writes ``f"{plot}.png"`` (requires ``pycaret[export]`` for ``kaleido``); ``save="my.png"`` writes to that path.
+- ``Experiment.evaluate_model(estimator)`` — returns a ``dict[str, Figure]`` of the curated diagnostic bundle for the task. Plots that fail (e.g. shap missing, estimator lacking ``feature_importances_``) are silently dropped rather than raising.
+- Per-task plot registries on every leaf class:
+  - **Classification** (16 kinds): ``auc`` / ``roc``, ``pr``, ``confusion_matrix``, ``calibration``, ``threshold``, ``lift``, ``gain``, ``class_distribution``, ``permutation`` / ``feature``, ``pdp``, ``ice``, ``shap_summary`` / ``summary``, ``shap_beeswarm``. Default: ``'auc'``.
+  - **Regression** (12 kinds): ``residuals``, ``residuals_distribution``, ``prediction_error`` / ``error``, ``learning`` / ``learning_curve``, ``feature``, plus the cross-task ``permutation`` / ``pdp`` / ``ice`` / ``shap_*`` group. Default: ``'residuals'``.
+  - **Clustering** (6 kinds): ``cluster`` / ``distribution``, ``elbow``, ``silhouette``, ``silhouette_plot``, ``embedding``. Default: ``'cluster'``.
+  - **Anomaly** (4 kinds): ``score``, ``anomaly_map``, ``feature_anomaly``, ``score_vs_feature``. Default: ``'score'``.
+  - **Time-series** (8 kinds): ``forecast``, ``decomposition`` / ``decomp``, ``acf``, ``pacf``, ``diagnostics`` / ``residuals``, ``cv``. Default: ``'forecast'``.
+- 19 new tests in ``packages/engine/tests/test_session54_plot_model_dispatcher.py`` covering all five tasks. Engine total: 330 pass / 1 skip.
+
+### Changed
+
+- ``test_session46_phase6_legacy_deletion.py`` — removed the two remaining ``NotImplementedError`` lockdown tests (``plot_model``, ``evaluate_model``) and updated the docstring. Phase 6's deletion of the legacy directory is still locked.
+
+### Install
+
+```bash
+pip install --pre pycaret==4.0.0a7
+# Static export (PNG/SVG/PDF):
+pip install --pre 'pycaret[export]==4.0.0a7'
+```
+
+---
+
+## [4.0.0a6] — 2026-05-08
+
+**Revive 4 of the 6 ``NotImplementedError`` stubs.** The phase-6 deletion in `4.0.0a2` removed legacy implementations of ``plot_model`` / ``evaluate_model`` / ``interpret_model`` / ``automl`` / ``get_leaderboard`` / ``check_stats`` and shipped each as a stub raising ``NotImplementedError``. This release restores 4 of them on the new native engine surface. ``plot_model`` and ``evaluate_model`` remain stubs pending the Plotly rewrite (separate track).
+
+### Added
+
+- ``Experiment.get_leaderboard()`` returns a defensive copy of the most recent ``compare_models`` leaderboard. Snapshotted into ``_fit_state["last_leaderboard"]`` after every supervised + time-series ``compare_models`` call. Raises ``RuntimeError`` if no compare has run.
+- ``Experiment.automl()`` — convenience wrapper for ``compare_models(n_select=1)`` → ``tune_model``. Returns the tuned ``sklearn.pipeline.Pipeline``. Pass-throughs for ``optimize`` / ``n_iter`` / ``turbo`` / ``include`` / ``exclude`` / ``fold`` / ``fit_kwargs`` / ``round`` / ``verbose``.
+- ``Experiment.interpret_model()`` — wraps ``shap.Explainer`` over a pipeline's preprocessor + final estimator. Returns a ``shap.Explanation``. ``plot=`` argument renders ``'summary'`` / ``'beeswarm'`` / ``'bar'`` / ``'waterfall'`` inline. ``shap`` is an **optional** extra: ``pip install pycaret[interpret]``.
+- ``TimeSeriesExperiment.check_stats()`` — runs Summary / Ljung-Box (white noise) / ADF + KPSS (stationarity) / Shapiro-Wilk (normality) over the experiment's series. Returns a 6-column ``DataFrame``. ``test=`` filter and ``split='all'|'train'|'test'``.
+- New optional extra: ``[interpret] = ["shap>=0.46"]``. Folded into ``[full]``.
+- 11 new tests in ``packages/engine/tests/test_session53_revive_legacy_verbs.py``. Total engine: 265 pass / 1 skip when ``shap`` is installed.
+
+### Install
+
+```bash
+pip install --pre pycaret==4.0.0a6
+# Or with SHAP for interpret_model():
+pip install --pre 'pycaret[interpret]==4.0.0a6'
+```
+
+---
+
+## [4.0.0a5] — 2026-05-08
+
+**Cap IPython at `<9` to keep Google Colab kernels alive.** `4.0.0a4` declared `ipython>=8.18` with no upper bound; pip's resolver pulled IPython 9.x, which removed the `IPython.utils.coloransi.TermColors.Green` attribute that Colab's `google.colab._shell_customizations` reads at kernel startup. Result: kernel restart-loop with `AttributeError: type object 'TermColors' has no attribute 'Green'`. Cap fixes it.
+
+### Fixed
+
+- `ipython>=8.18` → `ipython>=8.18,<9`. The 4.0 engine only uses IPython for display detection and rich repr; nothing in the IPython 9 API matters to us. Cap is purely to coexist with Colab's preinstalled stack.
+
+### Install
+
+```bash
+pip install --pre pycaret==4.0.0a5
+```
+
+If you were stuck in a Colab kernel restart-loop on `4.0.0a4`, you must **Runtime → Disconnect and delete runtime** before installing — the broken IPython 9 wheel persists on disk across kernel restarts; only deleting the runtime nukes it.
+
+---
+
+## [4.0.0a4] — 2026-05-08
+
+**Colab-friendly install.** `4.0.0a3` triggered a Colab kernel restart-loop because the dep pins forced pip to upgrade `scikit-learn` and `imbalanced-learn` over Colab's preinstalled image, which broke the C-extension ABI for other libraries the runtime preloads. This release relaxes those floors so `pip install --pre pycaret` is a no-op for users who already have a recent scientific stack.
+
+### Fixed
+
+- `scikit-learn>=1.7` → `scikit-learn>=1.5`. We still test against the latest sklearn; the floor is just the oldest version we will not actively reject.
+- `imbalanced-learn>=0.13` → `imbalanced-learn>=0.12`.
+- `pycaret.__version__` was hardcoded to `"4.0.0a2"` in [`pycaret/__init__.py`](packages/engine/pycaret/__init__.py) and never followed `pyproject.toml`. It now reports the real installed version.
+
+### Install
+
+```bash
+pip install --pre pycaret==4.0.0a4
+```
+
+---
+
+## [4.0.0a3] — 2026-05-08
+
+**First PyPI release of the 4.0 line.** Functionally identical to `4.0.0a2`; this release exists to land the artifacts on PyPI now that maintainer account access is restored. `4.0.0a1` and `4.0.0a2` were only ever distributed via GitHub release downloads — this is the first version installable via `pip install --pre pycaret`.
+
+### Install
+
+```bash
+pip install --pre pycaret
+```
+
+Pip ignores PEP 440 pre-releases by default, so existing `pip install pycaret` users on the 3.x line are unaffected.
+
+### Changed
+
+- Engine source unchanged from `4.0.0a2` (the [release notes for a2](#400a2--2026-04-24) describe the surface).
+- Build: re-cut from current source under `uv build --package pycaret`; sdist + wheel published to PyPI.
+
+---
+
 ## [4.0.0a2] — 2026-04-24
 
 **Third alpha release.** Two big themes since `4.0.0a1`:

@@ -141,18 +141,173 @@ class TimeSeriesExperiment(SupervisedExperiment):
         )
         return self
 
-    def check_stats(self, *args: Any, **kwargs: Any) -> Any:
-        """Time-series-specific statistical tests (ADF, KPSS, etc.).
+    # ---------- session 54: plot_model / evaluate_model wiring ----------
 
-        Removed in PyCaret 4.0 (phase 6). Run sktime / statsmodels tests
-        directly on ``exp.y_train`` — the experiment exposes the data,
-        the user picks the test.
+    def _default_plot_kind(self) -> str:
+        return "forecast"
+
+    def _evaluate_plot_set(self) -> list[str]:
+        return ["forecast", "decomposition", "acf", "diagnostics"]
+
+    def _build_plot_registry(self, estimator):
+        from pycaret.plots import time_series as tp
+
+        def _predict():
+            return self.predict_model(estimator).predictions
+
+        return {
+            "forecast": lambda **kw: tp.forecast(
+                y_true=self.y_test,
+                y_pred=_predict(),
+                history=self.y_train,
+                **kw,
+            ),
+            "decomposition": lambda **kw: tp.decomposition(self.y, **kw),
+            "decomp": lambda **kw: tp.decomposition(self.y, **kw),
+            "acf": lambda **kw: tp.acf(self.y, **kw),
+            "pacf": lambda **kw: tp.pacf(self.y, **kw),
+            "diagnostics": lambda **kw: tp.residual_diagnostics(self.y_test, _predict(), **kw),
+            "residuals": lambda **kw: tp.residual_diagnostics(self.y_test, _predict(), **kw),
+            "cv": lambda **kw: tp.cv_split_visualizer(
+                self._fit_state.get("fold_generator"), self.y_train, **kw
+            ),
+        }
+
+    def check_stats(
+        self,
+        test: str = "all",
+        *,
+        alpha: float = 0.05,
+        split: str = "all",
+    ) -> Any:
+        """Run time-series statistical tests on the experiment's series.
+
+        Session 47 reimplementation. Drives the canonical statsmodels +
+        scipy test suite for diagnosing a series before forecasting:
+        summary statistics, Ljung-Box (white noise), Augmented Dickey-Fuller
+        + KPSS (stationarity), and Shapiro-Wilk (normality). Returns a tidy
+        ``pandas.DataFrame`` so the caller can filter / pretty-print.
+
+        Parameters
+        ----------
+        test : str, default "all"
+            One of ``'summary'``, ``'white_noise'``, ``'stationarity'``,
+            ``'normality'``, or ``'all'``.
+        alpha : float, default 0.05
+            Significance level for boolean conclusions.
+        split : str, default "all"
+            Which series to test: ``'all'`` (full y), ``'train'``, or
+            ``'test'``.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Columns: ``Test``, ``Test Name``, ``Data``, ``Property``,
+            ``Setting``, ``Value``. One row per emitted statistic.
         """
-        raise NotImplementedError(
-            "check_stats() was removed in PyCaret 4.0. Use sktime / "
-            "statsmodels directly: e.g. `from statsmodels.tsa.stattools "
-            "import adfuller; adfuller(exp.y_train)`."
+        self._require_fitted()
+        import warnings
+
+        import pandas as _pd
+
+        if split == "all":
+            y = self._fit_state.get("y")
+        elif split == "train":
+            y = self._fit_state.get("y_train")
+        elif split == "test":
+            y = self._fit_state.get("y_test")
+        else:
+            raise ValueError(
+                f"Unknown split={split!r}. Valid: 'all', 'train', 'test'."
+            )
+        if y is None or len(y) == 0:
+            raise RuntimeError(
+                f"check_stats(): no time-series data for split={split!r}."
+            )
+
+        valid = {"summary", "white_noise", "stationarity", "normality", "all"}
+        if test not in valid:
+            raise ValueError(
+                f"Unknown test={test!r}. Valid: {sorted(valid)}."
+            )
+
+        rows: list[dict[str, Any]] = []
+
+        def _row(category: str, name: str, prop: str, value: Any) -> dict[str, Any]:
+            return {
+                "Test": category,
+                "Test Name": name,
+                "Data": split,
+                "Property": prop,
+                "Setting": {"alpha": alpha},
+                "Value": value,
+            }
+
+        y_series = (
+            _pd.Series(y).dropna() if not isinstance(y, _pd.Series) else y.dropna()
         )
+
+        if test in ("summary", "all"):
+            desc = y_series.describe()
+            for stat, val in desc.items():
+                rows.append(
+                    _row("Summary Statistics", "Descriptive", str(stat), float(val))
+                )
+
+        if test in ("white_noise", "all"):
+            from statsmodels.stats.diagnostic import acorr_ljungbox
+
+            try:
+                lb = acorr_ljungbox(y_series, lags=[10], return_df=True)
+                pval = float(lb["lb_pvalue"].iloc[0])
+                rows.append(_row("White Noise", "Ljung-Box", "p-value (lag=10)", pval))
+                rows.append(
+                    _row("White Noise", "Ljung-Box", "White Noise?", bool(pval >= alpha))
+                )
+            except Exception as e:  # noqa: BLE001
+                rows.append(_row("White Noise", "Ljung-Box", "error", str(e)))
+
+        if test in ("stationarity", "all"):
+            from statsmodels.tsa.stattools import adfuller, kpss
+
+            try:
+                adf_stat, adf_p, *_ = adfuller(y_series)
+                rows.append(_row("Stationarity", "ADF", "Test Statistic", float(adf_stat)))
+                rows.append(_row("Stationarity", "ADF", "p-value", float(adf_p)))
+                rows.append(_row("Stationarity", "ADF", "Stationary?", bool(adf_p < alpha)))
+            except Exception as e:  # noqa: BLE001
+                rows.append(_row("Stationarity", "ADF", "error", str(e)))
+
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    kpss_stat, kpss_p, *_ = kpss(y_series, nlags="auto")
+                rows.append(_row("Stationarity", "KPSS", "Test Statistic", float(kpss_stat)))
+                rows.append(_row("Stationarity", "KPSS", "p-value", float(kpss_p)))
+                rows.append(
+                    _row("Stationarity", "KPSS", "Trend Stationary?", bool(kpss_p >= alpha))
+                )
+            except Exception as e:  # noqa: BLE001
+                rows.append(_row("Stationarity", "KPSS", "error", str(e)))
+
+        if test in ("normality", "all"):
+            from scipy import stats as _sp_stats
+
+            try:
+                sample = (
+                    y_series
+                    if len(y_series) <= 5000
+                    else y_series.sample(5000, random_state=self.session_id or 42)
+                )
+                _, sw_p = _sp_stats.shapiro(sample)
+                rows.append(_row("Normality", "Shapiro-Wilk", "p-value", float(sw_p)))
+                rows.append(
+                    _row("Normality", "Shapiro-Wilk", "Normal?", bool(sw_p >= alpha))
+                )
+            except Exception as e:  # noqa: BLE001
+                rows.append(_row("Normality", "Shapiro-Wilk", "error", str(e)))
+
+        return _pd.DataFrame(rows)
 
     # ------------------------------------------------- session 40 (phase 5b)
     # Native TS create_model — drains legacy.create_model. Reads from
@@ -694,6 +849,9 @@ class TimeSeriesExperiment(SupervisedExperiment):
         )
 
         self._set_last_metrics(leaderboard)
+        # session 47 — see SupervisedExperiment.compare_models for rationale.
+        if hasattr(self, "_fit_state"):
+            self._fit_state["last_leaderboard"] = leaderboard.copy()
         return CompareResult(
             best=models[0] if models else None,
             models=models,

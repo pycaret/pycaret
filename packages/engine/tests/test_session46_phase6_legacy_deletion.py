@@ -9,12 +9,12 @@ Phase-6 trade-offs:
 - ``setup_kwargs`` no longer fall through to a legacy escape hatch —
   they raise ``ConfigurationError`` (the kwargs were the only paths into
   legacy ``setup()``).
-- Six legacy-only verbs raise ``NotImplementedError`` with pointers to
-  the canonical 4.0 replacement: ``plot_model`` / ``evaluate_model``
-  (Plotly rewrite is post-4.0.0), ``interpret_model`` (use SHAP
-  directly), ``automl`` (use ``compare_models`` + ``tune_model``),
-  ``get_leaderboard`` (read ``CompareResult.leaderboard``),
-  ``check_stats`` (use sktime / statsmodels directly).
+- All six legacy-only verbs (``plot_model``, ``evaluate_model``,
+  ``interpret_model``, ``automl``, ``get_leaderboard``, ``check_stats``)
+  originally shipped as ``NotImplementedError`` stubs and have since been
+  reimplemented — those positive-path tests live in their own session
+  files. This file only locks the deletion of the legacy directory and
+  the shim namespace.
 - ``_LegacyShim`` exists only as a back-compat namespace for the
   drain-lock test pattern; production code never reads off it.
 
@@ -91,80 +91,6 @@ def test_4x_oop_classes_still_importable():
         TimeSeriesExperiment,
     ):
         assert callable(cls)
-
-
-# ---------------------------------------------------------------------------
-# Removed verbs raise NotImplementedError.
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.slow
-def test_plot_model_raises_not_implemented():
-    import pycaret.datasets
-    from pycaret.tasks import ClassificationExperiment
-
-    df = pycaret.datasets.get_data("juice", verbose=False)
-    exp = ClassificationExperiment(target="Purchase", session_id=42, n_jobs=1, fold=3).fit(df)
-    res = exp.create_model("lr", verbose=False)
-    with pytest.raises(NotImplementedError, match="plot_model"):
-        exp.plot_model(res.pipeline)
-
-
-@pytest.mark.slow
-def test_evaluate_model_raises_not_implemented():
-    import pycaret.datasets
-    from pycaret.tasks import ClassificationExperiment
-
-    df = pycaret.datasets.get_data("juice", verbose=False)
-    exp = ClassificationExperiment(target="Purchase", session_id=42, n_jobs=1, fold=3).fit(df)
-    res = exp.create_model("lr", verbose=False)
-    with pytest.raises(NotImplementedError, match="evaluate_model"):
-        exp.evaluate_model(res.pipeline)
-
-
-@pytest.mark.slow
-def test_interpret_model_raises_not_implemented():
-    import pycaret.datasets
-    from pycaret.tasks import ClassificationExperiment
-
-    df = pycaret.datasets.get_data("juice", verbose=False)
-    exp = ClassificationExperiment(target="Purchase", session_id=42, n_jobs=1, fold=3).fit(df)
-    res = exp.create_model("lr", verbose=False)
-    with pytest.raises(NotImplementedError, match="interpret_model"):
-        exp.interpret_model(res.pipeline)
-
-
-@pytest.mark.slow
-def test_automl_raises_not_implemented():
-    import pycaret.datasets
-    from pycaret.tasks import ClassificationExperiment
-
-    df = pycaret.datasets.get_data("juice", verbose=False)
-    exp = ClassificationExperiment(target="Purchase", session_id=42, n_jobs=1, fold=3).fit(df)
-    with pytest.raises(NotImplementedError, match="automl"):
-        exp.automl()
-
-
-@pytest.mark.slow
-def test_get_leaderboard_raises_not_implemented():
-    import pycaret.datasets
-    from pycaret.tasks import ClassificationExperiment
-
-    df = pycaret.datasets.get_data("juice", verbose=False)
-    exp = ClassificationExperiment(target="Purchase", session_id=42, n_jobs=1, fold=3).fit(df)
-    with pytest.raises(NotImplementedError, match="get_leaderboard"):
-        exp.get_leaderboard()
-
-
-@pytest.mark.slow
-def test_check_stats_raises_not_implemented():
-    import pycaret.datasets
-    from pycaret.tasks import TimeSeriesExperiment
-
-    df = pycaret.datasets.get_data("airline", verbose=False)
-    exp = TimeSeriesExperiment(fh=12, session_id=42).fit(df)
-    with pytest.raises(NotImplementedError, match="check_stats"):
-        exp.check_stats()
 
 
 # ---------------------------------------------------------------------------

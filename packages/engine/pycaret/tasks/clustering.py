@@ -60,3 +60,23 @@ class ClusteringExperiment(UnsupervisedExperiment):
         )
 
     # Phase 6: removed _build_legacy_experiment. Native setup only.
+
+    # ---------- session 54: plot_model / evaluate_model wiring ----------
+
+    def _default_plot_kind(self) -> str:
+        return "cluster"
+
+    def _evaluate_plot_set(self) -> list[str]:
+        return ["cluster", "silhouette_plot", "embedding"]
+
+    def _build_plot_registry(self, estimator):
+        from pycaret.plots import clustering as cp
+
+        return {
+            "cluster": lambda **kw: cp.cluster_distribution(estimator, self.X, **kw),
+            "distribution": lambda **kw: cp.cluster_distribution(estimator, self.X, **kw),
+            "elbow": lambda **kw: cp.elbow_curve(estimator, self.X, **kw),
+            "silhouette": lambda **kw: cp.silhouette_curve(estimator, self.X, **kw),
+            "silhouette_plot": lambda **kw: cp.silhouette_plot(estimator, self.X, **kw),
+            "embedding": lambda **kw: cp.embedding_2d(estimator, self.X, **kw),
+        }

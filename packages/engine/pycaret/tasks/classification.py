@@ -77,3 +77,56 @@ class ClassificationExperiment(SupervisedExperiment):
         return tags
 
     # Phase 6: removed _build_legacy_experiment. Native setup only.
+
+    # ---------- session 54: plot_model / evaluate_model wiring ----------
+
+    def _default_plot_kind(self) -> str:
+        return "auc"
+
+    def _evaluate_plot_set(self) -> list[str]:
+        return ["auc", "pr", "confusion_matrix", "calibration", "class_distribution"]
+
+    def _build_plot_registry(self, estimator):
+        from pycaret.plots import classification as cp
+        from pycaret.plots import feature as fp
+
+        feature_names = list(self.X_test.columns)
+
+        return {
+            "auc": lambda **kw: cp.roc_curve(estimator, self.X_test, self.y_test, **kw),
+            "roc": lambda **kw: cp.roc_curve(estimator, self.X_test, self.y_test, **kw),
+            "pr": lambda **kw: cp.pr_curve(estimator, self.X_test, self.y_test, **kw),
+            "confusion_matrix": lambda **kw: cp.confusion_matrix(
+                estimator, self.X_test, self.y_test, **kw
+            ),
+            "calibration": lambda **kw: cp.calibration_curve(
+                estimator, self.X_test, self.y_test, **kw
+            ),
+            "threshold": lambda **kw: cp.threshold_curve(
+                estimator, self.X_test, self.y_test, **kw
+            ),
+            "lift": lambda **kw: cp.lift_curve(estimator, self.X_test, self.y_test, **kw),
+            "gain": lambda **kw: cp.gain_curve(estimator, self.X_test, self.y_test, **kw),
+            "class_distribution": lambda **kw: cp.class_distribution(self.y, **kw),
+            "permutation": lambda **kw: fp.permutation_importance(
+                estimator, self.X_test, self.y_test, feature_names=feature_names, **kw
+            ),
+            "feature": lambda **kw: fp.permutation_importance(
+                estimator, self.X_test, self.y_test, feature_names=feature_names, **kw
+            ),
+            "pdp": lambda feature, **kw: fp.partial_dependence(
+                estimator, self.X_test, feature, feature_names=feature_names, **kw
+            ),
+            "ice": lambda feature, **kw: fp.ice_curve(
+                estimator, self.X_test, feature, feature_names=feature_names, **kw
+            ),
+            "shap_summary": lambda **kw: fp.shap_summary(
+                estimator, self.X_test, feature_names=feature_names, **kw
+            ),
+            "summary": lambda **kw: fp.shap_summary(
+                estimator, self.X_test, feature_names=feature_names, **kw
+            ),
+            "shap_beeswarm": lambda **kw: fp.shap_beeswarm(
+                estimator, self.X_test, feature_names=feature_names, **kw
+            ),
+        }

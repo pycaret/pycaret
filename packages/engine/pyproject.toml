@@ -1,6 +1,6 @@
 [project]
 name = "pycaret"
-version = "4.0.0a2"
+version = "4.0.0a8"
 description = "PyCaret 4.0 — the modern, minimalistic ML control pane on top of scikit-learn."
 readme = "README.md"
 keywords = [
@@ -47,16 +47,13 @@ dependencies = [
   "numpy>=1.26",
   "pandas>=2.2",
   "scipy>=1.11",
-  "scikit-learn>=1.7",  # no upper cap — we align with sklearn, not against it
+  "scikit-learn>=1.5",  # floor chosen to avoid forcing an upgrade on Colab/Kaggle preinstalled images
   "joblib>=1.4",
   "plotly>=5.22",
   "tqdm>=4.66",
   "requests>=2.32",     # pycaret.datasets dataset loaders
   "jinja2>=3.1",        # pandas.io.formats.style.Styler (notebook display)
-  "ipython>=8.18",      # display detection + rich repr; 4 call sites
-  # ↓ transitional — removed when Phase 4 rewrites preprocessor on native sklearn.
-  "imbalanced-learn>=0.13",  # internal Pipeline inherits imblearn.pipeline.Pipeline
-  "category-encoders>=2.6",  # legacy preprocessor: BaseN/OneHot/Ordinal/Target encoders
+  "ipython>=8.18,<9",   # display detection + rich repr; capped <9 because google.colab depends on IPython 8.x's coloransi.TermColors API
 ]
 
 [project.optional-dependencies]
@@ -89,9 +86,15 @@ timeseries = [
   "pmdarima>=2.0.4",
 ]
 
+# Model interpretation via SHAP. Optional because shap pulls numba +
+# llvmlite which are heavy on Colab/Kaggle preinstalled images.
+interpret = [
+  "shap>=0.46",
+]
+
 # Everything a notebook / power user wants in one line.
 full = [
-  "pycaret[notebook,export,anomaly,timeseries]",
+  "pycaret[notebook,export,anomaly,timeseries,interpret]",
 ]
 
 # Developer tooling.

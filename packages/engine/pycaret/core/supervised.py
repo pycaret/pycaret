@@ -246,6 +246,10 @@ class SupervisedExperiment(Experiment):
         )
 
         self._set_last_metrics(leaderboard)
+        # session 47 — preserve a copy so get_leaderboard() is stable even if
+        # the caller mutates the DataFrame returned in CompareResult.
+        if hasattr(self, "_fit_state"):
+            self._fit_state["last_leaderboard"] = leaderboard.copy()
         return CompareResult(
             best=models[0] if models else None,
             models=models,
@@ -976,32 +980,218 @@ class SupervisedExperiment(Experiment):
 
     # --------------------------------------------------------- interpretation
 
-    def interpret_model(self, estimator: Any, *args: Any, **kwargs: Any) -> Any:
-        """Removed in PyCaret 4.0 (phase 6). The legacy SHAP / lime path was
-        deleted with the rest of ``pycaret/internal/pycaret_experiment/``.
+    def interpret_model(
+        self,
+        estimator: Any,
+        *,
+        plot: str | None = None,
+        observation: int | None = None,
+        X_new: Any = None,
+        background_size: int = 100,
+    ) -> Any:
+        """Build a SHAP explanation for a fitted estimator or pipeline.
+
+        Session 47 reimplementation. Returns a ``shap.Explanation`` object so
+        callers can render any plot they want via ``shap.plots.*``. As a
+        convenience, ``plot=`` will also render one of the common plots inline.
+
+        SHAP is an optional dependency: install with
+        ``pip install pycaret[interpret]``.
+
+        Parameters
+        ----------
+        estimator
+            Either a fitted ``sklearn.pipeline.Pipeline`` (preprocessor + model)
+            or a bare fitted estimator. When a pipeline is passed, the
+            preprocessor is used to transform ``X`` before the explainer runs
+            on the final estimator.
+        plot : str, optional
+            One of ``'summary'`` / ``'beeswarm'``, ``'bar'``, ``'waterfall'``.
+            ``None`` (default) just returns the Explanation without plotting.
+        observation : int, optional
+            Row index for ``'waterfall'`` plots. Defaults to 0.
+        X_new : DataFrame, optional
+            Data to explain. Defaults to ``self.X_test`` from the fitted
+            experiment.
+        background_size : int, default 100
+            Number of training rows used as the SHAP background distribution.
+            Capped automatically when the training set is smaller.
+
+        Returns
+        -------
+        shap.Explanation
+            Per-row SHAP values plus base value + data references.
+
+        Raises
+        ------
+        ImportError
+            When ``shap`` is not installed.
+        RuntimeError
+            When neither ``X_new`` is provided nor ``X_test`` is available.
         """
-        raise NotImplementedError(
-            "interpret_model() was removed in PyCaret 4.0. Use SHAP "
-            "directly: `import shap; shap.Explainer(pipeline.steps[-1][1])"
-            "(X_test)` is the canonical replacement."
-        )
+        self._require_fitted()
+        try:
+            import shap
+        except ImportError as e:
+            raise ImportError(
+                "interpret_model() requires the optional 'shap' dependency. "
+                "Install with: pip install pycaret[interpret]"
+            ) from e
+
+        if X_new is not None:
+            X = X_new.copy() if hasattr(X_new, "copy") else X_new
+        else:
+            X = self._fit_state.get("X_test") if hasattr(self, "_fit_state") else None
+            if X is None:
+                raise RuntimeError(
+                    "interpret_model() needs an explicit `X_new=` argument when "
+                    "the experiment has no X_test (e.g. unsupervised tasks)."
+                )
+
+        # Split pipeline → (preprocessor.transform, final estimator).
+        if hasattr(estimator, "steps") and len(estimator.steps) > 1:
+            X_transformed = estimator[:-1].transform(X)
+            final_est = estimator.steps[-1][1]
+        else:
+            X_transformed = X
+            final_est = estimator
+
+        # Background for explainers that need one (Kernel / Permutation).
+        # Use training data when available, sampled down for speed.
+        background = self._fit_state.get("X_train_transformed") if hasattr(self, "_fit_state") else None
+        if background is None or len(background) == 0:
+            background = X_transformed
+        if len(background) > background_size:
+            try:
+                background = shap.utils.sample(
+                    background, background_size, random_state=self.session_id or 42
+                )
+            except Exception:
+                background = background[:background_size]
+
+        explainer = shap.Explainer(final_est, background)
+        explanation = explainer(X_transformed)
+
+        if plot is None:
+            return explanation
+
+        if plot in ("summary", "beeswarm"):
+            shap.plots.beeswarm(explanation)
+        elif plot == "bar":
+            shap.plots.bar(explanation)
+        elif plot == "waterfall":
+            idx = observation if observation is not None else 0
+            shap.plots.waterfall(explanation[idx])
+        else:
+            raise ValueError(
+                f"Unknown plot kind: {plot!r}. "
+                "Supported: 'summary' / 'beeswarm', 'bar', 'waterfall'. "
+                "For other plots, call shap.plots.* directly on the returned Explanation."
+            )
+
+        return explanation
 
     # --------------------------------------------------------- leaderboard / automl
 
-    def automl(self, *args: Any, **kwargs: Any) -> Any:
-        """Removed in PyCaret 4.0 (phase 6). Use ``compare_models`` +
-        ``tune_model`` for the same workflow with explicit control.
-        """
-        raise NotImplementedError(
-            "automl() was removed in PyCaret 4.0. Equivalent: "
-            "`exp.compare_models(n_select=N).best` then `exp.tune_model(best)`."
-        )
+    def automl(
+        self,
+        *,
+        optimize: str | None = None,
+        n_iter: int = 10,
+        turbo: bool = True,
+        fold: Any | None = None,
+        include: list[Any] | None = None,
+        exclude: list[str] | None = None,
+        fit_kwargs: dict | None = None,
+        round: int = 4,
+        verbose: bool = False,
+    ) -> Any:
+        """Run ``compare_models()`` then ``tune_model()`` on the winner.
 
-    def get_leaderboard(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
-        """Removed in PyCaret 4.0 (phase 6). The leaderboard is the
-        ``leaderboard`` attribute of ``CompareResult``; no separate accessor.
+        Session 47 reimplementation. Convenience wrapper for the canonical
+        AutoML loop: rank every (or every selected) model in the registry by
+        ``optimize``, take the top one, hyperparameter-search it, return the
+        tuned ``sklearn.pipeline.Pipeline``.
+
+        For finer control — selecting the top-N then ensembling, plotting
+        intermediate leaderboards, custom search grids — call ``compare_models``
+        and ``tune_model`` directly. ``automl()`` is the sane default; the
+        primitives are the API.
+
+        Parameters
+        ----------
+        optimize : str, optional
+            Metric to rank by AND tune toward. Defaults to the task's primary
+            metric (Accuracy / R²).
+        n_iter : int, default 10
+            ``RandomizedSearchCV`` iterations passed to ``tune_model``.
+        turbo : bool, default True
+            Skip slow estimators in the comparison phase.
+        include / exclude : list, optional
+            Restrict the model registry passed to ``compare_models``.
+        fold, fit_kwargs, round, verbose
+            Passed through to both phases.
+
+        Returns
+        -------
+        sklearn.pipeline.Pipeline
+            The tuned best pipeline (preprocessor + tuned estimator).
+
+        Raises
+        ------
+        RuntimeError
+            If ``compare_models`` produced no successful candidate to tune.
         """
-        raise NotImplementedError(
-            "get_leaderboard() was removed in PyCaret 4.0. The leaderboard "
-            "DataFrame is on `compare_models(...).leaderboard`."
+        compare_result = self.compare_models(
+            include=include,
+            exclude=exclude,
+            fold=fold,
+            sort=optimize,
+            n_select=1,
+            turbo=turbo,
+            fit_kwargs=fit_kwargs,
+            round=round,
+            verbose=verbose,
         )
+        if compare_result.best is None:
+            raise RuntimeError(
+                "automl(): compare_models produced no successful candidate to tune. "
+                "Check `errors='raise'` on compare_models for the underlying failure."
+            )
+        tune_result = self.tune_model(
+            compare_result.best,
+            fold=fold,
+            n_iter=n_iter,
+            optimize=optimize,
+            fit_kwargs=fit_kwargs,
+            round=round,
+            verbose=verbose,
+        )
+        return tune_result.pipeline
+
+    def get_leaderboard(self) -> pd.DataFrame:
+        """Return the leaderboard from the most recent ``compare_models()`` call.
+
+        Session 47 reimplementation. Reads from ``self._fit_state["last_leaderboard"]``,
+        which ``compare_models`` snapshots after each successful run. The
+        DataFrame is a defensive copy, so the caller can mutate it freely
+        without disturbing future ``get_leaderboard()`` calls.
+
+        Raises ``RuntimeError`` if ``compare_models`` has not run yet — the
+        canonical way to access a leaderboard remains
+        ``compare_models(...).leaderboard``; this accessor exists only to
+        retrieve it after the fact.
+        """
+        self._require_fitted()
+        if not hasattr(self, "_fit_state"):
+            raise RuntimeError(
+                "get_leaderboard() requires compare_models() to have run first. "
+                "Equivalent: `result = exp.compare_models(); result.leaderboard`."
+            )
+        leaderboard = self._fit_state.get("last_leaderboard")
+        if leaderboard is None:
+            raise RuntimeError(
+                "get_leaderboard() requires compare_models() to have run first. "
+                "Equivalent: `result = exp.compare_models(); result.leaderboard`."
+            )
+        return leaderboard.copy()
