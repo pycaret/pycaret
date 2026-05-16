@@ -84,3 +84,13 @@ tmp/
 nbtest*.ipynb
 demo*.py
 .tmp-*
+# Catch ad-hoc debugging scripts that tend to accumulate at the root.
+# Tests live under packages/engine/tests/ or services/api/tests/; anything
+# else at the root is almost certainly scratch.
+/trace.py
+/scratch.py
+/scratch_*.py
+/repro.py
+/repro_*.py
+/debug.py
+/debug_*.py
