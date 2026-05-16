@@ -10,7 +10,7 @@ through the engine directly:
 ```python
 from pycaret_client import ControlPlane
 
-cp = ControlPlane("http://localhost:8000", token="...")
+cp = ControlPlane("http://localhost:8020", token="...")
 ws = cp.workspaces.create(name="Demo")
 proj = cp.projects.create(workspace_id=ws.id, name="Churn")
 ds = cp.datasets.upload(workspace_id=ws.id, path="churn.csv")

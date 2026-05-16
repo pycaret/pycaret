@@ -43,12 +43,20 @@ export function ModelLibrarySection({ workspaceId }: ModelLibrarySectionProps) {
 
   return (
     <section>
+      <div className="rounded-md border border-amber-400/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-600/40 px-3 py-2 mb-4 text-xs text-amber-900 dark:text-amber-200">
+        <strong>v1 — display only.</strong> Toggles below are saved to the
+        catalog but the engine does <strong>not</strong> consult them yet:
+        a disabled algorithm will still be trained by{' '}
+        <code className="font-mono">compare_models</code>. Engine-side
+        enforcement ships in V2.
+      </div>
+
       <div className="flex items-end justify-between gap-4 mb-4">
         <div>
           <h2 className="h-section">Model library</h2>
           <p className="text-xs text-ink-500 mt-1">
-            Editable mirror of the engine's model registry. Engine-side
-            filtering by these toggles ships in V2.
+            Workspace-scoped catalog of algorithm types per task. Lazy-seeded
+            from the engine's <code className="font-mono">list_models</code>.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">

@@ -36,11 +36,42 @@ mlruns/
 mlflow_backend.py
 dask*/
 
-# Local dev SQLite DB produced by `alembic upgrade head` / dev server.
-/services/api/pycaret.db
-/services/api/pycaret.db-journal
-/pycaret.db
-/pycaret.db-journal
+# ─── SQLite / databases (anywhere in the tree) ─────────────────────────
+# Session 56: broadened from the specific `/pycaret.db` rule to cover
+# pycaret-dev.db, smoke.db, test_phase_smoke.db, and any *.sqlite a
+# contributor's dev env might create. NEVER commit local DB state — it
+# may contain Fernet-encrypted secret blobs (LLM keys, connection
+# credentials). The encryption is good, but defense in depth: don't ship
+# the encrypted blobs either.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# ─── Environment / secrets files ───────────────────────────────────────
+# Catch any .env anywhere in the tree. .env.example is the documented
+# template (no values) and IS committed.
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Auth / credential dumps we never want to see in git.
+*.pem
+*.key
+!packages/engine/pycaret/**/*.pem
+!packages/engine/pycaret/**/*.key
+credentials.json
+service-account*.json
+aws-credentials*
+.aws/
+
+# Local docker-compose data volume (api container persists SQLite + artifacts).
+/data/
 
 # IDE / editor
 .vscode/settings.json

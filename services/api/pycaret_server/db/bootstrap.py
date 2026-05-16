@@ -102,6 +102,108 @@ def _detect_revision(insp) -> tuple[str, bool]:
     """
     # Each entry: (revision_id, [tables that must all exist for this revision]).
     # Order matters — newest first. The check returns the latest match.
+    # Sessions 25 / 26 / 27 / Phase 0 added columns to ``trials`` (no new
+    # table). Distinguish them from session 24 by inspecting the column set on
+    # ``trials``. Newest-first so we stamp at the highest applicable rev.
+    if insp.has_table("trials"):
+        try:
+            trial_cols = {c["name"] for c in insp.get_columns("trials")}
+        except Exception:  # noqa: BLE001
+            trial_cols = set()
+        try:
+            run_cols = (
+                {c["name"] for c in insp.get_columns("runs")}
+                if insp.has_table("runs")
+                else set()
+            )
+        except Exception:  # noqa: BLE001
+            run_cols = set()
+        has_25 = {"stored_path", "params"}.issubset(trial_cols)
+        has_26 = "notes" in trial_cols
+        has_27 = "kind" in trial_cols and "parent_trial_ids" in trial_cols
+        # Phase 0 fingerprint: trials gained ``experiment_id`` /
+        # ``created_by_action_id``, the artifact columns moved to ``runs``
+        # (so ``runs.trial_id`` and ``runs.sequence`` exist), and the legacy
+        # ``trials.run_id`` / ``trials.rank`` / ``trials.is_best`` columns are
+        # gone.
+        has_phase0_trials = (
+            "experiment_id" in trial_cols
+            and "created_by_action_id" in trial_cols
+            and "run_id" not in trial_cols
+            and "rank" not in trial_cols
+            and "is_best" not in trial_cols
+        )
+        has_phase0_runs = {"trial_id", "sequence", "metrics"}.issubset(run_cols)
+        # Phase 0-v2 reverted the model: Trial owns artifact + metrics +
+        # status; Run loses trial_id/sequence/etc. Distinguishing
+        # fingerprints: trials has ``run_id`` AND ``status``; runs no
+        # longer has ``trial_id``.
+        has_phase0_v2_trials = (
+            "experiment_id" in trial_cols
+            and "run_id" in trial_cols
+            and "status" in trial_cols
+            and "metrics" in trial_cols
+        )
+        has_phase0_v2_runs = "trial_id" not in run_cols
+        scheduled = insp.has_table("scheduled_jobs")
+        has_phase1_jobs = insp.has_table("jobs")
+        # Phase 4-12 cut: registry + governance + monitoring tables all
+        # land together. A single fingerprint match means we're at head.
+        has_phase_4_12 = (
+            insp.has_table("registered_models")
+            and insp.has_table("registered_model_versions")
+            and insp.has_table("connections")
+            and insp.has_table("datasets")
+            and insp.has_table("lineage")
+            and insp.has_table("git_repositories")
+            and insp.has_table("alert_rules")
+            and insp.has_table("metric_points")
+            and insp.has_table("approval_workflows")
+            and insp.has_table("secrets")
+        )
+        # Phase 8 + 11: notebook runtime + statistical computing.
+        has_phase_8_11 = (
+            insp.has_table("notebooks")
+            and insp.has_table("notebook_sessions")
+            and insp.has_table("analyses")
+        )
+        if (
+            has_phase0_v2_trials
+            and has_phase0_v2_runs
+            and scheduled
+            and has_phase1_jobs
+            and has_phase_4_12
+            and has_phase_8_11
+        ):
+            return "d4e5f6a8b9c0", True  # head — Phase 0-v2 revert
+        if (
+            has_phase0_trials
+            and has_phase0_runs
+            and scheduled
+            and has_phase1_jobs
+            and has_phase_4_12
+            and has_phase_8_11
+        ):
+            return "c3d4e5f6a8b9", False  # Phases 8/11, needs upgrade to v2
+        if (
+            has_phase0_trials
+            and has_phase0_runs
+            and scheduled
+            and has_phase1_jobs
+            and has_phase_4_12
+        ):
+            return "b2c3d4e5f6a8", False  # Phases 4/5/7/10/12, needs upgrade
+        if has_phase0_trials and has_phase0_runs and scheduled and has_phase1_jobs:
+            return "a1b2c3d4e5f7", False  # Phase 1, needs upgrade
+        if has_phase0_trials and has_phase0_runs and scheduled:
+            return "f0a1b2c3d4e5", False  # Phase 0, needs upgrade
+        if has_27 and has_26 and has_25 and scheduled:
+            return "e5f6a7b8c9d0", False  # session 27, needs upgrade to Phase 0
+        if has_26 and has_25 and scheduled:
+            return "d4e5f6a7b8c9", False  # session 26, needs upgrade
+        if has_25 and scheduled:
+            return "c3d4e5f6a7b8", False  # session 25, needs upgrade
+
     REVISION_FINGERPRINTS: list[tuple[str, list[str]]] = [
         # session 24: scheduled_jobs / webhook_subscriptions / experiment_templates
         ("b2c3d4e5f6a7", ["scheduled_jobs", "webhook_subscriptions", "experiment_templates"]),
@@ -112,9 +214,9 @@ def _detect_revision(insp) -> tuple[str, bool]:
         # session 17: llm_provider_settings / llm_consultations
         ("d582b350c276", ["llm_provider_settings", "llm_consultations"]),
     ]
-    for idx, (rev, required) in enumerate(REVISION_FINGERPRINTS):
+    for rev, required in REVISION_FINGERPRINTS:
         if all(insp.has_table(t) for t in required):
-            return rev, idx == 0
+            return rev, False  # not head — head is d4e5f6a8b9c0 (Phase 0-v2 revert)
     # Default: pre-LLM baseline.
     return "9f9b7c770df0", False
 

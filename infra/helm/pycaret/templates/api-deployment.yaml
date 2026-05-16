@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pycaret.api.name" . }}
+  labels:
+    {{- include "pycaret.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "pycaret.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "pycaret.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+    spec:
+      containers:
+        - name: api
+          image: {{ include "pycaret.image" (dict "Values" .Values "image" .Values.api.image) }}
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          command: ["pycaret-server", "serve", "--host", "0.0.0.0", "--port", "8020"]
+          ports:
+            - containerPort: 8020
+              name: http
+          env:
+            - name: PYCARET_DATABASE_URL
+              value: {{ include "pycaret.databaseUrl" . | quote }}
+            - name: PYCARET_REDIS_URL
+              value: {{ include "pycaret.redisUrl" . | quote }}
+            - name: PYCARET_STORAGE_ENDPOINT_URL
+              value: {{ include "pycaret.s3Endpoint" . | quote }}
+            - name: PYCARET_STORAGE_BUCKET
+              value: {{ include "pycaret.s3Bucket" . | quote }}
+            - name: PYCARET_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.jwtSecretRef.name }}
+                  key: {{ .Values.api.jwtSecretRef.key }}
+            - name: PYCARET_SECRETS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.encryptionKeyRef.name }}
+                  key: {{ .Values.api.encryptionKeyRef.key }}
+            {{- if .Values.postgres.enabled }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.passwordSecretRef.name }}
+                  key: {{ .Values.postgres.passwordSecretRef.key }}
+            {{- end }}
+            {{- if .Values.minio.enabled }}
+            - name: PYCARET_STORAGE_ACCESS_KEY
+              value: {{ .Values.minio.rootUser | quote }}
+            - name: PYCARET_STORAGE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.rootPasswordSecretRef.name }}
+                  key: {{ .Values.minio.rootPasswordSecretRef.key }}
+            {{- end }}
+            {{- range $k, $v := .Values.api.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pycaret.api.name" . }}
+  labels:
+    {{- include "pycaret.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: {{ .Values.api.service.type }}
+  ports:
+    - port: {{ .Values.api.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "pycaret.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api

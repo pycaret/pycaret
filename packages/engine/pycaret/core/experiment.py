@@ -1316,6 +1316,7 @@ class Experiment(BaseEstimator):
 
         self.logger.log(
             EventKind.MODEL_CREATE_STARTED,
+            message=f"Training {model_id}…",
             payload={"estimator": model_id},
         )
 
@@ -1339,10 +1340,48 @@ class Experiment(BaseEstimator):
         pipeline.steps.append((model_id, model))
 
         # ---- emit event + build result
+        # Widen the event payload with the mean-row + per-fold metrics
+        # so a UI live-chart widget can render per-model and per-fold
+        # progress without re-querying the database after the fact.
+        mean_metrics: dict[str, float] = {}
+        fold_metrics: list[dict[str, Any]] = []
+        if metrics_df is not None and hasattr(metrics_df, "loc"):
+            try:
+                if "Mean" in metrics_df.index:
+                    mean_metrics = {
+                        k: (float(v) if isinstance(v, (int, float)) else v)
+                        for k, v in metrics_df.loc["Mean"].to_dict().items()
+                    }
+                # Per-fold rows. Indexed by fold number (0..k-1) plus the
+                # summary rows (Mean/Std) which we filter out so a chart
+                # caller can iterate straight through.
+                for idx, row in metrics_df.iterrows():
+                    if isinstance(idx, str) and idx in ("Mean", "Std"):
+                        continue
+                    fold_metrics.append(
+                        {
+                            "fold": int(idx) if str(idx).isdigit() else idx,
+                            **{
+                                k: (float(v) if isinstance(v, (int, float)) else v)
+                                for k, v in row.to_dict().items()
+                            },
+                        }
+                    )
+            except Exception:  # noqa: BLE001 — event-widening must never block
+                mean_metrics = {}
+                fold_metrics = []
+
         self.logger.log(
             EventKind.MODEL_CREATED,
+            message=f"Trained {model_id}",
             duration_ms=(time.perf_counter() - t0) * 1000,
-            payload={"estimator": model_id},
+            payload={
+                "estimator": model_id,
+                "model_id": model_id,
+                "metrics": mean_metrics,
+                "fold_metrics": fold_metrics,
+                "cross_validation": bool(cross_validation),
+            },
         )
         self._set_last_metrics(metrics_df)
         return CreateResult(

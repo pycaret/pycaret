@@ -30,6 +30,11 @@ class PlanOutcome:
 
     leaderboard: pd.DataFrame | None = None
     best_model: Any | None = None  # the fitted estimator, if any
+    # Session 25: when a plan trains many candidates (compare / search), the
+    # orchestrator persists every one as its own Trial pickle so the UI can
+    # offer model-detail / download / per-trial promote. ``models`` holds the
+    # fitted pipelines aligned with the leaderboard rows by model_id.
+    models: list[Any] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -56,10 +61,15 @@ def execute_plan(
         )
 
     if plan == "compare":
+        # Pool semantics: keep every fitted model so the UI can offer
+        # per-trial detail / download / promote. Caller can still set
+        # n_select explicitly to a smaller value if they want a slim run.
+        params.setdefault("n_select", 999)
         result = exp.compare_models(**params)
         return PlanOutcome(
             leaderboard=getattr(result, "leaderboard", None),
             best_model=getattr(result, "best", None),
+            models=list(getattr(result, "models", []) or []),
             extra={"ranked_ids": list(getattr(result, "ranked_ids", []) or [])},
         )
 

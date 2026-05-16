@@ -96,7 +96,7 @@ export function WorkspaceHome() {
     { label: 'Projects', value: projects.data?.length ?? '—' },
     { label: 'Experiments', value: experiments.data?.length ?? '—' },
     { label: 'Runs (7d)', value: last7dCount },
-    { label: 'Pipelines', value: pipelines.data?.length ?? '—' },
+    { label: 'Model versions', value: pipelines.data?.length ?? '—' },
     { label: 'Deployments', value: deployments.data?.length ?? '—' },
   ];
 
@@ -108,9 +108,9 @@ export function WorkspaceHome() {
       icon: <FolderIcon />,
     },
     {
-      to: `/workspaces/${wsId}/pipelines`,
-      label: 'Pipelines registry',
-      desc: 'Promoted, fitted pipelines',
+      to: `/workspaces/${wsId}/models`,
+      label: 'Model registry',
+      desc: 'Named, versioned, governance-tracked models',
       icon: <PipelineIcon />,
     },
     {
@@ -118,18 +118,6 @@ export function WorkspaceHome() {
       label: 'Deployments',
       desc: 'Live serving endpoints',
       icon: <DeployIcon />,
-    },
-    {
-      to: `/workspaces/${wsId}/predictions`,
-      label: 'Prediction explorer',
-      desc: 'Hit any deployment with JSON',
-      icon: <ZapIcon />,
-    },
-    {
-      to: `/workspaces/${wsId}/compare`,
-      label: 'Model comparison',
-      desc: 'Diff runs side-by-side',
-      icon: <CompareIcon />,
     },
     {
       to: `/workspaces/${wsId}/drift`,
@@ -314,18 +302,6 @@ const DeployIcon = () => (
   <svg {...stroke}>
     <path d="M5 12 12 5l7 7" />
     <path d="M12 5v14" />
-  </svg>
-);
-const ZapIcon = () => (
-  <svg {...stroke}>
-    <path d="M13 2 4 14h7l-1 8 9-12h-7z" />
-  </svg>
-);
-const CompareIcon = () => (
-  <svg {...stroke}>
-    <path d="M3 12h18" />
-    <path d="M9 6 3 12l6 6" />
-    <path d="m15 6 6 6-6 6" />
   </svg>
 );
 const DriftIcon = () => (

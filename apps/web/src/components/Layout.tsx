@@ -1,6 +1,11 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/state/auth';
-import { authApi, runsApi, workspacesApi } from '@/api/endpoints';
+import {
+  authApi,
+  deploymentsApi,
+  runsApi,
+  workspacesApi,
+} from '@/api/endpoints';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CommandPalette } from '@/components/CommandPalette';
@@ -38,6 +43,11 @@ export function Layout() {
     return m ? m[1] : undefined;
   }, [location.pathname]);
 
+  const deploymentIdFromUrl = useMemo<string | undefined>(() => {
+    const m = location.pathname.match(/^\/deployments\/([^/]+)/);
+    return m ? m[1] : undefined;
+  }, [location.pathname]);
+
   const runForCtx = useQuery({
     queryKey: ['runs', runIdFromUrl],
     queryFn: () => runsApi.get(runIdFromUrl!),
@@ -45,7 +55,18 @@ export function Layout() {
     staleTime: 60_000,
   });
 
-  const activeWsId = wsFromUrl ?? runForCtx.data?.workspace_id ?? undefined;
+  const deploymentForCtx = useQuery({
+    queryKey: ['deployments', deploymentIdFromUrl],
+    queryFn: () => deploymentsApi.get(deploymentIdFromUrl!),
+    enabled: !!deploymentIdFromUrl && !wsFromUrl,
+    staleTime: 60_000,
+  });
+
+  const activeWsId =
+    wsFromUrl ??
+    runForCtx.data?.workspace_id ??
+    deploymentForCtx.data?.workspace_id ??
+    undefined;
 
   const me = useQuery({
     queryKey: ['auth', 'me'],
@@ -71,28 +92,46 @@ export function Layout() {
   return (
     <div className="min-h-screen flex bg-ink-50 dark:bg-ink-950">
       {/* ─── Sidebar ─────────────────────────────────────────────── */}
+      {/* h-screen sticky top-0 → sidebar always exactly matches the
+          viewport height and stays put when main content scrolls.
+          Without these, a tall main content lets the aside grow + scroll
+          off-screen, which is what burned us with the bottom-pinned
+          profile + collapse controls disappearing on scroll. */}
       <aside
-        className={`hidden md:flex flex-col border-r border-ink-200 dark:border-ink-800 bg-white dark:bg-ink-900 transition-[width] duration-200 ease-out ${
+        className={`hidden md:flex md:h-screen md:sticky md:top-0 flex-col border-r border-ink-200 dark:border-ink-800 bg-white dark:bg-ink-900 transition-[width] duration-200 ease-out ${
           sidebarCollapsed ? 'md:w-14' : 'md:w-60 lg:w-64'
         }`}
       >
-        {/* Brand */}
-        <div className="flex h-14 items-center px-3 border-b border-ink-200 dark:border-ink-800 shrink-0">
-          <Link
-            to="/"
-            className="flex items-center gap-2.5 text-ink-900 dark:text-ink-50 font-semibold tracking-tight px-2"
-            title="Home"
+        {/* Brand + collapse toggle (top-positioned, OpenAI/Linear style) */}
+        <div className="flex h-14 items-center gap-1 px-2 border-b border-ink-200 dark:border-ink-800 shrink-0">
+          {!sidebarCollapsed && (
+            <Link
+              to="/"
+              className="flex items-center gap-2.5 px-1 text-ink-900 dark:text-ink-50 font-semibold tracking-tight flex-1 min-w-0"
+              title="Home"
+            >
+              <span
+                aria-hidden
+                className="block h-6 w-6 shrink-0 rounded-md bg-gradient-to-br from-accent-400 to-accent-600 shadow-soft-1"
+              />
+              <span className="truncate">PyCaret</span>
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className={`p-1.5 rounded-md text-ink-500 hover:text-ink-900 dark:hover:text-ink-50 hover:bg-ink-100 dark:hover:bg-ink-800 transition-colors ${
+              sidebarCollapsed ? 'mx-auto' : ''
+            }`}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <span
-              aria-hidden
-              className="block h-6 w-6 shrink-0 rounded-md bg-gradient-to-br from-accent-400 to-accent-600 shadow-soft-1"
-            />
-            {!sidebarCollapsed && <span>PyCaret</span>}
-          </Link>
+            <ChevronIcon direction={sidebarCollapsed ? 'right' : 'left'} />
+          </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-6 text-sm">
+        <nav className="flex-1 overflow-y-auto scrollbar-hover-only px-2 py-4 space-y-6 text-sm">
           {!activeWsId && (
             <div className="px-3 py-6 text-center">
               <div className="mx-auto h-10 w-10 rounded-lg bg-ink-100 dark:bg-ink-800 text-ink-500 flex items-center justify-center mb-2">
@@ -112,100 +151,156 @@ export function Layout() {
           )}
 
           {activeWsId && (
-            <NavGroup label="Workspace" collapsed={sidebarCollapsed}>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/home`}
-                icon={<ActivityIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Dashboard
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}`}
-                exact
-                icon={<FolderIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Projects
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/compare`}
-                icon={<CompareIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Compare runs
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/predictions`}
-                icon={<PredictIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Predict
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/pipelines`}
-                icon={<PipelineIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Pipelines
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/deployments`}
-                icon={<DeployIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Deployments
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/drift`}
-                icon={<DriftIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Drift
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/schedules`}
-                icon={<ClockIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Schedules
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/templates`}
-                icon={<TemplateIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Templates
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/webhooks`}
-                icon={<HookIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Webhooks
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/llm`}
-                icon={<SparkIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                LLM
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/members`}
-                icon={<UsersIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Members
-              </SidebarLink>
-              <SidebarLink
-                to={`/workspaces/${activeWsId}/admin`}
-                icon={<ShieldIcon />}
-                collapsed={sidebarCollapsed}
-              >
-                Admin
-              </SidebarLink>
-            </NavGroup>
+            <>
+              {/* Build — the create / ingest surface */}
+              <NavGroup label="Build" collapsed={sidebarCollapsed}>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/home`}
+                  icon={<ActivityIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Dashboard
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}`}
+                  exact
+                  icon={<FolderIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Projects
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/datasets`}
+                  icon={<DatasetsNavIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Datasets
+                </SidebarLink>
+              </NavGroup>
+
+              {/* Models — the full model lifecycle in one block:
+                  registry (named + versioned + governed) → deployment
+                  (serving) → monitoring / drift / lineage (post-deploy ops).
+                  Session-56 collapsed the old Pipelines page into Model
+                  Registry: a "version" on the registry IS the artifact. */}
+              <NavGroup label="Models" collapsed={sidebarCollapsed}>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/models`}
+                  icon={<ModelRegistryIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Model registry
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/deployments`}
+                  icon={<DeployIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Deployments
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/monitoring`}
+                  icon={<MonitoringIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Monitoring
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/drift`}
+                  icon={<DriftIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Drift
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/lineage`}
+                  icon={<LineageIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Lineage
+                </SidebarLink>
+              </NavGroup>
+
+              {/* Automation — recurring jobs, gates, outbound notifications,
+                  saved experiment recipes. */}
+              <NavGroup label="Automation" collapsed={sidebarCollapsed}>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/approvals`}
+                  icon={<ApprovalIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Approvals
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/schedules`}
+                  icon={<ClockIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Schedules
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/templates`}
+                  icon={<TemplateIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Templates
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/webhooks`}
+                  icon={<HookIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Webhooks
+                </SidebarLink>
+              </NavGroup>
+
+              {/* Settings — workspace configuration: integrations, secrets,
+                  people, admin. */}
+              <NavGroup label="Settings" collapsed={sidebarCollapsed}>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/connections`}
+                  icon={<ConnectionIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Connections
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/secrets`}
+                  icon={<KeyIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Secrets
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/git`}
+                  icon={<GitIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Git
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/llm`}
+                  icon={<SparkIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  LLM
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/members`}
+                  icon={<UsersIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Members
+                </SidebarLink>
+                <SidebarLink
+                  to={`/workspaces/${activeWsId}/admin`}
+                  icon={<ShieldIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Admin
+                </SidebarLink>
+              </NavGroup>
+            </>
           )}
 
           <NavGroup label="Account" collapsed={sidebarCollapsed}>
@@ -231,6 +326,13 @@ export function Layout() {
                   collapsed={sidebarCollapsed}
                 >
                   Audit log
+                </SidebarLink>
+                <SidebarLink
+                  to="/admin/queues"
+                  icon={<QueueIcon />}
+                  collapsed={sidebarCollapsed}
+                >
+                  Queues & workers
                 </SidebarLink>
               </>
             )}
@@ -271,21 +373,6 @@ export function Layout() {
               onLogout={logout}
             />
           )}
-        </div>
-
-        {/* Collapse toggle — sits in the gutter at the bottom */}
-        <div className="border-t border-ink-200 dark:border-ink-800 px-2 py-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className="w-full flex items-center justify-center gap-2 rounded-md py-1
-                       text-xs text-ink-500 hover:text-ink-900 dark:hover:text-ink-50
-                       hover:bg-ink-100 dark:hover:bg-ink-800 transition-colors"
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <ChevronIcon direction={sidebarCollapsed ? 'right' : 'left'} />
-            {!sidebarCollapsed && <span>Collapse</span>}
-          </button>
         </div>
       </aside>
 
@@ -623,28 +710,8 @@ const ActivityIcon = () => (
     <path d="M22 12h-4l-3 9-6-18-3 9H2" />
   </svg>
 );
-const CompareIcon = () => (
-  <svg {...stroke}>
-    <path d="M21 16V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8" />
-    <path d="M3 12h18" />
-  </svg>
-);
-const PredictIcon = () => (
-  <svg {...stroke}>
-    <path d="M9.5 7 14 12l-4.5 5" />
-    <path d="M5 12h14" />
-  </svg>
-);
-const PipelineIcon = () => (
-  <svg {...stroke}>
-    <path d="M5 6h6" />
-    <path d="M13 6h6" />
-    <path d="M5 12h6" />
-    <path d="M13 12h6" />
-    <path d="M5 18h6" />
-    <path d="M13 18h6" />
-  </svg>
-);
+// PipelineIcon retired in session 56 with the Pipelines nav entry —
+// the icon was only used by that link.
 const DeployIcon = () => (
   <svg {...stroke}>
     <path d="M12 2v6" />
@@ -753,5 +820,65 @@ const HookIcon = () => (
     <path d="M18 6V3" />
     <path d="M18 6a4 4 0 0 0-4 4v6a3 3 0 1 1-6 0v-2" />
     <circle cx="18" cy="3" r="1" />
+  </svg>
+);
+const ModelRegistryIcon = () => (
+  <svg {...stroke}>
+    <path d="M20 7L12 3 4 7l8 4 8-4z" />
+    <path d="M4 12l8 4 8-4" />
+    <path d="M4 17l8 4 8-4" />
+  </svg>
+);
+const MonitoringIcon = () => (
+  <svg {...stroke}>
+    <path d="M3 12h4l3 8 4-16 3 8h4" />
+  </svg>
+);
+const ApprovalIcon = () => (
+  <svg {...stroke}>
+    <path d="M9 12l2 2 4-4" />
+    <circle cx="12" cy="12" r="10" />
+  </svg>
+);
+const LineageIcon = () => (
+  <svg {...stroke}>
+    <circle cx="6" cy="6" r="2" />
+    <circle cx="18" cy="6" r="2" />
+    <circle cx="6" cy="18" r="2" />
+    <circle cx="18" cy="18" r="2" />
+    <path d="M6 8v8" />
+    <path d="M8 6h8" />
+    <path d="M8 18h8" />
+    <path d="M18 8v8" />
+  </svg>
+);
+const QueueIcon = () => (
+  <svg {...stroke}>
+    <rect x="3" y="4" width="18" height="4" rx="1" />
+    <rect x="3" y="10" width="18" height="4" rx="1" />
+    <rect x="3" y="16" width="18" height="4" rx="1" />
+  </svg>
+);
+const ConnectionIcon = () => (
+  <svg {...stroke}>
+    <rect x="2" y="6" width="6" height="12" rx="1" />
+    <rect x="16" y="6" width="6" height="12" rx="1" />
+    <path d="M8 12h8" />
+  </svg>
+);
+const GitIcon = () => (
+  <svg {...stroke}>
+    <circle cx="6" cy="6" r="2" />
+    <circle cx="18" cy="6" r="2" />
+    <circle cx="12" cy="18" r="2" />
+    <path d="M6 8v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V8" />
+    <path d="M12 14v2" />
+  </svg>
+);
+const DatasetsNavIcon = () => (
+  <svg {...stroke}>
+    <ellipse cx="12" cy="5" rx="9" ry="3" />
+    <path d="M3 5v14a9 3 0 0 0 18 0V5" />
+    <path d="M3 12a9 3 0 0 0 18 0" />
   </svg>
 );

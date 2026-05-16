@@ -32,8 +32,8 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-form">
         <header className="mb-8">
-          <h1 className="text-2xl font-semibold text-ink-900">Sign in</h1>
-          <p className="mt-2 text-sm text-ink-500">
+          <h1 className="h-page">Sign in</h1>
+          <p className="mt-2 text-sm muted">
             Welcome back.{' '}
             {status.data?.is_bootstrapped === false && (
               <Link to="/setup" className="text-accent-600 hover:underline">

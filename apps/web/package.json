@@ -18,7 +18,7 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "gen:api": "openapi-typescript http://localhost:8000/openapi.json -o src/api/schema.ts",
+    "gen:api": "openapi-typescript http://localhost:8020/openapi.json -o src/api/schema.ts",
     "gen:api:file": "openapi-typescript ./openapi.json -o src/api/schema.ts"
   },
   "dependencies": {

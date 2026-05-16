@@ -1,0 +1,185 @@
+# Default values for the PyCaret Platform Helm chart.
+#
+# Override per environment via `--values prod.yaml` or `--set` flags. The
+# defaults aim for a single-namespace self-host on a small cluster
+# (3 nodes, 16 GB / node). Tune `replicaCount` and resource limits for
+# anything larger.
+
+global:
+  # Image tag used by api + worker (they share an image). Bumped per
+  # release.
+  imageTag: "0.1.0"
+  pullPolicy: IfNotPresent
+  storageClass: ""  # falls back to the cluster default
+  # Set to a real domain in prod so ingresses, JWT cookies, and webhook
+  # URLs all line up.
+  domain: pycaret.local
+
+# ─────────────────────── api (FastAPI backend)
+
+api:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/pycaret/pycaret-api
+    tag: ""  # falls back to global.imageTag
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  env:
+    PYCARET_ENVIRONMENT: prod
+    PYCARET_RUNS_BACKEND: redis
+    PYCARET_STORAGE_BACKEND: minio
+    PYCARET_DEBUG: "false"
+  service:
+    type: ClusterIP
+    port: 8020
+  # Mounted under /run/secrets for the API process.
+  jwtSecretRef:
+    name: pycaret-jwt
+    key: secret
+  encryptionKeyRef:
+    name: pycaret-encryption
+    key: key
+
+# ─────────────────────── worker (Phase 1 + Phase 9 handlers)
+
+worker:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/pycaret/pycaret-api
+    tag: ""
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  queues: "default,cpu-heavy"
+  # Set replicaCount > 0 + queues="gpu" on a GPU node pool for Phase 14
+  # workload separation.
+
+# ─────────────────────── web (React UI)
+
+web:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/pycaret/pycaret-web
+    tag: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  service:
+    type: ClusterIP
+    port: 80
+
+# ─────────────────────── postgres (Phase 3)
+
+postgres:
+  enabled: true  # set false to bring your own (RDS, CloudSQL, …)
+  image:
+    repository: postgres
+    tag: "16-alpine"
+  persistence:
+    size: 20Gi
+    storageClass: ""  # falls back to global.storageClass
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  database: pycaret
+  username: pycaret
+  # Secret containing the password under key ``password``.
+  passwordSecretRef:
+    name: pycaret-postgres
+    key: password
+
+# Used only when postgres.enabled=false.
+externalPostgres:
+  url: ""  # postgresql+psycopg://user:pass@host:5432/db
+
+# ─────────────────────── redis (Phase 1 + 6)
+
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7-alpine"
+  persistence:
+    size: 4Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+externalRedis:
+  url: ""  # redis://host:6379/0
+
+# ─────────────────────── minio (Phase 2)
+
+minio:
+  enabled: true
+  image:
+    repository: minio/minio
+    tag: "latest"
+  persistence:
+    size: 50Gi
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  rootUser: minioadmin
+  # Real installs override via a sealed-secret / external-secrets entry.
+  rootPasswordSecretRef:
+    name: pycaret-minio
+    key: password
+  bucket: pycaret-artifacts
+
+externalS3:
+  endpoint: ""
+  bucket: ""
+  region: us-east-1
+  # Secret with keys ``accessKey`` + ``secretKey``.
+  credentialsSecretRef:
+    name: ""
+
+# ─────────────────────── ingress
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    enabled: true
+    secretName: pycaret-tls
+  # Routes:
+  #   <domain>/      → web
+  #   <domain>/api   → api
+  hostname: ""  # defaults to global.domain
+
+# ─────────────────────── observability
+
+observability:
+  serviceMonitor:
+    enabled: false
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1

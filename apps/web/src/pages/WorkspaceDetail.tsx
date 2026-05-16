@@ -96,9 +96,9 @@ export function WorkspaceDetail() {
         <Stat label="Projects" value={projectCount} />
         <Stat label="Data sources" value={csvCount} />
         <Stat
-          label="Pipelines"
+          label="Model versions"
           value={pipelineCount}
-          to={`/workspaces/${id}/pipelines`}
+          to={`/workspaces/${id}/models`}
         />
         <Stat
           label="Deployments"
@@ -162,12 +162,22 @@ export function WorkspaceDetail() {
                           No description
                         </p>
                       )}
-                      <div className="mt-auto pt-3 flex flex-wrap gap-1 min-h-[20px]">
-                        {p.tags.map((t) => (
-                          <span key={t} className="pill-neutral">
-                            {t}
+                      <div className="mt-auto pt-3 flex items-center justify-between gap-3 text-[11px] text-ink-500">
+                        <span title={new Date(p.created_at).toLocaleString()}>
+                          Created {fmtRelativeDate(p.created_at)}
+                        </span>
+                        {p.tags.length > 0 && (
+                          <span className="flex flex-wrap gap-1 justify-end">
+                            {p.tags.slice(0, 3).map((t) => (
+                              <span key={t} className="pill-neutral">
+                                {t}
+                              </span>
+                            ))}
+                            {p.tags.length > 3 && (
+                              <span className="text-ink-400">+{p.tags.length - 3}</span>
+                            )}
                           </span>
-                        ))}
+                        )}
                       </div>
                     </div>
                   </div>
@@ -189,6 +199,28 @@ export function WorkspaceDetail() {
       />
     </div>
   );
+}
+
+// ─── Relative-date helper ─────────────────────────────────────────
+
+function fmtRelativeDate(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return '—';
+  const diffMs = Date.now() - then;
+  const sec = Math.round(diffMs / 1000);
+  if (sec < 60) return 'just now';
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const days = Math.round(hr / 24);
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.round(days / 7)}w ago`;
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 // ─── Stats card ────────────────────────────────────────────────────

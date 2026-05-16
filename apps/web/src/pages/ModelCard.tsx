@@ -20,6 +20,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import { plotsApi, runsApi } from '../api/endpoints';
 import { errorMessage } from '../api/client';
+import { BackButton } from '../components/BackButton';
 import { PlotlyFigure } from '../components/PlotlyFigure';
 import { Dialog } from '../components/Dialog';
 import type { PlotEnvelope, PlotRegistry } from '../api/types';
@@ -383,6 +384,7 @@ export function ModelCard() {
     <div className="space-y-8">
       {/* ─── Hero ─────────────────────────────────────────────── */}
       <header className="space-y-2">
+        <BackButton />
         <nav className="text-xs text-ink-500">
           <Link to="/" className="hover:text-ink-900 dark:hover:text-ink-50 transition-colors">
             Workspaces

@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pycaret.worker.name" . }}
+  labels:
+    {{- include "pycaret.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "pycaret.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "pycaret.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      containers:
+        - name: worker
+          image: {{ include "pycaret.image" (dict "Values" .Values "image" .Values.worker.image) }}
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          command:
+            - pycaret-server
+            - worker
+            - --queues
+            - {{ .Values.worker.queues }}
+          env:
+            - name: PYCARET_DATABASE_URL
+              value: {{ include "pycaret.databaseUrl" . | quote }}
+            - name: PYCARET_REDIS_URL
+              value: {{ include "pycaret.redisUrl" . | quote }}
+            - name: PYCARET_STORAGE_ENDPOINT_URL
+              value: {{ include "pycaret.s3Endpoint" . | quote }}
+            - name: PYCARET_STORAGE_BUCKET
+              value: {{ include "pycaret.s3Bucket" . | quote }}
+            - name: PYCARET_RUNS_BACKEND
+              value: "redis"
+            - name: PYCARET_STORAGE_BACKEND
+              value: "minio"
+            - name: PYCARET_SECRETS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.encryptionKeyRef.name }}
+                  key: {{ .Values.api.encryptionKeyRef.key }}
+            {{- if .Values.postgres.enabled }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.passwordSecretRef.name }}
+                  key: {{ .Values.postgres.passwordSecretRef.key }}
+            {{- end }}
+            {{- if .Values.minio.enabled }}
+            - name: PYCARET_STORAGE_ACCESS_KEY
+              value: {{ .Values.minio.rootUser | quote }}
+            - name: PYCARET_STORAGE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.rootPasswordSecretRef.name }}
+                  key: {{ .Values.minio.rootPasswordSecretRef.key }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}

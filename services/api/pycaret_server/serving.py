@@ -61,20 +61,46 @@ class DeploymentRegistry:
     # --------------------------------------------------------------- predict
 
     def predict(self, slug: str, path: str, rows: list[dict]) -> tuple[list[dict], float]:
-        """Predict a batch of row-dicts. Returns (predictions, latency_ms)."""
+        """Predict a batch of row-dicts. Returns (predictions, latency_ms).
+
+        For classification pipelines that expose ``predict_proba`` we attach
+        ``probabilities`` (per-class likelihoods) and ``classes`` (the class
+        labels in column order) to every row of the response. Pipelines
+        without probability support fall back silently — the UI just
+        renders the bare prediction.
+        """
         if not rows:
             raise ValueError("rows must be a non-empty list of record dicts")
         pipe = self.get(slug, path)
         df = pd.DataFrame.from_records(rows)
         t0 = time.perf_counter()
         y = pipe.predict(df)
+        # Pull probabilities when available — we never want a deploy that
+        # *can* surface confidence to silently drop it.
+        proba = None
+        classes: list | None = None
+        if hasattr(pipe, "predict_proba"):
+            try:
+                proba = pipe.predict_proba(df)
+                classes = list(getattr(pipe, "classes_", []))
+            except Exception:  # noqa: BLE001 — best effort; bare predict still works
+                proba = None
+                classes = None
         latency = (time.perf_counter() - t0) * 1000
         with self._lock:
             self._latencies.setdefault(slug, []).append(latency)
             # Cap the rolling window at 100 to bound memory.
             if len(self._latencies[slug]) > 100:
                 self._latencies[slug] = self._latencies[slug][-100:]
-        preds = [{"index": i, "prediction": _jsonify(v)} for i, v in enumerate(y)]
+        preds: list[dict] = []
+        for i, v in enumerate(y):
+            row: dict = {"index": i, "prediction": _jsonify(v)}
+            if proba is not None and i < len(proba):
+                row["probabilities"] = {
+                    str(_jsonify(c)): float(proba[i][j])
+                    for j, c in enumerate(classes or range(len(proba[i])))
+                }
+            preds.append(row)
         return preds, latency
 
     def latency_percentiles(self, slug: str) -> tuple[float | None, float | None]:
@@ -93,14 +119,25 @@ class DeploymentRegistry:
     # ------------------------------------------------------------- internals
 
     def _load(self, path: str) -> Any:
-        """Unpickle a Pipeline from disk. Uses cloudpickle to match how we save."""
-        p = Path(path)
-        if not p.is_file():
-            raise FileNotFoundError(f"pipeline artifact not found: {path}")
+        """Unpickle a Pipeline. Phase 2 aware: routes ``file://`` /
+        ``s3://`` URIs through the ObjectStore and falls back to a bare
+        filesystem path for pre-Phase-2 DB rows."""
         try:
             import cloudpickle
         except ImportError:
             import pickle as cloudpickle  # type: ignore[no-redef]
+        if "://" in path:
+            from pycaret_server.storage import get_object_store
+
+            try:
+                return cloudpickle.loads(get_object_store().get_bytes(path))
+            except Exception as exc:  # noqa: BLE001
+                raise FileNotFoundError(
+                    f"pipeline artifact not found: {path}"
+                ) from exc
+        p = Path(path)
+        if not p.is_file():
+            raise FileNotFoundError(f"pipeline artifact not found: {path}")
         return cloudpickle.loads(p.read_bytes())
 
 

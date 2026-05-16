@@ -148,6 +148,8 @@ Status: 🔴 **NOT STARTED**. Each bullet is roughly one session.
 - [ ] **Kubernetes** — `infra/helm/pycaret/` chart with prod-grade values.
 - [ ] **Electron desktop** — `apps/desktop/` fully built; signed installers per OS; auto-update.
 - [ ] **Python SDK** — `packages/sdk-python/` published to PyPI as `pycaret-client`.
+- [ ] **Worker heartbeats** — new `worker_heartbeats` table (worker_id, last_seen_at, host, capacity); `/admin/workers` switches from "derive from `Job.locked_by`" to "all heartbeats with last_seen_at within N seconds". Today the queue admin only sees workers that are *currently* holding a job; idle workers vanish and a dead worker is indistinguishable from a healthy idle one. (Flagged in session-55 audit.)
+- [ ] **Engine-side Model Library enforcement** — `compare_models` consults the workspace's `ModelLibrary` rows and skips `enabled=False` algorithms. Today the UI toggle is display-only (yellow banner on the Admin > Model Library section calls this out). Will land via either an engine `RunConfig.allowed_models` field populated by the server, or a server-side post-filter on the leaderboard.
 
 ### Exit criteria
 - SSO-authed, audit-logged Control Plane runs on EKS / GKE / AKS from Terraform.

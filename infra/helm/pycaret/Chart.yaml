@@ -1,0 +1,19 @@
+apiVersion: v2
+name: pycaret
+description: PyCaret Platform — self-hosted analytics & ML platform
+type: application
+# Bumps once-per-release; sync with the API container tag.
+version: 0.1.0
+appVersion: "4.0.0"
+icon: https://pycaret.org/favicon.png
+home: https://pycaret.org
+sources:
+  - https://github.com/pycaret/pycaret
+maintainers:
+  - name: pycaret maintainers
+keywords:
+  - machine-learning
+  - data-science
+  - mlops
+  - statistical-computing
+  - analytics

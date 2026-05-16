@@ -6,10 +6,14 @@ import App from './App';
 import './index.css';
 import { applyEffectiveTheme, useUIPrefs } from '@/state/uiPrefs';
 
-// Apply saved theme as early as possible — the persist middleware
-// has already hydrated from localStorage by the time this runs, so
-// no flash of wrong theme.
-applyEffectiveTheme(useUIPrefs.getState().theme);
+// Always boot in light mode regardless of persisted state or OS
+// preference. The dark-variant CSS still lives in the codebase for
+// surfaces that opt in, but the unauthenticated pages (Setup / Login)
+// + a handful of older components weren't fully reviewed for dark
+// mode and were rendering with low-contrast text. Once those are
+// audited, swap this back to ``applyEffectiveTheme(useUIPrefs.getState().theme)``.
+useUIPrefs.setState({ theme: 'light' });
+applyEffectiveTheme('light');
 
 // React to OS theme changes when the user has theme === 'system'.
 if (typeof window !== 'undefined') {

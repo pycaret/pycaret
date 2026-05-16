@@ -6,10 +6,13 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { dataSourcesApi } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
 import { Dialog } from './Dialog';
 import { AnalyzeDatasetModal } from './AnalyzeDatasetModal';
+import { DatasetExploreModal } from './DatasetExploreModal';
+import { SampleDatasetsBrowserModal } from './SampleDatasetsBrowserModal';
 
 export interface DataSourcesSectionProps {
   workspaceId: string;
@@ -38,7 +41,11 @@ export function DataSourcesSection({ workspaceId }: DataSourcesSectionProps) {
   });
 
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [sampleBrowserOpen, setSampleBrowserOpen] = useState(false);
   const [analyzing, setAnalyzing] = useState<{ id: string; name: string } | null>(
+    null,
+  );
+  const [exploring, setExploring] = useState<{ id: string; name: string } | null>(
     null,
   );
 
@@ -53,16 +60,27 @@ export function DataSourcesSection({ workspaceId }: DataSourcesSectionProps) {
             CSV uploads available to experiments in this workspace.
           </p>
         </div>
-        {csvs.length > 0 && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setUploadOpen(true)}
+            onClick={() => setSampleBrowserOpen(true)}
             className="btn-secondary"
+            title="Browse bundled sample datasets"
           >
-            <PlusIcon />
-            Upload CSV
+            <SparkIcon />
+            Browse samples
           </button>
-        )}
+          {csvs.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setUploadOpen(true)}
+              className="btn-secondary"
+            >
+              <PlusIcon />
+              Upload CSV
+            </button>
+          )}
+        </div>
       </header>
 
       {list.isLoading && (
@@ -96,7 +114,12 @@ export function DataSourcesSection({ workspaceId }: DataSourcesSectionProps) {
                 key={d.id}
                 className="px-4 py-3 flex items-center justify-between gap-3"
               >
-                <div className="min-w-0 flex items-center gap-3">
+                <button
+                  type="button"
+                  className="min-w-0 flex items-center gap-3 text-left flex-1 rounded-md -mx-2 px-2 py-1 hover:bg-ink-50 dark:hover:bg-ink-800 transition-colors"
+                  onClick={() => setExploring({ id: d.id, name: d.name })}
+                  title="Open interactive EDA modal"
+                >
                   <span className="h-8 w-8 rounded-md bg-ink-100 dark:bg-ink-800 text-ink-600 dark:text-ink-400 dark:text-ink-500 flex items-center justify-center shrink-0">
                     <DataIcon />
                   </span>
@@ -114,8 +137,23 @@ export function DataSourcesSection({ workspaceId }: DataSourcesSectionProps) {
                       )}
                     </p>
                   </div>
-                </div>
+                </button>
                 <div className="flex items-center gap-1 shrink-0">
+                  <Link
+                    to={`/workspaces/${workspaceId}/datasets/${d.id}/profile`}
+                    className="btn-ghost text-xs"
+                    title="Open EDA dashboard"
+                  >
+                    <ChartIcon />
+                    Explore
+                  </Link>
+                  <Link
+                    to={`/workspaces/${workspaceId}/datasets/${d.id}`}
+                    className="btn-ghost text-xs"
+                    title="Dataset versions + schema (Phase 4)"
+                  >
+                    Versions
+                  </Link>
                   <button
                     className="btn-ghost text-xs"
                     onClick={() => setAnalyzing({ id: d.id, name: d.name })}
@@ -162,6 +200,21 @@ export function DataSourcesSection({ workspaceId }: DataSourcesSectionProps) {
           onClose={() => setAnalyzing(null)}
         />
       )}
+
+      {exploring && (
+        <DatasetExploreModal
+          dataSourceId={exploring.id}
+          dataSourceName={exploring.name}
+          open
+          onClose={() => setExploring(null)}
+        />
+      )}
+
+      <SampleDatasetsBrowserModal
+        workspaceId={workspaceId}
+        open={sampleBrowserOpen}
+        onClose={() => setSampleBrowserOpen(false)}
+      />
     </section>
   );
 }
@@ -344,6 +397,13 @@ function TrashIcon() {
   return (
     <svg {...sx}>
       <path d="M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+function ChartIcon() {
+  return (
+    <svg {...sx}>
+      <path d="M3 3v18h18 M7 14l3-3 4 4 5-6" />
     </svg>
   );
 }

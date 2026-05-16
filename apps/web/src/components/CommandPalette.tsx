@@ -76,6 +76,13 @@ export function CommandPalette({ wsId }: { wsId?: string }) {
         keywords: 'token credential',
       },
       { id: 'audit', label: 'Audit log', hint: 'Admin', to: '/admin/audit' },
+      {
+        id: 'queues',
+        label: 'Queues & workers',
+        hint: 'Phase 14 admin',
+        to: '/admin/queues',
+        keywords: 'worker depth gpu cpu',
+      },
     ];
     if (wsId) {
       list.unshift(
@@ -92,13 +99,6 @@ export function CommandPalette({ wsId }: { wsId?: string }) {
           to: `/workspaces/${wsId}`,
         },
         {
-          id: 'compare',
-          label: 'Model comparison (A/B)',
-          hint: 'Diff two pipelines',
-          to: `/workspaces/${wsId}/compare`,
-          keywords: 'a/b ab diff side-by-side',
-        },
-        {
           id: 'drift',
           label: 'Drift dashboard',
           hint: 'Distribution shifts',
@@ -106,21 +106,58 @@ export function CommandPalette({ wsId }: { wsId?: string }) {
           keywords: 'monitoring data quality',
         },
         {
-          id: 'predict',
-          label: 'Prediction explorer',
-          hint: 'Live test deployments',
-          to: `/workspaces/${wsId}/predictions`,
-          keywords: 'inference test deployment',
-        },
-        {
-          id: 'pipelines',
-          label: 'Pipelines registry',
-          to: `/workspaces/${wsId}/pipelines`,
+          id: 'models',
+          label: 'Model registry',
+          hint: 'Named, versioned, governance-tracked models',
+          to: `/workspaces/${wsId}/models`,
+          keywords: 'register promote rollback pipeline versions',
         },
         {
           id: 'deployments',
           label: 'Deployments',
           to: `/workspaces/${wsId}/deployments`,
+        },
+        {
+          id: 'monitoring',
+          label: 'Monitoring',
+          hint: 'Alert rules + metric time-series',
+          to: `/workspaces/${wsId}/monitoring`,
+          keywords: 'alerts slack email latency',
+        },
+        {
+          id: 'lineage',
+          label: 'Lineage graph',
+          hint: 'Dataset → trial → deployment',
+          to: `/workspaces/${wsId}/lineage`,
+          keywords: 'provenance graph dag',
+        },
+        {
+          id: 'approvals',
+          label: 'Approvals',
+          hint: 'Governance gate inbox',
+          to: `/workspaces/${wsId}/approvals`,
+          keywords: 'gate sign off promote',
+        },
+        {
+          id: 'connections',
+          label: 'Connections',
+          hint: 'DB / S3 backends + test',
+          to: `/workspaces/${wsId}/connections`,
+          keywords: 'postgres backend credentials',
+        },
+        {
+          id: 'secrets',
+          label: 'Secrets',
+          hint: 'Encrypted credentials',
+          to: `/workspaces/${wsId}/secrets`,
+          keywords: 'password api key pat',
+        },
+        {
+          id: 'git',
+          label: 'Git repositories',
+          hint: 'Manifest sync',
+          to: `/workspaces/${wsId}/git`,
+          keywords: 'github gitlab publish yaml',
         },
         {
           id: 'llm',
@@ -214,6 +251,12 @@ export function CommandPalette({ wsId }: { wsId?: string }) {
             outline: 'none',
             fontSize: 15,
             borderBottom: '1px solid rgba(148,163,184,0.2)',
+            // The dialog body is forced white; without explicit color the
+            // input inherits whatever the dark-mode root sets and renders
+            // white-on-white, which is what users were typing into.
+            color: '#0F172A',
+            background: '#FFFFFF',
+            caretColor: '#0F172A',
           }}
         />
         <div style={{ maxHeight: 420, overflowY: 'auto' }}>

@@ -10,9 +10,9 @@
     "directory": "apps/site"
   },
   "scripts": {
-    "dev": "next dev --port 3001",
+    "dev": "next dev --port 3021",
     "build": "node scripts/sync-content.mjs && next build",
-    "start": "next start --port 3001",
+    "start": "next start --port 3021",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "sync": "node scripts/sync-content.mjs",

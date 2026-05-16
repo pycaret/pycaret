@@ -25,7 +25,7 @@ const mkParam = (p: Partial<SetupParam> & Pick<SetupParam, 'name' | 'kind'>): Se
 // ────────────────────────────────────────────────────────── ParamInput
 
 describe('<ParamInput>', () => {
-  it('renders a checkbox for kind: bool and returns its boolean state', async () => {
+  it('renders a switch for kind: bool and returns its boolean state', async () => {
     const onChange = vi.fn();
     render(
       <ParamInput
@@ -34,9 +34,9 @@ describe('<ParamInput>', () => {
         onChange={onChange}
       />,
     );
-    const cb = screen.getByRole('checkbox', { name: /normalize/i });
-    expect(cb).not.toBeChecked();
-    await userEvent.click(cb);
+    const sw = screen.getByRole('switch');
+    expect(sw).toHaveAttribute('aria-checked', 'false');
+    await userEvent.click(sw);
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
@@ -217,7 +217,7 @@ describe('<DynamicForm>', () => {
         onChange={onChange}
       />,
     );
-    await userEvent.click(screen.getByRole('checkbox', { name: /normalize/i }));
+    await userEvent.click(screen.getByRole('switch'));
     expect(onChange).toHaveBeenLastCalledWith({
       train_size: 0.7,
       fold: 10,

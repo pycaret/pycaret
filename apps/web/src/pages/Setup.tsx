@@ -52,8 +52,8 @@ export function Setup() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-form">
         <header className="mb-8">
-          <h1 className="text-2xl font-semibold text-ink-900">Welcome to PyCaret</h1>
-          <p className="mt-2 text-sm text-ink-500">
+          <h1 className="h-page">Welcome to PyCaret</h1>
+          <p className="mt-2 text-sm muted">
             Create the admin account and your first workspace.
           </p>
         </header>

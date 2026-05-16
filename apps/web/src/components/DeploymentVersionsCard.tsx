@@ -14,7 +14,7 @@ import type { Pipeline } from '@/api/types';
 
 export interface DeploymentVersionsCardProps {
   deploymentId: string;
-  currentPipelineId: string;
+  currentPipelineId: string | null;
 }
 
 export function DeploymentVersionsCard({
@@ -24,7 +24,7 @@ export function DeploymentVersionsCard({
   const qc = useQueryClient();
   const versions = useQuery({
     queryKey: ['pipelines', currentPipelineId, 'versions'],
-    queryFn: () => pipelinesApi.versions(currentPipelineId),
+    queryFn: () => pipelinesApi.versions(currentPipelineId!),
     enabled: !!currentPipelineId,
   });
 

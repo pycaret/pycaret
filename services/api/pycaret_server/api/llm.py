@@ -192,6 +192,33 @@ def upsert_settings(
     return _serialise_setting(row)
 
 
+@router.delete(
+    "/workspaces/{workspace_id}/llm/settings",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def clear_settings(
+    workspace_id: str,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> None:
+    """Remove the workspace's stored LLM provider row (key + config + all).
+
+    Idempotent: 204 even if nothing was stored. Used by the UI's "Clear" button
+    so users can fully remove an API key without entering a replacement first.
+    """
+    if db.get(Workspace, workspace_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "workspace not found")
+    _require_admin(user, db, workspace_id)
+    rows = db.scalars(
+        select(LLMProviderSetting).where(
+            LLMProviderSetting.workspace_id == workspace_id
+        )
+    ).all()
+    for row in rows:
+        db.delete(row)
+    db.commit()
+
+
 @router.post(
     "/workspaces/{workspace_id}/llm/test-connection",
     response_model=TestConnectionResponse,

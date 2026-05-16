@@ -22,7 +22,7 @@ Both must be running:
 uv run --package pycaret-server pycaret-server serve --reload
 
 # Terminal 2
-cd apps/web && npm run dev    # http://localhost:3000
+cd apps/web && npm run dev    # http://localhost:3020
 ```
 
 ## Quick checks

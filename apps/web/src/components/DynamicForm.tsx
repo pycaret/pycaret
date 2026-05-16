@@ -62,17 +62,25 @@ export function ParamInput({
     case 'bool': {
       const checked = Boolean(value);
       return (
-        <label htmlFor={id} className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            id={id}
-            type="checkbox"
-            className="h-4 w-4 rounded border-ink-200 bg-white text-accent-500 focus:ring-accent-400"
-            checked={checked}
-            onChange={(e) => onChange(e.target.checked)}
-            disabled={disabled}
+        <button
+          id={id}
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          onClick={() => onChange(!checked)}
+          disabled={disabled}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${
+            checked
+              ? 'bg-accent-500'
+              : 'bg-ink-200 dark:bg-ink-700'
+          } disabled:opacity-50`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+              checked ? 'translate-x-4' : 'translate-x-0.5'
+            }`}
           />
-          <span className="text-sm text-ink-900">{param.name}</span>
-        </label>
+        </button>
       );
     }
 
@@ -214,38 +222,93 @@ export function DynamicForm({
   };
 
   return (
-    <div className="space-y-8">
-      {grouped.map(([group, params]) => (
-        <fieldset key={group} className="space-y-4">
-          <legend className="text-xs uppercase tracking-wider text-ink-500 mb-2">
-            {group}
-          </legend>
-          {params.map((p) => (
-            <div key={p.name}>
-              {p.kind !== 'bool' && (
-                <label className="field" htmlFor={p.name}>
-                  {p.name}
-                  {p.required && <span className="ml-1 text-danger-500">*</span>}
-                </label>
-              )}
-              <ParamInput
-                param={p}
-                value={values[p.name] ?? p.default ?? null}
-                onChange={(v) => setOne(p.name, v)}
-                columns={columns}
-                disabled={disabled}
-              />
-              {p.description && <p className="hint mt-1">{p.description}</p>}
-              {(p.minimum !== null || p.maximum !== null) &&
-                (p.kind === 'int' || p.kind === 'float') && (
-                  <p className="hint mt-0.5 opacity-60">
-                    Range: {p.minimum ?? '−∞'} … {p.maximum ?? '∞'}
-                  </p>
-                )}
-            </div>
-          ))}
-        </fieldset>
-      ))}
+    <div className="space-y-4">
+      {grouped.map(([group, params]) => {
+        // Split bools (rendered as toggle rows) from typed inputs (laid
+        // out in a 2-column grid). Booleans are visually heavier when
+        // mixed with text inputs, so giving them their own block reads
+        // much cleaner.
+        const bools = params.filter((p) => p.kind === 'bool');
+        const others = params.filter((p) => p.kind !== 'bool');
+        return (
+          <fieldset
+            key={group}
+            className="rounded-xl border border-ink-200 dark:border-ink-800 bg-white dark:bg-ink-900 overflow-hidden"
+          >
+            <legend className="px-4 pt-4 text-xs uppercase tracking-wider text-ink-500 font-semibold">
+              {group}
+            </legend>
+            {others.length > 0 && (
+              <div className="px-4 pt-3 pb-4 grid gap-4 sm:grid-cols-2">
+                {others.map((p) => (
+                  <div key={p.name} className="min-w-0">
+                    <label
+                      className="flex items-baseline gap-1.5 text-xs font-medium text-ink-700 dark:text-ink-300 mb-1"
+                      htmlFor={p.name}
+                    >
+                      <span>{p.name}</span>
+                      {p.required && (
+                        <span className="text-danger-500" aria-label="required">
+                          *
+                        </span>
+                      )}
+                    </label>
+                    <ParamInput
+                      param={p}
+                      value={values[p.name] ?? p.default ?? null}
+                      onChange={(v) => setOne(p.name, v)}
+                      columns={columns}
+                      disabled={disabled}
+                    />
+                    {p.description && (
+                      <p className="mt-1 text-[11px] text-ink-500">
+                        {p.description}
+                      </p>
+                    )}
+                    {(p.minimum !== null || p.maximum !== null) &&
+                      (p.kind === 'int' || p.kind === 'float') && (
+                        <p className="mt-0.5 text-[11px] text-ink-400 font-mono">
+                          {p.minimum ?? '−∞'} … {p.maximum ?? '∞'}
+                        </p>
+                      )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {bools.length > 0 && (
+              <ul className="border-t border-ink-200 dark:border-ink-800 divide-y divide-ink-100 dark:divide-ink-800/60">
+                {bools.map((p) => (
+                  <li
+                    key={p.name}
+                    className="px-4 py-3 flex items-start gap-4"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <label
+                        htmlFor={p.name}
+                        className="text-sm font-medium text-ink-900 dark:text-ink-50 cursor-pointer"
+                      >
+                        {p.name}
+                      </label>
+                      {p.description && (
+                        <p className="mt-0.5 text-[11px] text-ink-500">
+                          {p.description}
+                        </p>
+                      )}
+                    </div>
+                    <ParamInput
+                      param={p}
+                      value={values[p.name] ?? p.default ?? null}
+                      onChange={(v) => setOne(p.name, v)}
+                      columns={columns}
+                      disabled={disabled}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </fieldset>
+        );
+      })}
     </div>
   );
 }

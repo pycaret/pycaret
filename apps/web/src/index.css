@@ -184,4 +184,42 @@ body,
     @apply nav-link bg-ink-100 text-ink-900
            dark:bg-ink-800 dark:text-ink-50;
   }
+
+  /* ─── Auto-hide scrollbar ────────────────────────────────────────
+     Used by the sidebar nav. Scrollbar is transparent until the user
+     hovers the container, then fades in. Matches the macOS / modern
+     web-app pattern (Linear, Notion, Vercel) — scrollbar shouldn't
+     compete for visual weight when the user isn't actively scrolling.
+  */
+  .scrollbar-hover-only {
+    scrollbar-gutter: stable;       /* don't reflow on hover */
+    scrollbar-width: thin;          /* Firefox */
+    scrollbar-color: transparent transparent;
+  }
+  .scrollbar-hover-only:hover,
+  .scrollbar-hover-only:focus-within {
+    scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+  }
+  .dark .scrollbar-hover-only:hover,
+  .dark .scrollbar-hover-only:focus-within {
+    scrollbar-color: rgba(255, 255, 255, 0.20) transparent;
+  }
+  /* Chrome / Safari / Edge */
+  .scrollbar-hover-only::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-hover-only::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+    transition: background-color 200ms ease;
+  }
+  .scrollbar-hover-only:hover::-webkit-scrollbar-thumb,
+  .scrollbar-hover-only:focus-within::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.22);
+  }
+  .dark .scrollbar-hover-only:hover::-webkit-scrollbar-thumb,
+  .dark .scrollbar-hover-only:focus-within::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+  }
 }

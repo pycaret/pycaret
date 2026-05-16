@@ -137,10 +137,32 @@ def _resolve_run_pipeline(run_id: str, db: Session) -> Pipeline:
 
 
 def _load_pipeline_artifact(stored_path: str) -> Any:
-    """Load the joblib-pickled pipeline from ``stored_path``."""
-    import joblib
+    """Load the joblib-pickled pipeline from ``stored_path``.
 
-    return joblib.load(stored_path)
+    Phase 2: accepts both legacy bare paths and ``file://`` URIs. For S3/
+    GCS/Azure backends, callers fetch via the ObjectStore and write to
+    a temp file first (left for the cloud-storage cut).
+    """
+    import joblib
+    from urllib.parse import urlparse
+
+    path = stored_path
+    if path.startswith("file://"):
+        raw = urlparse(path).path
+        if raw.startswith("/") and len(raw) > 3 and raw[2] == ":":
+            raw = raw[1:]
+        path = raw
+    elif "://" in path:
+        # Non-local URI — pull through the ObjectStore into a tempfile.
+        from pycaret_server.storage import get_object_store
+        import tempfile
+
+        blob = get_object_store().get_bytes(stored_path)
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pkl")
+        tmp.write(blob)
+        tmp.close()
+        path = tmp.name
+    return joblib.load(path)
 
 
 def _resolve_run_task(run: Run) -> str:
@@ -199,6 +221,73 @@ def _load_dataset_frame(snap: dict[str, Any], db: Session) -> Any:
             pass
 
     return None
+
+
+@router.get("/runs/{run_id}/trials/{trial_id}/plots/{kind}")
+def render_trial_plot(
+    run_id: str,
+    trial_id: str,
+    kind: str,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict[str, Any]:
+    """Generate a plot for one specific trial.
+
+    Mirrors :func:`render_run_plot` but loads the trial's own pickle
+    (resolved via the Trial's Run-1) instead of a promoted ``Pipeline``.
+    Lets the UI render diagnostics for *any* candidate model — including
+    runner-up trials the user might be comparing — without forcing a
+    promote first.
+    """
+    from pycaret_server.api.runs import _trial_access  # late import: avoid cycle
+
+    run, trial = _trial_access(run_id, trial_id, user, db)
+    task = _resolve_run_task(run)
+
+    if kind not in _PLOT_REGISTRY.get(task, {}):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown plot kind {kind!r} for task {task!r}.",
+        )
+    if not trial.stored_path:
+        raise HTTPException(
+            status_code=404,
+            detail="Trial has no stored pipeline artifact yet.",
+        )
+    pipeline = _load_pipeline_artifact(trial.stored_path)
+
+    snap = run.snapshot or {}
+    target = snap.get("target")
+    df = _load_dataset_frame(snap, db)
+    if df is None:
+        if snap.get("data_inline_rows"):
+            detail = (
+                "This run was created with inline rows (data_inline). "
+                "Plot rendering for inline-data runs is not yet supported — "
+                "re-run with a CSV upload or sklearn dataset to render diagnostics."
+            )
+        else:
+            detail = (
+                "Could not load the holdout dataset referenced by the run "
+                "snapshot. The original CSV may have been deleted from disk."
+            )
+        raise HTTPException(status_code=404, detail=detail)
+
+    if not target and snap.get("sklearn_dataset"):
+        try:
+            from pycaret_server.runs.plans import load_sklearn_dataset
+
+            _, target = load_sklearn_dataset(snap["sklearn_dataset"])
+        except Exception:  # noqa: BLE001
+            pass
+
+    figure = _compute_run_plot(task, kind, pipeline, df, target, snap)
+    return {
+        "kind": kind,
+        "task": task,
+        "figure": figure.to_dict() if hasattr(figure, "to_dict") else figure,
+        "generated_at": datetime.now(UTC).isoformat(),
+    }
 
 
 @router.get("/runs/{run_id}/plots/{kind}")

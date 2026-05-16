@@ -11,17 +11,21 @@
  * terminal, polling stops.
  */
 
-import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
-import { runsApi } from '@/api/endpoints';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { pipelinesApi, runsApi } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
-import { EventStream } from '@/components/EventStream';
+import { BackButton } from '@/components/BackButton';
+import { EventLogDrawer } from '@/components/EventLogDrawer';
 import { RunExplainerCard } from '@/components/RunExplainerCard';
 import { FailureDebuggerCard } from '@/components/FailureDebuggerCard';
 import { TrialsCard } from '@/components/TrialsCard';
 import { RunRunningCard } from '@/components/RunRunningCard';
-import type { Run } from '@/api/types';
+import { WorkerLoadCard } from '@/components/WorkerLoadCard';
+import { TrainingChart } from '@/components/TrainingChart';
+import { DeployFromPipelineDialog } from '@/components/DeployFromPipelineDialog';
+import { useEffect, useState } from 'react';
+import type { Run, Pipeline } from '@/api/types';
 
 const STATUS_PILL: Record<string, string> = {
   queued: 'pill-neutral',
@@ -60,20 +64,43 @@ export function RunDetail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['runs', runId] }),
   });
 
-  const [promoteName, setPromoteName] = useState('');
-  const promote = useMutation({
-    mutationFn: () => runsApi.promote(runId, { name: promoteName.trim() }),
-    onSuccess: () => setPromoteName(''),
-  });
-
   const r = run.data;
   const snapshot = (r?.snapshot ?? {}) as Record<string, unknown>;
   const snapshotEntries = Object.entries(snapshot);
-  const terminal = r && (r.status === 'succeeded' || r.status === 'failed' || r.status === 'cancelled');
+
+  // Event log drawer state — auto-opens once when the run starts running
+  // so users see live activity without having to discover the button.
+  // Open the drawer on the very first render when ``?log=1`` is in the
+  // URL — callers from TrialDetail (tune / ensemble submit) navigate
+  // here with that flag so the user immediately sees their action's
+  // events stream into the run's log without having to click anything.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [logOpen, setLogOpen] = useState(
+    () => searchParams.get('log') === '1',
+  );
+  const [autoOpened, setAutoOpened] = useState(false);
+  useEffect(() => {
+    if (r && !autoOpened && r.status === 'running') {
+      setAutoOpened(true);
+      setLogOpen(true);
+    }
+  }, [r, autoOpened]);
+  // Strip the ``?log=1`` flag from the URL once we've consumed it so
+  // subsequent navigations don't reopen the drawer.
+  useEffect(() => {
+    if (searchParams.get('log') === '1') {
+      const next = new URLSearchParams(searchParams);
+      next.delete('log');
+      setSearchParams(next, { replace: true });
+    }
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-8">
       <header>
+        <BackButton />
         <nav className="text-xs text-ink-500 mb-2">
           <Link to="/" className="hover:text-ink-900 dark:hover:text-ink-50">
             Workspaces
@@ -108,9 +135,36 @@ export function RunDetail() {
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              className="btn-secondary inline-flex items-center gap-2"
+              onClick={() => setLogOpen(true)}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M4 6h16M4 12h16M4 18h10" />
+              </svg>
+              Event log
+              {r && isPending(r) && (
+                <span className="ml-0.5 inline-flex h-1.5 w-1.5 rounded-full bg-accent-500 animate-pulse" />
+              )}
+            </button>
             {r?.status === 'succeeded' && (
-              <Link to={`/runs/${runId}/model-card`} className="btn-secondary">
-                Open model card →
+              <Link
+                to={`/runs/${runId}/model-card`}
+                className="btn-secondary"
+                title="Plots + metrics for the run's best trial"
+              >
+                Open best trial →
               </Link>
             )}
             {r?.status === 'succeeded' &&
@@ -143,69 +197,26 @@ export function RunDetail() {
         />
       )}
 
-      {/* ────────── Live event stream — collapses behind the progress card */}
-      <section>
-        {r && <EventStream runId={runId} />}
-      </section>
+      {/* ────────── Live worker load — per-trial status grid + ETA.
+           Renders while trials are in flight AND after they finish so
+           the user has a summary of per-trial timings. */}
+      {runId && <WorkerLoadCard runId={runId} />}
+
+      {/* ────────── Live training chart — per-trial primary metric
+           as the engine emits ``model.created`` events. */}
+      {runId && <TrainingChart runId={runId} />}
 
       {/* ────────── Trials / leaderboard — succeeded runs */}
-      {r?.status === 'succeeded' && runId && <TrialsCard runId={runId} />}
+      {r?.status === 'succeeded' && runId && (
+        <TrialsCard
+          runId={runId}
+          onActionSubmitted={() => setLogOpen(true)}
+        />
+      )}
 
       {/* ────────── AI explainer (succeeded runs) / debugger (failed runs) */}
       {r?.status === 'succeeded' && runId && <RunExplainerCard runId={runId} />}
       {r?.status === 'failed' && runId && <FailureDebuggerCard runId={runId} />}
-
-      {/* ────────── Promote */}
-      {r?.status === 'succeeded' && (
-        <section>
-          <h2 className="h-section mb-3">Promote fitted pipeline</h2>
-          <div className="card flex items-end gap-3">
-            <div className="flex-1">
-              <label className="field" htmlFor="promote-name">
-                Pipeline name
-              </label>
-              <input
-                id="promote-name"
-                className="input"
-                value={promoteName}
-                onChange={(e) => setPromoteName(e.target.value)}
-                placeholder="e.g. churn-model-v1"
-                disabled={promote.isPending || promote.isSuccess}
-              />
-              <p className="hint mt-1">
-                Promotes the fitted pipeline into the workspace registry so it can be
-                deployed behind a slug.
-              </p>
-            </div>
-            <button
-              className="btn-primary"
-              onClick={() => promote.mutate()}
-              disabled={
-                !promoteName.trim() || promote.isPending || promote.isSuccess
-              }
-            >
-              {promote.isPending
-                ? 'Promoting…'
-                : promote.isSuccess
-                  ? 'Promoted ✓'
-                  : 'Promote'}
-            </button>
-          </div>
-          {promote.error && <p className="error mt-2">{errorMessage(promote.error)}</p>}
-          {promote.data && (
-            <p className="hint mt-2">
-              Created pipeline{' '}
-              <Link
-                to={`/workspaces/${promote.data.workspace_id}/pipelines/${promote.data.id}`}
-                className="font-mono text-accent-600 hover:underline"
-              >
-                {promote.data.name}
-              </Link>
-              . Visit its page to deploy it behind a slug.
-            </p>
-          )}
-        </section>
-      )}
 
       {/* ────────── Snapshot */}
       <section>
@@ -238,6 +249,127 @@ export function RunDetail() {
           </dl>
         )}
       </section>
+
+      {/* ────────── Promoted pipelines (when any) — sits below the
+          request snapshot since it's a downstream artifact, not part of
+          the run's own state. */}
+      {r?.status === 'succeeded' && r.workspace_id && (
+        <PromotedPipelinesSection runId={runId} workspaceId={r.workspace_id} />
+      )}
+
+      {/* ────────── Event log drawer — slides in from the right. */}
+      <EventLogDrawer
+        runId={runId}
+        open={logOpen}
+        onClose={() => setLogOpen(false)}
+      />
     </div>
+  );
+}
+
+// ─── Promoted pipelines for this run ─────────────────────────────
+
+function PromotedPipelinesSection({
+  runId,
+  workspaceId,
+}: {
+  runId: string;
+  workspaceId: string;
+}) {
+  const list = useQuery({
+    queryKey: ['pipelines', 'by-workspace', workspaceId],
+    queryFn: () => pipelinesApi.list(workspaceId),
+    enabled: !!workspaceId,
+    staleTime: 30_000,
+  });
+  const fromThisRun = (list.data ?? []).filter(
+    (p) => p.origin_run_id === runId,
+  );
+
+  const [deployTarget, setDeployTarget] = useState<Pipeline | null>(null);
+
+  if (list.isPending) return null;
+  if (fromThisRun.length === 0) {
+    return (
+      <section>
+        <h2 className="h-section mb-3">Promoted versions</h2>
+        <div className="rounded-xl border border-dashed border-ink-300 dark:border-ink-700 px-6 py-8 text-center">
+          <p className="text-sm text-ink-500">
+            No trial from this run has been promoted yet. Open any trial in the
+            leaderboard above and click <span className="font-medium">Promote</span>{' '}
+            to register it on the Model registry.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  // Each Pipeline (session-56+) carries the registered_model_id of its
+  // matching RegisteredModel — link there directly. Pre-session-56 rows
+  // (no registry mirror) fall back to the workspace registry list.
+  const registryHref = (p: Pipeline) =>
+    p.registered_model_id
+      ? `/workspaces/${workspaceId}/models/${p.registered_model_id}`
+      : `/workspaces/${workspaceId}/models`;
+
+  return (
+    <section>
+      <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
+        <h2 className="h-section">
+          Promoted versions{' '}
+          <span className="text-ink-400 font-normal">({fromThisRun.length})</span>
+        </h2>
+      </div>
+      <ul className="rounded-xl bg-white dark:bg-ink-900 border border-ink-200 dark:border-ink-800 shadow-soft-1 divide-y divide-ink-100 dark:divide-ink-800">
+        {fromThisRun.map((p) => (
+          <li
+            key={p.id}
+            className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
+          >
+            <div className="min-w-0 flex items-center gap-3">
+              <span className="pill-accent">v{p.version}</span>
+              <div className="min-w-0">
+                <Link
+                  to={registryHref(p)}
+                  className="text-sm font-medium text-ink-900 dark:text-ink-50 hover:underline truncate"
+                >
+                  {p.name}
+                </Link>
+                {p.model_id && (
+                  <span className="ml-2 text-xs text-ink-500 font-mono">
+                    {p.model_id}
+                  </span>
+                )}
+                {p.description && (
+                  <p className="text-xs text-ink-500 mt-0.5 truncate">
+                    {p.description}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link to={registryHref(p)} className="btn-ghost text-xs">
+                Open in registry →
+              </Link>
+              <button
+                type="button"
+                className="btn-primary text-sm"
+                onClick={() => setDeployTarget(p)}
+              >
+                Deploy
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {deployTarget && (
+        <DeployFromPipelineDialog
+          open
+          onClose={() => setDeployTarget(null)}
+          pipelineId={deployTarget.id}
+          pipelineName={deployTarget.name}
+        />
+      )}
+    </section>
   );
 }

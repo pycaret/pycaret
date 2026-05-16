@@ -225,40 +225,78 @@ class Experiment(UUIDMixin, TimestampMixin, Base):
     )
 
     project: Mapped[Project] = relationship(back_populates="experiments")
+    trials: Mapped[list[Trial]] = relationship(
+        back_populates="experiment", cascade="all, delete-orphan"
+    )
     runs: Mapped[list[Run]] = relationship(
         back_populates="experiment", cascade="all, delete-orphan"
     )
 
 
 # -----------------------------------------------------------------------------
-# run / events / artifacts / fold_metrics
+# Phase 0 model:
+#   Experiment ──► Trial (logical pipeline candidate)
+#                    └── Run (execution instance — 1..N per Trial)
+#
+# Compare produces N Trials (one per algorithm), each with Run 1, all sharing
+# the same ``created_by_action_id``. Tune / Ensemble / Blend / Stack spawn a
+# single new Trial + Run 1, linked to source(s) via ``parent_trial_ids``.
+# Retraining the same Trial appends a new Run with the next ``sequence``.
 # -----------------------------------------------------------------------------
 
 
 class Run(UUIDMixin, TimestampMixin, Base):
-    """One invocation of an experiment — captures status + timings."""
+    """A user-visible execution event inside an Experiment.
+
+    Phase 0-v2: a Run is "I clicked Compare" (or "I clicked Tune", or
+    a schedule fired) — a single event. It **contains** N Trials (one
+    per algorithm candidate). Each Trial is its own scheduled unit of
+    work with its own status / metrics / artifact; the Run's status is
+    derived from the aggregate of its Trials' statuses.
+
+    Why this shape (vs. v1's "Trial owns Runs"):
+
+    * Matches how people think — Compare produces *one* event that
+      yields *many* models.
+    * Makes parallelization natural — the orchestrator decomposes a
+      ``compare`` Run into N ``create_model`` Jobs (one per Trial)
+      dispatched independently to workers.
+    * Each Trial has its own lifecycle, so the UI can render rows
+      lighting up as workers complete instead of waiting for the
+      whole compare to finish.
+    """
 
     __tablename__ = "runs"
 
     experiment_id: Mapped[str] = mapped_column(
         ForeignKey("experiments.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Aggregate status derived from the Trials this Run contains.
+    # ``queued`` while every trial is queued, ``running`` once any is
+    # running, ``succeeded`` when all are terminal-OK, ``failed`` /
+    # ``cancelled`` when any are in those states.
     status: Mapped[str] = mapped_column(
         String(32), default="queued", nullable=False, index=True
-    )  # queued | running | succeeded | failed | cancelled
+    )
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     duration_ms: Mapped[float | None] = mapped_column(Float)
     error: Mapped[str | None] = mapped_column(Text)
-    leaderboard: Mapped[dict | None] = mapped_column(JSON)  # CompareResult.leaderboard shape
-    metrics_summary: Mapped[dict | None] = mapped_column(JSON)  # aggregated leaderboard
+    # Pre-aggregation cache of the leaderboard for legacy UI surfaces
+    # (the live leaderboard is computed from the Trial rows directly).
+    leaderboard: Mapped[dict | None] = mapped_column(JSON)
+    metrics_summary: Mapped[dict | None] = mapped_column(JSON)
     created_by: Mapped[str] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
-    # Inputs captured at dispatch time (immutable snapshot of experiment config)
+    # Inputs captured at dispatch time (immutable snapshot of the
+    # experiment config that the per-Trial workers all share).
     snapshot: Mapped[dict | None] = mapped_column(JSON)
 
     experiment: Mapped[Experiment] = relationship(back_populates="runs")
+    trials: Mapped[list[Trial]] = relationship(
+        back_populates="run", cascade="all, delete-orphan"
+    )
     events: Mapped[list[Event]] = relationship(back_populates="run", cascade="all, delete-orphan")
     artifacts: Mapped[list[Artifact]] = relationship(
         back_populates="run", cascade="all, delete-orphan"
@@ -401,8 +439,28 @@ class Deployment(UUIDMixin, TimestampMixin, Base):
     workspace_id: Mapped[str] = mapped_column(
         ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    pipeline_id: Mapped[str] = mapped_column(
-        ForeignKey("pipelines.id", ondelete="RESTRICT"), nullable=False, index=True
+    pipeline_id: Mapped[str | None] = mapped_column(
+        ForeignKey("pipelines.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    # Phase 7: a Deployment now references a RegisteredModel + version
+    # (the named, governed thing). The legacy ``pipeline_id`` FK stays
+    # for migrated rows; new Deployments leave it NULL and rely on the
+    # registry pair below. Future cuts will drop ``pipeline_id``
+    # entirely once every install has migrated.
+    registered_model_id: Mapped[str | None] = mapped_column(
+        ForeignKey("registered_models.id", ondelete="RESTRICT"), index=True
+    )
+    registered_model_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("registered_model_versions.id", ondelete="RESTRICT"), index=True
+    )
+    # Phase 0: every Deployment also points at the exact ``(trial_id, run_id)``
+    # pair that produced it. Kept alongside the registry pair for
+    # fine-grained reproducibility.
+    trial_id: Mapped[str | None] = mapped_column(
+        ForeignKey("trials.id", ondelete="SET NULL"), index=True
+    )
+    run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("runs.id", ondelete="SET NULL"), index=True
     )
     endpoint_slug: Mapped[str] = mapped_column(String(128), unique=True, nullable=False, index=True)
     status: Mapped[str] = mapped_column(
@@ -736,6 +794,609 @@ class WebhookSubscription(UUIDMixin, TimestampMixin, Base):
     )
 
 
+class Notebook(UUIDMixin, TimestampMixin, Base):
+    """Phase 8: a Jupyter notebook tracked by the platform.
+
+    The actual ``.ipynb`` file lives on object storage (Phase 2) at
+    ``object_uri``; we never inline its bytes. ``kernel`` is the kernel
+    spec to launch (e.g. ``python3``, ``ir``, ``julia-1.9``); ``path`` is
+    the path-in-repo for users who've enabled Git sync (Phase 5).
+    """
+
+    __tablename__ = "notebooks"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    # Path inside the project's repo (drives Git sync layout). Defaults
+    # to ``notebooks/<name>.ipynb`` when not provided.
+    path: Mapped[str | None] = mapped_column(String(512))
+    kernel: Mapped[str] = mapped_column(
+        String(64), default="python3", nullable=False
+    )
+    # ``file://`` or ``s3://`` URI pointing at the saved .ipynb bytes.
+    object_uri: Mapped[str | None] = mapped_column(String(1024))
+    description: Mapped[str | None] = mapped_column(Text)
+    last_executed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    last_modified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    tags: Mapped[list[str] | None] = mapped_column(JSON)
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class NotebookSession(UUIDMixin, TimestampMixin, Base):
+    """Phase 8: a live JupyterLab container hosting one notebook.
+
+    One Session per (user, notebook) typically. The Notebook Manager
+    spawns a container, allocates a port, and stamps ``container_id`` +
+    ``port`` so the proxy can forward to it. Idle sessions are
+    reaped by the manager's housekeeping loop after
+    ``idle_timeout_seconds``.
+
+    ``token`` is the per-session JupyterLab token — embedded into the
+    iframe URL so the user authenticates without seeing a prompt.
+    Stored unhashed for v1 (only the user who owns the session sees
+    it); a future cut wraps it through the Secret store.
+    """
+
+    __tablename__ = "notebook_sessions"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    notebook_id: Mapped[str] = mapped_column(
+        ForeignKey("notebooks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # ``starting`` | ``running`` | ``stopping`` | ``stopped`` | ``failed``.
+    status: Mapped[str] = mapped_column(
+        String(16), default="starting", nullable=False, index=True
+    )
+    # Container handle from the Docker / Kubernetes manager — opaque
+    # string the manager understands. Empty for the in-memory test
+    # backend used in CI.
+    container_id: Mapped[str | None] = mapped_column(String(128))
+    # Host port the platform proxy forwards to. NULL until ``running``.
+    port: Mapped[int | None] = mapped_column(Integer)
+    token: Mapped[str | None] = mapped_column(String(128))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_active_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    idle_timeout_seconds: Mapped[int] = mapped_column(
+        Integer, default=1800, nullable=False
+    )
+    # Resource caps the manager applies to the container.
+    cpu_limit: Mapped[float | None] = mapped_column(Float)
+    memory_mb_limit: Mapped[int | None] = mapped_column(Integer)
+    error: Mapped[str | None] = mapped_column(Text)
+
+
+class Analysis(UUIDMixin, TimestampMixin, Base):
+    """Phase 11: a Statistical-computing peer to Experiment.
+
+    Each Analysis is one *typed* statistical procedure (t-test, ANOVA,
+    Chi-square, OLS diagnostics, Kaplan–Meier, ARIMA, …) over a
+    DataSource. The ``kind`` discriminator drives both the validator
+    and the result-renderer.
+
+    Like Experiment, an Analysis can have many Runs (Phase 0 Run
+    semantics — every execution captures inputs in ``snapshot`` and
+    stamps results into the Run row). For analyses, the metrics dict
+    on the Run carries (test_statistic, p_value, effect_size, ci_low,
+    ci_high, interpretation) and the params dict carries the inputs
+    (grouping_column, measure_column, …).
+    """
+
+    __tablename__ = "analyses"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    # ``ttest`` | ``welch_ttest`` | ``paired_ttest`` | ``mannwhitney`` |
+    # ``anova_oneway`` | ``anova_twoway`` | ``kruskal`` | ``chi2`` |
+    # ``fisher`` | ``cramers_v`` | ``ols`` | ``kaplan_meier`` |
+    # ``logrank`` | ``cox_ph`` | ``arima`` | ``prophet`` ; free-form so
+    # adding a new procedure is one new key + one new module.
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    # Persistent inputs the user picked (column names, group keys,
+    # alpha, etc.). Each Run captures a snapshot at dispatch.
+    params: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    data_source_id: Mapped[str | None] = mapped_column(
+        ForeignKey("data_sources.id", ondelete="SET NULL"),
+        index=True,
+    )
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class AlertRule(UUIDMixin, TimestampMixin, Base):
+    """Phase 10: declarative threshold over a deployment metric.
+
+    Rules evaluate on a rolling window. When the predicate trips, the
+    worker emits to a Destination (Slack webhook, email recipient list,
+    webhook URL). De-duplication is by (rule_id, deployment_id, window)
+    so a long-running breach only pages once per window.
+    """
+
+    __tablename__ = "alert_rules"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    deployment_id: Mapped[str | None] = mapped_column(
+        ForeignKey("deployments.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    # Metric key the rule reads (e.g. ``p95_latency_ms``, ``error_rate``,
+    # ``drift_score``, ``requests_per_minute``).
+    metric: Mapped[str] = mapped_column(String(64), nullable=False)
+    # ``gt`` | ``gte`` | ``lt`` | ``lte`` | ``eq`` — the rule fires when
+    # ``metric <comparator> threshold`` over ``window_seconds``.
+    comparator: Mapped[str] = mapped_column(String(8), nullable=False)
+    threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    window_seconds: Mapped[int] = mapped_column(
+        Integer, default=300, nullable=False
+    )
+    # ``slack`` | ``email`` | ``webhook`` (free-form for future
+    # destinations: PagerDuty, MS Teams, …).
+    destination_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    # JSON config — Slack ``{"webhook_url": "..."}``, email
+    # ``{"to": ["..."]}``, webhook ``{"url": "..."}``.
+    destination_config: Mapped[dict] = mapped_column(JSON, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    last_fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_status: Mapped[str | None] = mapped_column(String(32))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class MetricPoint(UUIDMixin, TimestampMixin, Base):
+    """Phase 10: simple roll-up time-series row.
+
+    Deliberately not TimescaleDB-shaped — Phase 10 ships a portable
+    "good enough" table that works on SQLite + Postgres. When volume
+    demands it, a future cut swaps in the Timescale extension on
+    Postgres; the read API stays the same.
+
+    One row per (deployment_id, metric, ts_bucket). The bucket size is
+    settable per metric (default 60s for latency, 300s for drift, etc.).
+    """
+
+    __tablename__ = "metric_points"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    deployment_id: Mapped[str | None] = mapped_column(
+        ForeignKey("deployments.id", ondelete="CASCADE"), index=True
+    )
+    metric: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    ts_bucket: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    extra: Mapped[dict | None] = mapped_column(JSON)
+
+
+class ApprovalWorkflow(UUIDMixin, TimestampMixin, Base):
+    """Phase 12: required-approval gate on a sensitive action.
+
+    Configurable per (workspace, target_kind, action) — e.g. require N
+    approvals on ``promote_to_production`` for any
+    ``registered_model_version``. The actual approval rows are stored
+    inline on the workflow; once N approvers have signed off, the
+    backend executes the gated action.
+    """
+
+    __tablename__ = "approval_workflows"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # ``registered_model_version`` | ``deployment`` | ``project_delete`` | …
+    target_kind: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    target_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    # ``promote_to_production`` | ``create`` | ``delete`` | ``rollback``.
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), default="pending", nullable=False, index=True
+    )  # pending | approved | rejected | executed | cancelled
+    required_approvals: Mapped[int] = mapped_column(
+        Integer, default=1, nullable=False
+    )
+    # ``[{"user_id": "...", "approved_at": "...", "comment": "..."}, ...]``
+    approvals: Mapped[list | None] = mapped_column(JSON)
+    request_payload: Mapped[dict | None] = mapped_column(JSON)
+    requested_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class RegisteredModel(UUIDMixin, TimestampMixin, Base):
+    """Phase 7: the named, governed thing a Deployment references.
+
+    A RegisteredModel is workspace-scoped and stable across retrains.
+    The actual bytes + lineage live on the linked
+    :class:`RegisteredModelVersion` rows; the Deployment FK points at
+    a specific version so rollback is a one-column update with no
+    re-training.
+
+    Separating this from the prior ``pipelines`` table fixes the
+    ambiguity where "promoting a trial" both *created* a Pipeline AND
+    mutated the trial. In v2 the trial stays clean; promotion creates a
+    new Version row attached to a (new or existing) RegisteredModel.
+    """
+
+    __tablename__ = "registered_models"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "name", name="uq_registered_model_name"),
+    )
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    project_id: Mapped[str | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="SET NULL"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    # The "live" version a Deployment defaults to when created without
+    # an explicit version override. ``use_alter=True`` lives on the FK
+    # so SQLAlchemy emits an ALTER TABLE rather than a circular CREATE
+    # (registered_models references versions which references models).
+    current_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey(
+            "registered_model_versions.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_registered_models_current_version_id",
+        ),
+        index=True,
+    )
+    tags: Mapped[list[str] | None] = mapped_column(JSON)
+    owner_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class RegisteredModelVersion(UUIDMixin, TimestampMixin, Base):
+    """Phase 7: one promoted Run, scoped to a RegisteredModel.
+
+    Each row is immutable once written: same Run produced the same
+    bytes; same bytes get the same sha. Re-promoting the same Trial
+    bumps ``version`` and writes a new row, preserving the prior one
+    for rollback.
+
+    The promotion lifecycle (``staging`` → ``production`` → ``archived``)
+    is the user-facing thing; rollbacks just flip a Deployment to point
+    at an older version.
+    """
+
+    __tablename__ = "registered_model_versions"
+
+    registered_model_id: Mapped[str] = mapped_column(
+        ForeignKey("registered_models.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Lineage back to the exact execution that produced these bytes.
+    run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("runs.id", ondelete="SET NULL"), index=True
+    )
+    trial_id: Mapped[str | None] = mapped_column(
+        ForeignKey("trials.id", ondelete="SET NULL"), index=True
+    )
+    stored_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    sha256: Mapped[str | None] = mapped_column(String(64), index=True)
+    size_bytes: Mapped[int | None] = mapped_column(Integer)
+    params: Mapped[dict | None] = mapped_column(JSON)
+    metrics: Mapped[dict | None] = mapped_column(JSON)
+    # ``staging`` | ``production`` | ``archived``.
+    status: Mapped[str] = mapped_column(
+        String(16), default="staging", nullable=False, index=True
+    )
+    promoted_by: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    promoted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+
+
+class GitRepository(UUIDMixin, TimestampMixin, Base):
+    """Phase 5: a Git repo a project syncs Experiments / Trials / Runs to.
+
+    One Project ↔ at most one Git repo (v1). Auth is via a workspace
+    Secret (PAT for now; GitHub-app + GitLab-app installations land in
+    a future cut). Sync is one-way: backend export → repo on every Run
+    completion. Repo as source-of-truth is explicitly out of scope.
+    """
+
+    __tablename__ = "git_repositories"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    project_id: Mapped[str | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    # ``github`` | ``gitlab`` | ``gitea`` | ``bitbucket``.
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    # The clone URL the worker uses (``https://github.com/owner/repo``).
+    url: Mapped[str] = mapped_column(String(512), nullable=False)
+    default_branch: Mapped[str] = mapped_column(
+        String(128), default="main", nullable=False
+    )
+    # Subdir under which exported YAML lands (default repo root).
+    path_prefix: Mapped[str | None] = mapped_column(String(256))
+    # PAT or app-install credential (encrypted at rest via Secret).
+    secret_id: Mapped[str | None] = mapped_column(
+        ForeignKey("secrets.id", ondelete="SET NULL"), index=True
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # When set, the orchestrator enqueues a ``git_publish`` Job each
+    # time a Run in this repo's linked project flips to ``succeeded``.
+    # No-op for repos without ``project_id``.
+    auto_publish: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+    last_push_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_push_status: Mapped[str | None] = mapped_column(String(32))
+    last_push_sha: Mapped[str | None] = mapped_column(String(64))
+    last_push_error: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class Connection(UUIDMixin, TimestampMixin, Base):
+    """Phase 4: a credentialed link to an external data source.
+
+    Splits **how to connect** (Connection — db host/port/secret) from
+    **what to register** (DataSource — a specific table/file/path inside
+    that Connection). A workspace typically has one Postgres Connection
+    and many DataSource rows pointing at different tables.
+
+    The actual credentials live in ``secrets`` (encrypted at rest) and
+    are referenced by ``secret_id`` — never inlined in ``config``.
+    """
+
+    __tablename__ = "connections"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    # ``postgres`` | ``snowflake`` | ``bigquery`` | ``s3`` | ``http`` | …
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    # Driver-specific connection params (host, port, database name, region…).
+    # Anything secret lives in the linked Secret instead.
+    config: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    secret_id: Mapped[str | None] = mapped_column(
+        ForeignKey("secrets.id", ondelete="SET NULL"), index=True
+    )
+    last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_test_status: Mapped[str | None] = mapped_column(String(32))
+    last_test_error: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class Secret(UUIDMixin, TimestampMixin, Base):
+    """Phase 4: workspace-scoped encrypted secret store.
+
+    Generic enough to back any credential — Postgres password, S3 keys,
+    Snowflake token, OpenAI key — without a per-kind table per phase.
+    ``value_encrypted`` carries the ciphertext (Fernet, same key as
+    ``LLMProviderSetting.api_key_encrypted``); plaintext is never logged.
+    """
+
+    __tablename__ = "secrets"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    # Discriminator so we can list "all DB passwords" or "all API keys"
+    # in the secret picker. ``opaque`` covers everything else.
+    kind: Mapped[str] = mapped_column(
+        String(32), default="opaque", nullable=False, index=True
+    )
+    value_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    # Stable hint for the UI ("**********xyz") without ever decrypting.
+    last4: Mapped[str | None] = mapped_column(String(8))
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class Dataset(UUIDMixin, TimestampMixin, Base):
+    """Phase 4: a *versioned* snapshot of a DataSource.
+
+    A DataSource is the abstract pointer ("the orders table on prod
+    Postgres"). A Dataset is one materialised cut of that pointer at a
+    point in time — schema, row count, byte count, optional snapshot
+    URI. Re-running the same DataSource produces a new Dataset version,
+    which is what Experiment/Run rows actually reference for lineage.
+
+    Snapshot URIs land in object storage (Phase 2) and are optional —
+    small DataSources can be re-pulled on demand without materialising.
+    """
+
+    __tablename__ = "datasets"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    data_source_id: Mapped[str] = mapped_column(
+        ForeignKey("data_sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # 1-based per-DataSource version number; the orchestrator bumps it
+    # on every successful refresh.
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    name: Mapped[str | None] = mapped_column(String(128))
+    # Column list + dtypes captured at introspection time.
+    schema_json: Mapped[dict | None] = mapped_column(JSON)
+    row_count: Mapped[int | None] = mapped_column(Integer)
+    byte_count: Mapped[int | None] = mapped_column(Integer)
+    # Pointer to a frozen copy in object storage. NULL when the snapshot
+    # wasn't materialised (e.g. cheap small CSVs we re-read each run).
+    snapshot_uri: Mapped[str | None] = mapped_column(String(1024))
+    sample_uri: Mapped[str | None] = mapped_column(String(1024))
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class Lineage(UUIDMixin, TimestampMixin, Base):
+    """Phase 4: append-only edge log for the DAG viewer.
+
+    One row per directed edge: Dataset → Experiment, Run →
+    RegisteredModelVersion, Deployment → Run, etc. Lets the UI render
+    a graph by walking outbound from any node.
+
+    ``source_kind`` / ``target_kind`` are open strings (no FK polymorphism)
+    so future entities slot in without a schema change. ``relation`` is a
+    short verb (``trained_on``, ``produced``, ``deployed_from``) that
+    drives edge labels in the viewer.
+    """
+
+    __tablename__ = "lineage"
+
+    workspace_id: Mapped[str | None] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    source_kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    source_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    target_kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    target_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    relation: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Free-form extras: metric values, version numbers, hashes the UI
+    # surfaces on hover.
+    metadata_json: Mapped[dict | None] = mapped_column(JSON)
+
+
+class Job(UUIDMixin, TimestampMixin, Base):
+    """Phase 1: queueable unit of work.
+
+    Every async operation (training a Run, refreshing a Dataset sample,
+    running a batch-predict) becomes a Job row. The current in-process
+    executor and the future Redis/RQ worker pool both read from this
+    table — so we can flip the executor backend by env var without
+    touching call sites.
+
+    Lifecycle: ``queued`` → ``running`` → ``succeeded`` | ``failed`` |
+    ``cancelled``. Retries bump ``attempts``; ``locked_by`` carries the
+    worker id while a Job is in-flight so a crashed worker's Jobs can
+    be re-queued cleanly.
+    """
+
+    __tablename__ = "jobs"
+
+    # What kind of unit-of-work this row represents. Used to route to
+    # the right worker handler. ``run`` is the only kind in Phase 1;
+    # ``dataset_refresh``, ``drift_check``, ``batch_predict`` land in
+    # later phases without schema changes.
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="queued", index=True
+    )
+    # Optional FK back to the Run this Job executes. Nullable because
+    # future Job kinds (drift, batch-predict) don't necessarily map 1:1
+    # to a Run row.
+    run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("runs.id", ondelete="CASCADE"), index=True
+    )
+    # Free-form payload — the worker reads this to drive execution.
+    # For ``kind=run``, this is the orchestrator's RunSpec serialised
+    # as JSON; future kinds dictate their own shape.
+    payload: Mapped[dict | None] = mapped_column(JSON)
+    # Retry bookkeeping. ``attempts`` increments on every dispatch
+    # attempt; ``max_attempts`` clamps it; ``next_retry_at`` lets the
+    # worker pull due-now retries with a single query.
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Worker that currently owns this Job. NULL when queued or terminal.
+    locked_by: Mapped[str | None] = mapped_column(String(128), index=True)
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error: Mapped[str | None] = mapped_column(Text)
+    # Which queue this Job belongs to. Phase 14 uses this to route to
+    # worker classes (cpu-heavy / gpu / inference); Phase 1 default is
+    # always ``default``.
+    queue: Mapped[str] = mapped_column(
+        String(32), default="default", nullable=False, index=True
+    )
+    # Optional grouping key — multiple Jobs belonging to one user click
+    # share a ``correlation_id`` so logs/audits can join them.
+    correlation_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    # Free-form resource hints the dispatcher writes and a GPU-aware
+    # worker pool reads. Today the worker still serves every queue,
+    # but a "gpu" worker can filter for ``requested_resources.gpu == 1``
+    # before claiming the row. Phase 14.
+    requested_resources: Mapped[dict | None] = mapped_column(JSON)
+
+
 class ExperimentTemplate(UUIDMixin, TimestampMixin, Base):
     """Saved experiment configuration that can be reused as a starting point.
 
@@ -763,26 +1424,38 @@ class ExperimentTemplate(UUIDMixin, TimestampMixin, Base):
 
 
 class Trial(UUIDMixin, TimestampMixin, Base):
-    """One AutoML candidate from a ``compare_models`` / ``automl`` run.
+    """One fitted-pipeline candidate inside a Run.
 
-    Spec § 4.6: promote the JSON ``Run.leaderboard`` rows into queryable
-    entities so the UI's Trials tab can sort, filter, link to fitted
-    pipelines, and rank cross-run. Written by ``RunOrchestrator`` at the
-    same time it persists the leaderboard JSON; the JSON column on Run
-    stays for backwards-compat callers but Trial rows are the source of
-    truth going forward.
+    Phase 0-v2 model (matches PyCaret 3.x convention):
 
-    ``model_id`` is the engine model registry id (``"lr"``, ``"rf"``, …).
-    ``rank`` is 1-based on the leaderboard's primary sort metric.
-    ``metrics`` is the row's per-metric values as written by
-    ``CompareResult.leaderboard``.
+        Run ──▶ contains 1..N Trials (one per algorithm candidate)
+
+    A Trial is its own scheduled unit of work. When the orchestrator
+    receives a ``compare`` Run, it decomposes it into N Trial rows
+    (status=queued) + N Job rows (kind="trial") — one per algorithm.
+    Workers pick the Trial-Jobs up independently, run
+    ``create_model(model_id)``, and stamp the matching Trial row with
+    its metrics + artifact + status. The Run's status is derived from
+    the aggregate of its Trials' statuses.
+
+    Each Trial owns its artifact pointer (``stored_path``) and metrics
+    JSON; lineage between Trials across Runs (tune of X, blend of [Y,
+    Z]) lives in ``parent_trial_ids``.
     """
 
     __tablename__ = "trials"
 
-    run_id: Mapped[str] = mapped_column(
+    # Parent Run — required for compare/standard trials; nullable
+    # only because retired-from-Phase-0 rows survived the migration.
+    run_id: Mapped[str | None] = mapped_column(
         ForeignKey("runs.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    )
+    # Denorm so listing all trials in an Experiment doesn't need a join.
+    experiment_id: Mapped[str | None] = mapped_column(
+        ForeignKey("experiments.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     workspace_id: Mapped[str] = mapped_column(
@@ -790,10 +1463,52 @@ class Trial(UUIDMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
+    # Stable display name. Defaults to ``model_id`` when the
+    # orchestrator creates the row; user-editable post-hoc.
+    name: Mapped[str | None] = mapped_column(String(128))
+    # Engine model id (``"lr"``, ``"rf"``, …). For ensembles / blends
+    # / stacks, holds the synthetic id of the meta-pipeline
+    # (e.g. ``stacked``) so the UI can still group / colour by it.
     model_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    rank: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    metrics: Mapped[dict] = mapped_column(JSON, nullable=False)
-    is_best: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # ``compare | tuned | ensembled | blended | stacked | manual``.
+    kind: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="compare", index=True
+    )
+    # Per-Trial lifecycle. Each Trial is its own scheduled unit of
+    # work — workers flip this independently. The Run's status is the
+    # aggregate of every Trial under it.
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="succeeded", server_default="succeeded", index=True
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    duration_ms: Mapped[float | None] = mapped_column(Float)
+    error: Mapped[str | None] = mapped_column(Text)
+    # Leaderboard position within the parent Run (1 = best). Cached by
+    # the orchestrator after all trials in the Run finish.
+    rank: Mapped[int | None] = mapped_column(Integer, index=True)
+    is_best: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    # Per-Trial metrics + fitted-artifact pointer. Workers stamp these
+    # when they finish ``create_model``.
+    metrics: Mapped[dict | None] = mapped_column(JSON)
+    stored_path: Mapped[str | None] = mapped_column(String(1024))
+    sha256: Mapped[str | None] = mapped_column(String(64), index=True)
+    size_bytes: Mapped[int | None] = mapped_column(Integer)
+    params: Mapped[dict | None] = mapped_column(JSON)
+    # Lineage — non-empty for tune/ensemble (1 source) and blend/stack (N).
+    parent_trial_ids: Mapped[list[str] | None] = mapped_column(JSON)
+    # Groups Trials spawned by one user action (e.g. a compare_models
+    # click that emits 22 Trials, OR a tune action that produces 1).
+    created_by_action_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    # Once a Trial is promoted to the registry, this points at the
+    # resulting Pipeline row. Migrated to RegisteredModel in Phase 7.
     fitted_pipeline_id: Mapped[str | None] = mapped_column(
         ForeignKey("pipelines.id", ondelete="SET NULL"), index=True
     )
+    # Free-form annotation editable from the trial detail page.
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    run: Mapped[Run | None] = relationship(back_populates="trials")
+    experiment: Mapped[Experiment | None] = relationship(back_populates="trials")

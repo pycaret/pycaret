@@ -57,13 +57,66 @@ class Settings(BaseSettings):
     artifact_dir: Path = Path("./artifacts")
 
     # --- CORS ---
+    # Vite dev server lives on :3020 (offset to keep clear of resumly's
+    # :3000 when both projects run on the same laptop). Override via
+    # PYCARET_CORS_ORIGINS for prod / staging.
     cors_origins: list[str] = Field(
-        default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
+        default_factory=lambda: ["http://localhost:3020", "http://127.0.0.1:3020"]
     )
 
     # --- feature flags (platform phase progression) ---
     enable_deployments: bool = True  # in-house serving
     enable_websocket: bool = True  # event-stream fan-out
+
+    # --- Phase 1: executor backend ---
+    # ``inprocess`` (default) — RunOrchestrator's ThreadPoolExecutor runs
+    # Jobs in the API process. Zero deps, fine for dev.
+    # ``redis`` — backend produces Job rows + enqueues to Redis; the
+    # ``pycaret-worker`` process picks them up. Required for multi-host
+    # deploys + the GPU/queue segmentation that lands in Phase 14.
+    runs_backend: str = "inprocess"
+    redis_url: str = "redis://localhost:6379/0"
+    # Worker identity. When running multiple workers, each picks a unique
+    # id (defaults to a per-process uuid in the worker entrypoint) so the
+    # ``locked_by`` column on Jobs is meaningful.
+    worker_id: str | None = None
+    # Comma-separated queue names this worker listens on. Phase 14 routes
+    # by class (cpu-heavy / gpu / inference); Phase 1 default is ``default``.
+    worker_queues: str = "default"
+
+    # --- Phase 2: object storage ---
+    # ``local`` (default) — pickles land under ``artifact_dir`` and DB
+    # rows store ``file://`` URIs. ``s3`` / ``minio`` swap in S3-compatible
+    # APIs; the rest of the system reads ``stored_path`` opaquely.
+    storage_backend: str = "local"
+    storage_bucket: str | None = None
+    storage_endpoint_url: str | None = None  # MinIO: http://localhost:9000
+    storage_region: str = "us-east-1"
+    storage_access_key: str | None = None
+    storage_secret_key: str | None = None
+
+    # --- Phase 8: notebook runtime ---
+    # ``local`` (default) — no container spawn; sessions show up as
+    # "backend unavailable" placeholders. Use this on Windows dev
+    # boxes without Docker.
+    # ``docker`` — spawns one JupyterLab container per session via the
+    # host Docker CLI; ``notebook_image`` overrides the image.
+    notebook_backend: str = "local"
+    notebook_image: str | None = None
+    notebook_data_dir: str | None = None
+    notebook_network: str | None = None
+    notebook_idle_timeout_seconds: int = 1800
+
+    # --- Phase 10: SMTP (email alert destination) ---
+    # All optional. When ``smtp_host`` is unset, email-destination
+    # alerts return a clean "SMTP not configured" error instead of
+    # silently dropping.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_use_tls: bool = True
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
 
 
 @lru_cache(maxsize=1)

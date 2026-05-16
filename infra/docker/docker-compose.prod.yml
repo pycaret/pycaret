@@ -1,0 +1,161 @@
+# PyCaret Platform — production-shaped Compose stack.
+#
+# Layout matches the Phase 1/2/3 architectural targets:
+#   - api      FastAPI backend
+#   - worker   long-running RQ worker (Phase 1)
+#   - postgres Phase 3 production DB
+#   - redis    Phase 1 job queue + Phase 6 pub/sub bus
+#   - minio    Phase 2 S3-compatible object storage
+#   - web      React UI behind nginx
+#
+# Run from the repo root:
+#   docker compose -f infra/docker/docker-compose.prod.yml up --build
+#
+# Then open http://localhost:3020. MinIO admin UI lives at http://localhost:9001
+# (login: minioadmin / minioadmin — change for any real deploy).
+#
+# Override secrets via a sibling .env file or your orchestrator's secret store.
+# Nothing here is production-grade as-is; this is the "self-host an OSS
+# install" reference. Helm chart ships in Phase 13.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pycaret-postgres
+    environment:
+      POSTGRES_USER: ${PYCARET_PG_USER:-pycaret}
+      POSTGRES_PASSWORD: ${PYCARET_PG_PASSWORD:-pycaret-dev-only}
+      POSTGRES_DB: ${PYCARET_PG_DB:-pycaret}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PYCARET_PG_USER:-pycaret}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: pycaret-redis
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: pycaret-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${PYCARET_S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${PYCARET_S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # admin UI
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # One-shot bucket bootstrap. Keeps the compose-up experience zero-touch.
+  minio-bootstrap:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 ${PYCARET_S3_ACCESS_KEY:-minioadmin} ${PYCARET_S3_SECRET_KEY:-minioadmin} &&
+        mc mb --ignore-existing local/${PYCARET_S3_BUCKET:-pycaret-artifacts} &&
+        echo 'bucket ready' &&
+        exit 0
+      "
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    image: pycaret-api:dev
+    container_name: pycaret-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "8020:8020"
+    environment:
+      # Phase 3 — Postgres production path.
+      PYCARET_DATABASE_URL: postgresql+psycopg://${PYCARET_PG_USER:-pycaret}:${PYCARET_PG_PASSWORD:-pycaret-dev-only}@postgres:5432/${PYCARET_PG_DB:-pycaret}
+      # Phase 1 — queue/worker backend.
+      PYCARET_RUNS_BACKEND: redis
+      PYCARET_REDIS_URL: redis://redis:6379/0
+      # Phase 2 — object storage.
+      PYCARET_STORAGE_BACKEND: minio
+      PYCARET_STORAGE_ENDPOINT_URL: http://minio:9000
+      PYCARET_STORAGE_BUCKET: ${PYCARET_S3_BUCKET:-pycaret-artifacts}
+      PYCARET_STORAGE_ACCESS_KEY: ${PYCARET_S3_ACCESS_KEY:-minioadmin}
+      PYCARET_STORAGE_SECRET_KEY: ${PYCARET_S3_SECRET_KEY:-minioadmin}
+      # Misc.
+      PYCARET_CORS_ORIGINS: '["http://localhost:3020","http://127.0.0.1:3020"]'
+      PYCARET_JWT_SECRET: ${PYCARET_JWT_SECRET:-prod-please-override}
+      PYCARET_SECRETS_KEY: ${PYCARET_SECRETS_KEY:-}
+      PYCARET_ENVIRONMENT: prod
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    image: pycaret-api:dev  # same image; different entrypoint
+    container_name: pycaret-worker
+    command: ["pycaret-server", "worker", "--queues", "default"]
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      # Worker uses the same connection strings the API does.
+      PYCARET_DATABASE_URL: postgresql+psycopg://${PYCARET_PG_USER:-pycaret}:${PYCARET_PG_PASSWORD:-pycaret-dev-only}@postgres:5432/${PYCARET_PG_DB:-pycaret}
+      PYCARET_RUNS_BACKEND: redis
+      PYCARET_REDIS_URL: redis://redis:6379/0
+      PYCARET_STORAGE_BACKEND: minio
+      PYCARET_STORAGE_ENDPOINT_URL: http://minio:9000
+      PYCARET_STORAGE_BUCKET: ${PYCARET_S3_BUCKET:-pycaret-artifacts}
+      PYCARET_STORAGE_ACCESS_KEY: ${PYCARET_S3_ACCESS_KEY:-minioadmin}
+      PYCARET_STORAGE_SECRET_KEY: ${PYCARET_S3_SECRET_KEY:-minioadmin}
+      PYCARET_SECRETS_KEY: ${PYCARET_SECRETS_KEY:-}
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.ui
+    image: pycaret-web:dev
+    container_name: pycaret-web
+    ports:
+      - "3020:8080"
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

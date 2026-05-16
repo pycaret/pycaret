@@ -12,7 +12,7 @@ Quickstart::
 
     from pycaret_client import ControlPlane
 
-    cp = ControlPlane.connect("http://localhost:8000", email="me@x.com",
+    cp = ControlPlane.connect("http://localhost:8020", email="me@x.com",
                               password="...")
     ws = cp.workspaces.list()[0]
     proj = cp.projects.create(workspace_id=ws["id"], name="Churn")

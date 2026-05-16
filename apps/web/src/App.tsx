@@ -9,15 +9,13 @@ import { ProjectDetail } from '@/pages/ProjectDetail';
 import { NewExperiment } from '@/pages/NewExperiment';
 import { ExperimentDetail } from '@/pages/ExperimentDetail';
 import { RunDetail } from '@/pages/RunDetail';
+import { TrialDetail } from '@/pages/TrialDetail';
+import { TrialCompare } from '@/pages/TrialCompare';
 import { ModelCard } from '@/pages/ModelCard';
 import { DataProfile } from '@/pages/DataProfile';
 import { WorkspaceHome } from '@/pages/WorkspaceHome';
 import { ForecastWorkbench } from '@/pages/ForecastWorkbench';
 import { DriftDashboard } from '@/pages/DriftDashboard';
-import { PredictionExplorer } from '@/pages/PredictionExplorer';
-import { ModelComparison } from '@/pages/ModelComparison';
-import { Pipelines } from '@/pages/Pipelines';
-import { PipelineDetail } from '@/pages/PipelineDetail';
 import { Deployments } from '@/pages/Deployments';
 import { DeploymentDetail } from '@/pages/DeploymentDetail';
 import { LLMSettings } from '@/pages/LLMSettings';
@@ -30,6 +28,20 @@ import { AdminIntegrations } from '@/pages/AdminIntegrations';
 import { Schedules } from '@/pages/Schedules';
 import { ExperimentTemplates } from '@/pages/ExperimentTemplates';
 import { Webhooks } from '@/pages/Webhooks';
+// Phase 0/14 admin/observability surfaces shipped post-MVP.
+import { QueueAdmin } from '@/pages/QueueAdmin';
+import { Approvals } from '@/pages/Approvals';
+import { Notebooks } from '@/pages/Notebooks';
+import { Analyses } from '@/pages/Analyses';
+import { RegisteredModels } from '@/pages/RegisteredModels';
+import { RegisteredModelDetail } from '@/pages/RegisteredModelDetail';
+import { Monitoring } from '@/pages/Monitoring';
+import { Lineage } from '@/pages/Lineage';
+import { Secrets } from '@/pages/Secrets';
+import { Connections } from '@/pages/Connections';
+import { GitRepositories } from '@/pages/GitRepositories';
+import { Datasets } from '@/pages/Datasets';
+import { AllDatasets } from '@/pages/AllDatasets';
 
 export default function App() {
   return (
@@ -58,6 +70,11 @@ export default function App() {
           element={<ExperimentDetail />}
         />
         <Route path="/runs/:runId" element={<RunDetail />} />
+        <Route
+          path="/runs/:runId/trials/:trialId"
+          element={<TrialDetail />}
+        />
+        <Route path="/runs/:runId/compare" element={<TrialCompare />} />
         <Route path="/runs/:runId/model-card" element={<ModelCard />} />
         <Route path="/workspaces/:wsId/home" element={<WorkspaceHome />} />
         <Route
@@ -66,16 +83,6 @@ export default function App() {
         />
         <Route path="/runs/:runId/forecast" element={<ForecastWorkbench />} />
         <Route path="/workspaces/:wsId/drift" element={<DriftDashboard />} />
-        <Route
-          path="/workspaces/:wsId/predictions"
-          element={<PredictionExplorer />}
-        />
-        <Route path="/workspaces/:wsId/compare" element={<ModelComparison />} />
-        <Route path="/workspaces/:wsId/pipelines" element={<Pipelines />} />
-        <Route
-          path="/workspaces/:wsId/pipelines/:pipelineId"
-          element={<PipelineDetail />}
-        />
         <Route path="/workspaces/:wsId/deployments" element={<Deployments />} />
         <Route path="/deployments/:deploymentId" element={<DeploymentDetail />} />
         <Route path="/workspaces/:wsId/llm" element={<LLMSettings />} />
@@ -97,6 +104,51 @@ export default function App() {
           element={<ExperimentTemplates />}
         />
         <Route path="/workspaces/:wsId/webhooks" element={<Webhooks />} />
+        {/* Phase 7 — model registry. */}
+        <Route
+          path="/workspaces/:wsId/models"
+          element={<RegisteredModels />}
+        />
+        <Route
+          path="/workspaces/:wsId/models/:modelId"
+          element={<RegisteredModelDetail />}
+        />
+        {/* Phase 8 — notebooks (project-scoped). */}
+        <Route
+          path="/workspaces/:wsId/projects/:projectId/notebooks"
+          element={<Notebooks />}
+        />
+        {/* Phase 10 — monitoring dashboard. */}
+        <Route
+          path="/workspaces/:wsId/monitoring"
+          element={<Monitoring />}
+        />
+        {/* Phase 11 — statistical analyses. */}
+        <Route
+          path="/workspaces/:wsId/projects/:projectId/analyses"
+          element={<Analyses />}
+        />
+        {/* Phase 12 — governance / approvals. */}
+        <Route
+          path="/workspaces/:wsId/approvals"
+          element={<Approvals />}
+        />
+        {/* Phase 4 / 12 — lineage graph. */}
+        <Route path="/workspaces/:wsId/lineage" element={<Lineage />} />
+        {/* Phase 14 — queue + worker admin. */}
+        <Route path="/admin/queues" element={<QueueAdmin />} />
+        {/* Phase 4 — secrets / connections / git / datasets. */}
+        <Route path="/workspaces/:wsId/secrets" element={<Secrets />} />
+        <Route
+          path="/workspaces/:wsId/connections"
+          element={<Connections />}
+        />
+        <Route path="/workspaces/:wsId/git" element={<GitRepositories />} />
+        <Route path="/workspaces/:wsId/datasets" element={<AllDatasets />} />
+        <Route
+          path="/workspaces/:wsId/datasets/:dataSourceId"
+          element={<Datasets />}
+        />
       </Route>
       <Route
         path="*"

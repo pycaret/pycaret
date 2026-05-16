@@ -35,7 +35,15 @@ from pycaret_server.scheduler import schedule_job, unschedule_job
 router = APIRouter(tags=["schedules"])
 
 
-_VALID_KINDS = {"drift_monitor", "retrain"}
+_VALID_KINDS = {
+    "drift_monitor",
+    "retrain",
+    # Phase 9 — workers handle these via the Job table; the scheduler
+    # just emits a Job row on each tick.
+    "drift_check",
+    "batch_predict",
+    "dataset_refresh",
+}
 
 
 class ScheduleCreate(BaseModel):
@@ -108,6 +116,30 @@ def _validate_target(
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
                 f"experiment {target_id!r} not in workspace {workspace_id!r}",
+            )
+    elif kind == "drift_check":
+        # ``target_id`` is the workspace id itself — drift_check
+        # evaluates every rule in the workspace.
+        if target_id != workspace_id:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "drift_check target_id must equal workspace_id",
+            )
+    elif kind == "batch_predict":
+        d = db.get(Deployment, target_id)
+        if d is None or d.workspace_id != workspace_id:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"deployment {target_id!r} not in workspace {workspace_id!r}",
+            )
+    elif kind == "dataset_refresh":
+        from pycaret_server.db import DataSource
+
+        ds = db.get(DataSource, target_id)
+        if ds is None or ds.workspace_id != workspace_id:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"data source {target_id!r} not in workspace {workspace_id!r}",
             )
     else:
         raise HTTPException(

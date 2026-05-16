@@ -29,7 +29,11 @@ export const useUIPrefs = create<UIPrefsState>()(
   persist(
     (set) => ({
       sidebarCollapsed: false,
-      theme: 'system',
+      // Default to light. OS dark-mode preference was bleeding into
+      // pages that aren't designed for dark surfaces yet (Setup,
+      // Login). Users can flip to dark / system from the user menu
+      // once those surfaces are reviewed.
+      theme: 'light',
       toggleSidebar: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setSidebar: (collapsed) => set({ sidebarCollapsed: collapsed }),
@@ -37,7 +41,9 @@ export const useUIPrefs = create<UIPrefsState>()(
     }),
     {
       name: 'pycaret-ui-prefs',
-      version: 1,
+      // Bump on default-value changes so the next page load discards
+      // any stale persisted state and re-reads the in-code default.
+      version: 2,
     },
   ),
 );

@@ -19,24 +19,34 @@ from fastapi.middleware.cors import CORSMiddleware
 from pycaret_server import __version__
 from pycaret_server.api import (
     admin,
+    analyses,
     api_keys,
     audit,
     auth,
     backup,
+    connections,
     data_sources,
     deployments,
     describe,
     drift,
     experiments,
+    git_repos,
+    governance,
     llm,
     members,
     model_library,
+    monitoring,
+    notebooks,
     plots,
     projects,
+    queue_admin,
+    registry,
     runs,
+    sample_data,
     schedules,
     setup,
     templates,
+    trials,
     webhooks,
     workspaces,
 )
@@ -135,6 +145,7 @@ def create_app() -> FastAPI:
         projects.router,
         experiments.router,
         runs.router,
+        trials.router,
         data_sources.router,
         deployments.router,
         drift.router,
@@ -147,6 +158,24 @@ def create_app() -> FastAPI:
         audit.router,
         plots.router,
         admin.router,
+        # Phase 4 — data catalog (secrets, connections, datasets, lineage).
+        connections.router,
+        # Phase 5 — git integration.
+        git_repos.router,
+        # Phase 7 — model registry v2.
+        registry.router,
+        # Phase 10 — monitoring v2.
+        monitoring.router,
+        # Phase 12 — approval workflows.
+        governance.router,
+        # Phase 14 — queue + worker admin.
+        queue_admin.router,
+        # Phase 8 — notebook runtime.
+        notebooks.router,
+        # Phase 11 — statistical computing.
+        analyses.router,
+        # Bundled sample datasets (browse + register-as-DataSource).
+        sample_data.router,
     ):
         app.include_router(router, prefix="/api/v1")
 

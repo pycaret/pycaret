@@ -432,102 +432,240 @@ _METRICS_BY_TASK: dict[TaskType, list[MetricCard]] = {
 # -----------------------------------------------------------------------------
 
 
-def _common_setup_params() -> list[ParameterCard]:
-    return [
-        ParameterCard(
-            name="target",
-            kind=ParameterKind.COLUMN,
-            required=True,
-            group="Data",
-            description="Column name of the target / label variable.",
-        ),
-        ParameterCard(
-            name="session_id",
-            kind=ParameterKind.INT,
-            default=None,
-            group="Experiment",
-            description="Seed for reproducibility. None picks a random seed.",
-        ),
-        ParameterCard(
-            name="train_size",
-            kind=ParameterKind.FLOAT,
-            default=0.7,
-            minimum=0.1,
-            maximum=0.99,
-            group="Data",
-            description="Fraction of the dataset used for training.",
-        ),
-        ParameterCard(
-            name="fold",
-            kind=ParameterKind.INT,
-            default=10,
-            minimum=2,
-            maximum=100,
-            group="Cross-Validation",
-            description="Number of cross-validation folds.",
-        ),
-        ParameterCard(
-            name="fold_strategy",
-            kind=ParameterKind.ENUM,
-            default="stratifiedkfold",
-            choices=["kfold", "stratifiedkfold", "groupkfold", "timeseries"],
-            group="Cross-Validation",
-        ),
+def _common_setup_params(task: TaskType) -> list[ParameterCard]:
+    """Return the schema of every ``setup(...)`` knob exposed for ``task``.
+
+    Hand-curated so each task only sees the params it actually accepts —
+    e.g. clustering has no ``train_size``, time-series has no ``normalize``.
+    Adding a new param? Add it here once, set the right group + help, and
+    the React form picks it up automatically (no client work needed).
+    """
+    is_supervised = task in (TaskType.CLASSIFICATION, TaskType.REGRESSION)
+    is_unsupervised = task in (TaskType.CLUSTERING, TaskType.ANOMALY)
+    is_time_series = task == TaskType.TIME_SERIES
+
+    if task == TaskType.CLASSIFICATION:
+        fold_default = "stratifiedkfold"
+        fold_choices = ["kfold", "stratifiedkfold", "groupkfold"]
+    elif task == TaskType.REGRESSION:
+        fold_default = "kfold"
+        fold_choices = ["kfold", "groupkfold"]
+    elif task == TaskType.TIME_SERIES:
+        fold_default = "expanding"
+        fold_choices = ["expanding", "sliding"]
+    else:
+        fold_default = "kfold"
+        fold_choices = ["kfold"]
+
+    params: list[ParameterCard] = []
+
+    # ─── Data ──────────────────────────────────────────────────────
+    if is_supervised:
+        params.append(
+            ParameterCard(
+                name="target",
+                kind=ParameterKind.COLUMN,
+                required=True,
+                group="Data",
+                description="Column the model will learn to predict.",
+            )
+        )
+        params.append(
+            ParameterCard(
+                name="train_size",
+                kind=ParameterKind.FLOAT,
+                default=0.7,
+                minimum=0.1,
+                maximum=0.99,
+                group="Data",
+                description=(
+                    "Fraction of rows used for training; the remainder becomes "
+                    "the holdout used to evaluate the final model."
+                ),
+            )
+        )
+    if is_time_series:
+        params.append(
+            ParameterCard(
+                name="fh",
+                kind=ParameterKind.INT,
+                default=1,
+                minimum=1,
+                group="Data",
+                description="Forecast horizon — how many steps ahead to predict.",
+            )
+        )
+        params.append(
+            ParameterCard(
+                name="seasonal_period",
+                kind=ParameterKind.INT,
+                default=None,
+                minimum=1,
+                group="Data",
+                description=(
+                    "Seasonality length in steps (e.g. 12 for monthly with "
+                    "yearly cycle). None lets the engine auto-detect."
+                ),
+            )
+        )
+
+    # ─── Preprocessing ────────────────────────────────────────────
+    params.append(
         ParameterCard(
             name="preprocess",
             kind=ParameterKind.BOOL,
             default=True,
             group="Preprocessing",
-            description="If False, skip all preprocessing.",
-        ),
+            description=(
+                "Master switch — when off, the dataset is fed to the model "
+                "untouched. Useful when your data is already pipelined."
+            ),
+        )
+    )
+    if not is_time_series:
+        params.append(
+            ParameterCard(
+                name="normalize",
+                kind=ParameterKind.BOOL,
+                default=False,
+                group="Preprocessing",
+                description=(
+                    "Scale numeric features to zero-mean / unit-variance. "
+                    "Helps distance-based models (KNN, SVM, neural nets)."
+                ),
+            )
+        )
+        params.append(
+            ParameterCard(
+                name="transformation",
+                kind=ParameterKind.BOOL,
+                default=False,
+                group="Preprocessing",
+                description=(
+                    "Apply a power transform (Yeo-Johnson) to push numeric "
+                    "features toward a Gaussian distribution."
+                ),
+            )
+        )
+    if is_supervised:
+        params.append(
+            ParameterCard(
+                name="remove_outliers",
+                kind=ParameterKind.BOOL,
+                default=False,
+                group="Preprocessing",
+                description=(
+                    "Drop rows flagged as outliers by Isolation Forest before "
+                    "training. Off by default — outliers are sometimes signal."
+                ),
+            )
+        )
+
+    # ─── Feature engineering ──────────────────────────────────────
+    if not is_time_series:
+        params.append(
+            ParameterCard(
+                name="feature_selection",
+                kind=ParameterKind.BOOL,
+                default=False,
+                group="Feature engineering",
+                description=(
+                    "Run a quick importance pass and drop low-signal features "
+                    "before training. Speeds up high-cardinality datasets."
+                ),
+            )
+        )
+
+    # ─── Cross-validation ─────────────────────────────────────────
+    if not is_unsupervised:
+        params.append(
+            ParameterCard(
+                name="fold",
+                kind=ParameterKind.INT,
+                default=3 if is_time_series else 10,
+                minimum=2,
+                maximum=100,
+                group="Cross-validation",
+                description=(
+                    "Number of CV folds. Higher = more stable metrics, slower runs."
+                ),
+            )
+        )
+        params.append(
+            ParameterCard(
+                name="fold_strategy",
+                kind=ParameterKind.ENUM,
+                default=fold_default,
+                choices=fold_choices,
+                group="Cross-validation",
+                description=(
+                    "How to split each fold. Stratified preserves class balance "
+                    "for classification; expanding/sliding are time-series safe."
+                ),
+            )
+        )
+
+    # ─── Reproducibility ──────────────────────────────────────────
+    params.append(
         ParameterCard(
-            name="normalize",
-            kind=ParameterKind.BOOL,
-            default=False,
-            group="Preprocessing",
-            description="Scale numeric features to zero-mean / unit-variance.",
-        ),
-        ParameterCard(
-            name="transformation",
-            kind=ParameterKind.BOOL,
-            default=False,
-            group="Preprocessing",
-            description="Apply a power transform to make features more Gaussian.",
-        ),
-        ParameterCard(
-            name="remove_outliers",
-            kind=ParameterKind.BOOL,
-            default=False,
-            group="Preprocessing",
-        ),
-        ParameterCard(
-            name="feature_selection",
-            kind=ParameterKind.BOOL,
-            default=False,
-            group="Preprocessing",
-        ),
+            name="session_id",
+            kind=ParameterKind.INT,
+            default=None,
+            group="Reproducibility",
+            description=(
+                "Random seed. Pin this to make a run reproducible row-for-row; "
+                "leave None to let the engine pick a fresh seed."
+            ),
+        )
+    )
+
+    # ─── Compute ──────────────────────────────────────────────────
+    params.append(
         ParameterCard(
             name="n_jobs",
             kind=ParameterKind.INT,
             default=-1,
             group="Compute",
-            description="Parallel workers; -1 uses all cores.",
-        ),
+            description="Parallel worker count. -1 uses every CPU core.",
+        )
+    )
+    params.append(
         ParameterCard(
             name="use_gpu",
             kind=ParameterKind.BOOL,
             default=False,
             group="Compute",
-            description="Route GPU-capable models to their GPU backends.",
-        ),
+            description=(
+                "Route GPU-capable models (XGBoost / LightGBM / CatBoost) to "
+                "their GPU backends. Quietly ignored when no GPU is visible."
+            ),
+        )
+    )
+
+    # ─── Logging ──────────────────────────────────────────────────
+    params.append(
         ParameterCard(
             name="log_experiment",
             kind=ParameterKind.BOOL,
             default=False,
             group="Logging",
-            description="Capture an event-stream log of the experiment.",
-        ),
-    ]
+            description=(
+                "Capture every engine event in the run's structured log. "
+                "Always on for the platform — toggle this off only when "
+                "running the engine standalone."
+            ),
+        )
+    )
+    params.append(
+        ParameterCard(
+            name="verbose",
+            kind=ParameterKind.BOOL,
+            default=False,
+            group="Logging",
+            description="Print engine progress to stdout (notebook-style).",
+        )
+    )
+    return params
 
 
 # -----------------------------------------------------------------------------
@@ -569,11 +707,17 @@ def list_metrics(task: TaskType | str) -> list[MetricCard]:
 
 
 def describe_setup_params(task: TaskType | str) -> SetupParamSchema:
-    """Return the schema describing every parameter `setup(...)` accepts."""
+    """Return the schema describing every parameter `setup(...)` accepts.
+
+    Schema is task-aware — params that don't apply to the chosen task
+    (e.g. ``train_size`` for clustering) are filtered out. Groups are
+    emitted in display order: Data → Preprocessing → Feature engineering
+    → Cross-validation → Reproducibility → Compute → Logging.
+    """
     task = _coerce_task(task)
-    params = _common_setup_params()
+    params = _common_setup_params(task)
     groups: list[str] = []
-    seen = set()
+    seen: set[str] = set()
     for p in params:
         if p.group and p.group not in seen:
             groups.append(p.group)

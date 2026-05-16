@@ -42,6 +42,16 @@ function fmtTime(ts: number): string {
   });
 }
 
+/**
+ * Stable dedup key for an event. The backend has no per-event UUID, so we
+ * compose one from the fields that uniquely identify it. Without this,
+ * React StrictMode (dev) double-mounts the WS effect and every replayed
+ * event lands twice in state. Same risk on a real onclose retry.
+ */
+function eventKey(e: WsEvent): string {
+  return `${e.kind}|${e.timestamp}|${e.message ?? ''}|${e.duration_ms ?? ''}`;
+}
+
 function kindTone(kind: string): string {
   if (kind === TERMINAL_SENTINEL) return 'text-ink-500';
   if (kind === 'error' || kind.endsWith('.failed')) return 'text-danger-500';
@@ -93,6 +103,8 @@ export function EventStream({
         try {
           const msg = JSON.parse(e.data) as WsEvent;
           setEvents((prev) => {
+            const key = eventKey(msg);
+            if (prev.some((p) => eventKey(p) === key)) return prev;
             const next = prev.concat(msg);
             return next.length > max ? next.slice(next.length - max) : next;
           });

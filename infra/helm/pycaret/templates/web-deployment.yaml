@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pycaret.web.name" . }}
+  labels:
+    {{- include "pycaret.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.web.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "pycaret.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        {{- include "pycaret.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: web
+    spec:
+      containers:
+        - name: web
+          image: {{ include "pycaret.image" (dict "Values" .Values "image" .Values.web.image) }}
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: PYCARET_API_BASE_URL
+              value: "http://{{ include "pycaret.api.name" . }}:{{ .Values.api.service.port }}"
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pycaret.web.name" . }}
+  labels:
+    {{- include "pycaret.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  type: {{ .Values.web.service.type }}
+  ports:
+    - port: {{ .Values.web.service.port }}
+      targetPort: http
+      name: http
+  selector:
+    {{- include "pycaret.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: web

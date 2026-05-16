@@ -63,6 +63,12 @@ COPY --chown=pycaret:pycaret packages/engine ./packages/engine
 COPY --chown=pycaret:pycaret services/api ./services/api
 COPY --chown=pycaret:pycaret pyproject.toml uv.lock README.md LICENSE ./
 
+# Bundled sample datasets — referenced by api/sample_data.py which walks
+# parents of pycaret_server/api/sample_data.py looking for datasets/index.csv.
+# Without this COPY the "Browse samples" feature 500s in container builds
+# (smoke test session 57 caught this).
+COPY --chown=pycaret:pycaret datasets ./datasets
+
 # Final editable install of the two workspace members
 RUN --mount=from=ghcr.io/astral-sh/uv:0.11.7,source=/uv,target=/usr/local/bin/uv \
     uv pip install --python /app/.venv/bin/python --no-deps \
@@ -73,12 +79,20 @@ RUN --mount=from=ghcr.io/astral-sh/uv:0.11.7,source=/uv,target=/usr/local/bin/uv
 ENV PYCARET_DATABASE_URL=sqlite:////data/pycaret.db \
     PYCARET_ARTIFACT_DIR=/data/artifacts
 
+# Entrypoint manages PYCARET_SECRETS_KEY persistence across restarts.
+# See infra/docker/docker-entrypoint.sh for the rationale.
+COPY --chown=pycaret:pycaret infra/docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 USER pycaret
 VOLUME ["/data"]
-EXPOSE 8000
+# Port 8020 keeps pycaret out of resumly's way (8000) when both run
+# locally. Containers can still publish whatever host port they want.
+EXPOSE 8020
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request, sys; \
-                   sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz').status == 200 else 1)"
+                   sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8020/healthz').status == 200 else 1)"
 
-CMD ["uvicorn", "pycaret_server.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["uvicorn", "pycaret_server.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8020"]

@@ -2,28 +2,27 @@
 
 <img src="docs/images/logo.png" alt="PyCaret" width="200"/>
 
-# PyCaret — open-source ML platform
+# PyCaret — open-source self-hosted ML platform
 
-### The engine, the control plane, and the UI — all in one self-hosted box.
+### The engine, the control plane, and the UI — all in one box.
 
 [![CI](https://github.com/pycaret/pycaret/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/pycaret/pycaret/actions/workflows/test.yml)
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/pycaret/pycaret)
 [![License](https://img.shields.io/pypi/l/pycaret.svg)](https://github.com/pycaret/pycaret/blob/main/LICENSE)
 
 [Vision](docs/revamp/VISION.md) ·
-[Architecture](docs/revamp/ARCHITECTURE.md) ·
+[Architecture](docs/revamp/PLATFORM_ARCHITECTURE.md) ·
 [Roadmap](docs/revamp/ROADMAP.md) ·
 [Spec](docs/revamp/CONTROL_PLANE_SPEC.md) ·
-[Quickstart](docs/revamp/PLATFORM_QUICKSTART.md) ·
 [Agent guide](AGENTS.md)
 
 </div>
 
 ---
 
-> ## ⚠ 4.0 is **work in progress** — you're looking at `main` (the 4.0 line)
+> ## ⚠ 4.0 is **work in progress** — you're on `main` (the 4.0 line)
 >
-> PyCaret 4.0 is a ground-up architectural revamp. It now lives on `main`. The 3.x release line is frozen on PyPI as `pycaret 3.4.0` (no further commits).
+> PyCaret 4.0 is a ground-up architectural revamp. The 3.x line is frozen on PyPI as `pycaret 3.4.0` — no further commits.
 >
 > Track progress in [`docs/revamp/STATUS.md`](docs/revamp/STATUS.md) and [`docs/revamp/ROADMAP.md`](docs/revamp/ROADMAP.md).
 
@@ -31,212 +30,168 @@
 
 ## What you get
 
-**PyCaret** is two layers of one product:
+A self-hosted ML platform you can run on your laptop in 5 minutes:
 
-**The engine** (`packages/engine/`) — `pip install pycaret`. Config-driven, stateless, sklearn-composable. Use it in a notebook:
+- **Engine** — sklearn-1.7-based AutoML library (`pycaret` on PyPI).
+- **Control plane** — FastAPI backend with workspaces, projects, experiments, runs, model registry, deployments, approvals, monitoring, drift, lineage, webhooks, schedules, LLM-advisory copilots.
+- **Web UI** — React + Vite, dark-mode-first. Configure everything via point-and-click; nothing requires editing YAML.
+- **One-command local install** — `docker compose up` and the whole thing is running locally on `http://localhost:3020`.
 
-```python
-from pycaret.tasks import ClassificationExperiment
-from pycaret.datasets import get_data
+### How it's built today
 
-df = get_data("juice")
-exp = ClassificationExperiment(target="Purchase", session_id=42).fit(df)
-best = exp.compare_models().best
-tuned = exp.tune_model(best).pipeline
-exp.save_model(tuned, "baseline")
-```
+Today's `docker compose` ships a **deliberately compact** two-container shape: one for the nginx-served React bundle, one for a FastAPI process that ALSO runs the in-process scheduler, the in-process compute, and a local SQLite file (persisted to a Docker volume) — the same single-binary pattern Plausible / Vaultwarden / n8n use for self-hosters. Great for laptops, fine for a small-team production deploy.
 
-**PyCaret Control Plane** (`services/api/` + `apps/web/` + `infra/`) — the full self-hosted web platform that wraps the engine. Workspaces, projects, datasets, experiments, runs, artifacts, deployments, monitoring, LLM-assisted experiment design. Run it on a laptop, a Docker host, or Kubernetes.
+The architecture is designed to split apart cleanly: every external dependency (storage, DB, secrets, auth, queue, compute) is meant to sit behind a `Protocol` with multiple implementations, so the same codebase can target separate api / worker / runtime containers backed by RDS / S3 / SecretsManager / SQS / Fargate when you outgrow the single-binary shape. Most of those `Protocol` extractions are still ahead of us — see [PLATFORM_ARCHITECTURE.md](docs/revamp/PLATFORM_ARCHITECTURE.md) for the gap matrix and the phasing plan. We're publishing the foundation now and growing it in the open.
 
-Three deployment modes (current + roadmapped):
+---
 
-| Mode | For | Status |
-|---|---|---|
-| Notebook (`pip install pycaret`) | Data scientist workflow | ✅ `4.0.0a1` on PyPI |
-| Local dev (uv + npm) | Building against the Control Plane | ✅ shipped |
-| Single-server Docker compose | Small-team self-hosted | ✅ shipped |
-| Kubernetes + Helm + Terraform | Enterprise cloud | 🔴 V2 (stubs scaffolded) |
-| Electron desktop | Analyst, no Docker | 🔴 V2 (stub scaffolded) |
+## Quickstart — local install in 5 minutes
 
-## Repo layout
-
-```
-pycaret/                  ← monorepo
-├── packages/
-│   └── engine/           → `pycaret` on PyPI
-├── services/
-│   ├── api/              → `pycaret-server` on PyPI (FastAPI)
-│   ├── worker/           (V2) background job runner
-│   └── deployment-runtime/ (V2) standalone serving
-├── apps/
-│   ├── web/              React + Vite (Control Plane UI)
-│   └── desktop/          (V2) Electron
-├── infra/
-│   ├── docker/           Dockerfile.api, Dockerfile.ui, compose
-│   ├── helm/             (V2) Kubernetes chart
-│   └── terraform/        (V2) AWS / GCP / Azure modules
-└── docs/revamp/          VISION, SPEC, ARCHITECTURE, ROADMAP, STATUS, DECISIONS
-```
-
-See [`docs/revamp/ARCHITECTURE.md`](docs/revamp/ARCHITECTURE.md) for the full system architecture.
-
-## Try it locally — 3 minutes
-
-**Just the engine, in a notebook:**
-
-```bash
-pip install pycaret
-# or with every optional extra:
-pip install "pycaret[full]"
-```
-
-Supported: Python 3.11 / 3.12 / 3.13.
-
-**The full Control Plane, from source:**
+**Prerequisites:** Docker Desktop 4.27+ (or Docker Engine 25.0+ with Compose v2.24+). That's it.
 
 ```bash
 git clone https://github.com/pycaret/pycaret.git
 cd pycaret
-
-# Backend (terminal 1)
-uv python install 3.13
-uv sync --all-packages --all-extras
-uv run --package pycaret-server pycaret-server serve --reload
-
-# Frontend (terminal 2)
-cd apps/web
-npm install
-npm run dev
-# → http://localhost:3000/setup
+docker compose up --build
 ```
 
-**Or with Docker** (full stack, one command):
+First build takes ~5 min (Python deps + npm install + Vite build). Subsequent starts are < 30 sec.
+
+Once you see `pycaret-api  | INFO: Application startup complete.` and `pycaret-web  | … starting nginx`, open:
+
+**http://localhost:3020**
+
+The setup screen will prompt you to create your first admin account + workspace. You're in.
+
+### What's running
+
+| Service | URL | What it is |
+|---|---|---|
+| `pycaret-web` | http://localhost:3020 | React UI (nginx-served bundle, proxies `/api` + `/ws` to backend) |
+| `pycaret-api` | http://localhost:8020 | FastAPI + SQLAlchemy + APScheduler (in-process worker for V1) |
+| `pycaret-data` (volume) | (named volume) | SQLite DB + uploaded CSVs + fitted `.pkl` files + Fernet key |
+
+### Common ops
 
 ```bash
-docker compose -f infra/docker/docker-compose.yml up --build
-# → http://localhost:3000
+docker compose logs -f api      # tail backend logs
+docker compose logs -f web      # tail UI logs
+docker compose restart api      # restart backend only
+docker compose down             # stop everything (volume PRESERVED — data + key safe)
+docker compose down -v          # NUKE everything including the data volume (wipes DB + key)
 ```
 
-See [`docs/revamp/PLATFORM_QUICKSTART.md`](docs/revamp/PLATFORM_QUICKSTART.md) for the full quickstart.
+### Troubleshooting
 
-## Engine quickstart
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Cannot connect to the Docker daemon` | Docker Desktop / Docker Engine not running | Start Docker Desktop, wait for the whale icon, retry |
+| `bind: address already in use` on `:3020` or `:8020` | Another process holds the port | Override: `PYCARET_WEB_PORT=3030 PYCARET_API_PORT=8030 docker compose up` |
+| Build hangs at `pip install` for >10 min | Slow network on first build, or Docker Desktop is RAM-starved | Open Docker Desktop → Settings → Resources → bump RAM to ≥6 GB, retry |
+| `no space left on device` during build | Old Docker images filling the disk | `docker system prune -a` then retry |
+| `/bin/sh^M: bad interpreter` in api logs | Shell script got CRLF endings on a Windows checkout | This shouldn't happen — `.gitattributes` forces LF. If it does, re-clone with `git clone --config core.autocrlf=false` |
+| UI loads but every `/api` call returns 404 | `pycaret-api` container hasn't finished bootstrapping (Alembic migrations) — happens on the very first `up` | Wait ~30 sec for the health check to pass; `docker compose logs -f api` to watch |
+| Forgot the admin password | DB is encrypted; you can't recover it | `docker compose down -v` to wipe and re-bootstrap |
 
-```python
-from pycaret.datasets import get_data
-from pycaret.tasks import ClassificationExperiment
-from pycaret import save_model, load_model
+### Config
 
-df = get_data("juice")
-exp = ClassificationExperiment(target="Purchase", session_id=42).fit(df)
+All overrideable via a `.env` file at the repo root (gitignored — see [`.env.example`](.env.example) for the template):
 
-# Compare models — returns a typed CompareResult
-result = exp.compare_models()
-best = result.best
-print(result.leaderboard)
-
-# Tune — returns a TuneResult
-tuned = exp.tune_model(best).pipeline
-
-# Predict — returns a PredictResult
-preds = exp.predict_model(tuned).predictions
-
-# Save + load
-save_model(tuned, "artifacts/best")
-restored = load_model("artifacts/best")
+```bash
+cp .env.example .env
+# edit .env: set PYCARET_JWT_SECRET to something real, etc.
+docker compose up
 ```
 
-Same shape for the other task types:
+The biggest knobs:
+- **`PYCARET_SECRETS_KEY`** — Fernet key for encrypting LLM API keys + connection passwords at rest. Auto-generated on first run + persisted to the data volume; only set this explicitly if you want the same key across multiple instances.
+- **`PYCARET_JWT_SECRET`** — Used to sign auth tokens. **Must** be a strong random value in any prod deploy.
+- **`PYCARET_DATABASE_URL`** — Swap from SQLite to Postgres in prod (`postgresql+psycopg://…`).
+- **`PYCARET_STORAGE_BACKEND=s3`** + bucket creds — swap artifacts from local FS to S3.
 
-```python
-from pycaret.tasks import (
-    RegressionExperiment,
-    ClusteringExperiment,
-    AnomalyExperiment,
-    TimeSeriesExperiment,
-)
+---
+
+## Take it for a spin (golden path)
+
+1. **Setup** — create the first admin account + your workspace.
+2. **Configure LLM (optional)** — sidebar → **Settings → LLM** → paste your Anthropic or OpenAI API key. Enables the AI dataset consultant + experiment designer copilots.
+3. **Upload a dataset** OR pick one — sidebar → **Build → Datasets** → click **Browse samples** to grab a bundled CSV (juice, bank, iris, …) with one click.
+4. **Create a project** — sidebar → **Build → Projects** → New project.
+5. **Run an experiment** — inside the project → New experiment → pick your dataset, pick the task type (classification / regression / clustering / anomaly / time series), pick the target column. The run starts automatically and trains ~12 algorithms.
+6. **Promote the winner** — on the Run detail page, the leaderboard ranks all 12 trials. Pick one → **Promote** → it lands as v1 on the **Model registry**.
+7. **Deploy** — Model registry → click your model → on the version row, **Deploy** → give it an endpoint slug (e.g. `juice-prod`).
+8. **Predict** — Deployment detail page → use the **Test a prediction** panel, or `curl POST http://localhost:8020/api/v1/deployments/juice-prod/predict` with a JSON row.
+
+That's the full Train → Register → Deploy → Predict loop in ~10 minutes.
+
+---
+
+## Local development (without docker compose)
+
+If you want to hack on the code with hot-reload, the docker compose setup is overkill — run the services directly:
+
+```bash
+# Prereqs: Python 3.13 + Node 22 + uv 0.11+ + npm 10+
+
+# Install everything (engine + control plane + UI deps)
+uv sync --all-packages --all-extras
+cd apps/web && npm install && cd ..
+
+# Two terminals:
+uv run --package pycaret-server pycaret-server serve --reload   # backend :8020
+cd apps/web && npm run dev                                       # frontend :3020
 ```
 
-## Introspection — for UIs and LLM agents
+`apps/web/vite.config.ts` proxies `/api` and `/ws` to `:8020` — same browser experience as the docker setup.
 
-```python
-from pycaret.api import (
-    list_models, describe_model, list_metrics, describe_setup_params,
-)
+---
 
-list_models("classification")           # -> list[ModelCard]
-describe_model("classification", "lr")  # -> ModelCard
-list_metrics("classification")          # -> list[MetricCard]
+## Security — what's safe to push, what's not
 
-# UI-form schema — JSON-serializable, renders directly as a dynamic form
-schema = describe_setup_params("classification")
+A `scripts/check-secrets.sh` scanner blocks accidental secret commits. Run it manually any time:
+
+```bash
+bash scripts/check-secrets.sh
 ```
 
-The Control Plane UI renders its entire experiment-setup form from `describe_setup_params`. Zero UI code hard-codes a parameter name.
+Or install as a git pre-push hook (recommended):
 
-## Event stream
-
-```python
-from pycaret.logging import MemoryLogger
-
-log = MemoryLogger()
-log.subscribe(lambda event: print(event.kind.value, event.message))
-
-exp = ClassificationExperiment(target="y", logger=log).fit(df)
-exp.compare_models()   # emits experiment.started → model.compare.finished → ...
+```bash
+cp scripts/check-secrets.sh .git/hooks/pre-push && chmod +x .git/hooks/pre-push
 ```
 
-The Control Plane backend subclasses `BaseLogger` with `DBEventLogger` — every engine event becomes a DB row **and** streams live to any connected WebSocket clients.
+It scans for Anthropic / OpenAI / Stripe / Slack / GitHub / AWS / Google API key shapes, Fernet ciphertext blobs, and PEM private keys. Whole-file allow-list: [`scripts/.secrets-allowlist`](scripts/.secrets-allowlist). Single-line allow: append `# pragma: allow-secret` to the line.
 
-## What's deliberately not here
+Things that NEVER get committed by design:
+- `*.db` / `*.sqlite` (SQLite files — may contain encrypted secret blobs)
+- `.env` (your local config)
+- `*.pem` / `*.key` / `credentials.json` / `aws-credentials*`
+- `/data/` (docker-compose volume mount point if you ever bind-mount it)
 
-- Module-level functional API (`setup`, `compare_models`) — use OOP `Experiment` classes.
-- External experiment trackers: mlflow, comet-ml, wandb, dagshub — the Control Plane owns this story now.
-- Distributed backends: fugue, dask, ray (V3 opt-in).
-- Visualization: yellowbrick, mljar-scikit-plot, schemdraw — Plotly-only rewrite in progress.
-- In-engine deployment helpers: `create_api`, `create_app`, `create_docker`, `dashboard`, `convert_model`, `deploy_model` — the Control Plane owns serving + deployment.
-- Drift / fairness in the engine: `check_drift`, `check_fairness` — moved to the monitoring layer.
+See [`.gitignore`](.gitignore) for the full list.
 
-See [`docs/revamp/KILL_LIST.md`](docs/revamp/KILL_LIST.md) for the exhaustive list.
+---
 
-## Who this is for
+## Architecture, honestly
 
-- **Data scientists** who want AutoML in a notebook without vendor lock-in.
-- **ML engineers** who want an open-source control plane they can self-host — train, deploy, monitor, improve.
-- **Small teams** (≤20 people) who need the whole loop without Databricks licenses.
-- **Enterprises** who need SSO + audit logs + multi-cloud deployment in the same repo they started prototyping with.
-- **LLM agents** that introspect and drive ML experiments — every model, metric, and parameter is a serializable dataclass.
+**Today** (what `docker compose up` actually runs): two containers. The api one runs a single FastAPI / uvicorn process that ALSO holds the in-process scheduler (APScheduler), the in-process compute (ThreadPoolExecutor), the inference runtime, and a SQLAlchemy session pointing at a SQLite file in a Docker volume. The web one is an nginx serving the built React bundle + reverse-proxying `/api` to the api container. That's the entire production deployment today.
 
-See [`docs/revamp/VISION.md`](docs/revamp/VISION.md) for the product statement.
+**Tomorrow** (where we're going): every external dependency (storage, DB, secrets, auth, queue, compute, notifications) sits behind a `Protocol` with a local impl AND a cloud impl. Storage + DB are already abstracted that way; the remaining five `Protocol` extractions are queued as Phase 1 work. Once that's done, splitting api / worker / runtime into separate containers and pointing them at RDS / S3 / SQS / Secrets Manager becomes a config swap, not a rewrite.
 
-## Licensing
+We're publishing the foundation now and growing it in the open. Full design + gap matrix: [PLATFORM_ARCHITECTURE.md](docs/revamp/PLATFORM_ARCHITECTURE.md).
 
-PyCaret 4.0 ships under the **Functional Source License (FSL-1.1-MIT)** — the same license Sentry, Convex, and Keep use. The short version:
-
-- **Free** for individual use, internal corporate use, non-commercial education / research, and consulting work delivered on top of PyCaret.
-- **Not free** to use as the basis of a competing AutoML product or hosted service.
-- **Auto-converts to MIT** two years after each release. The 4.0.0 release becomes plain MIT in 2028, the next minor in two years from its release date, and so on.
-
-See [`LICENSE`](LICENSE) for the full text.
-
-**Per-package detail:**
-
-- `packages/engine/` (the `pycaret` library) and `apps/site/` are FSL-1.1-MIT.
-- `services/api/` and `apps/web/` (the Control Plane backend + frontend) are **dual-licensed FSL-1.1-MIT OR BUSL-1.1**. Self-host freely; the BSL grant kicks in for multi-tenant hosted commercialisation and auto-converts after three years.
-
-Rationale and the chain of decisions: [`docs/revamp/DECISIONS.md`](docs/revamp/DECISIONS.md).
-
-The 3.x line on PyPI (`pycaret <= 3.4.0`) remains MIT — license changes only apply to 4.0+.
+---
 
 ## Contributing
 
-PyCaret is under active revamp and is **Claude-Code-first**: anyone can clone the repo, run Claude Code in their own checkout (using their own Claude credentials), pick a maintainer-`Approved` issue, and let the agent open a PR.
+This project is **Claude Code-first**: contributors clone, run `claude` in the repo, pick an approved issue, let the agent do the work, open a PR. See [AGENTS.md](AGENTS.md) for the full agent brief and [CONTRIBUTING.md](CONTRIBUTING.md) for the human workflow.
 
-```bash
-gh repo clone pycaret/pycaret && cd pycaret
-claude
-> /work-on-approved-issue
-```
+---
 
-Compute is community-funded — there's **no** Claude API key in this repo's secrets and **no** CI bot that auto-fixes issues. The Claude Code setup lives in [`CLAUDE.md`](CLAUDE.md) (entry point), [`.claude/`](.claude/) (slash commands + sub-agents + permissions), and per-directory `CLAUDE.md` files. Cross-vendor instructions for non-Claude agents live in [`AGENTS.md`](AGENTS.md).
+## License
 
-Traditional contributions — clone, edit, PR — are also first-class. Read [`CONTRIBUTING.md`](CONTRIBUTING.md). Bug reports welcome; large feature PRs should discuss in an issue first.
+PyCaret 4.0 is dual-licensed:
+- The **engine** (`packages/engine/`) — **MIT** (free for any use, including commercial).
+- The **control plane** (`services/api/`, `apps/web/`, `infra/`) — **BUSL-1.1** with a 4-year change date to Apache-2.0. Production-self-host is fine for any organisation under the [Additional Use Grant](LICENSE); managed-SaaS-of-PyCaret-itself is the restricted case.
+
+See [LICENSE](LICENSE) for the legal text, [LICENSE.engine.txt](LICENSE.engine.txt) for the engine MIT terms.

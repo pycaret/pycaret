@@ -22,7 +22,7 @@ Currently active (MVP): `infra/docker/`. Everything else is roadmapped.
 
 ```bash
 docker compose -f infra/docker/docker-compose.yml up --build
-# → http://localhost:3000
+# → http://localhost:3020
 ```
 
 Reverse-proxies `/api` + `/ws` to the API container via nginx so the browser

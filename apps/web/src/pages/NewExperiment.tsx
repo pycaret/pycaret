@@ -29,8 +29,10 @@ import {
   workspacesApi,
 } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
-import type { DataSource, RunPlan, TaskType } from '@/api/types';
-import { DynamicForm } from '@/components/DynamicForm';
+import { BackButton } from '@/components/BackButton';
+import { ColumnPickerModal } from '@/components/ColumnPickerModal';
+import type { DataSource, TaskType } from '@/api/types';
+import { ExperimentConfigForm } from '@/components/ExperimentConfigForm';
 import {
   applyDefaults,
   stripDefaults,
@@ -118,16 +120,6 @@ function getCfg(d: DataSource): DataSourceConfig {
   return (d.config ?? {}) as DataSourceConfig;
 }
 
-function planLabelOf(plan: RunPlan): string {
-  return plan === 'compare'
-    ? 'Compare models'
-    : plan === 'setup'
-      ? 'Setup only'
-      : plan === 'search'
-        ? 'AutoML search'
-        : 'Single model';
-}
-
 function canSubmitReason(
   name: string,
   needsTarget: boolean,
@@ -177,10 +169,9 @@ export function NewExperiment() {
   const [name, setName] = useState('');
   const [task, setTask] = useState<TaskType>('classification');
   const [target, setTarget] = useState('');
+  const [columnPickerOpen, setColumnPickerOpen] = useState(false);
   const [dataSourceId, setDataSourceId] = useState<string>('');
-  const [plan, setPlan] = useState<RunPlan>('compare');
   const [params, setParams] = useState<ParamValues>({});
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [askAI, setAskAI] = useState(false);
 
   const taskCfg = TASKS.find((t) => t.value === task)!;
@@ -232,19 +223,12 @@ export function NewExperiment() {
         target: needsTarget ? target.trim() || null : null,
         setup_params: stripDefaults(schema.data, seededParams),
       });
-      const planParams =
-        plan === 'search'
-          ? {
-              variants: [
-                {},
-                { normalize: true },
-                { normalize: true, transformation: true },
-              ],
-            }
-          : undefined;
+      // Running an experiment always means compare_models — the old "Run plan"
+      // toggle (compare / setup / create / search) was redundant noise per
+      // maintainer feedback (2026-05-15).
       const run = await runsApi.submit(exp.id, {
-        plan,
-        plan_params: planParams,
+        plan: 'compare',
+        plan_params: undefined,
         data_source_id: dataSourceId || null,
         target: needsTarget ? target.trim() || null : null,
       });
@@ -267,6 +251,7 @@ export function NewExperiment() {
     <div className="space-y-8">
       {/* ─── Hero ─────────────────────────────────────────────── */}
       <header className="space-y-2">
+        <BackButton />
         <nav className="text-xs text-ink-500">
           <Link to="/" className="hover:text-ink-900 dark:hover:text-ink-50 transition-colors">
             Workspaces
@@ -321,7 +306,6 @@ export function NewExperiment() {
                 const t = templates.data?.items.find((x) => x.id === e.target.value);
                 if (!t) return;
                 setParams(t.setup_params as ParamValues);
-                setAdvancedOpen(true);
               }}
             >
               <option value="">— pick to pre-fill setup params —</option>
@@ -348,7 +332,7 @@ export function NewExperiment() {
         <div className="space-y-5">
           <div>
             <label className="field" htmlFor="name">
-              Experiment name <span className="text-ink-400 font-normal">*</span>
+              Experiment name <span className="text-danger-500">*</span>
             </label>
             <input
               id="name"
@@ -419,6 +403,7 @@ export function NewExperiment() {
                   ds={d}
                   selected={dataSourceId === d.id}
                   onSelect={() => setDataSourceId(d.id)}
+                  wsId={wsId}
                 />
               ))}
             </div>
@@ -426,113 +411,81 @@ export function NewExperiment() {
             {needsTarget && selectedDS && (
               <div className="mt-5 pt-5 border-t border-ink-100 dark:border-ink-800">
                 <label className="field" htmlFor="target">
-                  Target column <span className="text-ink-400 font-normal">*</span>
+                  Target column <span className="text-danger-500">*</span>
                 </label>
-                {cols && cols.length > 0 ? (
-                  <select
-                    id="target"
-                    className="input max-w-md"
-                    value={target}
-                    onChange={(e) => setTarget(e.target.value)}
+                <div className="flex items-center gap-2 max-w-md">
+                  {cols && cols.length > 0 ? (
+                    <select
+                      id="target"
+                      className="input flex-1"
+                      value={target}
+                      onChange={(e) => setTarget(e.target.value)}
+                    >
+                      <option value="">— pick a column —</option>
+                      {cols.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id="target"
+                      className="input flex-1"
+                      value={target}
+                      onChange={(e) => setTarget(e.target.value)}
+                      placeholder="e.g. churn"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className="btn-secondary whitespace-nowrap"
+                    onClick={() => setColumnPickerOpen(true)}
+                    disabled={!selectedDS}
                   >
-                    <option value="">— pick a column —</option>
-                    {cols.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    id="target"
-                    className="input max-w-md"
-                    value={target}
-                    onChange={(e) => setTarget(e.target.value)}
-                    placeholder="e.g. churn"
-                  />
-                )}
+                    Choose from data
+                  </button>
+                </div>
                 <p className="hint mt-1.5">
                   {target && cols?.includes(target)
                     ? '✓ Auto-detected. Override above if you want a different column.'
                     : `The column the model will learn to predict. ${selectedDS.name} has ${cols?.length ?? 0} columns.`}
                 </p>
+                <ColumnPickerModal
+                  open={columnPickerOpen}
+                  onClose={() => setColumnPickerOpen(false)}
+                  dataSourceId={selectedDS.id}
+                  dataSourceName={selectedDS.name}
+                  selected={target}
+                  onSelect={(col) => {
+                    setTarget(col);
+                    setColumnPickerOpen(false);
+                  }}
+                />
               </div>
             )}
           </>
         )}
       </Section>
 
-      {/* ═══ STEP 3 — Run plan ══════════════════════════════════ */}
+      {/* ═══ STEP 3 — Configuration ═════════════════════════════ */}
       <Section
         index="3"
-        title="Run plan"
-        description="What should the engine do when this experiment runs?"
+        title="Configuration"
+        description="Train/test split, preprocessing, and cross-validation. Defaults are sensible — tweak what you need."
       >
-        <div className="space-y-2">
-          <PlanOption
-            value="compare"
-            current={plan}
-            onSelect={setPlan}
-            label="Compare models"
-            description="Train + cross-validate every model for this task and rank them by metric. The standard first run."
-            recommended
+        {schema.isLoading && (
+          <p className="text-sm text-ink-500">Loading schema from the engine…</p>
+        )}
+        {schema.error && <p className="error">{errorMessage(schema.error)}</p>}
+        {schema.data && (
+          <ExperimentConfigForm
+            schema={schema.data}
+            values={seededParams}
+            onChange={setParams}
+            disabled={submit.isPending}
+            rowCount={selectedDS ? getCfg(selectedDS).rows : undefined}
           />
-          <PlanOption
-            value="setup"
-            current={plan}
-            onSelect={setPlan}
-            label="Setup only"
-            description="Run preprocessing, materialise the train/test split, then stop. Useful for sanity-checking the pipeline before training."
-          />
-          <PlanOption
-            value="create"
-            current={plan}
-            onSelect={setPlan}
-            label="Create a single model"
-            description="Train one model end-to-end. Picks the engine's default for this task. Pick a specific model after the first run."
-          />
-          <PlanOption
-            value="search"
-            current={plan}
-            onSelect={setPlan}
-            label="AutoML search"
-            description="Iterate preprocessing variants × every model, aggregate into a single ranked leaderboard. Slower but covers more configurations."
-          />
-        </div>
-      </Section>
-
-      {/* ═══ STEP 4 — Advanced (collapsed) ══════════════════════ */}
-      <Section
-        index="4"
-        title="Advanced configuration"
-        description={
-          schema.data
-            ? `${schema.data.parameters.length} preprocessing, sampling, and training options. Defaults are sensible — open only to tune.`
-            : 'Preprocessing, sampling, and training options. Defaults are sensible — open only to tune.'
-        }
-        collapsible
-        open={advancedOpen}
-        onToggle={() => setAdvancedOpen((v) => !v)}
-      >
-        {advancedOpen && (
-          <>
-            {schema.isLoading && (
-              <p className="text-sm text-ink-500">Loading schema from the engine…</p>
-            )}
-            {schema.error && (
-              <p className="error">{errorMessage(schema.error)}</p>
-            )}
-            {schema.data && (
-              <DynamicForm
-                schema={schema.data}
-                values={seededParams}
-                onChange={setParams}
-                hide={['target']}
-                disabled={submit.isPending}
-                columns={cols}
-              />
-            )}
-          </>
         )}
       </Section>
 
@@ -554,7 +507,7 @@ export function NewExperiment() {
                   )
                 : `Will create "${name.trim()}", a ${taskCfg.label.toLowerCase()} experiment` +
                   (needsTarget ? ` predicting ${target}` : '') +
-                  (selectedDS ? `, run a ${planLabelOf(plan).toLowerCase()} plan against ${selectedDS.name}.` : '.')}
+                  (selectedDS ? `, then compare models against ${selectedDS.name}.` : '.')}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -698,17 +651,28 @@ function DataSourceCard({
   ds,
   selected,
   onSelect,
+  wsId,
 }: {
   ds: DataSource;
   selected: boolean;
   onSelect: () => void;
+  wsId: string;
 }) {
   const cfg = getCfg(ds);
+  // Use a div + role="button" so we can nest a real <Link> for the
+  // Explore action without violating the no-button-in-button rule.
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
-      className={`text-left rounded-lg p-3 border-2 transition-all ${
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      className={`group relative text-left rounded-lg p-3 border-2 transition-all cursor-pointer ${
         selected
           ? 'border-accent-500 bg-accent-50 dark:bg-accent-500/10'
           : 'border-ink-200 dark:border-ink-800 bg-white dark:bg-ink-900 hover:border-ink-300 dark:hover:border-ink-700'
@@ -733,65 +697,26 @@ function DataSourceCard({
             {cfg.columns?.length != null && <>{cfg.columns.length} cols</>}
           </div>
         </div>
-        {selected && (
-          <span className="text-accent-600 dark:text-accent-400 shrink-0">
-            <CheckIcon />
-          </span>
-        )}
-      </div>
-    </button>
-  );
-}
-
-// ─── Run plan option ─────────────────────────────────────────────
-
-function PlanOption({
-  value,
-  current,
-  onSelect,
-  label,
-  description,
-  recommended,
-}: {
-  value: RunPlan;
-  current: RunPlan;
-  onSelect: (v: RunPlan) => void;
-  label: string;
-  description: string;
-  recommended?: boolean;
-}) {
-  const selected = value === current;
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(value)}
-      className={`w-full text-left rounded-lg p-3 border-2 flex items-start gap-3 transition-all ${
-        selected
-          ? 'border-accent-500 bg-accent-50 dark:bg-accent-500/10'
-          : 'border-ink-200 dark:border-ink-800 bg-white dark:bg-ink-900 hover:border-ink-300 dark:hover:border-ink-700'
-      }`}
-    >
-      <span
-        className={`h-4 w-4 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 ${
-          selected ? 'border-accent-500' : 'border-ink-300 dark:border-ink-700'
-        }`}
-      >
-        {selected && <span className="h-2 w-2 rounded-full bg-accent-500" />}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-ink-900 dark:text-ink-50">
-            {label}
-          </span>
-          {recommended && (
-            <span className="inline-flex items-center rounded-full bg-accent-500 text-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-              Recommended
+        <div className="flex items-center gap-1 shrink-0">
+          {wsId && (
+            <Link
+              to={`/workspaces/${wsId}/datasets/${ds.id}/profile`}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              className="text-[11px] text-ink-500 hover:text-ink-900 dark:hover:text-ink-50 px-1.5 py-0.5 rounded hover:bg-ink-100 dark:hover:bg-ink-800 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+              title="Open EDA dashboard"
+            >
+              Explore →
+            </Link>
+          )}
+          {selected && (
+            <span className="text-accent-600 dark:text-accent-400">
+              <CheckIcon />
             </span>
           )}
         </div>
-        <p className="text-xs text-ink-500 mt-0.5">{description}</p>
       </div>
-    </button>
+    </div>
   );
 }
 

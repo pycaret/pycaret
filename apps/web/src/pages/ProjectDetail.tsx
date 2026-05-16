@@ -15,7 +15,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { experimentsApi, projectsApi, workspacesApi } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
+import { BackButton } from '@/components/BackButton';
 import { DataSourcesSection } from '@/components/DataSourcesSection';
+import type { RunStats } from '@/api/types';
 
 export function ProjectDetail() {
   const { wsId = '', projectId = '' } = useParams<{
@@ -43,6 +45,7 @@ export function ProjectDetail() {
     <div className="space-y-8">
       {/* ─── Header ──────────────────────────────────────────── */}
       <header className="space-y-2">
+        <BackButton />
         <nav className="text-xs text-ink-500">
           <Link to="/" className="hover:text-ink-900 dark:hover:text-ink-50">
             Workspaces
@@ -75,13 +78,29 @@ export function ProjectDetail() {
               </div>
             )}
           </div>
-          <Link
-            to={`/workspaces/${wsId}/projects/${projectId}/experiments/new`}
-            className="btn-primary shrink-0"
-          >
-            <PlusIcon />
-            New experiment
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              to={`/workspaces/${wsId}/projects/${projectId}/analyses`}
+              className="btn-secondary"
+              title="Statistical procedures (Phase 11)"
+            >
+              Analyses
+            </Link>
+            <Link
+              to={`/workspaces/${wsId}/projects/${projectId}/notebooks`}
+              className="btn-secondary"
+              title="JupyterLab notebooks (Phase 8)"
+            >
+              Notebooks
+            </Link>
+            <Link
+              to={`/workspaces/${wsId}/projects/${projectId}/experiments/new`}
+              className="btn-primary"
+            >
+              <PlusIcon />
+              New experiment
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -156,9 +175,12 @@ export function ProjectDetail() {
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs text-ink-400 shrink-0 tabular-nums">
-                    {new Date(e.created_at).toLocaleDateString()}
-                  </span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <RunStatsChip stats={e.run_stats} />
+                    <span className="text-xs text-ink-400 tabular-nums">
+                      {new Date(e.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
                 </Link>
               </li>
             ))}
@@ -192,3 +214,69 @@ const BeakerIcon = () => (
     <path d="M10 3v8L4 21h16L14 11V3" />
   </svg>
 );
+
+// ─── Run-stats chip ──────────────────────────────────────────────
+//
+// Compact health summary surfaced on every experiment row so users can
+// tell at a glance which experiments are healthy / stalled / failing
+// without drilling into each one. Three visual states:
+//   - No runs yet → muted "no runs" pill.
+//   - Activity in flight → accent dot + "running" pill (overrides others).
+//   - Otherwise → pass/fail counters; tone matches the latest run so the
+//     row instantly reads as "all good" (green), "had failures" (red),
+//     or "cancelled" (warn).
+
+function RunStatsChip({ stats }: { stats: RunStats | undefined }) {
+  if (!stats || stats.total === 0) {
+    return (
+      <span className="pill-neutral text-[10px] uppercase tracking-wide">
+        no runs
+      </span>
+    );
+  }
+  const inFlight = stats.running + stats.queued;
+  if (inFlight > 0) {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 pill-accent text-[10px] uppercase tracking-wide"
+        title={`${stats.running} running, ${stats.queued} queued`}
+      >
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent-500 animate-pulse" />
+        running
+      </span>
+    );
+  }
+
+  // Steady-state: tone follows latest run status; counters tell the whole story.
+  const last = stats.last_status;
+  const toneClass =
+    last === 'failed'
+      ? 'pill-danger'
+      : last === 'cancelled'
+        ? 'pill-warn'
+        : 'pill-success';
+  const tooltip = [
+    `${stats.total} run${stats.total === 1 ? '' : 's'} total`,
+    stats.succeeded > 0 ? `${stats.succeeded} succeeded` : null,
+    stats.failed > 0 ? `${stats.failed} failed` : null,
+    stats.cancelled > 0 ? `${stats.cancelled} cancelled` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <span
+      className={`${toneClass} text-[10px] uppercase tracking-wide inline-flex items-center gap-1.5 tabular-nums`}
+      title={tooltip}
+    >
+      {stats.succeeded > 0 && <span>✓ {stats.succeeded}</span>}
+      {stats.failed > 0 && (
+        <span className={stats.succeeded > 0 ? 'opacity-90' : ''}>
+          ✗ {stats.failed}
+        </span>
+      )}
+      {stats.succeeded === 0 && stats.failed === 0 && stats.cancelled > 0 && (
+        <span>cancelled · {stats.cancelled}</span>
+      )}
+    </span>
+  );
+}

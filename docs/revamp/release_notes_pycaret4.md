@@ -42,6 +42,121 @@
 
 ---
 
+# Session 57 — 2026-05-16 — Phase 0: publishable foundation (secrets lockdown + docker compose polish + README + vision doc)
+
+Maintainer goal: get the repo into a state where `git clone && docker compose up` works for a brand-new contributor, with categorical guarantees that no secrets can leak via git. Phase 0 of the long roadmap toward a Databricks/Snowflake-style self-hosted ML platform.
+
+## ADDED — Secrets-leak prevention (categorical, layered)
+
+- `ADDED` — **`.gitignore`** broadened to cover ALL local DB / credential / env patterns, not just the specific filenames previously listed. New entries: `*.db`, `*.db-journal`, `*.db-wal`, `*.db-shm`, `*.sqlite*` (anywhere in tree), `.env` + `.env.*` (with `.env.example` allow-listed), `*.pem` / `*.key` / `credentials.json` / `service-account*.json` / `aws-credentials*`, plus the `/data/` docker-compose volume mount point. Previously only `/pycaret.db` and `/services/api/pycaret.db` were covered, which left `pycaret-dev.db`, `smoke.db`, and `test_phase_smoke.db` exposed to a careless `git add -A`.
+- `ADDED` — **`scripts/check-secrets.sh`** — pre-push gate (works manually too). Scans for Anthropic / OpenAI / Stripe / Slack / GitHub / AWS / Google API key shapes, Fernet ciphertext blobs (≥40-char base64 after `ENC:v1:`), and PEM private key blocks. Whole-file allow-list at `scripts/.secrets-allowlist`; single-line `# pragma: allow-secret`. Hook installation: `cp scripts/check-secrets.sh .git/hooks/pre-push && chmod +x .git/hooks/pre-push`. Validated clean on the current 527-file tree.
+- `ADDED` — **`.env.example`** at repo root — documented template for every overridable env var. Commented-out by default so contributors know what's available without polluting their actual `.env`.
+
+## ADDED — `docker compose up` from repo root
+
+- `ADDED` — **`compose.yml`** at repo root. Single-file 2-service stack (api + web), named volume `pycaret-data` for SQLite + artifacts + Fernet key persistence. Every env var defaults to a sane local-dev value via `${VAR:-default}` substitution, all overridable via root `.env`. Healthchecks wired; `web` waits for `api: service_healthy` before starting.
+- `ADDED` — **`infra/docker/docker-entrypoint.sh`** for the api container. On first run: generates a Fernet key + persists to `/data/.secrets/fernet.key` (chmod 600). On subsequent runs: reads from the same file. The Fernet key thus survives container restarts inside the data volume, fixing the silent "secrets become unreadable after restart" trap we hit live in session 55. Hand-off to uvicorn via `exec` so docker stop signals reach the server cleanly.
+- `CHANGED` — **`infra/docker/Dockerfile.api`** now copies the entrypoint script and sets it as `ENTRYPOINT`. The actual server command moves to `CMD` (uvicorn invocation unchanged).
+- `REMOVED` — **`infra/docker/docker-compose.yml`** deleted. Two-source-of-truth was confusing; the root `compose.yml` is canonical now. The prod variant at `infra/docker/docker-compose.prod.yml` stays (it's a different document — Postgres + S3 + replicas).
+
+## ADDED — Public-facing docs
+
+- `ADDED` — **`docs/revamp/PLATFORM_ARCHITECTURE.md`** — vision document. Captures the *pluggable backends* foundation pattern: every external dep (storage / DB / secrets / auth / queue / compute / notifier) sits behind a `Protocol` with local + cloud impls; choice is config, never `if AWS:` branches. Includes: the 7-slot matrix with current state, the proposed `Backends` container dataclass, AWS Terraform target architecture diagram, 5-phase rollout, explicit no-list. Anchor for every future session — "before you hardcode an external dep, read this."
+- `CHANGED` — **`README.md`** rewritten as the publishable face of the repo. Five-minute `docker compose up` quickstart, golden-path tour (Train → Register → Deploy → Predict), local-dev-without-docker instructions, security section explaining `check-secrets.sh`, troubleshooting table, contributor flow. **The architecture sections were softened to honestly describe what `docker compose up` ACTUALLY runs today** (single uvicorn process holding API + scheduler + compute + SQLite file inside the api container, same shape as Plausible / Vaultwarden / n8n self-hosters) versus the target enterprise-scale split (separate api / worker / runtime / RDS / S3 / SQS) that lives in PLATFORM_ARCHITECTURE.md as Phase 1-3 work still ahead. Don't over-promise; ship what we have, grow in the open.
+
+## ADDED — `.gitattributes` for cross-platform line endings
+
+- `ADDED` — **`.gitattributes`** at repo root. Forces LF line endings on `*.sh`, `Dockerfile*`, `*.yml`, `*.py`, etc. in the index, regardless of the contributor's OS. Prevents the classic Windows-cloned-repo failure where git auto-converts `docker-entrypoint.sh` to CRLF and the Linux container then errors with `/bin/sh^M: bad interpreter`. Validated locally: `file scripts/check-secrets.sh` reports `Unicode text, UTF-8 text executable` (no CRLF marker).
+
+## TESTS — Validation done before claiming done
+
+- `TESTS` — `bash scripts/check-secrets.sh` — clean across all 527 tracked files (initial run flagged 4 false positives on doc-mentions of the literal string `ENC:v1:`, fixed by requiring ≥40 chars of base64 after the prefix in the pattern).
+- `TESTS` — `docker compose config` — validates without error. CORS env var renders as a properly-quoted JSON string after fixing the `${...:-default}` quoting trap.
+- `TESTS` — Not validated yet: actual `docker compose up --build` from clean. The maintainer will run that as the smoke test in their own environment per the README quickstart.
+
+---
+
+# Session 55 — 2026-05-15 — End-to-end UI test pass + csv_upload path fix
+
+Live exploration session walking the platform as a first-time user: workspace → project → CSV upload → EDA → (planned) experiment → promote → deploy → downstream features (monitoring, drift, schedules, webhooks, approvals, lineage, LLM). Bugs found while clicking through are tagged below.
+
+## FIXED — CSV upload stored a relative path, breaking refresh + future loaders
+
+- `FIXED` — **`data_sources.py:175` (`upload_csv`)** now stores `str(target.resolve())` instead of `str(target)`. The CSV upload writes to `settings.artifact_dir / "data-sources" / "<uuid>.csv"`. With the default `artifact_dir = Path("./artifacts")`, the unresolved string was the relative `"artifacts\data-sources\<uuid>.csv"`. On the refresh path (`POST /data-sources/{id}/refresh` in `connections.py:394`), `csv_driver._read_bytes` calls `LocalFsObjectStore.get_bytes(path)`. The store's `_path_for_uri` doesn't recognise the relative form as a `file://` URI or absolute path, so it falls through to `_path_for(key)` which joins against `artifact_root` → `<artifact_root>/artifacts/data-sources/<uuid>.csv` → file not found → driver raises → handler returns 400. Symptom in the UI: "Refresh failed: Request failed with status code 400" on the dataset Versions tab. Fix is one-line; behaviour for new uploads is to store the resolved absolute path, which `_path_for_uri` accepts via its `uri[1] == ":"` Windows-absolute branch.
+- `FIXED` — **One-shot migration** for existing rows: any `data_sources.config.path` for `kind='csv_upload'` that is a relative string was rewritten to its absolute form by resolving against `artifact_dir.parent` (the BE CWD). Done locally on the dev DB; for prod we'll need a proper Alembic data migration if any wheels with the buggy upload code shipped — none have, this only affects dev DBs.
+
+## REMOVED — Pipelines navbar entry + page (folded into Model Registry)
+
+- `REMOVED` — **`apps/web/src/pages/Pipelines.tsx`** + **`apps/web/src/pages/PipelineDetail.tsx`** deleted. The "Pipelines" entry is gone from the navbar; the `/workspaces/:wsId/pipelines` + `/workspaces/:wsId/pipelines/:pipelineId` routes are removed from `App.tsx`. The `Pipeline` DB table stays — it's still the artifact pointer the predict path uses — but the UI for browsing it has folded into the Model Registry surface (since session-56's unified promote, every Pipeline has a matching RegisteredModelVersion).
+- `ADDED` — **`apps/web/src/pages/RegisteredModelDetail.tsx`** now carries the Deploy action: a per-version **Deploy** button opens a Dialog that calls `registryApi.deploy(modelId, versionId, {endpoint_slug, auth_mode})`. The version row shows existing endpoint slugs inline as `/slug` chips that link to the Deployment detail page. The model-detail page is now the canonical "look at an artifact, deploy it, see what's serving it" surface.
+- `CHANGED` — **`services/api/pycaret_server/api/deployments.py::_serialise_pipeline`** now back-fills `registered_model_id` + `registered_model_version_id` by walking `Pipeline → Trial → RegisteredModelVersion`. The `Pipeline` TS type gains both fields. Pre-session-56 Pipelines (no matching registry row) return null — which is the correct historical fact and gates the "Open in registry →" link in the UI accordingly.
+- `CHANGED` — **Sweep of UI references** to the deleted pages:
+  - `TrialDetail.tsx` — "Open pipeline →" became "Open in registry →" (gated on `registered_model_id`).
+  - `TrialsCard.tsx` — promoted-trial "view →" link now points at `/workspaces/:wsId/models` (registry list).
+  - `RunDetail.tsx::PromotedPipelinesSection` — section renamed to **"Promoted versions"**; rows link to `/workspaces/:wsId/models/:registered_model_id` (or the workspace list as fallback). Empty-state copy reframed around the Model registry.
+  - `DeploymentDetail.tsx` — "· pipeline {name}" → "· model {name}" with link into the registry.
+  - `Deployments.tsx` empty state — link rerouted from `/pipelines` to `/models`.
+  - `WorkspaceDetail.tsx` KPI tile relabeled "Pipelines" → "Model versions" with link to `/models`.
+  - `WorkspaceHome.tsx` KPI tile + quick-action card same.
+  - `CommandPalette.tsx` — collapsed two entries ("Pipelines registry" + "Model registry") into one "Model registry" command with the pipeline keyword preserved for discoverability.
+  - `TrialCompare.tsx` section title "Pipelines" → "Pipeline structure" (it shows the sklearn pipeline DAG per trial, not our Pipeline table — disambiguation only).
+
+## CHANGED — Single unified promote (Pipeline + Model Registry version, atomic)
+
+- `CHANGED` — **`services/api/pycaret_server/api/runs.py::promote_trial`** is now the single source of truth for promotion. One atomic transaction writes the Pipeline row (legacy artifact pointer used by `predict` / `rollback`) AND a RegisteredModelVersion off the same Trial bytes. The RegisteredModel is found-or-created by `(workspace_id, name)`, so the first promote of a name creates the registry entry; subsequent promotes bump both `Pipeline.version` and `RegisteredModelVersion.version` in lock-step. The response now includes `registered_model_id` + `registered_model_version_id` so the UI can deep-link without a follow-up call.
+- `CHANGED` — **`unpromote_trial`** symmetrically deletes both the Pipeline AND the matching RegisteredModelVersion. Returns 409 if either has an active Deployment. The parent RegisteredModel is preserved (other versions may still exist; the user can delete the empty container explicitly).
+- `CHANGED` — **`services/api/pycaret_server/api/deployments.py::create_deployment`** (pipeline-based) now back-fills `registered_model_id` + `registered_model_version_id` on the new Deployment by walking `Pipeline → Trial → RegisteredModelVersion`. Deployments created from pre-unified-promote Pipelines stay registry-less (no governance row existed to point at) — which is the correct historical fact.
+- `REMOVED` — **`POST /api/v1/registered-models/{model_id}/versions`** (`registry.py::create_version`). It was always-broken (read `Run.stored_path / sha256 / params / metrics`, which live on `Trial` instead — would `AttributeError` on the first non-empty trial) and had zero test coverage. Removal is forward-only; no migration needed.
+- `REMOVED` — **`apps/web/src/components/RegistryPromoteDialog.tsx`** file deleted. The "Promote to registry" button on the Trial Detail page is gone; the legacy "Promote (legacy)" button is renamed to plain "Promote". Single button, single mental model.
+- `REMOVED` — **`registryApi.promote`** call in `apps/web/src/api/endpoints.ts` (the FE wrapper around the deleted backend endpoint).
+- `TESTS` — **`test_session25.py::test_trial_promote_creates_pipeline`** extended to assert the unified write: response carries both `registered_model_id` + `registered_model_version_id`, the workspace Registry list includes the new model, and a second promote under the same name produces a v2 attached to the SAME RegisteredModel. All 13 promote-related tests across `test_session25.py / test_session32_revert_phase0.py / test_phase9_finish.py` pass green.
+- `DOCS` — **`docs/revamp/DECISIONS.md`** ADR added (see entry below). The maintainer (Moez, 2026-05-15) explicitly approved the consolidation; the Phase-7 split was leaky from inception (broken handler, no tests, parallel-table UX).
+
+## ADDED — Interactive dataset-explore modal (click the row body)
+
+- `ADDED` — **`apps/web/src/components/DatasetExploreModal.tsx`** — full-width Dialog (`size="full"`) opened when a user clicks the body of a dataset row in `DataSourcesSection`. Single `GET /data-sources/{id}/profile?sample_rows=50` call drives the whole experience — no per-column round trips, no loading flicker between selections.
+  - **Layout** (viewport-bounded, both panes scroll internally — fixed `h-[78vh]` body so the modal never overflows the laptop screen): top region holds the dataset-health pill strip (rows · cols · memory · duplicates · missing% with red/amber tones at thresholds) + a heuristic-chip strip (clickable → jumps to the column). 7/5 grid below: sample-rows table on the left, tabbed pane on the right.
+  - **Right-pane tabs:** **Columns** (filterable picker + selected column detail), **Overview** (dtype-distribution bars, top-N most-missing columns ranked, full warning list with severity), **Correlations** (top-10 strongest pairs + diverging-colour SVG mini-heatmap with cell tooltips). Tab counts: column count on Columns, warning count badge on Overview, disabled state on Correlations when no numeric columns exist.
+  - **Column picker rows** carry a dtype-kind badge, the column name, an **inline 14-bar sparkline** for numeric columns (a peek at distribution shape without a click), and a missing-% bar.
+  - **Per-column detail** renders a stats grid (unique / cardinality / missing / dtype + numeric extras: min/max/mean/median/std/Q1/Q3/skew/kurt/zeros%/IQR-outliers), a pure-CSS histogram (numeric) or weighted top-values bars (categorical/text/boolean), and a "Top correlated" strip with diverging negative-on-the-left bars for numeric columns. Selecting a column highlights the matching cells column-wise in the sample table.
+  - **"Looks-like" hints** — informational badges on the column header inferring role: `target?` (low-cardinality numeric/boolean), `id` (id-like), `drop?` (constant), `leak?` (high-cardinality categorical close to row count), `sparse` (>50% missing). Not consumed by the engine — surfaced for the human before they configure an experiment.
+- `ADDED` — **`apps/web/src/components/Dialog.tsx`** — new `size="xl"` (max-w-5xl) and `size="full"` (max-w-7xl) options, used by the explore modal.
+- `CHANGED` — **`apps/web/src/components/DataSourcesSection.tsx`** — the row body (icon + name + size summary) is now a button that opens the explore modal. The existing Explore (page) / Versions / AI / Delete action buttons are unaffected.
+
+## CHANGED — LLM provider settings page: clear stored-state UI
+
+- `CHANGED` — **`apps/web/src/pages/LLMSettings.tsx`** rewritten to make stored-vs-not-stored state obvious. When `has_api_key === true`: emerald "✓ API key on file" status card at the top with provider, model, relative saved-at timestamp + Test connection / Rotate key / Clear buttons. The password input is hidden behind a lock icon ("API key hidden — use Rotate key above to replace") so users no longer face an empty password field with a "keep existing (leave blank)" placeholder they have to mentally parse. When `has_api_key === false`: amber "No API key on file — LLM features will fail" banner above the form; password input is required. Clear button calls the new `DELETE /workspaces/{id}/llm/settings` endpoint after a confirm prompt.
+- `CHANGED` — **Default Anthropic model** in `LLMSettings.tsx` `PROVIDERS` array bumped from `claude-sonnet-4-5` (stale) to `claude-sonnet-4-6`. Same bump applied to the model-name input placeholder and the initial `modelName` state.
+
+## ADDED — DELETE endpoint for LLM provider settings
+
+- `ADDED` — **`DELETE /workspaces/{workspace_id}/llm/settings`** in `services/api/pycaret_server/api/llm.py`. Admin-gated. Idempotent (204 even if nothing was stored). Deletes every `LLMProviderSetting` row for the workspace (handles the rare case where a previous provider's row was disabled but not removed). Wired into the frontend as `llmApi.deleteSettings` in `apps/web/src/api/endpoints.ts`.
+
+## ADDED — Workspace-level Datasets navbar entry + page
+
+- `ADDED` — **`apps/web/src/pages/AllDatasets.tsx`** + new route `/workspaces/:wsId/datasets` (`apps/web/src/App.tsx`). Workspace-level index of all DataSources, mirrors the data model (DataSources are workspace-scoped, not project-scoped — see DOCS entry below). Thin wrapper over the existing `DataSourcesSection` component so behaviour stays in lockstep with the project-page surface.
+- `ADDED` — **Datasets nav link** in `apps/web/src/components/Layout.tsx`, placed between Projects and Pipelines with a database-cylinder icon. The Project-page "Data sources" section still works exactly as before — the new top-level entry is an additional, more-prominent surface.
+
+## FIXED — Lineage writes now log at WARNING instead of silently swallowing
+
+- `FIXED` — **`services/api/pycaret_server/api/connections.py:record_lineage`** now logs the failed edge (workspace_id, kind/id pair, relation, error type+message) at WARNING when an insert raises, instead of `except Exception: db.rollback()` with no breadcrumb. Behaviour is unchanged (still best-effort, never propagates) — but the previous "lineage graph silently goes stale" failure mode flagged in the session-55 audit is now observable in `services/api/logs.log`. Added `logging` import + `_log` module logger.
+
+## ADDED — Display-only banner on Model Library
+
+- `ADDED` — **`apps/web/src/components/ModelLibrarySection.tsx`** now renders a prominent amber banner above the controls: `v1 — display only. Toggles below are saved to the catalog but the engine does not consult them yet`. The prior treatment was a single muted line inside the description text that users had no reason to read. Engine-side enforcement is now tracked as an explicit ROADMAP V2 bullet.
+
+## DOCS — ROADMAP V2: worker heartbeats + engine-side Model Library enforcement
+
+- `DOCS` — **`docs/revamp/ROADMAP.md` V2 section** gained two explicit bullets, both surfaced by the session-55 build-status audit:
+  - **Worker heartbeats** — replace the "derive workers from `Job.locked_by`" hack with a real `worker_heartbeats` table. Currently idle workers vanish from the queue admin and a dead worker is indistinguishable from a healthy idle one.
+  - **Engine-side Model Library enforcement** — wire `compare_models` to skip `enabled=False` rows from the workspace's `ModelLibrary`. Today the UI toggle does nothing; the new banner above calls this out, but the fix is V2.
+
+## DOCS — Clarified workspace-vs-project ownership of DataSources
+
+- `DOCS` — **`DataSource` belongs to the workspace, not the project.** Confirmed against `db/models.py:161` ("Registered CSV/S3/Postgres source a Project can point at") and `data_sources.py` route surface (all upload/register routes are workspace-scoped). The "upload dataset" modal on project pages is a UX convenience — it still calls `POST /workspaces/{id}/data-sources/upload`. Projects/experiments *reference* DataSources; they don't own them. No code change needed; flagged for the eventual user docs so the modal placement doesn't mislead.
+
+---
+
 # Sessions 20–54 — 2026-04-24 → 2026-05-08 — V2 platform + UI surfacing + design refresh
 
 Consolidated catch-up entry covering the arc from the failure-debugger / API-key landing in session 19 through the engine MVP-1 finish (sessions 22-46), the V2 platform features (sessions 22-24, server-side; tagged on top of MVP-1 numbering), and the front-end surface that exposes them (UI sessions through s54). Written retroactively from the shipped code; individual sessions weren't entered as their own headers during the build, but each block below maps to a concrete roadmap milestone.

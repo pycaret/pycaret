@@ -201,16 +201,17 @@ def test_create_run_produces_artifact(client: TestClient) -> None:
     body = r.json()
     assert body["status"] == "succeeded", body.get("error")
 
-    # Exactly one pipeline artifact on disk.
+    # Phase 0-v2: artifact lives on the per-Trial pickle, not on a
+    # run-level ``pipeline.pkl`` — Trials are the unit of work.
     from pathlib import Path
 
     from pycaret_server.config import get_settings
 
-    art_dir = get_settings().artifact_dir / "runs" / run_id
-    assert art_dir.is_dir()
-    assert (art_dir / "pipeline.pkl").is_file()
-    assert (art_dir / "pipeline.pkl").stat().st_size > 0
-    # Avoid the unused-import warning for Path — we keep it for Windows readability.
+    trials_dir = get_settings().artifact_dir / "runs" / run_id / "trials"
+    assert trials_dir.is_dir(), trials_dir
+    pickles = list(trials_dir.glob("*.pkl"))
+    assert len(pickles) == 1, f"expected exactly one trial pickle, found {pickles}"
+    assert pickles[0].stat().st_size > 0
     _ = Path
 
 

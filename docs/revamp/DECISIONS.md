@@ -4,6 +4,22 @@ ADR-style. Newest at top. Each entry: **date | decision | alternatives considere
 
 ---
 
+## 2026-05-15 (session 56 · decision 1) · One promote, two writes — unify Pipeline + RegisteredModelVersion
+
+- **Decision:** A single endpoint, `POST /runs/{run_id}/trials/{trial_id}/promote`, writes BOTH a `Pipeline` row AND a `RegisteredModelVersion` in one atomic transaction. The `RegisteredModel` parent is found-or-created by `(workspace_id, name)`. `Pipeline.version` and `RegisteredModelVersion.version` are kept in lock-step. The standalone `POST /registered-models/{model_id}/versions` endpoint is removed; the FE's "Promote (legacy)" / "Promote to registry" duo collapses to one "Promote" button.
+- **Alternatives considered:**
+  - **Keep the two paths, just relabel the buttons** (rejected — the registry handler was reading non-existent attributes off `Run` and would `AttributeError` the first time a real trial was promoted; no test coverage existed to catch it. The two-tables-no-cross-references UX was the actual problem, not the labels).
+  - **Make Registry the only path, deprecate Pipeline** (rejected — the predict path at `deployments.py:621` hard-depends on `Pipeline.id` to load the .pkl; switching it requires reworking serving, which is out of scope here. Keeping Pipeline as the artifact pointer + Registry as the governance layer is the cleanest separation of concerns).
+  - **Lazy-register on first deploy** (rejected — bifurcates state: a promoted-but-undeployed trial would have no governance row, leaving the Registry page misleading. The user explicitly wants every promote to be governable from minute zero).
+- **Why:**
+  - The Phase-7 registry split was incremental and leaky. The audit (session 56) found the registry handler was *always broken* against the actual schema (read `Run.stored_path` etc., which only exist on `Trial`). Zero tests pinned the broken handler. Removing it is forward-only: nothing in production has ever called it successfully.
+  - Conceptually the user expects "promote = create a governable artifact." Having two buttons that produce two disjoint catalogs is a leaky abstraction.
+  - The lock-step `version` field makes the Pipelines page and the Model Registry page agree on the same number for the same artifact. No mental mapping required.
+  - Predict path stays on `Pipeline.pipeline_id` (never null for new deploys), so the serving codepath gets zero churn. Old `Deployment` rows from pre-unified-promote stay servable.
+- **Migration:** Forward-only. Old Pipeline rows without a matching RegisteredModelVersion stay on the Pipelines page but won't appear on Model Registry — which is the correct historical fact (they were never governance-registered). Old Deployments keep their existing `pipeline_id`, just don't carry registry IDs. No SQL migration needed.
+
+---
+
 ## 2026-05-08 (session 54 · decision 5) · Schedules use APScheduler in-process, not Celery / RQ / Arq
 
 - **Decision:** The platform's scheduled-job layer (`drift_monitor` + `retrain` kinds) is backed by `APScheduler`'s `BackgroundScheduler` running inside the FastAPI process. Hydrated from the `scheduled_jobs` table at startup; new schedules are added/removed via REST and propagated to the scheduler immediately. **No Redis, no separate worker process, no `Job` queue table.** Add `apscheduler>=3.10` to the server's core deps.

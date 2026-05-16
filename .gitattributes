@@ -1,0 +1,45 @@
+# Cross-platform line-ending normalization.
+#
+# Without this, a Windows contributor's git config may auto-convert
+# LF → CRLF on checkout, which breaks any shell script the docker
+# images try to execute inside Linux containers. (Classic error:
+# `/bin/sh^M: bad interpreter`.)
+#
+# Rules:
+#  * Text files: normalise to LF in the repo; checkout = LF on all OSes.
+#  * Shell scripts + Dockerfiles + anything-the-container-executes:
+#    FORCE LF — never CRLF, even on Windows.
+#  * Binary assets: untouched.
+
+# Default: let git auto-detect, but normalise to LF in the index.
+* text=auto eol=lf
+
+# Things that MUST be LF (executed inside Linux containers / build steps).
+*.sh           text eol=lf
+*.bash         text eol=lf
+Dockerfile     text eol=lf
+Dockerfile.*   text eol=lf
+*.dockerfile   text eol=lf
+*.yml          text eol=lf
+*.yaml         text eol=lf
+*.toml         text eol=lf
+*.py           text eol=lf
+.env.example   text eol=lf
+Makefile       text eol=lf
+LICENSE        text eol=lf
+
+# Binary — never touch.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.svg    text eol=lf
+*.pkl    binary
+*.parquet binary
+*.zip    binary
+*.tar    binary
+*.tar.gz binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary

@@ -1,12 +1,11 @@
 /**
- * /workspaces/:wsId/admin/integrations — third-party integrations.
+ * /workspaces/:wsId/admin/integrations — third-party integrations hub.
  *
- * v1 surfaces:
- *   - LLM provider (Anthropic / OpenAI) — already has its own screen, link.
- *   - S3 / cloud storage — placeholder; backend support exists for data
- *     sources, no settings UI yet.
- *   - SSO / SAML / OAuth — placeholder; V2.
- *   - Slack / webhook notifications — placeholder; V2.
+ * Hub page that routes to each integration's own management screen:
+ *   - LLM provider (Anthropic / OpenAI) → /llm
+ *   - Webhooks → /webhooks (HMAC-signed event delivery)
+ *   - Object storage → /data sources (per-DS S3 / Postgres / HTTP)
+ *   - SSO / SAML / OAuth — V2 (non-clickable, honestly labelled)
  */
 
 import { useQuery } from '@tanstack/react-query';

@@ -191,7 +191,16 @@ def run_retrain(job_id: str) -> None:
             data_source_id=spec.get("data_source_id"),
         )
         try:
-            run = dispatch_run(s, exp, body, user_id=job.created_by)
+            # Phase 0 attribution: scheduled runs are tagged so the Run
+            # detail page can render "triggered by schedule <name>".
+            run = dispatch_run(
+                s,
+                exp,
+                body,
+                user_id=job.created_by,
+                triggered_by="schedule",
+                triggered_by_id=job_id,
+            )
             job.last_run_at = datetime.now(UTC)
             job.last_status = "ok"
             job.last_run_run_id = run.id
@@ -204,7 +213,121 @@ def run_retrain(job_id: str) -> None:
         s.commit()
 
 
+def _spawn_worker_job(
+    *,
+    job_id: str,
+    job_kind: str,
+    payload: dict,
+) -> None:
+    """Phase 9: scheduled tick that produces a worker Job.
+
+    For ``drift_check`` / ``batch_predict`` / ``dataset_refresh`` the
+    schedule's "work" is just to enqueue a Job row that the worker
+    handler executes asynchronously. Marks the schedule's bookkeeping
+    fields on its way out so the UI shows green/red status.
+    """
+    from pycaret_server.config import get_settings
+    from pycaret_server.db import Job
+
+    settings = get_settings()
+    with get_session() as s:
+        sched = s.get(ScheduledJob, job_id)
+        if sched is None or not sched.enabled:
+            return
+        try:
+            job = Job(
+                kind=job_kind,
+                status="queued",
+                payload=payload,
+                queue="default",
+                correlation_id=job_id,
+            )
+            s.add(job)
+            s.commit()
+            s.refresh(job)
+            if settings.runs_backend == "redis":
+                try:
+                    from pycaret_server.runs.queue_redis import enqueue_job
+
+                    enqueue_job(job.id, queue=job.queue, redis_url=settings.redis_url)
+                except Exception:  # noqa: BLE001
+                    pass
+            else:
+                # Inprocess: run synchronously via the worker handler
+                # registry so the user sees results without standing up
+                # a separate worker container.
+                from pycaret_server.worker import _HANDLERS  # noqa: PLC2701
+
+                handler = _HANDLERS.get(job_kind)
+                if handler is not None:
+                    handler(job, s)
+            sched.last_run_at = datetime.now(UTC)
+            sched.last_status = "ok"
+            sched.last_error = None
+        except Exception as exc:  # noqa: BLE001
+            _log.exception("%s job %s failed", job_kind, job_id)
+            sched.last_run_at = datetime.now(UTC)
+            sched.last_status = "error"
+            sched.last_error = f"{type(exc).__name__}: {exc}"
+        s.commit()
+
+
+def run_drift_check(job_id: str) -> None:
+    """Phase 9: scheduled drift-rule evaluation across a workspace.
+
+    The target_id is the workspace id. Pulls every enabled AlertRule
+    in the workspace and evaluates it; delivery (Slack/email/webhook)
+    fires for each fired rule.
+    """
+    with get_session() as s:
+        sched = s.get(ScheduledJob, job_id)
+    if sched is None or not sched.enabled:
+        return
+    workspace_id = (sched.target_id or "").strip()
+    spec = sched.spec or {}
+    _spawn_worker_job(
+        job_id=job_id,
+        job_kind="drift_check",
+        payload={"workspace_id": workspace_id, **spec},
+    )
+
+
+def run_batch_predict(job_id: str) -> None:
+    """Phase 9: scheduled batch-predict. Target is the deployment id;
+    spec carries ``input_data_source_id`` (and any other knobs)."""
+    with get_session() as s:
+        sched = s.get(ScheduledJob, job_id)
+    if sched is None or not sched.enabled:
+        return
+    deployment_id = (sched.target_id or "").strip()
+    spec = sched.spec or {}
+    _spawn_worker_job(
+        job_id=job_id,
+        job_kind="batch_predict",
+        payload={"deployment_id": deployment_id, **spec},
+    )
+
+
+def run_dataset_refresh(job_id: str) -> None:
+    """Phase 9: scheduled DataSource re-introspection. Target is the
+    data_source id."""
+    with get_session() as s:
+        sched = s.get(ScheduledJob, job_id)
+    if sched is None or not sched.enabled:
+        return
+    data_source_id = (sched.target_id or "").strip()
+    spec = sched.spec or {}
+    _spawn_worker_job(
+        job_id=job_id,
+        job_kind="dataset_refresh",
+        payload={"data_source_id": data_source_id, **spec},
+    )
+
+
 JOB_HANDLERS = {
     "drift_monitor": run_drift_monitor,
     "retrain": run_retrain,
+    "drift_check": run_drift_check,
+    "batch_predict": run_batch_predict,
+    "dataset_refresh": run_dataset_refresh,
 }

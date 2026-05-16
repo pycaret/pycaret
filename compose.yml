@@ -1,0 +1,77 @@
+# PyCaret Control Plane — root compose file.
+#
+# This is the "git clone && docker compose up" entry point. Everything a
+# new contributor needs to run the full platform locally:
+#   - api  : FastAPI backend + APScheduler worker (in-process for V1)
+#   - web  : Built React UI served by nginx, proxies /api + /ws to api
+#
+# Persistence:
+#   - SQLite DB + uploaded CSVs + fitted .pkl files live in the named
+#     volume ``pycaret-data`` (mounted at /data inside api).
+#   - The Fernet encryption key for stored secrets is generated on first
+#     run and persisted to the same volume (see entrypoint.sh).
+#   - ``docker compose down``  → containers gone, data + key preserved.
+#   - ``docker compose down -v`` → wipes EVERYTHING. You start fresh.
+#
+# Production: swap the SQLite URL for a Postgres one + point storage to
+# S3. See infra/terraform/aws/ for the AWS deployment (V2).
+
+name: pycaret
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    image: pycaret-api:dev
+    container_name: pycaret-api
+    ports:
+      - "${PYCARET_API_PORT:-8020}:8020"
+    volumes:
+      - pycaret-data:/data
+    environment:
+      # Defaults sized for local dev. Override any of these via .env at
+      # repo root (gitignored — see .env.example for the template).
+      PYCARET_DATABASE_URL: ${PYCARET_DATABASE_URL:-sqlite:////data/pycaret.db}
+      PYCARET_ARTIFACT_DIR: ${PYCARET_ARTIFACT_DIR:-/data/artifacts}
+      # JSON array as string. Docker's ${...:-default} substitution doesn't
+      # strip outer quotes, so we keep the default unquoted and rely on
+      # YAML's flow-scalar interpretation.
+      PYCARET_CORS_ORIGINS: ${PYCARET_CORS_ORIGINS:-["http://localhost:3020","http://127.0.0.1:3020"]}
+      PYCARET_JWT_SECRET: ${PYCARET_JWT_SECRET:-dev-only-jwt-secret-CHANGE-IN-PROD}
+      PYCARET_ENVIRONMENT: ${PYCARET_ENVIRONMENT:-dev}
+      PYCARET_DEBUG: ${PYCARET_DEBUG:-false}
+      # PYCARET_SECRETS_KEY is intentionally NOT set here — the entrypoint
+      # generates one on first run and persists it to /data/.secrets/fernet.key.
+      # Override only if you want to share a key across replicas.
+      PYCARET_SECRETS_KEY: ${PYCARET_SECRETS_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8020/healthz').status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.ui
+    image: pycaret-web:dev
+    container_name: pycaret-web
+    ports:
+      - "${PYCARET_WEB_PORT:-3020}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/ | head -c 50 >/dev/null"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  pycaret-data:
+    name: pycaret-data

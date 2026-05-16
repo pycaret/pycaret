@@ -176,13 +176,20 @@ class SupervisedExperiment(Experiment):
 
         self.logger.log(
             EventKind.MODEL_COMPARE_STARTED,
-            payload={"n_candidates": len(candidates), "sort": sort},
+            message=f"Comparing {len(candidates)} model{'s' if len(candidates) != 1 else ''} (sort by {sort})",
+            payload={
+                "n_candidates": len(candidates),
+                "candidates": [str(c) for c in candidates],
+                "sort": sort,
+            },
         )
 
         # ---- per-model training loop
         rows: list[dict] = []
         pipelines: dict[str, Any] = {}
-        for cand in candidates:
+        for idx, cand in enumerate(candidates):
+            cand_label = str(cand)
+            t_iter = time.perf_counter()
             try:
                 created = self.create_model(
                     cand,
@@ -192,7 +199,22 @@ class SupervisedExperiment(Experiment):
                     round=round,
                     verbose=False,
                 )
-            except Exception:
+            except Exception as exc:
+                # Per-model failure event — surfaces as a red row in the UI
+                # event log so users know which model bombed without
+                # opening the failed-run debugger.
+                self.logger.log(
+                    EventKind.MODEL_COMPARED,
+                    message=f"✗ {cand_label} failed ({idx + 1}/{len(candidates)}): {type(exc).__name__}",
+                    duration_ms=(time.perf_counter() - t_iter) * 1000,
+                    payload={
+                        "model_id": cand_label,
+                        "rank_index": idx,
+                        "n_candidates": len(candidates),
+                        "status": "failed",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    },
+                )
                 if errors == "raise":
                     raise
                 continue
@@ -205,6 +227,32 @@ class SupervisedExperiment(Experiment):
                 mean_row = created.metrics.loc["Mean"].to_dict()
                 row.update(mean_row)
             rows.append(row)
+
+            # Per-model success event — rank-positioned so the UI can
+            # render "✓ {Model} ({i}/{n}) — {sort_metric} {value}" without
+            # waiting for MODEL_COMPARE_FINISHED.
+            primary = row.get(sort)
+            metric_str = (
+                f" — {sort} {primary:.4f}"
+                if isinstance(primary, (int, float))
+                else ""
+            )
+            self.logger.log(
+                EventKind.MODEL_COMPARED,
+                message=f"✓ {mid} ({idx + 1}/{len(candidates)}){metric_str}",
+                duration_ms=(time.perf_counter() - t_iter) * 1000,
+                payload={
+                    "model_id": mid,
+                    "rank_index": idx,
+                    "n_candidates": len(candidates),
+                    "status": "succeeded",
+                    "metrics": {
+                        k: (float(v) if isinstance(v, (int, float)) else str(v))
+                        for k, v in row.items()
+                        if k != "Model"
+                    },
+                },
+            )
 
         if not rows:
             # Nothing succeeded — return an empty CompareResult rather than
@@ -235,13 +283,20 @@ class SupervisedExperiment(Experiment):
         top_ids = ranked_ids[: max(1, n_select)]
         models = [pipelines[mid] for mid in top_ids]
 
+        winner = ranked_ids[0] if ranked_ids else None
         self.logger.log(
             EventKind.MODEL_COMPARE_FINISHED,
+            message=(
+                f"Compared {len(rows)} model{'s' if len(rows) != 1 else ''}, winner: {winner}"
+                if winner
+                else f"Compared {len(rows)} models — no winner"
+            ),
             duration_ms=(time.perf_counter() - t0) * 1000,
             payload={
                 "n_select": n_select,
                 "n_succeeded": len(rows),
-                "winner": ranked_ids[0] if ranked_ids else None,
+                "winner": winner,
+                "ranked_ids": ranked_ids,
             },
         )
 
@@ -520,12 +575,33 @@ class SupervisedExperiment(Experiment):
         except Exception:
             metrics_df = None
 
+        # Widen the tuned-event payload with the CV metrics + best
+        # score so a live chart can plot the tuned trial next to its
+        # un-tuned predecessor with no extra round-trip.
+        tuned_mean: dict[str, Any] = {}
+        try:
+            if metrics_df is not None and "Mean" in metrics_df.index:
+                tuned_mean = {
+                    k: (float(v) if isinstance(v, (int, float)) else v)
+                    for k, v in metrics_df.loc["Mean"].to_dict().items()
+                }
+        except Exception:  # noqa: BLE001
+            tuned_mean = {}
+
         self.logger.log(
             EventKind.MODEL_TUNED,
             duration_ms=(time.perf_counter() - t0) * 1000,
             payload={
                 "estimator": model_id,
+                "model_id": model_id,
                 "best_params": dict(search.best_params_),
+                "metrics": tuned_mean,
+                "best_score": (
+                    float(search.best_score_)
+                    if hasattr(search, "best_score_")
+                    and isinstance(search.best_score_, (int, float))
+                    else None
+                ),
             },
         )
 

@@ -1,0 +1,196 @@
+{{- /*
+Bundled dependency StatefulSets / Deployments for the "everything
+included" Helm install. Each one is opt-out via the matching
+.enabled toggle in values.yaml; production deploys typically point at
+managed services (RDS, ElastiCache, S3) instead.
+*/}}
+
+{{- if .Values.postgres.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "pycaret.postgres.name" . }}
+  labels:
+    {{- include "pycaret.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  serviceName: {{ include "pycaret.postgres.name" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pycaret.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels:
+        {{- include "pycaret.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.database }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.username }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.passwordSecretRef.name }}
+                  key: {{ .Values.postgres.passwordSecretRef.key }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: data
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if or .Values.postgres.persistence.storageClass .Values.global.storageClass }}
+        storageClassName: {{ default .Values.global.storageClass .Values.postgres.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.persistence.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pycaret.postgres.name" . }}
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    {{- include "pycaret.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+---
+{{- end }}
+
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "pycaret.redis.name" . }}
+  labels:
+    {{- include "pycaret.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  serviceName: {{ include "pycaret.redis.name" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pycaret.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "pycaret.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      containers:
+        - name: redis
+          image: {{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}
+          command: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
+          volumeMounts:
+            - mountPath: /data
+              name: data
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if or .Values.redis.persistence.storageClass .Values.global.storageClass }}
+        storageClassName: {{ default .Values.global.storageClass .Values.redis.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.redis.persistence.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pycaret.redis.name" . }}
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    {{- include "pycaret.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+---
+{{- end }}
+
+{{- if .Values.minio.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "pycaret.minio.name" . }}
+  labels:
+    {{- include "pycaret.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+spec:
+  serviceName: {{ include "pycaret.minio.name" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pycaret.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: minio
+  template:
+    metadata:
+      labels:
+        {{- include "pycaret.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: minio
+    spec:
+      containers:
+        - name: minio
+          image: {{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}
+          args: ["server", "/data", "--console-address", ":9001"]
+          env:
+            - name: MINIO_ROOT_USER
+              value: {{ .Values.minio.rootUser | quote }}
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.rootPasswordSecretRef.name }}
+                  key: {{ .Values.minio.rootPasswordSecretRef.key }}
+          volumeMounts:
+            - mountPath: /data
+              name: data
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if or .Values.minio.persistence.storageClass .Values.global.storageClass }}
+        storageClassName: {{ default .Values.global.storageClass .Values.minio.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.minio.persistence.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pycaret.minio.name" . }}
+spec:
+  ports:
+    - port: 9000
+      targetPort: 9000
+      name: api
+    - port: 9001
+      targetPort: 9001
+      name: console
+  selector:
+    {{- include "pycaret.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+{{- end }}

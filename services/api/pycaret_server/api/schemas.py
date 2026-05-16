@@ -91,6 +91,20 @@ class ExperimentCreate(BaseModel):
     data_source_id: str | None = None
 
 
+class RunStats(BaseModel):
+    """Aggregate of every Run under one experiment — drives the list-row
+    status chip so users can spot stalled or failing experiments at a glance."""
+
+    total: int = 0
+    succeeded: int = 0
+    failed: int = 0
+    cancelled: int = 0
+    running: int = 0
+    queued: int = 0
+    last_status: str | None = None
+    last_finished_at: datetime | None = None
+
+
 class ExperimentResponse(BaseModel):
     id: str
     project_id: str
@@ -101,6 +115,7 @@ class ExperimentResponse(BaseModel):
     data_source_id: str | None
     created_at: datetime
     created_by: str
+    run_stats: RunStats = Field(default_factory=RunStats)
 
 
 # ---------------------------------------------------------------- runs

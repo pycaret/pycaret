@@ -83,12 +83,14 @@ cd apps/web && npm install && cd -
 uv run ruff check . && uv run ruff format --check .
 uv run pytest packages/engine/tests/ -q
 
-# Site: dev preview at http://localhost:3001
+# Site: dev preview at http://localhost:3021
 cd apps/site && npm run dev
 
 # Control plane: two terminals
-uv run --package pycaret-server pycaret-server serve --reload   # :8000
-cd apps/web && npm run dev                                       # :3000
+uv run --package pycaret-server pycaret-server serve --reload   # :8020
+cd apps/web && npm run dev                                       # :3020
+# (3020 / 8020 picked so pycaret runs alongside resumly (:3000/:8000)
+# and halani (:3011/:8005) on the same laptop without port collisions.)
 ```
 
 ---

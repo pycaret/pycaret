@@ -12,11 +12,13 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import {
+  dataSourcesApi,
   deploymentsApi,
   experimentsApi,
   projectsApi,
   schedulesApi,
   type Schedule,
+  type ScheduleKind,
 } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
 
@@ -164,16 +166,54 @@ export function Schedules() {
   );
 }
 
+const KIND_OPTIONS: { value: ScheduleKind; label: string; hint: string }[] = [
+  {
+    value: 'retrain',
+    label: 'Retrain',
+    hint: 'Re-run an experiment on its current data source.',
+  },
+  {
+    value: 'drift_monitor',
+    label: 'Drift monitor (legacy)',
+    hint: 'Snapshot a deployment\'s drift score.',
+  },
+  {
+    value: 'drift_check',
+    label: 'Alert rule check (Phase 10)',
+    hint: 'Evaluate every alert rule in the workspace; fired rules deliver to Slack/email/webhook.',
+  },
+  {
+    value: 'batch_predict',
+    label: 'Batch predict',
+    hint: 'Run a deployment over a data source; write predictions to object storage.',
+  },
+  {
+    value: 'dataset_refresh',
+    label: 'Refresh dataset',
+    hint: 'Re-introspect a DataSource; bump its version row.',
+  },
+];
+
 function NewScheduleForm({ workspaceId }: { workspaceId: string }) {
   const qc = useQueryClient();
-  const [kind, setKind] = useState<'drift_monitor' | 'retrain'>('drift_monitor');
+  const [kind, setKind] = useState<ScheduleKind>('retrain');
   const [targetId, setTargetId] = useState<string>('');
   const [interval, setInterval] = useState<number>(3600);
+  // For batch_predict, the worker also needs ``input_data_source_id``
+  // in the spec — surface a second picker.
+  const [batchInputDsId, setBatchInputDsId] = useState<string>('');
 
   const deployments = useQuery({
     queryKey: ['workspaces', workspaceId, 'deployments'],
     queryFn: () => deploymentsApi.list(workspaceId),
-    enabled: !!workspaceId && kind === 'drift_monitor',
+    enabled: !!workspaceId && (kind === 'drift_monitor' || kind === 'batch_predict'),
+  });
+
+  const dataSources = useQuery({
+    queryKey: ['data-sources', workspaceId],
+    queryFn: () => dataSourcesApi.list(workspaceId),
+    enabled:
+      !!workspaceId && (kind === 'dataset_refresh' || kind === 'batch_predict'),
   });
 
   const projects = useQuery({
@@ -202,61 +242,105 @@ function NewScheduleForm({ workspaceId }: { workspaceId: string }) {
     enabled: !!workspaceId && kind === 'retrain' && !!projects.data,
   });
 
+  // For drift_check the target IS the workspace itself — auto-fill.
+  const effectiveTargetId = kind === 'drift_check' ? workspaceId : targetId;
+
   const create = useMutation({
-    mutationFn: () =>
-      schedulesApi.create(workspaceId, {
+    mutationFn: () => {
+      // Build the kind-specific spec.
+      let spec: Record<string, unknown> | null = null;
+      if (kind === 'retrain') {
+        spec = { plan: 'compare', sklearn_dataset: 'iris' };
+      } else if (kind === 'batch_predict' && batchInputDsId) {
+        spec = { input_data_source_id: batchInputDsId };
+      }
+      return schedulesApi.create(workspaceId, {
         kind,
-        target_id: targetId,
+        target_id: effectiveTargetId,
         schedule: { interval_seconds: interval },
-        spec:
-          kind === 'retrain'
-            ? { plan: 'compare', sklearn_dataset: 'iris' }
-            : null,
-      }),
+        spec,
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'schedules'] });
       setTargetId('');
+      setBatchInputDsId('');
     },
   });
 
-  const targetOptions =
-    kind === 'drift_monitor'
-      ? (deployments.data ?? []).map((d) => ({
-          id: d.id,
-          label: `${d.endpoint_slug} (${d.status})`,
-        }))
-      : (allExperiments.data ?? []).map((e) => ({
-          id: e.id,
-          label: `${e.project_name} / ${e.name}`,
-        }));
+  let targetOptions: { id: string; label: string }[] = [];
+  if (kind === 'drift_monitor' || kind === 'batch_predict') {
+    targetOptions = (deployments.data ?? []).map((d) => ({
+      id: d.id,
+      label: `${d.endpoint_slug} (${d.status})`,
+    }));
+  } else if (kind === 'retrain') {
+    targetOptions = (allExperiments.data ?? []).map((e) => ({
+      id: e.id,
+      label: `${e.project_name} / ${e.name}`,
+    }));
+  } else if (kind === 'dataset_refresh') {
+    targetOptions = (dataSources.data ?? []).map((d) => ({
+      id: d.id,
+      label: `${d.name} · ${d.kind}`,
+    }));
+  } else if (kind === 'drift_check') {
+    // workspace itself — no picker needed.
+    targetOptions = [{ id: workspaceId, label: 'this workspace' }];
+  }
+
+  const targetLabel: Record<ScheduleKind, string> = {
+    drift_monitor: 'Deployment',
+    retrain: 'Experiment',
+    drift_check: 'Workspace',
+    batch_predict: 'Deployment',
+    dataset_refresh: 'Data source',
+  };
+  const canSubmit =
+    !!effectiveTargetId &&
+    interval >= 30 &&
+    !create.isPending &&
+    (kind !== 'batch_predict' || !!batchInputDsId);
 
   return (
     <section className="card">
-      <h2 className="text-sm font-medium text-ink-900 mb-3">New schedule</h2>
+      <h2 className="text-sm font-medium text-ink-900 dark:text-ink-50 mb-3">
+        New schedule
+      </h2>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
         <div>
-          <label className="field" htmlFor="kind">Kind</label>
+          <label className="field" htmlFor="kind">
+            Kind
+          </label>
           <select
             id="kind"
             className="input"
             value={kind}
             onChange={(e) => {
-              setKind(e.target.value as 'drift_monitor' | 'retrain');
+              setKind(e.target.value as ScheduleKind);
               setTargetId('');
+              setBatchInputDsId('');
             }}
           >
-            <option value="drift_monitor">Drift monitor</option>
-            <option value="retrain">Retrain</option>
+            {KIND_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
+          <p className="hint mt-1">
+            {KIND_OPTIONS.find((o) => o.value === kind)?.hint}
+          </p>
         </div>
         <div className="md:col-span-2">
           <label className="field" htmlFor="target">
-            {kind === 'drift_monitor' ? 'Deployment' : 'Experiment'}
+            {targetLabel[kind]}
           </label>
           <select
             id="target"
             className="input"
-            value={targetId}
+            value={kind === 'drift_check' ? workspaceId : targetId}
+            disabled={kind === 'drift_check'}
             onChange={(e) => setTargetId(e.target.value)}
           >
             <option value="">—</option>
@@ -268,7 +352,9 @@ function NewScheduleForm({ workspaceId }: { workspaceId: string }) {
           </select>
         </div>
         <div>
-          <label className="field" htmlFor="interval">Interval (s)</label>
+          <label className="field" htmlFor="interval">
+            Interval (s)
+          </label>
           <input
             id="interval"
             className="input"
@@ -279,17 +365,41 @@ function NewScheduleForm({ workspaceId }: { workspaceId: string }) {
           />
         </div>
       </div>
+
+      {kind === 'batch_predict' && (
+        <div className="mt-3">
+          <label className="field" htmlFor="batch-input">
+            Input data source
+          </label>
+          <select
+            id="batch-input"
+            className="input md:max-w-md"
+            value={batchInputDsId}
+            onChange={(e) => setBatchInputDsId(e.target.value)}
+          >
+            <option value="">—</option>
+            {(dataSources.data ?? []).map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name} · {d.kind}
+              </option>
+            ))}
+          </select>
+          <p className="hint mt-1">
+            Rows from this source are fed through the deployment's
+            pipeline; predictions land in object storage as CSV.
+          </p>
+        </div>
+      )}
+
       <div className="mt-3 flex items-center gap-3">
         <button
           className="btn-primary"
-          disabled={!targetId || interval < 30 || create.isPending}
+          disabled={!canSubmit}
           onClick={() => create.mutate()}
         >
           {create.isPending ? 'Creating…' : 'Create schedule'}
         </button>
-        {create.error && (
-          <p className="error">{errorMessage(create.error)}</p>
-        )}
+        {create.error && <p className="error">{errorMessage(create.error)}</p>}
       </div>
     </section>
   );

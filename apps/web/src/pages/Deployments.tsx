@@ -58,10 +58,10 @@ export function Deployments() {
       {deployments.data && deployments.data.length === 0 && (
         <div className="card text-sm text-ink-500">
           No deployments yet. Go to{' '}
-          <Link to={`/workspaces/${wsId}/pipelines`} className="text-accent-600 hover:underline">
-            Pipelines
+          <Link to={`/workspaces/${wsId}/models`} className="text-accent-600 hover:underline">
+            Model registry
           </Link>{' '}
-          and deploy one.
+          and pick a version to deploy.
         </div>
       )}
 

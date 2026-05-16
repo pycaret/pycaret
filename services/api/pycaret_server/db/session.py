@@ -1,4 +1,13 @@
-"""SQLAlchemy engine + session factory + FastAPI dependency."""
+"""SQLAlchemy engine + session factory + FastAPI dependency.
+
+Phase 3: this module is dual-backend-aware. SQLite stays the zero-config
+dev default (``PYCARET_DATABASE_URL=sqlite:///./pycaret.db``); production
+deploys point at Postgres via ``postgresql+psycopg://user:pass@host/db``.
+
+The driver is selected purely by the URL — the rest of the application
+code is engine-agnostic. The only divergence is connection-pool tuning
+and SQLite's cross-thread relaxation, both handled here.
+"""
 
 from __future__ import annotations
 
@@ -11,19 +20,36 @@ from pycaret_server.config import get_settings
 
 settings = get_settings()
 
-# SQLite-specific kwargs: allow cross-thread access for FastAPI worker threads.
-# For other drivers no special kwargs; SQLAlchemy handles pool sizing by default.
+# Per-driver kwargs.
+#
+#   - SQLite: ``check_same_thread=False`` lets FastAPI's threadpool reuse
+#     one connection. We also disable the default StaticPool sizing —
+#     the SQLAlchemy default is fine.
+#   - Postgres: default pool (5 + 10 overflow) is enough for a single
+#     backend instance + a handful of workers. ``pool_pre_ping`` catches
+#     stale connections that survived a Postgres restart.
+#
+# Anything heavier (PgBouncer, read replicas, statement timeouts) ships
+# in Phase 13's enterprise-polish slice.
 _connect_args: dict = {}
-if settings.database_url.startswith("sqlite"):
+_pool_kwargs: dict = {"pool_pre_ping": True}
+_db_url = settings.database_url
+
+if _db_url.startswith("sqlite"):
     _connect_args = {"check_same_thread": False}
+elif _db_url.startswith(("postgresql", "postgres")):
+    _pool_kwargs.update(
+        pool_size=5,
+        max_overflow=10,
+        pool_recycle=1800,  # drop idle connections after 30 min
+    )
 
 engine = create_engine(
-    settings.database_url,
+    _db_url,
     echo=settings.debug,
     connect_args=_connect_args,
-    # Pool options are defaults for now; tune when we hit scale.
-    pool_pre_ping=True,
     future=True,
+    **_pool_kwargs,
 )
 
 session_factory = sessionmaker(

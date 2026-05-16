@@ -27,6 +27,7 @@ import {
   workspacesApi,
 } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
+import { BackButton } from '@/components/BackButton';
 import { Dialog } from '@/components/Dialog';
 import type { Run, RunCreate, RunPlan } from '@/api/types';
 
@@ -225,6 +226,7 @@ export function ExperimentDetail() {
     <div className="space-y-8">
       {/* ─── Header ──────────────────────────────────────────── */}
       <header className="space-y-2">
+        <BackButton />
         <nav className="text-xs text-ink-500">
           <Link to="/" className="hover:text-ink-900 dark:hover:text-ink-50">
             Workspaces
@@ -265,14 +267,6 @@ export function ExperimentDetail() {
               </div>
             )}
           </div>
-          <button
-            className="btn-primary shrink-0"
-            onClick={() => setRunDialogOpen(true)}
-            disabled={!experiment.data}
-          >
-            <PlusIcon />
-            New run
-          </button>
         </div>
       </header>
 
@@ -328,21 +322,13 @@ export function ExperimentDetail() {
                 No runs yet
               </h3>
               <p className="mt-1.5 text-sm text-ink-500">
-                Click <span className="font-medium text-ink-700">New run</span> to
-                submit your first one.
+                The first run is submitted when you create the experiment.
               </p>
-              <button
-                className="btn-primary mt-5 inline-flex"
-                onClick={() => setRunDialogOpen(true)}
-              >
-                <PlusIcon />
-                New run
-              </button>
             </div>
           )}
 
             {runs.data && runs.data.length > 0 && (
-              <div className="card overflow-hidden p-0">
+              <div className="card overflow-hidden p-0 mb-8">
                 <table className="w-full text-sm">
                   <thead className="bg-white text-ink-500 dark:bg-ink-900">
                     <tr>
@@ -401,6 +387,11 @@ export function ExperimentDetail() {
               </div>
             )}
         </section>
+
+        {/* Trials live one level down (per-run leaderboard on the Run
+            Detail page). Keeping them off the Experiment page makes the
+            two levels distinct: Experiment = config + run history;
+            Run = the actual results. */}
       </div>
 
       {/* ─── New-run dialog (opens from header CTA) ──────────── */}
@@ -536,19 +527,6 @@ export function ExperimentDetail() {
   );
 }
 
-const PlusIcon = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.75"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden
-  >
-    <path d="M12 5v14" />
-    <path d="M5 12h14" />
-  </svg>
-);
+// PlusIcon retired in session 56: the experiment page's "New run" CTA was
+// redundant — runs are auto-submitted at experiment creation, and re-running
+// happens by creating a new experiment. The icon was only used here.

@@ -19,7 +19,7 @@ React frontend for the PyCaret 4.0 application platform. Talks to
 ```bash
 cd pycaret-ui
 npm install
-npm run dev            # http://localhost:3000 (proxies /api → :8000)
+npm run dev            # http://localhost:3020 (proxies /api → :8020)
 npm run typecheck
 npm run lint
 npm test
@@ -29,7 +29,7 @@ npm run build          # production bundle -> dist/
 To regenerate typed API types from a running backend:
 
 ```bash
-# backend running on :8000
+# backend running on :8020
 npm run gen:api
 ```
 

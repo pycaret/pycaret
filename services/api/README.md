@@ -17,7 +17,8 @@ uv run --package pycaret-server uvicorn pycaret_server.app:create_app --factory 
 
 Default database: SQLite at `./pycaret.db`.
 Default artifact dir: `./artifacts/`.
-API docs: http://localhost:8000/docs
+API docs: http://localhost:8020/docs (port 8020 keeps us out of
+resumly's 8000 when both servers run on the same laptop).
 
 ## Config (env vars, prefix `PYCARET_`)
 
@@ -28,7 +29,7 @@ API docs: http://localhost:8000/docs
 | `PYCARET_ACCESS_TOKEN_TTL_MINUTES` | 60 | Access-token lifetime |
 | `PYCARET_REFRESH_TOKEN_TTL_DAYS` | 30 | Refresh-token lifetime |
 | `PYCARET_ARTIFACT_DIR` | `./artifacts` | Where run artifacts land |
-| `PYCARET_CORS_ORIGINS` | `["http://localhost:3000"]` | Origins allowed by CORS |
+| `PYCARET_CORS_ORIGINS` | `["http://localhost:3020"]` | Origins allowed by CORS |
 | `PYCARET_DEBUG` | `false` | SQLAlchemy echo + FastAPI debug mode |
 
 See `.env.example` in the repo root.
@@ -36,7 +37,7 @@ See `.env.example` in the repo root.
 ## First-run flow
 
 1. Start the server — it creates SQLite tables on first boot.
-2. Open http://localhost:8000/docs in the browser.
+2. Open http://localhost:8020/docs in the browser.
 3. Hit `GET /api/v1/setup/status` — returns `{"is_bootstrapped": false}`.
 4. Hit `POST /api/v1/setup/bootstrap` with an admin email / password / workspace name.
 5. Use the returned access token for every subsequent call.

@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { deploymentsApi, pipelinesApi } from '@/api/endpoints';
 import { errorMessage } from '@/api/client';
+import { BackButton } from '@/components/BackButton';
 import { DeploymentVersionsCard } from '@/components/DeploymentVersionsCard';
 import { DriftReportsCard } from '@/components/DriftReportsCard';
 import { PredictionLogsCard } from '@/components/PredictionLogsCard';
@@ -36,7 +37,7 @@ export function DeploymentDetail() {
   });
   const pipeline = useQuery({
     queryKey: ['pipelines', deployment.data?.pipeline_id],
-    queryFn: () => pipelinesApi.get(deployment.data!.pipeline_id),
+    queryFn: () => pipelinesApi.get(deployment.data!.pipeline_id!),
     enabled: !!deployment.data?.pipeline_id,
   });
 
@@ -59,6 +60,7 @@ export function DeploymentDetail() {
   return (
     <div className="space-y-8">
       <header>
+        <BackButton />
         <nav className="text-xs text-ink-500 mb-2">
           <Link to="/" className="hover:text-ink-900">
             Workspaces
@@ -89,9 +91,13 @@ export function DeploymentDetail() {
                 <span className="font-mono">{d.auth_mode}</span>
                 {pipeline.data && (
                   <>
-                    {' · pipeline '}
+                    {' · model '}
                     <Link
-                      to={`/workspaces/${d.workspace_id}/pipelines/${d.pipeline_id}`}
+                      to={
+                        pipeline.data.registered_model_id
+                          ? `/workspaces/${d.workspace_id}/models/${pipeline.data.registered_model_id}`
+                          : `/workspaces/${d.workspace_id}/models`
+                      }
                       className="text-accent-600 hover:underline"
                     >
                       {pipeline.data.name}
@@ -154,7 +160,10 @@ export function DeploymentDetail() {
             </section>
 
             {/* ────────── test form */}
-            <PredictTester endpointSlug={d.endpoint_slug} />
+            <PredictTester
+              endpointSlug={d.endpoint_slug}
+              pipelineId={d.pipeline_id}
+            />
 
             {/* ────────── versions + rollback (session 24) */}
             <DeploymentVersionsCard
@@ -175,7 +184,7 @@ export function DeploymentDetail() {
               <h3 className="text-sm font-medium text-ink-900">Metadata</h3>
               <MetaRow k="deployment_id" v={d.id} />
               <MetaRow k="workspace_id" v={d.workspace_id} />
-              <MetaRow k="pipeline_id" v={d.pipeline_id} />
+              <MetaRow k="pipeline_id" v={d.pipeline_id ?? '—'} />
               <MetaRow k="created" v={new Date(d.created_at).toLocaleString()} />
             </div>
           </aside>
