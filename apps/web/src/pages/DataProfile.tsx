@@ -876,13 +876,8 @@ function WarningsCard({
   warnings: DatasetProfile['warnings'];
   compact: boolean;
 }) {
-  if (warnings.length === 0) {
-    return (
-      <div className="card text-sm text-ink-500">
-        No quality issues detected. Dataset looks clean.
-      </div>
-    );
-  }
+  // React rules-of-hooks: hooks must run on every render in the same order.
+  // Compute grouped BEFORE any conditional early return.
   const grouped = useMemo(() => {
     const out: Record<string, DatasetProfile['warnings']> = {};
     for (const w of warnings) {
@@ -891,6 +886,13 @@ function WarningsCard({
     }
     return out;
   }, [warnings]);
+  if (warnings.length === 0) {
+    return (
+      <div className="card text-sm text-ink-500">
+        No quality issues detected. Dataset looks clean.
+      </div>
+    );
+  }
   const order: ('error' | 'warn' | 'info')[] = ['error', 'warn', 'info'];
 
   return (

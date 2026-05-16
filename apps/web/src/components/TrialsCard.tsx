@@ -84,7 +84,7 @@ export function TrialsCard({ runId, workspaceId, onActionSubmitted }: TrialsCard
   // rejects calling a hook conditionally — adding one after a guard
   // that returns early on the first render and not the second is the
   // classic black-screen footgun).
-  const items = trials.data?.items ?? [];
+  const items = useMemo(() => trials.data?.items ?? [], [trials.data?.items]);
   const selectableItems = useMemo(
     () => items.filter((t) => t.has_artifact !== false),
     [items],

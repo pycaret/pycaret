@@ -264,6 +264,7 @@ function NotebookSessionDialog({
 
 // Helper to keep the BackButton link sane when this page is opened
 // from the project detail page. Exported for unit tests.
+// eslint-disable-next-line react-refresh/only-export-components
 export function notebooksPathFor(wsId: string, projectId: string): string {
   return `/workspaces/${wsId}/projects/${projectId}/notebooks`;
 }

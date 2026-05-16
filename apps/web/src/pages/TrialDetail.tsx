@@ -1103,10 +1103,13 @@ function PlotsTab({
     staleTime: 60 * 60 * 1000,
   });
 
-  const kinds: string[] =
-    availablePlots.length > 0
-      ? availablePlots
-      : (registry.data?.tasks?.[task ?? ''] ?? []);
+  const kinds: string[] = useMemo(
+    () =>
+      availablePlots.length > 0
+        ? availablePlots
+        : (registry.data?.tasks?.[task ?? ''] ?? []),
+    [availablePlots, registry.data, task],
+  );
 
   // Group plots into the same buckets ModelCard uses, then drop empty
   // buckets. We only show kinds that are actually registered for the

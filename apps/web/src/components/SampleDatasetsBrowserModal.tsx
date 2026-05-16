@@ -126,8 +126,10 @@ function Grid({
     onSuccess: (_data, sample_name) => {
       setAdded((s) => ({ ...s, [sample_name]: true }));
       setErrors((e) => {
-        const { [sample_name]: _, ...rest } = e;
-        return rest;
+        // Remove this sample's error if any; rebuild record without the key.
+        const next = { ...e };
+        delete next[sample_name];
+        return next;
       });
       qc.invalidateQueries({ queryKey: ['data-sources', workspaceId] });
     },

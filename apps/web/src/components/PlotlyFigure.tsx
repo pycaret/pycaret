@@ -17,11 +17,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Plot from 'react-plotly.js';
 
-import type { PlotlyFigure } from '../api/types';
+import type { PlotlyFigure as PlotlyFigureData } from '../api/types';
 
 export interface PlotlyFigureProps {
   /** The Plotly figure JSON returned by the API. */
-  figure?: PlotlyFigure | null;
+  figure?: PlotlyFigureData | null;
   /** True while the upstream query is in flight. */
   loading?: boolean;
   /** Set when the upstream query failed. */
