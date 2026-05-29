@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.60.0",
-    "axios": "^1.7.0",
+    "axios": "^1.16.0",
     "plotly.js-basic-dist": "^2.35.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
