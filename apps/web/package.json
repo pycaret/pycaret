@@ -28,7 +28,7 @@
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-plotly.js": "^2.6.0",
-    "react-router-dom": "^6.28.0",
+    "react-router-dom": "^6.30.4",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
