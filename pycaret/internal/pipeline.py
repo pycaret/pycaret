@@ -10,13 +10,20 @@
 
 import platform
 import warnings
+from contextlib import contextmanager
 from copy import deepcopy
 from inspect import signature
 
 import imblearn.pipeline
 import sklearn.pipeline
 from sklearn.base import clone
-from sklearn.utils import _print_elapsed_time
+try:
+    from sklearn.utils import _print_elapsed_time
+except ImportError:
+    # Removed from scikit-learn 1.7+; keep pipeline timing hooks as no-ops.
+    @contextmanager
+    def _print_elapsed_time(name, message=None):
+        yield
 from sklearn.utils.metadata_routing import _routing_enabled
 from sklearn.utils.metaestimators import available_if
 from sklearn.utils.validation import check_memory

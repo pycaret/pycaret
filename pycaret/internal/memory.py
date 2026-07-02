@@ -12,6 +12,7 @@ Changes include:
 """
 
 import hashlib
+import inspect
 import pickle
 import struct
 import sys
@@ -448,6 +449,11 @@ class FastMemory(Memory):
         self.reduce_size()
 
 
+def _use_standard_memory() -> bool:
+    """PyCaret's FastMemory patches pre-1.5 joblib internals."""
+    return not hasattr(MemorizedFunc, "_get_output_identifiers")
+
+
 def get_memory(memory: Union[bool, str, Path, Memory]) -> Memory:
     if memory is None or isinstance(memory, Memory):
         return memory
@@ -456,7 +462,12 @@ def get_memory(memory: Union[bool, str, Path, Memory]) -> Memory:
             return None
         if memory:
             tmpdir = tempfile.gettempdir() if isinstance(memory, bool) else str(memory)
-            return FastMemory(tmpdir, verbose=0, bytes_limit=DEFAULT_BYTES_LIMIT)
+            memory_kwargs = {"verbose": 0}
+            if _use_standard_memory():
+                return Memory(tmpdir, **memory_kwargs)
+            if "bytes_limit" in inspect.signature(Memory.__init__).parameters:
+                memory_kwargs["bytes_limit"] = DEFAULT_BYTES_LIMIT
+            return FastMemory(tmpdir, **memory_kwargs)
     raise TypeError(
         f"memory must be a bool, str or joblib.Memory object, got {type(memory)}"
     )
