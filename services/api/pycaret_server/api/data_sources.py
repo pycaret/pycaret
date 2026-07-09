@@ -161,7 +161,8 @@ async def upload_csv(
     try:
         sample = pd.read_csv(target, nrows=5)
         columns = [str(c) for c in sample.columns]
-        rows_est = sum(1 for _ in open(target, encoding="utf-8")) - 1
+        with open(target, encoding="utf-8") as f:
+            rows_est = sum(1 for _ in f) - 1
     except Exception as exc:  # noqa: BLE001
         target.unlink(missing_ok=True)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"could not parse CSV: {exc}") from exc
