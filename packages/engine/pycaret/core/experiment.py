@@ -1619,7 +1619,7 @@ class Experiment(BaseEstimator):
             out["Anomaly"] = preds
             if hasattr(estimator, "decision_function"):
                 try:
-                    out["Anomaly_Score"] = estimator.decision_function(X)
+                    out["Anomaly_Score"] = estimator.decision_function(X_for_pred)
                 except Exception:  # pragma: no cover — defensive
                     pass
         else:
