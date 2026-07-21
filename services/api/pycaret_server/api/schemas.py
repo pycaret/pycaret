@@ -65,6 +65,7 @@ class WorkspaceResponse(BaseModel):
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     description: str | None = None
+    business_context: str | None = None
     tags: list[str] = Field(default_factory=list)
 
 
@@ -73,6 +74,7 @@ class ProjectResponse(BaseModel):
     workspace_id: str
     name: str
     description: str | None
+    business_context: str | None = None
     tags: list[str]
     created_at: datetime
     created_by: str
@@ -89,6 +91,7 @@ class ExperimentCreate(BaseModel):
     target: str | None = None
     setup_params: dict = Field(default_factory=dict)
     data_source_id: str | None = None
+    business_context: str | None = None
 
 
 class RunStats(BaseModel):
@@ -113,6 +116,7 @@ class ExperimentResponse(BaseModel):
     target: str | None
     setup_params: dict
     data_source_id: str | None
+    business_context: str | None = None
     created_at: datetime
     created_by: str
     run_stats: RunStats = Field(default_factory=RunStats)

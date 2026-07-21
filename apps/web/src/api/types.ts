@@ -56,6 +56,7 @@ export interface Project {
   workspace_id: string;
   name: string;
   description: string | null;
+  business_context?: string | null;
   tags: string[];
   created_at: string;
   created_by: string;
@@ -89,6 +90,7 @@ export interface Experiment {
   target: string | null;
   setup_params: Record<string, unknown>;
   data_source_id: string | null;
+  business_context?: string | null;
   created_at: string;
   created_by: string;
   run_stats: RunStats;

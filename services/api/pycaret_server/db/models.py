@@ -191,6 +191,7 @@ class Project(UUIDMixin, TimestampMixin, Base):
     )
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
+    business_context: Mapped[str | None] = mapped_column(Text)
     tags: Mapped[list[str] | None] = mapped_column(JSON)
     created_by: Mapped[str] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
@@ -220,6 +221,7 @@ class Experiment(UUIDMixin, TimestampMixin, Base):
         ForeignKey("data_sources.id", ondelete="SET NULL"), index=True
     )
     description: Mapped[str | None] = mapped_column(Text)
+    business_context: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[str] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )

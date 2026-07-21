@@ -24,8 +24,8 @@ from pycaret_server.llm.schemas import LLMAdvice
 
 SYSTEM = (
     "You are a senior ML consultant designing a PyCaret experiment end-to-end. "
-    "Given a dataset profile + a user goal in plain English, propose a full "
-    "RunConfig-shaped setup. Ground every choice in the profile provided.\n"
+    "Given a dataset profile + a user goal in plain English (and optional business context), "
+    "propose a full RunConfig-shaped setup. Ground every choice in the profile provided.\n"
     "\n"
     "Your JSON output must include, under suggested_config_json:\n"
     "  - task_type:         'classification' | 'regression' | 'clustering' | 'anomaly'\n"
@@ -37,6 +37,11 @@ SYSTEM = (
     "remove_outliers: bool, feature_selection: bool }\n"
     "  - model_shortlist:   ['lr', 'rf', 'xgb', …] — 3-6 task-appropriate models\n"
     "  - class_imbalance_strategy: 'none' | 'smote' | 'undersample' (classification only)\n"
+    "\n"
+    "If business_context is provided, explicitly incorporate its domain constraints "
+    "(e.g. false-positive vs false-negative costs, interpretability constraints, "
+    "leakage risks, deployment targets, monitoring priorities) into primary_metric selection, "
+    "model_shortlist, preprocessing choices, and risk_flags.\n"
     "\n"
     "Be conservative: prefer interpretable simple models first, turn off any "
     "preprocessing that the profile doesn't need. Flag risks explicitly in "
@@ -75,8 +80,8 @@ OUTPUT_SCHEMA: dict = {
 }
 
 
-def build_prompt(csv_path: str, goal: str) -> tuple[str, str]:
-    """Serialise the dataset profile + user goal into (system, user) prompts."""
+def build_prompt(csv_path: str, goal: str, business_context: str | None = None) -> tuple[str, str]:
+    """Serialise the dataset profile + user goal + optional business context into (system, user) prompts."""
     p = Path(csv_path)
     if not p.is_file():
         raise FileNotFoundError(f"CSV not found at {csv_path!r}")
@@ -97,13 +102,17 @@ def build_prompt(csv_path: str, goal: str) -> tuple[str, str]:
             }
         )
 
+    user_payload: dict[str, object] = {
+        "user_goal": goal.strip(),
+        "total_rows": total_rows,
+        "sample_rows_inspected": len(head),
+        "columns": columns,
+    }
+    if business_context and business_context.strip():
+        user_payload["business_context"] = business_context.strip()
+
     user = json.dumps(
-        {
-            "user_goal": goal.strip(),
-            "total_rows": total_rows,
-            "sample_rows_inspected": len(head),
-            "columns": columns,
-        },
+        user_payload,
         indent=2,
         default=str,
     )
