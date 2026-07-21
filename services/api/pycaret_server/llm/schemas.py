@@ -118,6 +118,16 @@ class DesignExperimentRequest(BaseModel):
         max_length=2000,
         description="Plain-English goal — 'predict churn', 'baseline regression on prices'.",
     )
+    business_context: str | None = Field(
+        default=None,
+        max_length=4000,
+        description="Optional domain rules, cost tradeoffs, deployment constraints, interpretability needs.",
+    )
+    include_business_context: bool = Field(
+        default=False,
+        description="Explicit user opt-in flag indicating whether business_context should be included in the LLM prompt.",
+    )
+
 
 
 class ExplainRunRequest(BaseModel):

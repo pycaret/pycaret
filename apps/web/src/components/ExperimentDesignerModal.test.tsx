@@ -137,8 +137,77 @@ describe('<ExperimentDesignerModal>', () => {
         workspace_id: 'ws-1',
         data_source_id: 'd-1',
         goal: 'predict iris species',
+        business_context: undefined,
+        include_business_context: false,
       }),
     );
     expect(await screen.findByText(/Run a compare of lr \+ rf \+ xgb/)).toBeInTheDocument();
+  });
+
+  it('passes business_context and include_business_context when provided', async () => {
+    listMock.mockResolvedValue([
+      {
+        id: 'd-1',
+        workspace_id: 'ws-1',
+        name: 'iris.csv',
+        kind: 'csv_upload',
+        description: null,
+        config: {},
+        created_at: new Date().toISOString(),
+        created_by: 'u',
+      },
+    ]);
+    designMock.mockResolvedValue({
+      id: 'c-1',
+      workspace_id: 'ws-1',
+      project_id: null,
+      experiment_id: null,
+      run_id: null,
+      type: 'experiment_design',
+      provider: 'anthropic',
+      model_name: 'claude-sonnet-4-5',
+      prompt: '{...}',
+      response_json: {
+        suggested_config_json: { task_type: 'classification', target: 'target' },
+        suggested_action: 'Run a compare focusing on recall.',
+        reasoning_summary: 'Cost-sensitive classification.',
+        risk_flags: [],
+      },
+      generated_config_json: null,
+      latency_ms: 50,
+      error: null,
+      created_at: new Date().toISOString(),
+      created_by: 'u',
+    });
+
+    const user = userEvent.setup();
+    render(
+      wrap(
+        <ExperimentDesignerModal
+          workspaceId="ws-1"
+          open
+          onClose={() => {}}
+        />,
+      ),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: /iris\.csv/i })).toBeInTheDocument(),
+    );
+    await user.selectOptions(screen.getByLabelText(/dataset/i), 'd-1');
+    await user.type(screen.getByLabelText(/goal/i), 'predict iris species');
+    await user.type(screen.getByRole('textbox', { name: /^business context/i }), 'False negatives cost 50x');
+    await user.click(screen.getByLabelText(/include business context/i));
+    await user.click(screen.getByRole('button', { name: /design experiment/i }));
+
+    await waitFor(() =>
+      expect(designMock).toHaveBeenCalledWith({
+        workspace_id: 'ws-1',
+        data_source_id: 'd-1',
+        goal: 'predict iris species',
+        business_context: 'False negatives cost 50x',
+        include_business_context: true,
+      }),
+    );
   });
 });

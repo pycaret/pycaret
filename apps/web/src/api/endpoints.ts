@@ -1255,6 +1255,8 @@ export const llmApi = {
     workspace_id: string;
     data_source_id: string;
     goal: string;
+    business_context?: string | null;
+    include_business_context?: boolean;
   }) =>
     api
       .post<LLMConsultationRead>('/llm/design-experiment', body)

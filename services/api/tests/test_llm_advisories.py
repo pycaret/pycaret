@@ -163,6 +163,56 @@ def test_design_experiment_requires_goal(client: TestClient) -> None:
     assert r.status_code == 422  # Pydantic min_length=1 fires
 
 
+def test_design_experiment_with_business_context_enabled(client: TestClient) -> None:
+    tokens = _bootstrap(client)
+    ws = client.get("/api/v1/workspaces", headers=_auth(tokens)).json()[0]["id"]
+    _configure_llm(client, tokens, ws)
+    ds = _upload_iris(client, tokens, ws)
+
+    biz_context = "False negatives cost 50x more than false positives. Require high recall."
+    r = client.post(
+        "/api/v1/llm/design-experiment",
+        headers=_auth(tokens),
+        json={
+            "workspace_id": ws,
+            "data_source_id": ds,
+            "goal": "Predict iris species",
+            "business_context": biz_context,
+            "include_business_context": True,
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["type"] == "experiment_design"
+    assert "false negatives cost 50x" in body["prompt"].lower()
+
+
+def test_design_experiment_with_business_context_disabled(client: TestClient) -> None:
+    tokens = _bootstrap(client)
+    ws = client.get("/api/v1/workspaces", headers=_auth(tokens)).json()[0]["id"]
+    _configure_llm(client, tokens, ws)
+    ds = _upload_iris(client, tokens, ws)
+
+    biz_context = "Confidential internal cost metrics: secret_data_123"
+    r = client.post(
+        "/api/v1/llm/design-experiment",
+        headers=_auth(tokens),
+        json={
+            "workspace_id": ws,
+            "data_source_id": ds,
+            "goal": "Predict iris species",
+            "business_context": biz_context,
+            "include_business_context": False,
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["type"] == "experiment_design"
+    # When include_business_context is False, business context must be strictly omitted from prompt.
+    assert "secret_data_123" not in body["prompt"]
+
+
+
 def test_design_experiment_rejects_non_csv(client: TestClient) -> None:
     tokens = _bootstrap(client)
     ws = client.get("/api/v1/workspaces", headers=_auth(tokens)).json()[0]["id"]

@@ -340,8 +340,11 @@ def design_experiment(
             status.HTTP_500_INTERNAL_SERVER_ERROR, "data source missing 'path' in config"
         )
 
+    biz_ctx = payload.business_context if payload.include_business_context else None
     try:
-        system, user_prompt = experiment_design.build_prompt(csv_path, payload.goal)
+        system, user_prompt = experiment_design.build_prompt(
+            csv_path, payload.goal, business_context=biz_ctx
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status.HTTP_410_GONE, str(exc)) from exc
 

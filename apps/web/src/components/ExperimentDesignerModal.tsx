@@ -40,6 +40,8 @@ export function ExperimentDesignerModal({
 
   const [dataSourceId, setDataSourceId] = useState('');
   const [goal, setGoal] = useState('');
+  const [businessContext, setBusinessContext] = useState('');
+  const [includeBusinessContext, setIncludeBusinessContext] = useState(false);
 
   const design = useMutation({
     mutationFn: () =>
@@ -47,6 +49,8 @@ export function ExperimentDesignerModal({
         workspace_id: workspaceId,
         data_source_id: dataSourceId,
         goal: goal.trim(),
+        business_context: businessContext.trim() || undefined,
+        include_business_context: includeBusinessContext,
       }),
   });
 
@@ -130,6 +134,36 @@ export function ExperimentDesignerModal({
               placeholder="e.g. Predict churn with a high-recall model; compare logistic + tree-based baselines."
               required
             />
+          </div>
+
+          <div>
+            <label className="field" htmlFor="businessContext">
+              Business Context <span className="text-xs text-ink-500 font-normal">(Optional)</span>
+            </label>
+            <textarea
+              id="businessContext"
+              rows={3}
+              className="input"
+              value={businessContext}
+              onChange={(e) => setBusinessContext(e.target.value)}
+              placeholder="e.g. False negatives cost $500 vs $20 for FP; CS team requires model explainability; exclude post-churn columns."
+            />
+          </div>
+
+          <div className="flex items-start gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="includeBusinessContext"
+              className="mt-1 rounded border-ink-300"
+              checked={includeBusinessContext}
+              onChange={(e) => setIncludeBusinessContext(e.target.checked)}
+            />
+            <label htmlFor="includeBusinessContext" className="text-xs text-ink-700 leading-normal">
+              <span className="font-medium">Include business context in AI Assistant request</span>
+              <span className="block text-ink-500 mt-0.5">
+                When enabled, this context will be sent to your workspace's configured LLM provider to tailor metric, model, and risk recommendations.
+              </span>
+            </label>
           </div>
 
           {design.error && <p className="error">{errorMessage(design.error)}</p>}
