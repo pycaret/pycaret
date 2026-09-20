@@ -507,6 +507,16 @@ class SupervisedExperiment(Experiment):
                 # distributions pass `custom_grid=` directly. Adapting
                 # `tune_distribution` → scipy is a future polish.
                 search_space = getattr(container, "tune_grid", None) or {}
+                
+        registry = self._fit_state.get("model_registry", {})
+        container = registry.get(model_id)
+        if container is not None:
+            tunable_class = getattr(container, "tunable", None)
+            if tunable_class is not None:
+                try:
+                    bare_model = tunable_class(**bare_model.get_params())
+                except Exception:
+                    pass
         if not search_space:
             # No tuning possible — fall through to a plain CV fit.
             tuned = self.create_model(
